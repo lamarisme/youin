@@ -230,7 +230,7 @@ export default function SignUpPage() {
               <Label htmlFor="invite" className="text-[0.75rem] font-medium text-ink-2">
                 Invite teammates (optional)
               </Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
                   id="invite"
                   value={inviteInput}
@@ -318,13 +318,13 @@ export default function SignUpPage() {
               type="button"
               onClick={continueStep}
               disabled={(step === 0 && !canContinueStep1) || (step === 1 && !canContinueStep2)}
-              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+              className="h-9 bg-mark text-paper hover:bg-mark-bright sm:min-w-[140px]"
             >
               Continue
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={finishSetup} disabled={loading} className="h-9 bg-mark text-paper hover:bg-mark-bright">
+            <Button type="button" onClick={finishSetup} disabled={loading} className="h-9 bg-mark text-paper hover:bg-mark-bright sm:min-w-[160px]">
               {loading ? "Creating account..." : "Finish setup"}
               <ArrowRight className="size-4" />
             </Button>

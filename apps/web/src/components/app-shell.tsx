@@ -31,13 +31,28 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
           fullBleed ? "max-w-none" : "max-w-[1520px]",
         )}
       >
-        <aside className="flex flex-col border-r border-rule bg-paper-2 px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:px-4 lg:py-6">
-          <Link href="/dashboard" className="mb-8 flex items-center gap-2.5 px-1">
-            <span className="pin-dot shrink-0">M</span>
-            <span className="font-display text-lg font-semibold text-ink">Markly</span>
-          </Link>
+        <aside className="flex flex-col border-b border-rule bg-paper-2 px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
+          <div className="mb-3 flex items-center justify-between lg:mb-8">
+            <Link href="/dashboard" className="flex items-center gap-2.5 px-1">
+              <span className="pin-dot shrink-0">M</span>
+              <span className="font-display text-lg font-semibold text-ink">Markly</span>
+            </Link>
+            <div className="flex items-center gap-1.5 lg:hidden">
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-paper-3 hover:text-ink"
+                aria-label={theme === "dark" ? "Enable light mode" : "Enable dark mode"}
+              >
+                {theme === "dark" ? <Sun className="size-[1.05rem]" /> : <Moon className="size-[1.05rem]" />}
+              </button>
+              <Avatar className="size-8">
+                <AvatarFallback className="bg-paper-3 text-[10px] font-medium text-ink">MK</AvatarFallback>
+              </Avatar>
+            </div>
+          </div>
 
-          <nav className="space-y-0.5">
+          <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -46,7 +61,7 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "flex min-h-10 items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.8125rem] transition-colors",
+                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] transition-colors lg:flex lg:w-full lg:gap-2.5 lg:px-2.5",
                     isActive
                       ? "bg-mark-soft font-medium text-ink"
                       : "text-ink-2 hover:bg-paper-3 hover:text-ink",
@@ -59,7 +74,7 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
             })}
           </nav>
 
-          <div className="mt-auto pt-8">
+          <div className="mt-auto hidden pt-8 lg:block">
             <button
               type="button"
               onClick={toggleTheme}

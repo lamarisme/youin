@@ -196,7 +196,7 @@ function SpacesPageContent() {
             <button
               type="button"
               onClick={() => updateSpacesUrl(null)}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
             >
               <ArrowLeft className="size-3.5" />
               All spaces
@@ -239,7 +239,7 @@ function SpacesPageContent() {
                   </>
                 )}
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
                 <Button
                   size="sm"
                   variant={selectedSpace.pinned ? "default" : "outline"}
@@ -571,6 +571,20 @@ function SpacesPageContent() {
               </div>
 
               <div className="hidden shrink-0 items-center gap-4 text-[0.75rem] sm:flex">
+                <span className="flex items-center gap-1 text-mark">
+                  <CircleDashed className="size-3" />
+                  {stats?.open ?? 0}
+                </span>
+                <span className="flex items-center gap-1 text-ok">
+                  <CheckCircle2 className="size-3" />
+                  {stats?.closed ?? 0}
+                </span>
+                <span className="flex items-center gap-1 text-ink-3">
+                  <MessageCircle className="size-3" />
+                  {stats?.comments ?? 0}
+                </span>
+              </div>
+              <div className="mt-1.5 flex shrink-0 items-center gap-3 text-[0.6875rem] sm:hidden">
                 <span className="flex items-center gap-1 text-mark">
                   <CircleDashed className="size-3" />
                   {stats?.open ?? 0}

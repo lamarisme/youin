@@ -288,7 +288,7 @@ export function WorkspaceDashboard() {
                 </div>
                 <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">{selectedPin.title}</h1>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <Button
                   size="sm"
                   variant={selectedPin.pinned ? "default" : "outline"}
@@ -533,7 +533,7 @@ export function WorkspaceDashboard() {
       </AppHeader>
 
       <div className="motion-enter mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-rule bg-paper-2 px-4 py-3.5 shadow-[0_10px_28px_-24px_oklch(17%_0.01_50_/_0.45)]">
-        <div className="relative">
+        <div className="relative min-w-[170px] flex-1 sm:min-w-[220px] sm:flex-none">
           <select
             aria-label="Select space"
             value={activeSpaceId}
@@ -571,7 +571,7 @@ export function WorkspaceDashboard() {
       </div>
 
       <div className="motion-enter-delayed mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 rounded-lg border border-rule bg-paper-2 px-2 py-1.5">
+        <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-2 py-1.5 xl:w-auto">
           <Filter className="size-3.5 text-ink-3" />
           <select
             aria-label="Filter by status"
@@ -683,7 +683,7 @@ export function WorkspaceDashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="truncate text-[0.875rem] font-semibold text-ink group-hover:text-mark">{pin.title}</p>
-                  <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">{pin.id}</span>
+                  <span className="hidden shrink-0 font-mono text-[0.625rem] text-ink-3 sm:inline">{pin.id}</span>
                 </div>
                 <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">

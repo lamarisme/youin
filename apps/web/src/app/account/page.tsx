@@ -83,7 +83,7 @@ export default function AccountPage() {
           <h2 className="font-display text-lg font-semibold text-ink">Reviewer access</h2>
           <p className="mt-1 text-[0.8125rem] text-ink-2">Invite teammates and manage workspace members.</p>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <Input
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
@@ -91,7 +91,7 @@ export default function AccountPage() {
               className="h-9 bg-paper-2 text-[0.8125rem]"
               onKeyDown={(e) => e.key === "Enter" && canInvite && addInvite()}
             />
-            <Button onClick={addInvite} disabled={!canInvite} className="h-9 shrink-0">
+            <Button onClick={addInvite} disabled={!canInvite} className="h-9 shrink-0 sm:px-4">
               <UserPlus className="size-3.5" />
               Invite
             </Button>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,9 +96,7 @@ export default function Home() {
             <Link href="/auth/sign-in" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
               Sign in
             </Link>
-            <Button size="sm" asChild className="h-8">
-              <a href="#install">Add to Chrome</a>
-            </Button>
+            <ChromeCtaButton href="#install" compact />
           </div>
         </div>
         {/* Mobile nav */}
@@ -107,7 +106,7 @@ export default function Home() {
               <a
                 key={item.href}
                 href={item.href}
-                className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-rule px-3 text-[0.8125rem] text-ink-2"
+                className="inline-flex min-h-10 shrink-0 items-center rounded-md border border-rule px-3 text-[0.8125rem] text-ink-2"
               >
                 {item.label}
               </a>
@@ -129,12 +128,8 @@ export default function Home() {
                 Click any element on any live site, mark a comment, and ship a ticket without leaving the page.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <Button size="lg" asChild>
-                  <a href="#install">Add to Chrome &mdash; free</a>
-                </Button>
-                <Button size="lg" variant="outline" asChild>
-                  <a href="#loop">See the loop</a>
-                </Button>
+                <ChromeCtaButton href="#install">Add to Chrome — free</ChromeCtaButton>
+                <SecondaryCtaButton href="#loop">See the loop</SecondaryCtaButton>
               </div>
               <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
                 Chrome MV3 &middot; GitHub &middot; Linear &middot; Jira &middot; Self-host
@@ -301,10 +296,8 @@ export default function Home() {
                 The next time someone spots a live issue, leave a mark instead of a message thread.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button size="lg">Add to Chrome &mdash; free</Button>
-                <Button size="lg" variant="outline" asChild>
-                  <a href="mailto:hello@markly.tools">Talk to a human</a>
-                </Button>
+                <ChromeCtaButton href="#install">Add to Chrome — free</ChromeCtaButton>
+                <SecondaryCtaButton href="mailto:hello@markly.tools">Talk to a human</SecondaryCtaButton>
               </div>
             </div>
 
@@ -340,5 +333,58 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function ChromeCtaButton({
+  href,
+  children,
+  compact,
+}: {
+  href: string;
+  children?: React.ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <Button
+      size={compact ? "sm" : "lg"}
+      asChild
+      className={compact ? "h-9 px-3.5 text-[0.8125rem]" : "h-11 px-5 text-[0.875rem] font-semibold"}
+    >
+      <a href={href} className="inline-flex items-center gap-2">
+        <ChromeGlyph className={compact ? "size-3.5" : "size-4"} />
+        <span>{children ?? "Add to Chrome"}</span>
+        {!compact ? <ArrowRight className="size-4" /> : null}
+      </a>
+    </Button>
+  );
+}
+
+function ChromeGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="10.5" fill="#ffffff" />
+      <path d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.33 2.5L5.5 5.75A10 10 0 0 1 12 2z" fill="#ea4335" />
+      <path d="M3.34 7A10 10 0 0 0 12 22l4.33-7.5A5 5 0 0 1 12 17H7.67L3.34 9.5V7z" fill="#34a853" />
+      <path d="M20.66 7A10 10 0 0 1 12 22l4.33-7.5A5 5 0 0 0 12 7h8.66z" fill="#fbbc05" />
+      <circle cx="12" cy="12" r="4.1" fill="#4285f4" />
+    </svg>
+  );
+}
+
+function SecondaryCtaButton({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button size="lg" variant="outline" asChild className="h-11 px-5 text-[0.875rem]">
+      <a href={href} className="inline-flex items-center gap-2">
+        <span>{children}</span>
+        <ArrowRight className="size-4" />
+      </a>
+    </Button>
   );
 }
