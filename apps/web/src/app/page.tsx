@@ -1,0 +1,344 @@
+import Link from "next/link";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+const loopSteps = [
+  {
+    num: "01",
+    title: "Pin to an element",
+    body: "Click anything on any live page. The extension captures selector, viewport, browser, and a screenshot automatically.",
+  },
+  {
+    num: "02",
+    title: "Comment with context",
+    body: "Write only the intent. URL, device details, and element reference are already attached for whoever picks it up.",
+  },
+  {
+    num: "03",
+    title: "Ship a ready ticket",
+    body: "Push to Linear, GitHub, or Jira. The issue arrives with repro details, screenshot, and discussion thread pre-filled.",
+  },
+];
+
+const personas = [
+  {
+    role: "Web agencies",
+    detail: "5-50 people",
+    body: "Multiple client sites, weekly review loops, and feedback that needs to be precise and fast.",
+  },
+  {
+    role: "Product teams",
+    detail: "PM + 1-3 devs",
+    body: "Small teams that cannot afford a QA relay chain across tools and tabs.",
+  },
+  {
+    role: "EU-first orgs",
+    detail: "GDPR-bound",
+    body: "Self-host keeps client data in your infra while preserving the same review workflow.",
+  },
+];
+
+const tiers = [
+  {
+    name: "Free",
+    price: "\u20AC0",
+    period: "forever",
+    blurb: "Try the loop on one project.",
+    cta: "Add to Chrome",
+    features: ["1 workspace", "Unlimited pins", "Auto-context capture", "3 AI tickets / mo"],
+  },
+  {
+    name: "Team",
+    price: "\u20AC29",
+    period: "workspace / mo",
+    blurb: "For studios running live projects.",
+    cta: "Start 14-day trial",
+    features: ["Unlimited workspaces", "Up to 10 members", "Unlimited AI tickets", "GitHub, Linear, Jira"],
+    highlighted: true,
+  },
+  {
+    name: "Agency",
+    price: "\u20AC79",
+    period: "workspace / mo",
+    blurb: "For client-facing teams needing control.",
+    cta: "Talk to us",
+    features: ["Everything in Team", "Unlimited members", "Client guest links", "Self-host + local AI"],
+  },
+];
+
+const navItems = [
+  { href: "#problem", label: "Problem" },
+  { href: "#loop", label: "How it works" },
+  { href: "#who", label: "Who it\u2019s for" },
+  { href: "#pricing", label: "Pricing" },
+];
+
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      {/* ── Header ──────────────────────────────────────────── */}
+      <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link href="/" className="flex items-center gap-2.5">
+            <span className="pin-dot">P</span>
+            <span className="font-display text-lg font-semibold">Pin</span>
+          </Link>
+          <nav className="hidden items-center gap-5 text-[0.8125rem] text-ink-2 md:flex">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href} className="transition-colors hover:text-ink">
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/auth/sign-in" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
+              Sign in
+            </Link>
+            <Button size="sm" asChild className="h-8">
+              <a href="#install">Add to Chrome</a>
+            </Button>
+          </div>
+        </div>
+        {/* Mobile nav */}
+        <div className="mx-auto w-full max-w-6xl px-6 pb-3 md:hidden">
+          <nav aria-label="Mobile navigation" className="flex gap-2 overflow-x-auto">
+            {navItems.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-rule px-3 text-[0.8125rem] text-ink-2"
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        {/* ── Hero ──────────────────────────────────────────── */}
+        <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
+          <div className="grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-start md:gap-14">
+            <div>
+              <Badge variant="outline" className="mb-5 text-[0.625rem]">v0.9 for design-led teams</Badge>
+              <h1 className="text-editorial text-ink">
+                The feedback layer for the live&nbsp;web.
+              </h1>
+              <p className="mt-5 max-w-[50ch] text-[1.0625rem] leading-relaxed text-ink-2">
+                Click any element on any live site, pin a comment, and ship a ticket without leaving the page.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Button size="lg" asChild>
+                  <a href="#install">Add to Chrome &mdash; free</a>
+                </Button>
+                <Button size="lg" variant="outline" asChild>
+                  <a href="#loop">See the loop</a>
+                </Button>
+              </div>
+              <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
+                Chrome MV3 &middot; GitHub &middot; Linear &middot; Jira &middot; Self-host
+              </p>
+            </div>
+
+            {/* Annotation preview */}
+            <div className="rounded-xl border border-rule bg-paper-2 p-5">
+              <p className="text-eyebrow mb-3">Live annotation</p>
+              <div className="rounded-lg bg-paper p-4">
+                <p className="text-[0.8125rem] leading-relaxed text-ink">
+                  &ldquo;Most popular&rdquo; label should be explicit on the middle pricing card.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[0.625rem] text-ink-3">
+                  <span>browser: Chrome 121</span>
+                  <span>viewport: 1440&times;900</span>
+                  <span>selector: .pricing-card h3</span>
+                  <span>url: /pricing</span>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-[0.75rem]">
+                <span className="text-ink-2">Mira &middot; just now</span>
+                <Badge variant="outline" className="bg-mark-soft text-[0.625rem] font-medium text-mark">
+                  ready for ticket
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+
+        {/* ── Problem ──────────────────────────────────────── */}
+        <section id="problem" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+          <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:gap-12">
+            <div>
+              <h2 className="text-editorial-md text-ink">
+                Five steps for a five-second observation.
+              </h2>
+            </div>
+            <div className="space-y-4">
+              <p className="text-[0.9375rem] leading-relaxed text-ink-2">
+                Designers and PMs lose context while moving across tools. Developers receive summaries instead of the moment that triggered the feedback.
+              </p>
+              <div className="rounded-lg bg-paper-2 px-4 py-3">
+                <p className="text-eyebrow mb-2">The old loop</p>
+                <p className="text-[0.8125rem] leading-relaxed text-ink-3">
+                  Screenshot &rarr; annotate &rarr; paste in chat &rarr; explain context &rarr; wait for questions &rarr; repeat.
+                </p>
+              </div>
+              <div className="rounded-lg bg-mark-soft px-4 py-3">
+                <p className="text-eyebrow mb-2">With Pin</p>
+                <p className="text-[0.8125rem] font-medium leading-relaxed text-ink">
+                  Click &rarr; comment &rarr; done. Context is captured, the ticket writes itself.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+
+        {/* ── How it works ─────────────────────────────────── */}
+        <section id="loop" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+          <div className="mb-10">
+            <p className="text-eyebrow mb-2">How it works</p>
+            <h2 className="text-editorial-md text-ink">Three moves. One loop.</h2>
+          </div>
+
+          <div className="annotation-rail space-y-8 lg:ml-4">
+            {loopSteps.map((step) => (
+              <div key={step.num} className="grid gap-2 md:grid-cols-[120px_1fr] md:gap-6">
+                <span className="font-display text-[2rem] font-semibold leading-none text-mark">{step.num}</span>
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-ink">{step.title}</h3>
+                  <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-relaxed text-ink-2">{step.body}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+
+        {/* ── Who it's for ─────────────────────────────────── */}
+        <section id="who" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+          <div className="mb-10">
+            <p className="text-eyebrow mb-2">Who it&rsquo;s for</p>
+            <h2 className="text-editorial-md text-ink">Built for people who notice first.</h2>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {personas.map((p, i) => (
+              <div
+                key={p.role}
+                className={`rounded-lg border border-rule bg-paper-2 p-5 ${i === 0 ? "md:col-span-2 md:row-span-1" : ""}`}
+              >
+                <p className="text-eyebrow">{p.detail}</p>
+                <h3 className="mt-1.5 font-display text-lg font-semibold text-ink">{p.role}</h3>
+                <p className="mt-2 max-w-[48ch] text-[0.8125rem] leading-relaxed text-ink-2">{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+
+        {/* ── Pricing ──────────────────────────────────────── */}
+        <section id="pricing" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+          <div className="mb-10">
+            <p className="text-eyebrow mb-2">Pricing</p>
+            <h2 className="text-editorial-md text-ink">Per workspace, not per seat.</h2>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {tiers.map((tier) => (
+              <div
+                key={tier.name}
+                className={`flex flex-col rounded-xl border p-6 ${
+                  tier.highlighted
+                    ? "border-mark bg-mark-soft"
+                    : "border-rule bg-paper-2"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-lg font-semibold text-ink">{tier.name}</h3>
+                  {tier.highlighted ? (
+                    <Badge className="bg-mark text-paper text-[0.625rem]">Popular</Badge>
+                  ) : null}
+                </div>
+                <p className="mt-1 text-[0.8125rem] text-ink-2">{tier.blurb}</p>
+                <p className="mt-4 font-display text-3xl font-semibold tracking-tight text-ink">
+                  {tier.price}
+                  <span className="ml-1.5 text-[0.8125rem] font-normal text-ink-3">{tier.period}</span>
+                </p>
+                <ul className="mt-5 flex-1 space-y-2 text-[0.8125rem] text-ink-2">
+                  {tier.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <span className="mt-1 size-1 shrink-0 rounded-full bg-mark" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant={tier.highlighted ? "default" : "outline"}
+                  className="mt-6 w-full"
+                  asChild
+                >
+                  <a href="#install">{tier.cta}</a>
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── CTA ──────────────────────────────────────────── */}
+        <section id="install" className="border-t border-rule bg-paper-2">
+          <div className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-16 md:grid-cols-[1.3fr_1fr] md:items-center md:py-20">
+            <div>
+              <h2 className="text-editorial-md text-ink">
+                Stop describing the thing you can point&nbsp;at.
+              </h2>
+              <p className="mt-3 max-w-[48ch] text-[0.9375rem] leading-relaxed text-ink-2">
+                The next time someone spots a live issue, leave a pin instead of a message thread.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button size="lg">Add to Chrome &mdash; free</Button>
+                <Button size="lg" variant="outline" asChild>
+                  <a href="mailto:hello@pin.tools">Talk to a human</a>
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-rule bg-paper p-5">
+              <p className="text-eyebrow mb-4">At a glance</p>
+              <div className="space-y-3 text-[0.8125rem]">
+                <div className="flex justify-between">
+                  <span className="text-ink-2">Onboarding</span>
+                  <span className="font-medium text-ink">~60 seconds</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-2">Tabs to switch</span>
+                  <span className="font-medium text-ink">0</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-2">Connectors</span>
+                  <span className="font-medium text-ink">GitHub, Linear, Jira</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* ── Footer ─────────────────────────────────────────── */}
+      <footer className="border-t border-rule bg-paper px-6 py-6">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 Pin</p>
+          <div className="flex gap-4 text-[0.75rem] text-ink-3">
+            <a href="#" className="hover:text-ink">Terms</a>
+            <a href="#" className="hover:text-ink">Privacy</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
