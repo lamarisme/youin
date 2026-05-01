@@ -20,6 +20,7 @@ import {
   Mouse,
   Plus,
   Flag,
+  History,
 } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
@@ -29,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinComment, PinPriority, PinStatus } from "@/lib/collab-types";
+import type { MarkEventType, PinComment, PinPriority, PinStatus } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -116,6 +117,13 @@ export function WorkspaceDashboard() {
     if (!selectedPin) return [];
     return workspace.comments.filter((c) => c.pinId === selectedPin.id);
   }, [selectedPin, workspace.comments]);
+
+  const selectedPinEvents = useMemo(() => {
+    if (!selectedPin) return [];
+    return workspace.markEvents
+      .filter((event) => event.pinId === selectedPin.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [selectedPin, workspace.markEvents]);
 
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
   const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
@@ -240,7 +248,7 @@ export function WorkspaceDashboard() {
     const cap = selectedPin.capture;
 
     return (
-      <AppShell>
+      <AppShell fullBleed>
         <div className="motion-enter mb-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
@@ -267,20 +275,25 @@ export function WorkspaceDashboard() {
 
         <div key={selectedPin.id} className="motion-enter-delayed grid gap-8 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-mark/30 bg-mark-soft px-3 py-1">
+              <span className="font-mono text-[0.6875rem] font-semibold text-mark">{selectedPin.id}</span>
+              <span className="text-[0.6875rem] text-mark/80">Live mark brief</span>
+            </div>
+
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-[0.75rem] text-ink-3">{selectedPin.id}</span>
                   <StatusPill status={selectedPin.status} />
                 </div>
-                <h1 className="mt-2 font-display text-2xl font-semibold text-ink">{selectedPin.title}</h1>
+                <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">{selectedPin.title}</h1>
               </div>
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
                   variant={selectedPin.pinned ? "default" : "outline"}
                   onClick={() => togglePinned(selectedPin.id)}
-                  className="h-8 text-[0.8125rem]"
+                  className="h-8 border-mark/30 text-[0.8125rem]"
                 >
                   <Bookmark className="size-3" />
                   {selectedPin.pinned ? "Pinned" : "Pin"}
@@ -310,7 +323,7 @@ export function WorkspaceDashboard() {
               </div>
             </div>
 
-            <p className="mt-3 max-w-[65ch] text-[0.9375rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
+            <p className="mt-3 max-w-[65ch] text-[1rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium",
@@ -350,8 +363,8 @@ export function WorkspaceDashboard() {
               ) : null}
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-lg border border-rule">
-              <div className="flex items-center gap-1.5 border-b border-rule bg-paper-2 px-3 py-2">
+            <div className="mt-6 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_10px_30px_-20px_oklch(17%_0.01_50_/_0.45)]">
+              <div className="flex items-center gap-1.5 border-b border-rule bg-paper-2 px-3 py-2.5">
                 <span className="size-2 rounded-full bg-paper-3" />
                 <span className="size-2 rounded-full bg-paper-3" />
                 <span className="size-2 rounded-full bg-paper-3" />
@@ -359,7 +372,7 @@ export function WorkspaceDashboard() {
                   {selectedPin.page}
                 </span>
               </div>
-              <div className="relative bg-paper-2 px-6 py-8">
+              <div className="relative bg-paper-2 px-6 py-9">
                 <div className="mx-auto max-w-sm space-y-3">
                   <div className="h-4 w-3/4 rounded bg-paper-3" />
                   <div className="h-3 w-full rounded bg-paper-3/60" />
@@ -421,7 +434,8 @@ export function WorkspaceDashboard() {
 
           <div className="lg:border-l lg:border-rule lg:pl-6">
             <div className="lg:sticky lg:top-8">
-              <p className="text-eyebrow mb-4">
+              <p className="mb-4 flex items-center gap-1.5 text-eyebrow">
+                <MessageCircle className="size-3.5" />
                 Discussion{selectedPinComments.length > 0 ? ` (${selectedPinComments.length})` : ""}
               </p>
               <div className="annotation-rail space-y-3">
@@ -431,7 +445,7 @@ export function WorkspaceDashboard() {
                 {selectedPinComments.map((comment) => {
                   const author = membersById.get(comment.authorId);
                   return (
-                    <div key={comment.id} className="rounded-md bg-paper-2 p-3">
+                    <div key={comment.id} className="rounded-lg border border-rule bg-paper-2 p-3 shadow-[0_8px_24px_-20px_oklch(17%_0.01_50_/_0.4)]">
                       <div className="mb-2 flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Avatar className="size-5">
@@ -456,7 +470,7 @@ export function WorkspaceDashboard() {
                 })}
               </div>
 
-              <div className="mt-4 rounded-lg border border-dashed border-rule p-3">
+              <div className="mt-4 rounded-lg border border-dashed border-rule bg-paper p-3">
                 <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Leave a comment" className="min-h-[56px] bg-paper text-[0.8125rem]" />
                 <div className="mt-2 flex items-center justify-between gap-2">
                   <Input type="file" accept="image/*" onChange={(e) => setNewCommentImage(e.target.files?.[0] ?? null)} className="h-8 max-w-[160px] text-[0.6875rem]" />
@@ -464,6 +478,38 @@ export function WorkspaceDashboard() {
                     <MessageCircle className="size-3.5" />
                     Send
                   </Button>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <p className="mb-3 flex items-center gap-1.5 text-eyebrow">
+                  <History className="size-3.5" />
+                  Mark history{selectedPinEvents.length > 0 ? ` (${selectedPinEvents.length})` : ""}
+                </p>
+                <div className="annotation-rail space-y-2.5">
+                  {selectedPinEvents.length === 0 ? (
+                    <p className="text-[0.8125rem] text-ink-3">No history yet.</p>
+                  ) : null}
+                  {selectedPinEvents.map((event) => {
+                    const actor = membersById.get(event.actorId);
+                    const description = formatMarkEvent(event.type, event.fromValue, event.toValue, event.metadata);
+                    return (
+                      <div key={event.id} className="rounded-lg border border-rule bg-paper-2 p-3">
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <span className="text-[0.75rem] font-medium text-ink">{actor?.name ?? "Unknown member"}</span>
+                          <span className="text-[0.625rem] text-ink-3">
+                            {new Date(event.createdAt).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-[0.75rem] leading-relaxed text-ink-2">{description}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -474,18 +520,19 @@ export function WorkspaceDashboard() {
   }
 
   return (
-    <AppShell>
+    <AppShell fullBleed>
       <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
-        <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2">
-          <span className="font-mono text-mark">{spaceStats.open}</span>
-          <span>open</span>
-          <span className="mx-1 text-rule">/</span>
-          <span className="font-mono text-ok">{spaceStats.closed}</span>
-          <span>closed</span>
+        <div className="flex items-center gap-2 text-[0.75rem]">
+          <span className="inline-flex items-center gap-1 rounded-full bg-mark-soft px-2.5 py-1 font-medium text-mark">
+            <span className="font-mono">{spaceStats.open}</span> open
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2.5 py-1 font-medium text-ok">
+            <span className="font-mono">{spaceStats.closed}</span> closed
+          </span>
         </div>
       </AppHeader>
 
-      <div className="motion-enter mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-rule bg-paper-2 px-4 py-3">
+      <div className="motion-enter mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-rule bg-paper-2 px-4 py-3.5 shadow-[0_10px_28px_-24px_oklch(17%_0.01_50_/_0.45)]">
         <div className="relative">
           <select
             aria-label="Select space"
@@ -524,7 +571,7 @@ export function WorkspaceDashboard() {
       </div>
 
       <div className="motion-enter-delayed mb-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-lg border border-rule bg-paper-2 px-2 py-1.5">
           <Filter className="size-3.5 text-ink-3" />
           <select
             aria-label="Filter by status"
@@ -626,11 +673,16 @@ export function WorkspaceDashboard() {
           const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
           const commentCount = workspace.comments.filter((c) => c.pinId === pin.id).length;
           return (
-            <button key={pin.id} type="button" onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", pin.id)} className="interactive-lift group flex w-full items-start gap-3 rounded-lg px-3 py-3.5 text-left hover:bg-paper-2">
-              <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", pin.status === "open" ? "bg-mark" : "bg-ok")} />
+            <button
+              key={pin.id}
+              type="button"
+              onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", pin.id)}
+              className="interactive-lift group flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-3.5 text-left hover:border-rule hover:bg-paper-2 hover:shadow-[0_10px_30px_-24px_oklch(17%_0.01_50_/_0.55)]"
+            >
+              <span className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-paper", pin.status === "open" ? "bg-mark" : "bg-ok")} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
-                  <p className="truncate text-[0.8125rem] font-medium text-ink group-hover:text-mark">{pin.title}</p>
+                  <p className="truncate text-[0.875rem] font-semibold text-ink group-hover:text-mark">{pin.title}</p>
                   <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">{pin.id}</span>
                 </div>
                 <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
@@ -742,4 +794,28 @@ function readFileAsDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error("Failed to read image file."));
     reader.readAsDataURL(file);
   });
+}
+
+function formatMarkEvent(
+  type: MarkEventType,
+  fromValue?: string,
+  toValue?: string,
+  metadata?: string,
+) {
+  if (type === "created") {
+    return metadata ?? "Created this mark.";
+  }
+  if (type === "status_changed") {
+    return `Changed status from ${fromValue ?? "unknown"} to ${toValue ?? "unknown"}.`;
+  }
+  if (type === "priority_changed") {
+    return `Changed priority from ${fromValue ?? "unknown"} to ${toValue ?? "unknown"}.`;
+  }
+  if (type === "pinned_changed") {
+    return toValue === "true" ? "Pinned this mark in triage." : "Unpinned this mark.";
+  }
+  if (type === "linear_link_updated") {
+    return toValue ? "Updated the Linear ticket link." : "Removed the Linear ticket link.";
+  }
+  return metadata ?? "Added a comment.";
 }

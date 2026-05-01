@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface AppShellProps {
   children: React.ReactNode;
+  fullBleed?: boolean;
 }
 
 const navItems = [
@@ -18,14 +19,19 @@ const navItems = [
   { href: "/account", label: "Settings", icon: Settings },
 ];
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, fullBleed = false }: AppShellProps) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-paper">
-      <div className="mx-auto grid w-full max-w-[1440px] gap-0 lg:grid-cols-[220px_1fr]">
-        <aside className="border-r border-rule bg-paper-2 px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:px-4 lg:py-6">
+      <div
+        className={cn(
+          "mx-auto grid w-full gap-0 lg:grid-cols-[220px_1fr]",
+          fullBleed ? "max-w-none" : "max-w-[1520px]",
+        )}
+      >
+        <aside className="flex flex-col border-r border-rule bg-paper-2 px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:px-4 lg:py-6">
           <Link href="/dashboard" className="mb-8 flex items-center gap-2.5 px-1">
             <span className="pin-dot shrink-0">M</span>
             <span className="font-display text-lg font-semibold text-ink">Markly</span>
@@ -75,7 +81,14 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </aside>
 
-        <main className="min-h-screen px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8">{children}</main>
+        <main
+          className={cn(
+            "min-h-screen py-6 sm:py-8 lg:py-8",
+            fullBleed ? "px-3 sm:px-5 lg:px-6 xl:px-8" : "px-4 sm:px-8 lg:px-10",
+          )}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

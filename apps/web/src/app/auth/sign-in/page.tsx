@@ -1,15 +1,67 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, Suspense, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 
-export default function SignInPage() {
+function SignInPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = useMemo(() => searchParams.get("next") || "/dashboard?space=all", [searchParams]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSignIn(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+      router.push(next);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setError(null);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const origin = window.location.origin;
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/dashboard?space=all`,
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="rounded-xl border border-rule bg-paper-2 p-6">
+    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6">
       <div className="mb-5">
         <h2 className="font-display text-xl font-semibold text-ink">Sign in</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
@@ -17,7 +69,7 @@ export default function SignInPage() {
         </p>
       </div>
 
-      <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+      <form className="space-y-4" onSubmit={handleSignIn}>
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-[0.75rem] font-medium text-ink-2">
             Email
@@ -27,6 +79,9 @@ export default function SignInPage() {
             type="email"
             placeholder="you@agency.com"
             className="h-9 bg-paper text-[0.8125rem]"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
           />
         </div>
 
@@ -44,6 +99,9 @@ export default function SignInPage() {
             type="password"
             placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
             className="h-9 bg-paper text-[0.8125rem]"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
           />
         </div>
 
@@ -54,11 +112,13 @@ export default function SignInPage() {
           </Label>
         </div>
 
-        <Button type="submit" className="w-full bg-mark text-paper hover:bg-mark-bright" asChild>
-          <Link href="/dashboard">Sign in</Link>
+        {error ? <p className="text-[0.75rem] text-mark">{error}</p> : null}
+
+        <Button type="submit" className="w-full bg-mark text-paper hover:bg-mark-bright" disabled={loading}>
+          {loading ? "Signing in..." : "Sign in"}
         </Button>
 
-        <Button type="button" variant="outline" className="w-full">
+        <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
           Continue with Google
         </Button>
       </form>
@@ -70,5 +130,13 @@ export default function SignInPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInPageContent />
+    </Suspense>
   );
 }

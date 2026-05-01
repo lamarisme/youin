@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-paper">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col px-6 py-6 md:px-10">
+      <div className="mx-auto flex min-h-screen w-full max-w-[1360px] flex-col px-5 py-5 sm:px-8 md:px-10">
         <header className="mb-6 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">M</span>
@@ -15,7 +15,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
         <div className="h-px bg-rule" />
 
-        <main className="grid flex-1 items-center gap-10 py-8 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-12">
+        <main className="grid flex-1 items-center gap-10 py-8 md:grid-cols-[1.1fr_1fr] md:gap-14 md:py-12">
           <section className="space-y-6">
             <div>
               <p className="text-eyebrow mb-2">Markly auth</p>
@@ -41,7 +41,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </ul>
           </section>
 
-          <section>{children}</section>
+          <section className="w-full md:justify-self-end md:max-w-[460px]">{children}</section>
         </main>
       </div>
     </div>

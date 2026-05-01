@@ -191,18 +191,19 @@ function SpacesPageContent() {
 
     return (
       <AppShell>
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={() => updateSpacesUrl(null)}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
-          >
-            <ArrowLeft className="size-3.5" />
-            All spaces
-          </button>
-        </div>
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => updateSpacesUrl(null)}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
+            >
+              <ArrowLeft className="size-3.5" />
+              All spaces
+            </button>
+          </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -425,6 +426,7 @@ function SpacesPageContent() {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </AppShell>
     );
@@ -435,22 +437,23 @@ function SpacesPageContent() {
 
   return (
     <AppShell>
-      <AppHeader
-        title="Spaces"
-        eyebrow={workspace.name}
-        subtitle="Each space scopes marks to a release, a project, or a review session. See activity across all spaces at a glance."
-      >
-        <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2">
-          <span className="font-mono text-ink">{workspace.spaces.length}</span>
-          <span>spaces</span>
-          <span className="mx-1 text-rule">/</span>
-          <span className="font-mono text-ink">{totalPins}</span>
-          <span>marks</span>
-          <span className="mx-1 text-rule">/</span>
-          <span className="font-mono text-mark">{totalOpen}</span>
-          <span>open</span>
-        </div>
-      </AppHeader>
+      <div className="mx-auto w-full max-w-6xl">
+        <AppHeader
+          title="Spaces"
+          eyebrow={workspace.name}
+          subtitle="Each space scopes marks to a release, a project, or a review session. See activity across all spaces at a glance."
+        >
+          <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2">
+            <span className="font-mono text-ink">{workspace.spaces.length}</span>
+            <span>spaces</span>
+            <span className="mx-1 text-rule">/</span>
+            <span className="font-mono text-ink">{totalPins}</span>
+            <span>marks</span>
+            <span className="mx-1 text-rule">/</span>
+            <span className="font-mono text-mark">{totalOpen}</span>
+            <span>open</span>
+          </div>
+        </AppHeader>
 
       <div className="mb-6">
         {showCreate ? (
@@ -594,23 +597,24 @@ function SpacesPageContent() {
         </div>
       ) : null}
 
-      {filteredSpaces.length > 0 ? (
-        <div className="mt-4 flex items-center justify-between border-t border-rule pt-3 text-[0.75rem] text-ink-3">
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
-              <ArrowLeft className="size-3.5" />
-              Prev
-            </Button>
-            <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-              Next
-              <ArrowRight className="size-3.5" />
-            </Button>
+        {filteredSpaces.length > 0 ? (
+          <div className="mt-4 flex items-center justify-between border-t border-rule pt-3 text-[0.75rem] text-ink-3">
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+                <ArrowLeft className="size-3.5" />
+                Prev
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                Next
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </AppShell>
   );
 }

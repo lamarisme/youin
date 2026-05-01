@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -30,6 +31,9 @@ export default function SignUpPage() {
   const [digestEnabled, setDigestEnabled] = useState(true);
   const [showAllMarksByDefault, setShowAllMarksByDefault] = useState(true);
   const [autoPinCritical, setAutoPinCritical] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const canContinueStep1 = name.trim().length > 1 && email.includes("@") && password.length >= 8 && agreedToTerms;
   const canContinueStep2 = workspaceName.trim().length > 1 && firstSpaceName.trim().length > 1;
@@ -58,12 +62,49 @@ export default function SignUpPage() {
     setStep((prev) => Math.max(0, prev - 1));
   }
 
-  function finishSetup() {
-    router.push("/dashboard?space=all");
+  async function finishSetup() {
+    setError(null);
+    setSuccessMessage(null);
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+            workspace_name: workspaceName.trim(),
+            first_space_name: firstSpaceName.trim(),
+            workspace_goal: workspaceGoal.trim(),
+            teammate_invites: invites,
+            defaults: {
+              digest_enabled: digestEnabled,
+              show_all_marks_by_default: showAllMarksByDefault,
+              auto_pin_critical: autoPinCritical,
+            },
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+
+      if (data.session) {
+        router.push("/dashboard?space=all");
+        return;
+      }
+
+      setSuccessMessage("Account created. Check your email to confirm, then sign in.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="rounded-xl border border-rule bg-paper-2 p-6">
+    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6">
       <div className="mb-5 space-y-3">
         <div>
           <h2 className="font-display text-xl font-semibold text-ink">Create account</h2>
@@ -283,12 +324,15 @@ export default function SignUpPage() {
               <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={finishSetup} className="h-9 bg-mark text-paper hover:bg-mark-bright">
-              Finish setup
+            <Button type="button" onClick={finishSetup} disabled={loading} className="h-9 bg-mark text-paper hover:bg-mark-bright">
+              {loading ? "Creating account..." : "Finish setup"}
               <ArrowRight className="size-4" />
             </Button>
           )}
         </div>
+
+        {error ? <p className="text-[0.75rem] text-mark">{error}</p> : null}
+        {successMessage ? <p className="text-[0.75rem] text-ok">{successMessage}</p> : null}
       </form>
 
       <p className="mt-5 text-center text-[0.8125rem] text-ink-2">

@@ -1,6 +1,13 @@
 export type PinStatus = "open" | "closed";
 export type PinPriority = "low" | "medium" | "high" | "critical";
 export type SpacePriority = PinPriority;
+export type MarkEventType =
+  | "created"
+  | "status_changed"
+  | "priority_changed"
+  | "pinned_changed"
+  | "linear_link_updated"
+  | "comment_added";
 
 export type TeamRole = "owner" | "member";
 
@@ -29,6 +36,17 @@ export interface PinComment {
   type: CommentType;
   body?: string;
   imageUrl?: string;
+}
+
+export interface MarkEvent {
+  id: string;
+  pinId: string;
+  actorId: string;
+  type: MarkEventType;
+  createdAt: string;
+  fromValue?: string;
+  toValue?: string;
+  metadata?: string;
 }
 
 export interface PinCapture {
@@ -79,6 +97,7 @@ export interface Workspace {
   invites: TeamInvite[];
   pins: PinItem[];
   comments: PinComment[];
+  markEvents: MarkEvent[];
 }
 
 export interface UserProfile {

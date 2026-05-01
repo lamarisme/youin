@@ -290,4 +290,14 @@ export const mockWorkspace: Workspace = {
     { id: "c_6", pinId: "MRK-430", authorId: "usr_3", createdAt: "2026-03-17T10:00:00.000Z", type: "text", body: "Added pointer-events: none to the SVG wrapper." },
     { id: "c_7", pinId: "MRK-410", authorId: "usr_2", createdAt: "2026-03-03T14:00:00.000Z", type: "text", body: "Transition added. Also fixed the flash-of-light-theme on load." },
   ],
+  markEvents: [
+    { id: "evt_1", pinId: "MRK-482", actorId: "usr_1", type: "created", createdAt: "2026-04-30T14:05:00.000Z", metadata: "Mark created from live page capture." },
+    { id: "evt_2", pinId: "MRK-482", actorId: "usr_2", type: "linear_link_updated", createdAt: "2026-04-30T14:08:00.000Z", toValue: "https://linear.app/acme/issue/ACM-482" },
+    { id: "evt_3", pinId: "MRK-482", actorId: "usr_1", type: "comment_added", createdAt: "2026-04-30T14:12:00.000Z", metadata: "Text comment added." },
+    { id: "evt_4", pinId: "MRK-475", actorId: "usr_2", type: "status_changed", createdAt: "2026-04-29T16:55:00.000Z", fromValue: "open", toValue: "closed" },
+    { id: "evt_5", pinId: "MRK-465", actorId: "usr_1", type: "pinned_changed", createdAt: "2026-04-20T09:15:00.000Z", fromValue: "false", toValue: "true" },
+    { id: "evt_6", pinId: "MRK-465", actorId: "usr_1", type: "priority_changed", createdAt: "2026-04-20T09:16:00.000Z", fromValue: "medium", toValue: "high" },
+    { id: "evt_7", pinId: "MRK-469", actorId: "usr_1", type: "status_changed", createdAt: "2026-04-18T12:45:00.000Z", fromValue: "open", toValue: "closed" },
+    { id: "evt_8", pinId: "MRK-405", actorId: "usr_1", type: "created", createdAt: "2026-03-04T15:30:00.000Z", metadata: "Raised during accessibility review." },
+  ],
 };

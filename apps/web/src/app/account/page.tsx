@@ -50,33 +50,34 @@ export default function AccountPage() {
 
   return (
     <AppShell>
-      <AppHeader
-        title="Settings"
-        eyebrow="Account"
-        subtitle="Manage workspace access, controls, and your reviewer identity."
-      />
+      <div className="mx-auto w-full max-w-6xl">
+        <AppHeader
+          title="Settings"
+          eyebrow="Account"
+          subtitle="Manage workspace access, controls, and your reviewer identity."
+        />
 
-      {/* Overview row */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
-          <p className="text-eyebrow">Plan</p>
-          <p className="mt-1 font-display text-lg font-semibold text-ink">Team</p>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">Up to 10 members</p>
+        {/* Overview row */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
+            <p className="text-eyebrow">Plan</p>
+            <p className="mt-1 font-display text-lg font-semibold text-ink">Team</p>
+            <p className="mt-0.5 text-[0.75rem] text-ink-3">Up to 10 members</p>
+          </div>
+          <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
+            <p className="text-eyebrow">Workspace</p>
+            <p className="mt-1 font-display text-lg font-semibold text-ink">Acme Studio</p>
+            <p className="mt-0.5 text-[0.75rem] text-ink-3">Default workspace</p>
+          </div>
+          <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
+            <p className="text-eyebrow">Members</p>
+            <p className="mt-1 font-display text-lg font-semibold text-ink">{members.length}</p>
+            <p className="mt-0.5 text-[0.75rem] text-ink-3">{invites.length} pending invite{invites.length !== 1 ? "s" : ""}</p>
+          </div>
         </div>
-        <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
-          <p className="text-eyebrow">Workspace</p>
-          <p className="mt-1 font-display text-lg font-semibold text-ink">Acme Studio</p>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">Default workspace</p>
-        </div>
-        <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
-          <p className="text-eyebrow">Members</p>
-          <p className="mt-1 font-display text-lg font-semibold text-ink">{members.length}</p>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">{invites.length} pending invite{invites.length !== 1 ? "s" : ""}</p>
-        </div>
-      </div>
 
-      {/* Team + Controls */}
-      <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+        {/* Team + Controls */}
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
         {/* Team access */}
         <section>
           <h2 className="font-display text-lg font-semibold text-ink">Reviewer access</h2>
@@ -161,12 +162,12 @@ export default function AccountPage() {
             </Button>
           </div>
         </section>
-      </div>
+        </div>
 
-      <div className="my-8 h-px bg-rule" />
+        <div className="my-8 h-px bg-rule" />
 
       {/* Profile */}
-      <section>
+        <section>
         <h2 className="font-display text-lg font-semibold text-ink">Your profile</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
           Controls how teammates identify you in comments and review activity.
@@ -233,7 +234,8 @@ export default function AccountPage() {
             </div>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
     </AppShell>
   );
 }
