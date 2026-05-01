@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Bookmark,
   CheckCircle2,
   ChevronDown,
   CircleDashed,
@@ -18,6 +19,7 @@ import {
   Monitor,
   Mouse,
   Plus,
+  Flag,
 } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
@@ -27,7 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinComment, PinStatus } from "@/lib/collab-types";
+import type { PinComment, PinPriority, PinStatus } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +54,8 @@ export function WorkspaceDashboard() {
   const workspace = useCollabStore((s) => s.workspace);
   const createPinInStore = useCollabStore((s) => s.createPin);
   const togglePinStatusInStore = useCollabStore((s) => s.togglePinStatus);
+  const togglePinPinnedInStore = useCollabStore((s) => s.togglePinPinned);
+  const updatePinPriorityInStore = useCollabStore((s) => s.updatePinPriority);
   const updateLinearLinkInStore = useCollabStore((s) => s.updateLinearLink);
   const addCommentsInStore = useCollabStore((s) => s.addComments);
 
@@ -60,41 +64,48 @@ export function WorkspaceDashboard() {
   const searchParams = useSearchParams();
 
   const [statusFilter, setStatusFilter] = useState<"all" | PinStatus>("all");
+  const [priorityFilter, setPriorityFilter] = useState<"all" | PinPriority>("all");
+  const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
   const [tagFilter, setTagFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
   const [showNewPin, setShowNewPin] = useState(false);
   const [newPinTitle, setNewPinTitle] = useState("");
   const [newPinPage, setNewPinPage] = useState("");
   const [newPinDescription, setNewPinDescription] = useState("");
   const [newPinTagId, setNewPinTagId] = useState("all");
+  const [newPinPriority, setNewPinPriority] = useState<PinPriority>("medium");
   const [newComment, setNewComment] = useState("");
   const [newCommentImage, setNewCommentImage] = useState<File | null>(null);
 
   const selectedSpace = useMemo(() => {
     const requestedSpaceId = searchParams.get("space");
     if (requestedSpaceId) {
+      if (requestedSpaceId === "all") return null;
       const requested = workspace.spaces.find((s) => s.id === requestedSpaceId);
       if (requested) return requested;
     }
-    return workspace.spaces[0] ?? null;
+    return null;
   }, [searchParams, workspace.spaces]);
 
-  const activeSpaceId = selectedSpace?.id ?? "";
+  const activeSpaceId = selectedSpace?.id ?? "all";
 
   const visiblePins = useMemo(() => {
-    if (!selectedSpace) return [];
     return workspace.pins.filter((pin) => {
-      if (pin.spaceId !== selectedSpace.id) return false;
+      if (selectedSpace && pin.spaceId !== selectedSpace.id) return false;
       if (statusFilter !== "all" && pin.status !== statusFilter) return false;
+      if (priorityFilter !== "all" && pin.priority !== priorityFilter) return false;
+      if (pinnedFilter === "pinned" && !pin.pinned) return false;
+      if (pinnedFilter === "unpinned" && pin.pinned) return false;
       if (tagFilter !== "all" && !pin.tagIds.includes(tagFilter)) return false;
       return true;
     });
-  }, [selectedSpace, statusFilter, tagFilter, workspace.pins]);
+  }, [selectedSpace, statusFilter, priorityFilter, pinnedFilter, tagFilter, workspace.pins]);
 
   const selectedPin = useMemo(() => {
-    if (!selectedSpace) return null;
     const requestedPinId = searchParams.get("mark");
     if (!requestedPinId) return null;
-    return workspace.pins.find((pin) => pin.id === requestedPinId && pin.spaceId === selectedSpace.id) ?? null;
+    return workspace.pins.find((pin) => pin.id === requestedPinId) ?? null;
   }, [searchParams, selectedSpace, workspace.pins]);
 
   const selectedPinIndex = selectedPin ? visiblePins.findIndex((p) => p.id === selectedPin.id) : -1;
@@ -110,11 +121,10 @@ export function WorkspaceDashboard() {
   const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
 
   const spaceStats = useMemo(() => {
-    if (!selectedSpace) return { open: 0, closed: 0, total: 0, pct: 0 };
     let open = 0;
     let closed = 0;
     for (const pin of workspace.pins) {
-      if (pin.spaceId !== selectedSpace.id) continue;
+      if (selectedSpace && pin.spaceId !== selectedSpace.id) continue;
       if (pin.status === "open") open += 1;
       else closed += 1;
     }
@@ -122,9 +132,24 @@ export function WorkspaceDashboard() {
     return { open, closed, total, pct: total > 0 ? Math.round((closed / total) * 100) : 0 };
   }, [workspace.pins, selectedSpace]);
 
+  const totalPages = Math.max(1, Math.ceil(visiblePins.length / pageSize));
+  const paginatedPins = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return visiblePins.slice(start, start + pageSize);
+  }, [visiblePins, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, priorityFilter, pinnedFilter, tagFilter, selectedSpace?.id]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   function updateDashboardUrl(nextSpaceId: string, nextPinId?: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (nextSpaceId) params.set("space", nextSpaceId);
+    if (nextSpaceId && nextSpaceId !== "all") params.set("space", nextSpaceId);
+    else params.delete("space");
     if (nextPinId) params.set("mark", nextPinId);
     else params.delete("mark");
     const query = params.toString();
@@ -132,20 +157,24 @@ export function WorkspaceDashboard() {
   }
 
   function createPin() {
-    if (!newPinTitle.trim() || !newPinPage.trim() || !selectedSpace) return;
+    if (!newPinTitle.trim() || !newPinPage.trim()) return;
+    const targetSpace = selectedSpace ?? workspace.spaces[0];
+    if (!targetSpace) return;
     const created = createPinInStore({
       title: newPinTitle,
       description: newPinDescription,
       page: newPinPage,
-      spaceId: selectedSpace.id,
+      spaceId: targetSpace.id,
       tagIds: newPinTagId === "all" ? [] : [newPinTagId],
       assigneeId: workspace.members[0]?.id,
+      priority: newPinPriority,
     });
-    updateDashboardUrl(selectedSpace.id, created.id);
+    updateDashboardUrl(targetSpace.id, created.id);
     setNewPinTitle("");
     setNewPinPage("");
     setNewPinDescription("");
     setNewPinTagId("all");
+    setNewPinPriority("medium");
     setShowNewPin(false);
   }
 
@@ -155,6 +184,14 @@ export function WorkspaceDashboard() {
 
   function updateLinearLink(pinId: string, linearUrl: string) {
     updateLinearLinkInStore(pinId, linearUrl);
+  }
+
+  function togglePinned(pinId: string) {
+    togglePinPinnedInStore(pinId);
+  }
+
+  function updatePriority(pinId: string, priority: PinPriority) {
+    updatePinPriorityInStore(pinId, priority);
   }
 
   async function addComment() {
@@ -190,22 +227,11 @@ export function WorkspaceDashboard() {
   }
 
   function goToAdjacentPin(direction: "prev" | "next") {
-    if (!selectedSpace || selectedPinIndex < 0) return;
+    if (selectedPinIndex < 0) return;
     const nextIndex = direction === "prev" ? selectedPinIndex - 1 : selectedPinIndex + 1;
     const nextPin = visiblePins[nextIndex];
     if (!nextPin) return;
-    updateDashboardUrl(selectedSpace.id, nextPin.id);
-  }
-
-  if (!selectedSpace) {
-    return (
-      <AppShell>
-      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Create a space before triaging marks." />
-        <Button asChild size="sm" variant="outline">
-          <Link href="/spaces">Go to spaces</Link>
-        </Button>
-      </AppShell>
-    );
+    updateDashboardUrl(selectedSpace?.id ?? "all", nextPin.id);
   }
 
   /* ━━━ Mark detail view ━━━ */
@@ -219,7 +245,7 @@ export function WorkspaceDashboard() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => updateDashboardUrl(selectedSpace.id, null)}
+              onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", null)}
               className="interactive-lift inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
             >
               <ArrowLeft className="size-3.5" />
@@ -250,6 +276,26 @@ export function WorkspaceDashboard() {
                 <h1 className="mt-2 font-display text-2xl font-semibold text-ink">{selectedPin.title}</h1>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={selectedPin.pinned ? "default" : "outline"}
+                  onClick={() => togglePinned(selectedPin.id)}
+                  className="h-8 text-[0.8125rem]"
+                >
+                  <Bookmark className="size-3" />
+                  {selectedPin.pinned ? "Pinned" : "Pin"}
+                </Button>
+                <select
+                  aria-label="Mark priority"
+                  value={selectedPin.priority}
+                  onChange={(e) => updatePriority(selectedPin.id, e.target.value as PinPriority)}
+                  className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.75rem] text-ink"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
                 <Button size="sm" variant="outline" onClick={() => togglePinStatus(selectedPin.id)} className="h-8 text-[0.8125rem]">
                   {selectedPin.status === "open" ? "Close mark" : "Reopen"}
                 </Button>
@@ -267,6 +313,24 @@ export function WorkspaceDashboard() {
             <p className="mt-3 max-w-[65ch] text-[0.9375rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium",
+                selectedPin.priority === "critical"
+                  ? "bg-mark-soft text-mark"
+                  : selectedPin.priority === "high"
+                    ? "bg-paper-3 text-ink"
+                    : selectedPin.priority === "medium"
+                      ? "bg-paper-3 text-ink-2"
+                      : "bg-paper-3 text-ink-3"
+              )}>
+                <Flag className="size-3" />
+                {selectedPin.priority}
+              </span>
+              {selectedPin.pinned ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 text-[0.6875rem] font-medium text-ink">
+                  <Bookmark className="size-3" />
+                  Pinned
+                </span>
+              ) : null}
               {selectedPin.tagIds.map((tid) => {
                 const tag = tagsById.get(tid);
                 if (!tag) return null;
@@ -429,6 +493,7 @@ export function WorkspaceDashboard() {
             onChange={(e) => updateDashboardUrl(e.target.value, null)}
             className="h-8 appearance-none rounded-md border border-rule bg-paper pl-3 pr-8 text-[0.8125rem] font-medium text-ink transition-colors hover:bg-paper-3"
           >
+            <option value="all">All spaces</option>
             {workspace.spaces.map((space) => (
               <option key={space.id} value={space.id}>
                 {space.name}
@@ -438,7 +503,9 @@ export function WorkspaceDashboard() {
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-ink-3" />
         </div>
 
-        <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">{selectedSpace.notes}</span>
+        <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">
+          {selectedSpace ? selectedSpace.notes : "Showing marks from every space"}
+        </span>
 
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -448,7 +515,7 @@ export function WorkspaceDashboard() {
             <span className="text-[0.6875rem] font-medium text-ink-2">{spaceStats.pct}%</span>
           </div>
           <Button size="sm" variant="ghost" asChild className="interactive-lift h-7 px-2 text-[0.6875rem] text-ink-3">
-            <Link href={`/spaces?space=${selectedSpace.id}`}>
+            <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
               <Layers className="size-3" />
               Manage
             </Link>
@@ -482,7 +549,31 @@ export function WorkspaceDashboard() {
               </option>
             ))}
           </select>
-          <span className="text-[0.75rem] text-ink-3">{visiblePins.length} marks</span>
+          <select
+            aria-label="Filter by priority"
+            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as "all" | PinPriority)}
+          >
+            <option value="all">All priorities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select
+            aria-label="Filter by pinned"
+            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            value={pinnedFilter}
+            onChange={(e) => setPinnedFilter(e.target.value as "all" | "pinned" | "unpinned")}
+          >
+            <option value="all">Pinned + unpinned</option>
+            <option value="pinned">Pinned only</option>
+            <option value="unpinned">Unpinned only</option>
+          </select>
+          <span className="text-[0.75rem] text-ink-3">
+            {visiblePins.length} marks
+          </span>
         </div>
         <Button size="sm" variant={showNewPin ? "default" : "outline"} onClick={() => setShowNewPin(!showNewPin)} className="h-8">
           <Plus className="size-3.5" />
@@ -506,6 +597,17 @@ export function WorkspaceDashboard() {
                 </option>
               ))}
             </select>
+            <select
+              aria-label="Choose priority"
+              className="h-9 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+              value={newPinPriority}
+              onChange={(e) => setNewPinPriority(e.target.value as PinPriority)}
+            >
+              <option value="critical">Critical priority</option>
+              <option value="high">High priority</option>
+              <option value="medium">Medium priority</option>
+              <option value="low">Low priority</option>
+            </select>
             <Button onClick={createPin} disabled={!newPinTitle.trim() || !newPinPage.trim()} className="h-9">
               Create mark
             </Button>
@@ -520,11 +622,11 @@ export function WorkspaceDashboard() {
             <p className="text-[0.8125rem] text-ink-3">No marks match the current filters.</p>
           </div>
         ) : null}
-        {visiblePins.map((pin) => {
+        {paginatedPins.map((pin) => {
           const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
           const commentCount = workspace.comments.filter((c) => c.pinId === pin.id).length;
           return (
-            <button key={pin.id} type="button" onClick={() => updateDashboardUrl(selectedSpace.id, pin.id)} className="interactive-lift group flex w-full items-start gap-3 rounded-lg px-3 py-3.5 text-left hover:bg-paper-2">
+            <button key={pin.id} type="button" onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", pin.id)} className="interactive-lift group flex w-full items-start gap-3 rounded-lg px-3 py-3.5 text-left hover:bg-paper-2">
               <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", pin.status === "open" ? "bg-mark" : "bg-ok")} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
@@ -533,6 +635,16 @@ export function WorkspaceDashboard() {
                 </div>
                 <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">
+                    <Flag className="size-2.5" />
+                    {pin.priority}
+                  </span>
+                  {pin.pinned ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">
+                      <Bookmark className="size-2.5" />
+                      Pinned
+                    </span>
+                  ) : null}
                   {pin.tagIds.map((tid) => {
                     const tag = tagsById.get(tid);
                     if (!tag) return null;
@@ -565,6 +677,38 @@ export function WorkspaceDashboard() {
           );
         })}
       </div>
+
+      {visiblePins.length > 0 ? (
+        <div className="mt-4 flex items-center justify-between border-t border-rule pt-3 text-[0.75rem] text-ink-3">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2.5"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <ArrowLeft className="size-3.5" />
+              Prev
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2.5"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </AppShell>
   );
 }

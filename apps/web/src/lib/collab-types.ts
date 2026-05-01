@@ -1,4 +1,6 @@
 export type PinStatus = "open" | "closed";
+export type PinPriority = "low" | "medium" | "high" | "critical";
+export type SpacePriority = PinPriority;
 
 export type TeamRole = "owner" | "member";
 
@@ -45,6 +47,8 @@ export interface PinItem {
   page: string;
   description: string;
   status: PinStatus;
+  priority: PinPriority;
+  pinned: boolean;
   tagIds: string[];
   linearUrl?: string;
   assigneeId?: string;
@@ -56,6 +60,8 @@ export interface WorkspaceSpace {
   name: string;
   notes: string;
   createdAt: string;
+  priority: SpacePriority;
+  pinned: boolean;
 }
 
 export interface WorkspaceTag {

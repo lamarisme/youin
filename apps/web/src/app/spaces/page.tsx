@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Bookmark,
   CalendarDays,
   CheckCircle2,
   CircleDashed,
   Edit3,
+  Flag,
   Link2,
   MessageCircle,
   Plus,
@@ -23,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Workspace } from "@/lib/collab-types";
+import type { SpacePriority, Workspace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +87,8 @@ function SpacesPageContent() {
   const workspace = useCollabStore((s) => s.workspace);
   const createSpaceInStore = useCollabStore((s) => s.createSpace);
   const updateSpaceInStore = useCollabStore((s) => s.updateSpace);
+  const toggleSpacePinnedInStore = useCollabStore((s) => s.toggleSpacePinned);
+  const updateSpacePriorityInStore = useCollabStore((s) => s.updateSpacePriority);
   const deleteSpaceInStore = useCollabStore((s) => s.deleteSpace);
 
   const router = useRouter();
@@ -97,6 +101,10 @@ function SpacesPageContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<"all" | SpacePriority>("all");
+  const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   const statsMap = useSpaceStats(workspace);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
@@ -107,6 +115,21 @@ function SpacesPageContent() {
     if (!requestedSpaceId) return null;
     return workspace.spaces.find((space) => space.id === requestedSpaceId) ?? null;
   }, [searchParams, workspace.spaces]);
+
+  const filteredSpaces = useMemo(() => {
+    return workspace.spaces.filter((space) => {
+      if (priorityFilter !== "all" && space.priority !== priorityFilter) return false;
+      if (pinnedFilter === "pinned" && !space.pinned) return false;
+      if (pinnedFilter === "unpinned" && space.pinned) return false;
+      return true;
+    });
+  }, [workspace.spaces, priorityFilter, pinnedFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSpaces.length / pageSize));
+  const paginatedSpaces = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredSpaces.slice(start, start + pageSize);
+  }, [filteredSpaces, page]);
 
   function updateSpacesUrl(nextSpaceId?: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -144,6 +167,22 @@ function SpacesPageContent() {
     setEditName(selectedSpace.name);
     setEditNotes(selectedSpace.notes);
   }
+
+  function toggleSpacePinned(spaceId: string) {
+    toggleSpacePinnedInStore(spaceId);
+  }
+
+  function updateSpacePriority(spaceId: string, priority: SpacePriority) {
+    updateSpacePriorityInStore(spaceId, priority);
+  }
+
+  useEffect(() => {
+    setPage(1);
+  }, [priorityFilter, pinnedFilter]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   if (selectedSpace) {
     const stats = statsMap.get(selectedSpace.id);
@@ -184,10 +223,42 @@ function SpacesPageContent() {
                   <>
                     <h1 className="font-display text-2xl font-semibold text-ink">{selectedSpace.name}</h1>
                     <p className="mt-1 max-w-[50ch] text-[0.8125rem] text-ink-2">{selectedSpace.notes}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 text-[0.6875rem] font-medium text-ink-2">
+                        <Flag className="size-3" />
+                        {selectedSpace.priority}
+                      </span>
+                      {selectedSpace.pinned ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 text-[0.6875rem] font-medium text-ink-2">
+                          <Bookmark className="size-3" />
+                          Pinned
+                        </span>
+                      ) : null}
+                    </div>
                   </>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={selectedSpace.pinned ? "default" : "outline"}
+                  onClick={() => toggleSpacePinned(selectedSpace.id)}
+                  className="h-8 px-2.5"
+                >
+                  <Bookmark className="size-3.5" />
+                  {selectedSpace.pinned ? "Pinned" : "Pin"}
+                </Button>
+                <select
+                  aria-label="Space priority"
+                  value={selectedSpace.priority}
+                  onChange={(e) => updateSpacePriority(selectedSpace.id, e.target.value as SpacePriority)}
+                  className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.75rem] text-ink"
+                >
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
                 {editingId !== selectedSpace.id ? (
                   <Button size="sm" variant="ghost" onClick={startEdit} className="h-8 px-2.5 text-ink-2">
                     <Edit3 className="size-3.5" />
@@ -418,8 +489,34 @@ function SpacesPageContent() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Filter spaces by priority"
+          className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value as "all" | SpacePriority)}
+        >
+          <option value="all">All priorities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select
+          aria-label="Filter spaces by pinned state"
+          className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+          value={pinnedFilter}
+          onChange={(e) => setPinnedFilter(e.target.value as "all" | "pinned" | "unpinned")}
+        >
+          <option value="all">Pinned + unpinned</option>
+          <option value="pinned">Pinned only</option>
+          <option value="unpinned">Unpinned only</option>
+        </select>
+        <span className="text-[0.75rem] text-ink-3">{filteredSpaces.length} spaces</span>
+      </div>
+
       <div className="space-y-2">
-        {workspace.spaces.map((space) => {
+        {paginatedSpaces.map((space) => {
           const stats = statsMap.get(space.id);
           const pct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
 
@@ -456,6 +553,18 @@ function SpacesPageContent() {
                   </span>
                 </div>
                 <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">{space.notes}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">
+                    <Flag className="size-2.5" />
+                    {space.priority}
+                  </span>
+                  {space.pinned ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">
+                      <Bookmark className="size-2.5" />
+                      Pinned
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className="hidden shrink-0 items-center gap-4 text-[0.75rem] sm:flex">
@@ -479,9 +588,27 @@ function SpacesPageContent() {
         })}
       </div>
 
-      {workspace.spaces.length === 0 ? (
+      {filteredSpaces.length === 0 ? (
         <div className="mt-4 rounded-lg border border-dashed border-rule py-12 text-center">
-          <p className="text-[0.8125rem] text-ink-3">No spaces yet. Create one to start collecting marks.</p>
+          <p className="text-[0.8125rem] text-ink-3">No spaces match the current filters.</p>
+        </div>
+      ) : null}
+
+      {filteredSpaces.length > 0 ? (
+        <div className="mt-4 flex items-center justify-between border-t border-rule pt-3 text-[0.75rem] text-ink-3">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+              <ArrowLeft className="size-3.5" />
+              Prev
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+              Next
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
         </div>
       ) : null}
     </AppShell>

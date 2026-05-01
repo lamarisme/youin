@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-import type { PinComment, PinItem, Workspace, WorkspaceSpace } from "@/lib/collab-types";
+import type { PinComment, PinItem, PinPriority, SpacePriority, Workspace, WorkspaceSpace } from "@/lib/collab-types";
 import { mockWorkspace } from "@/lib/mock-workspace";
 
 interface CreatePinInput {
@@ -12,15 +12,20 @@ interface CreatePinInput {
   spaceId: string;
   tagIds: string[];
   assigneeId?: string;
+  priority?: PinPriority;
 }
 
 interface CollabStoreState {
   workspace: Workspace;
   createSpace: (name: string, notes: string) => WorkspaceSpace;
   updateSpace: (spaceId: string, updates: Pick<WorkspaceSpace, "name" | "notes">) => void;
+  toggleSpacePinned: (spaceId: string) => void;
+  updateSpacePriority: (spaceId: string, priority: SpacePriority) => void;
   deleteSpace: (spaceId: string) => void;
   createPin: (input: CreatePinInput) => PinItem;
   togglePinStatus: (pinId: string) => void;
+  togglePinPinned: (pinId: string) => void;
+  updatePinPriority: (pinId: string, priority: PinPriority) => void;
   updateLinearLink: (pinId: string, linearUrl: string) => void;
   addComments: (comments: PinComment[]) => void;
 }
@@ -34,6 +39,8 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
       name: name.trim(),
       notes: notes.trim() || "No description",
       createdAt: new Date().toISOString(),
+      priority: "medium",
+      pinned: false,
     };
     set((state) => ({
       workspace: {
@@ -61,6 +68,28 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
     }));
   },
 
+  toggleSpacePinned: (spaceId) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        spaces: state.workspace.spaces.map((space) =>
+          space.id === spaceId ? { ...space, pinned: !space.pinned } : space,
+        ),
+      },
+    }));
+  },
+
+  updateSpacePriority: (spaceId, priority) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        spaces: state.workspace.spaces.map((space) =>
+          space.id === spaceId ? { ...space, priority } : space,
+        ),
+      },
+    }));
+  },
+
   deleteSpace: (spaceId) => {
     set((state) => ({
       workspace: {
@@ -82,6 +111,8 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
       page: input.page.trim(),
       spaceId: input.spaceId,
       status: "open",
+      priority: input.priority ?? "medium",
+      pinned: false,
       tagIds: input.tagIds,
       assigneeId: input.assigneeId,
     };
@@ -102,6 +133,28 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
           pin.id === pinId
             ? { ...pin, status: pin.status === "open" ? ("closed" as const) : ("open" as const) }
             : pin,
+        ),
+      },
+    }));
+  },
+
+  togglePinPinned: (pinId) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        pins: state.workspace.pins.map((pin) =>
+          pin.id === pinId ? { ...pin, pinned: !pin.pinned } : pin,
+        ),
+      },
+    }));
+  },
+
+  updatePinPriority: (pinId, priority) => {
+    set((state) => ({
+      workspace: {
+        ...state.workspace,
+        pins: state.workspace.pins.map((pin) =>
+          pin.id === pinId ? { ...pin, priority } : pin,
         ),
       },
     }));
