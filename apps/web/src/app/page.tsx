@@ -120,7 +120,6 @@ export default function Home() {
         <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
           <div className="grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-start md:gap-14">
             <div>
-              <Badge variant="outline" className="mb-5 text-[0.625rem]">v0.9 for design-led teams</Badge>
               <h1 className="text-editorial text-ink">
                 The feedback layer for the live&nbsp;web.
               </h1>
