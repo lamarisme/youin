@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   CircleDashed,
@@ -25,8 +27,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinComment, PinItem, PinStatus, Workspace } from "@/lib/collab-types";
-import { mockWorkspace } from "@/lib/mock-workspace";
+import type { PinComment, PinStatus } from "@/lib/collab-types";
+import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
 function StatusPill({ status }: { status: PinStatus }) {
@@ -47,9 +49,16 @@ function StatusPill({ status }: { status: PinStatus }) {
 }
 
 export function WorkspaceDashboard() {
-  const [workspace, setWorkspace] = useState<Workspace>(mockWorkspace);
-  const [activeSpaceId, setActiveSpaceId] = useState(workspace.spaces[0]?.id ?? "");
-  const [activePinId, setActivePinId] = useState<string | null>(null);
+  const workspace = useCollabStore((s) => s.workspace);
+  const createPinInStore = useCollabStore((s) => s.createPin);
+  const togglePinStatusInStore = useCollabStore((s) => s.togglePinStatus);
+  const updateLinearLinkInStore = useCollabStore((s) => s.updateLinearLink);
+  const addCommentsInStore = useCollabStore((s) => s.addComments);
+
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [statusFilter, setStatusFilter] = useState<"all" | PinStatus>("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [showNewPin, setShowNewPin] = useState(false);
@@ -60,18 +69,37 @@ export function WorkspaceDashboard() {
   const [newComment, setNewComment] = useState("");
   const [newCommentImage, setNewCommentImage] = useState<File | null>(null);
 
-  const selectedSpace = workspace.spaces.find((s) => s.id === activeSpaceId) ?? workspace.spaces[0];
+  const selectedSpace = useMemo(() => {
+    const requestedSpaceId = searchParams.get("space");
+    if (requestedSpaceId) {
+      const requested = workspace.spaces.find((s) => s.id === requestedSpaceId);
+      if (requested) return requested;
+    }
+    return workspace.spaces[0] ?? null;
+  }, [searchParams, workspace.spaces]);
+
+  const activeSpaceId = selectedSpace?.id ?? "";
 
   const visiblePins = useMemo(() => {
+    if (!selectedSpace) return [];
     return workspace.pins.filter((pin) => {
       if (pin.spaceId !== selectedSpace.id) return false;
       if (statusFilter !== "all" && pin.status !== statusFilter) return false;
       if (tagFilter !== "all" && !pin.tagIds.includes(tagFilter)) return false;
       return true;
     });
-  }, [selectedSpace.id, statusFilter, tagFilter, workspace.pins]);
+  }, [selectedSpace, statusFilter, tagFilter, workspace.pins]);
 
-  const selectedPin = activePinId ? workspace.pins.find((p) => p.id === activePinId) ?? null : null;
+  const selectedPin = useMemo(() => {
+    if (!selectedSpace) return null;
+    const requestedPinId = searchParams.get("mark");
+    if (!requestedPinId) return null;
+    return workspace.pins.find((pin) => pin.id === requestedPinId && pin.spaceId === selectedSpace.id) ?? null;
+  }, [searchParams, selectedSpace, workspace.pins]);
+
+  const selectedPinIndex = selectedPin ? visiblePins.findIndex((p) => p.id === selectedPin.id) : -1;
+  const canGoPrevPin = selectedPinIndex > 0;
+  const canGoNextPin = selectedPinIndex >= 0 && selectedPinIndex < visiblePins.length - 1;
 
   const selectedPinComments = useMemo(() => {
     if (!selectedPin) return [];
@@ -82,6 +110,7 @@ export function WorkspaceDashboard() {
   const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
 
   const spaceStats = useMemo(() => {
+    if (!selectedSpace) return { open: 0, closed: 0, total: 0, pct: 0 };
     let open = 0;
     let closed = 0;
     for (const pin of workspace.pins) {
@@ -91,22 +120,28 @@ export function WorkspaceDashboard() {
     }
     const total = open + closed;
     return { open, closed, total, pct: total > 0 ? Math.round((closed / total) * 100) : 0 };
-  }, [workspace.pins, selectedSpace.id]);
+  }, [workspace.pins, selectedSpace]);
+
+  function updateDashboardUrl(nextSpaceId: string, nextPinId?: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextSpaceId) params.set("space", nextSpaceId);
+    if (nextPinId) params.set("mark", nextPinId);
+    else params.delete("mark");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
+  }
 
   function createPin() {
-    if (!newPinTitle.trim() || !newPinPage.trim()) return;
-    const p: PinItem = {
-      id: `PIN-${Math.floor(Math.random() * 900 + 100)}`,
-      title: newPinTitle.trim(),
-      description: newPinDescription.trim() || "No description yet.",
-      page: newPinPage.trim(),
+    if (!newPinTitle.trim() || !newPinPage.trim() || !selectedSpace) return;
+    const created = createPinInStore({
+      title: newPinTitle,
+      description: newPinDescription,
+      page: newPinPage,
       spaceId: selectedSpace.id,
-      status: "open",
       tagIds: newPinTagId === "all" ? [] : [newPinTagId],
       assigneeId: workspace.members[0]?.id,
-    };
-    setWorkspace((prev) => ({ ...prev, pins: [p, ...prev.pins] }));
-    setActivePinId(p.id);
+    });
+    updateDashboardUrl(selectedSpace.id, created.id);
     setNewPinTitle("");
     setNewPinPage("");
     setNewPinDescription("");
@@ -115,53 +150,97 @@ export function WorkspaceDashboard() {
   }
 
   function togglePinStatus(pinId: string) {
-    setWorkspace((prev) => ({
-      ...prev,
-      pins: prev.pins.map((pin) => (pin.id === pinId ? { ...pin, status: pin.status === "open" ? ("closed" as const) : ("open" as const) } : pin)),
-    }));
+    togglePinStatusInStore(pinId);
   }
 
   function updateLinearLink(pinId: string, linearUrl: string) {
-    setWorkspace((prev) => ({ ...prev, pins: prev.pins.map((pin) => (pin.id === pinId ? { ...pin, linearUrl } : pin)) }));
+    updateLinearLinkInStore(pinId, linearUrl);
   }
 
   async function addComment() {
     if (!selectedPin) return;
     if (!newComment.trim() && !newCommentImage) return;
+
     const next: PinComment[] = [];
     if (newComment.trim()) {
-      next.push({ id: `c_${Date.now()}_txt`, pinId: selectedPin.id, authorId: "usr_1", createdAt: new Date().toISOString(), type: "text", body: newComment.trim() });
+      next.push({
+        id: `c_${Date.now()}_txt`,
+        pinId: selectedPin.id,
+        authorId: "usr_1",
+        createdAt: new Date().toISOString(),
+        type: "text",
+        body: newComment.trim(),
+      });
     }
     if (newCommentImage) {
       const url = await readFileAsDataUrl(newCommentImage);
-      next.push({ id: `c_${Date.now()}_img`, pinId: selectedPin.id, authorId: "usr_1", createdAt: new Date().toISOString(), type: "image", imageUrl: url });
+      next.push({
+        id: `c_${Date.now()}_img`,
+        pinId: selectedPin.id,
+        authorId: "usr_1",
+        createdAt: new Date().toISOString(),
+        type: "image",
+        imageUrl: url,
+      });
     }
-    setWorkspace((prev) => ({ ...prev, comments: [...next, ...prev.comments] }));
+
+    addCommentsInStore(next);
     setNewComment("");
     setNewCommentImage(null);
   }
 
-  /* ━━━ Pin detail view ━━━ */
+  function goToAdjacentPin(direction: "prev" | "next") {
+    if (!selectedSpace || selectedPinIndex < 0) return;
+    const nextIndex = direction === "prev" ? selectedPinIndex - 1 : selectedPinIndex + 1;
+    const nextPin = visiblePins[nextIndex];
+    if (!nextPin) return;
+    updateDashboardUrl(selectedSpace.id, nextPin.id);
+  }
+
+  if (!selectedSpace) {
+    return (
+      <AppShell>
+      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Create a space before triaging marks." />
+        <Button asChild size="sm" variant="outline">
+          <Link href="/spaces">Go to spaces</Link>
+        </Button>
+      </AppShell>
+    );
+  }
+
+  /* ━━━ Mark detail view ━━━ */
   if (selectedPin) {
     const assignee = selectedPin.assigneeId ? membersById.get(selectedPin.assigneeId) : undefined;
     const cap = selectedPin.capture;
 
     return (
       <AppShell>
-        <div className="mb-6">
-          <button
-            type="button"
-            onClick={() => setActivePinId(null)}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to triage
-          </button>
+        <div className="motion-enter mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => updateDashboardUrl(selectedSpace.id, null)}
+              className="interactive-lift inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
+            >
+              <ArrowLeft className="size-3.5" />
+              Back to triage
+            </button>
+            <div className="flex items-center gap-1">
+              <span className="mr-2 text-[0.6875rem] text-ink-3">
+                {selectedPinIndex >= 0 ? `${selectedPinIndex + 1} of ${visiblePins.length}` : "Mark view"}
+              </span>
+              <Button type="button" size="sm" variant="ghost" onClick={() => goToAdjacentPin("prev")} disabled={!canGoPrevPin} className="interactive-lift h-8 px-2.5">
+                <ArrowLeft className="size-3.5" />
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => goToAdjacentPin("next")} disabled={!canGoNextPin} className="interactive-lift h-8 px-2.5">
+                <ArrowRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <div key={selectedPin.id} className="motion-enter-delayed grid gap-8 lg:grid-cols-[1fr_320px]">
           <div className="min-w-0">
-            {/* Pin header */}
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-3">
@@ -172,7 +251,7 @@ export function WorkspaceDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="outline" onClick={() => togglePinStatus(selectedPin.id)} className="h-8 text-[0.8125rem]">
-                  {selectedPin.status === "open" ? "Close pin" : "Reopen"}
+                  {selectedPin.status === "open" ? "Close mark" : "Reopen"}
                 </Button>
                 {selectedPin.linearUrl ? (
                   <Button size="sm" variant="outline" asChild className="h-8 text-[0.8125rem]">
@@ -187,7 +266,6 @@ export function WorkspaceDashboard() {
 
             <p className="mt-3 max-w-[65ch] text-[0.9375rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
 
-            {/* Tags + assignee */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {selectedPin.tagIds.map((tid) => {
                 const tag = tagsById.get(tid);
@@ -208,7 +286,6 @@ export function WorkspaceDashboard() {
               ) : null}
             </div>
 
-            {/* ── Capture preview ── */}
             <div className="mt-6 overflow-hidden rounded-lg border border-rule">
               <div className="flex items-center gap-1.5 border-b border-rule bg-paper-2 px-3 py-2">
                 <span className="size-2 rounded-full bg-paper-3" />
@@ -227,7 +304,7 @@ export function WorkspaceDashboard() {
                     <div className="h-16 rounded bg-paper-3/40" />
                     <div className="relative h-16 rounded bg-paper-3/40">
                       <span className="pin-dot absolute -right-2 -top-2 z-10 !size-5 !text-[8px]">
-                        {selectedPin.id.replace("PIN-", "")}
+                        {selectedPin.id.replace(/^PIN-|^MRK-|^MARK-|^pin_|^mark_/i, "")}
                       </span>
                     </div>
                     <div className="h-16 rounded bg-paper-3/40" />
@@ -242,7 +319,6 @@ export function WorkspaceDashboard() {
               </div>
             </div>
 
-            {/* Capture metadata */}
             {cap ? (
               <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <MetaCell icon={Globe} label="Page" value={selectedPin.page} />
@@ -251,19 +327,14 @@ export function WorkspaceDashboard() {
                 <MetaCell icon={Globe} label="Browser" value={cap.browser ?? "—"} />
                 {cap.os ? <MetaCell icon={Monitor} label="OS" value={cap.os} /> : null}
                 {cap.capturedAt ? (
-                  <MetaCell
-                    icon={Globe}
-                    label="Captured"
-                    value={new Date(cap.capturedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                  />
+                  <MetaCell icon={Globe} label="Captured" value={new Date(cap.capturedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
                 ) : null}
               </div>
             ) : null}
 
-            {/* Linear link */}
             <div className="mt-6">
               <Label htmlFor="linear-link" className="text-[0.75rem] font-medium text-ink-2">
-                Linear issue
+                Linear ticket
               </Label>
               <div className="mt-1.5 flex gap-2">
                 <Input
@@ -284,13 +355,11 @@ export function WorkspaceDashboard() {
             </div>
           </div>
 
-          {/* ── Right: comments ── */}
           <div className="lg:border-l lg:border-rule lg:pl-6">
             <div className="lg:sticky lg:top-8">
               <p className="text-eyebrow mb-4">
                 Discussion{selectedPinComments.length > 0 ? ` (${selectedPinComments.length})` : ""}
               </p>
-
               <div className="annotation-rail space-y-3">
                 {selectedPinComments.length === 0 ? (
                   <p className="text-[0.8125rem] text-ink-3">No comments yet. Start the conversation.</p>
@@ -324,19 +393,9 @@ export function WorkspaceDashboard() {
               </div>
 
               <div className="mt-4 rounded-lg border border-dashed border-rule p-3">
-                <Textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Leave a comment"
-                  className="min-h-[56px] bg-paper text-[0.8125rem]"
-                />
+                <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Leave a comment" className="min-h-[56px] bg-paper text-[0.8125rem]" />
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setNewCommentImage(e.target.files?.[0] ?? null)}
-                    className="h-8 max-w-[160px] text-[0.6875rem]"
-                  />
+                  <Input type="file" accept="image/*" onChange={(e) => setNewCommentImage(e.target.files?.[0] ?? null)} className="h-8 max-w-[160px] text-[0.6875rem]" />
                   <Button size="sm" onClick={addComment} disabled={!newComment.trim() && !newCommentImage} className="h-8">
                     <MessageCircle className="size-3.5" />
                     Send
@@ -350,10 +409,9 @@ export function WorkspaceDashboard() {
     );
   }
 
-  /* ━━━ Pin list / triage view ━━━ */
   return (
     <AppShell>
-      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve pins across your spaces.">
+      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2">
           <span className="font-mono text-mark">{spaceStats.open}</span>
           <span>open</span>
@@ -363,17 +421,18 @@ export function WorkspaceDashboard() {
         </div>
       </AppHeader>
 
-      {/* Space context bar */}
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-rule bg-paper-2 px-4 py-3">
+      <div className="motion-enter mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-rule bg-paper-2 px-4 py-3">
         <div className="relative">
           <select
             aria-label="Select space"
             value={activeSpaceId}
-            onChange={(e) => { setActiveSpaceId(e.target.value); setActivePinId(null); }}
+            onChange={(e) => updateDashboardUrl(e.target.value, null)}
             className="h-8 appearance-none rounded-md border border-rule bg-paper pl-3 pr-8 text-[0.8125rem] font-medium text-ink transition-colors hover:bg-paper-3"
           >
             {workspace.spaces.map((space) => (
-              <option key={space.id} value={space.id}>{space.name}</option>
+              <option key={space.id} value={space.id}>
+                {space.name}
+              </option>
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-ink-3" />
@@ -382,15 +441,14 @@ export function WorkspaceDashboard() {
         <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">{selectedSpace.notes}</span>
 
         <div className="ml-auto flex items-center gap-3">
-          {/* Mini progress */}
           <div className="flex items-center gap-2">
             <div className="flex h-1.5 w-16 overflow-hidden rounded-full bg-paper-3">
               <div className="rounded-full bg-ok transition-all duration-300" style={{ width: `${spaceStats.pct}%` }} />
             </div>
             <span className="text-[0.6875rem] font-medium text-ink-2">{spaceStats.pct}%</span>
           </div>
-          <Button size="sm" variant="ghost" asChild className="h-7 px-2 text-[0.6875rem] text-ink-3">
-            <Link href="/spaces">
+          <Button size="sm" variant="ghost" asChild className="interactive-lift h-7 px-2 text-[0.6875rem] text-ink-3">
+            <Link href={`/spaces?space=${selectedSpace.id}`}>
               <Layers className="size-3" />
               Manage
             </Link>
@@ -398,8 +456,7 @@ export function WorkspaceDashboard() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <div className="motion-enter-delayed mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Filter className="size-3.5 text-ink-3" />
           <select
@@ -420,62 +477,54 @@ export function WorkspaceDashboard() {
           >
             <option value="all">All tags</option>
             {workspace.tags.map((tag) => (
-              <option key={tag.id} value={tag.id}>{tag.label}</option>
+              <option key={tag.id} value={tag.id}>
+                {tag.label}
+              </option>
             ))}
           </select>
-          <span className="text-[0.75rem] text-ink-3">{visiblePins.length} pins</span>
+          <span className="text-[0.75rem] text-ink-3">{visiblePins.length} marks</span>
         </div>
         <Button size="sm" variant={showNewPin ? "default" : "outline"} onClick={() => setShowNewPin(!showNewPin)} className="h-8">
           <Plus className="size-3.5" />
-          New pin
+          New mark
         </Button>
       </div>
 
-      {/* New pin form */}
       {showNewPin ? (
         <div className="mb-4 rounded-lg border border-rule bg-paper-2 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input value={newPinTitle} onChange={(e) => setNewPinTitle(e.target.value)} placeholder="Pin title" className="bg-paper text-[0.8125rem]" autoFocus />
+            <Input value={newPinTitle} onChange={(e) => setNewPinTitle(e.target.value)} placeholder="Mark title" className="bg-paper text-[0.8125rem]" autoFocus />
             <Input value={newPinPage} onChange={(e) => setNewPinPage(e.target.value)} placeholder="Page path, e.g. /pricing" className="bg-paper text-[0.8125rem]" />
             <div className="sm:col-span-2">
               <Textarea value={newPinDescription} onChange={(e) => setNewPinDescription(e.target.value)} placeholder="What should change?" className="min-h-[60px] bg-paper text-[0.8125rem]" />
             </div>
-            <select
-              aria-label="Choose tag"
-              className="h-9 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
-              value={newPinTagId}
-              onChange={(e) => setNewPinTagId(e.target.value)}
-            >
+            <select aria-label="Choose tag" className="h-9 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink" value={newPinTagId} onChange={(e) => setNewPinTagId(e.target.value)}>
               <option value="all">Tag (optional)</option>
               {workspace.tags.map((tag) => (
-                <option key={tag.id} value={tag.id}>{tag.label}</option>
+                <option key={tag.id} value={tag.id}>
+                  {tag.label}
+                </option>
               ))}
             </select>
             <Button onClick={createPin} disabled={!newPinTitle.trim() || !newPinPage.trim()} className="h-9">
-              Create pin
+              Create mark
             </Button>
           </div>
         </div>
       ) : null}
 
-      {/* Pin list */}
       <div className="space-y-px">
         {visiblePins.length === 0 ? (
           <div className="rounded-lg border border-dashed border-rule py-10 text-center">
             <CircleDashed className="mx-auto mb-2 size-6 text-ink-3" />
-            <p className="text-[0.8125rem] text-ink-3">No pins match the current filters.</p>
+            <p className="text-[0.8125rem] text-ink-3">No marks match the current filters.</p>
           </div>
         ) : null}
         {visiblePins.map((pin) => {
           const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
           const commentCount = workspace.comments.filter((c) => c.pinId === pin.id).length;
           return (
-            <button
-              key={pin.id}
-              type="button"
-              onClick={() => setActivePinId(pin.id)}
-              className="group flex w-full items-start gap-3 rounded-lg px-3 py-3.5 text-left transition-colors hover:bg-paper-2"
-            >
+            <button key={pin.id} type="button" onClick={() => updateDashboardUrl(selectedSpace.id, pin.id)} className="interactive-lift group flex w-full items-start gap-3 rounded-lg px-3 py-3.5 text-left hover:bg-paper-2">
               <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", pin.status === "open" ? "bg-mark" : "bg-ok")} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
@@ -488,7 +537,9 @@ export function WorkspaceDashboard() {
                     const tag = tagsById.get(tid);
                     if (!tag) return null;
                     return (
-                      <span key={tid} className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">{tag.label}</span>
+                      <span key={tid} className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2">
+                        {tag.label}
+                      </span>
                     );
                   })}
                   {assignee ? (
@@ -518,7 +569,17 @@ export function WorkspaceDashboard() {
   );
 }
 
-function MetaCell({ icon: Icon, label, value, mono }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; mono?: boolean }) {
+function MetaCell({
+  icon: Icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="rounded-md bg-paper-2 px-3 py-2">
       <div className="mb-1 flex items-center gap-1.5 text-ink-3">

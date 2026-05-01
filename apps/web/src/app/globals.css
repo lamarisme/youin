@@ -27,6 +27,8 @@
 
 :root {
   color-scheme: light;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -257,9 +259,59 @@
     background: var(--color-rule);
   }
 
+  .motion-enter {
+    animation: enter-up 420ms var(--ease-out-quart) both;
+  }
+
+  .motion-enter-delayed {
+    animation: enter-up 520ms var(--ease-out-expo) both;
+    animation-delay: 80ms;
+  }
+
+  .interactive-lift {
+    transition:
+      transform 220ms var(--ease-out-quart),
+      background-color 220ms var(--ease-out-quart),
+      border-color 220ms var(--ease-out-quart),
+      color 220ms var(--ease-out-quart);
+  }
+
+  .interactive-lift:hover {
+    transform: translateY(-1px);
+  }
+
+  .interactive-lift:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  @keyframes enter-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .pin-dot::after {
       animation: none;
+    }
+
+    .motion-enter,
+    .motion-enter-delayed {
+      animation: none;
+    }
+
+    .interactive-lift {
+      transition: none;
+    }
+
+    .interactive-lift:hover,
+    .interactive-lift:active {
+      transform: none;
     }
   }
 }

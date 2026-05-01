@@ -6,7 +6,7 @@ const tiers = [
     blurb: "For trying the loop on a single project.",
     features: [
       "1 active workspace",
-      "Unlimited pins",
+      "Unlimited marks",
       "Auto-context capture",
       "3 AI tickets / month",
     ],

@@ -27,8 +27,8 @@ export function AppShell({ children }: AppShellProps) {
       <div className="mx-auto grid w-full max-w-[1440px] gap-0 lg:grid-cols-[220px_1fr]">
         <aside className="border-r border-rule bg-paper-2 px-3 py-5 lg:sticky lg:top-0 lg:h-screen lg:px-4 lg:py-6">
           <Link href="/dashboard" className="mb-8 flex items-center gap-2.5 px-1">
-            <span className="pin-dot shrink-0">P</span>
-            <span className="font-display text-lg font-semibold text-ink">Pin</span>
+            <span className="pin-dot shrink-0">M</span>
+            <span className="font-display text-lg font-semibold text-ink">Markly</span>
           </Link>
 
           <nav className="space-y-0.5">

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 const loopSteps = [
   {
     num: "01",
-    title: "Pin to an element",
+    title: "Mark an element",
     body: "Click anything on any live page. The extension captures selector, viewport, browser, and a screenshot automatically.",
   },
   {
@@ -46,7 +46,7 @@ const tiers = [
     period: "forever",
     blurb: "Try the loop on one project.",
     cta: "Add to Chrome",
-    features: ["1 workspace", "Unlimited pins", "Auto-context capture", "3 AI tickets / mo"],
+    features: ["1 workspace", "Unlimited marks", "Auto-context capture", "3 AI tickets / mo"],
   },
   {
     name: "Team",
@@ -81,8 +81,8 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="pin-dot">P</span>
-            <span className="font-display text-lg font-semibold">Pin</span>
+            <span className="pin-dot">M</span>
+            <span className="font-display text-lg font-semibold">Markly</span>
           </Link>
           <nav className="hidden items-center gap-5 text-[0.8125rem] text-ink-2 md:flex">
             {navItems.map((item) => (
@@ -126,7 +126,7 @@ export default function Home() {
                 The feedback layer for the live&nbsp;web.
               </h1>
               <p className="mt-5 max-w-[50ch] text-[1.0625rem] leading-relaxed text-ink-2">
-                Click any element on any live site, pin a comment, and ship a ticket without leaving the page.
+                Click any element on any live site, mark a comment, and ship a ticket without leaving the page.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Button size="lg" asChild>
@@ -186,7 +186,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="rounded-lg bg-mark-soft px-4 py-3">
-                <p className="text-eyebrow mb-2">With Pin</p>
+                <p className="text-eyebrow mb-2">With Markly</p>
                 <p className="text-[0.8125rem] font-medium leading-relaxed text-ink">
                   Click &rarr; comment &rarr; done. Context is captured, the ticket writes itself.
                 </p>
@@ -298,12 +298,12 @@ export default function Home() {
                 Stop describing the thing you can point&nbsp;at.
               </h2>
               <p className="mt-3 max-w-[48ch] text-[0.9375rem] leading-relaxed text-ink-2">
-                The next time someone spots a live issue, leave a pin instead of a message thread.
+                The next time someone spots a live issue, leave a mark instead of a message thread.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button size="lg">Add to Chrome &mdash; free</Button>
                 <Button size="lg" variant="outline" asChild>
-                  <a href="mailto:hello@pin.tools">Talk to a human</a>
+                  <a href="mailto:hello@markly.tools">Talk to a human</a>
                 </Button>
               </div>
             </div>
@@ -332,7 +332,7 @@ export default function Home() {
       {/* ── Footer ─────────────────────────────────────────── */}
       <footer className="border-t border-rule bg-paper px-6 py-6">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
-          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 Pin</p>
+          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 Markly</p>
           <div className="flex gap-4 text-[0.75rem] text-ink-3">
             <a href="#" className="hover:text-ink">Terms</a>
             <a href="#" className="hover:text-ink">Privacy</a>

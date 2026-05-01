@@ -59,7 +59,7 @@ export const mockWorkspace: Workspace = {
   invites: [{ id: "inv_1", email: "alex@acme.studio", invitedBy: "Mira Klein", invitedAt: "2026-04-30T13:50:00.000Z" }],
   pins: [
     {
-      id: "PIN-482",
+      id: "MRK-482",
       spaceId: "ver_2026_04_29",
       title: "Pricing card label missing",
       description:
@@ -79,7 +79,7 @@ export const mockWorkspace: Workspace = {
       },
     },
     {
-      id: "PIN-479",
+      id: "MRK-479",
       spaceId: "ver_2026_04_29",
       title: "Navbar contrast in dark mode",
       description:
@@ -98,7 +98,7 @@ export const mockWorkspace: Workspace = {
       },
     },
     {
-      id: "PIN-475",
+      id: "MRK-475",
       spaceId: "ver_2026_04_29",
       title: "CTA button hover is too subtle",
       description: "Primary CTA hover state barely changes. Increase contrast shift so the button feels responsive.",
@@ -109,7 +109,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".hero-cta", viewport: "1440 × 900", browser: "Chrome 126", os: "macOS 15.4", capturedAt: "2026-04-29T16:10:00.000Z" },
     },
     {
-      id: "PIN-469",
+      id: "MRK-469",
       spaceId: "ver_2026_04_18",
       title: "Form validation copy is unclear",
       description: "Error language should explain the exact correction needed instead of generic messages.",
@@ -120,7 +120,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".form-error-message", viewport: "1440 × 900", browser: "Chrome 126", os: "macOS 15.4", capturedAt: "2026-04-18T11:40:00.000Z" },
     },
     {
-      id: "PIN-467",
+      id: "MRK-467",
       spaceId: "ver_2026_04_18",
       title: "Password strength meter needs ARIA",
       description: "Screen readers cannot interpret the visual strength meter. Add aria-valuenow and role=meter.",
@@ -131,7 +131,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".password-meter", viewport: "1440 × 900", browser: "Chrome 126", os: "macOS 15.4", capturedAt: "2026-04-18T14:20:00.000Z" },
     },
     {
-      id: "PIN-465",
+      id: "MRK-465",
       spaceId: "ver_2026_04_18",
       title: "Dashboard loading skeleton flickers",
       description: "The skeleton UI flashes for <100ms on fast connections. Add a delay threshold before showing it.",
@@ -142,7 +142,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".skeleton-container", viewport: "1280 × 720", browser: "Safari 18", os: "macOS 15.4", capturedAt: "2026-04-19T09:55:00.000Z" },
     },
     {
-      id: "PIN-450",
+      id: "MRK-450",
       spaceId: "ver_2026_04_01",
       title: "Hero headline wraps awkwardly at 768px",
       description: "The main headline on the landing page creates a single orphan word on the second line at tablet width.",
@@ -153,7 +153,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".hero h1", viewport: "768 × 1024", browser: "Safari 18", os: "iPadOS 18", capturedAt: "2026-04-02T10:30:00.000Z" },
     },
     {
-      id: "PIN-448",
+      id: "MRK-448",
       spaceId: "ver_2026_04_01",
       title: "Feature list bullet alignment off",
       description: "Custom bullet points in the feature section don't align with the text baseline on Firefox.",
@@ -164,10 +164,10 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".feature-list li::before", viewport: "1440 × 900", browser: "Firefox 127", os: "Ubuntu 24.04", capturedAt: "2026-04-03T08:15:00.000Z" },
     },
     {
-      id: "PIN-446",
+      id: "MRK-446",
       spaceId: "ver_2026_04_01",
       title: "Social proof section needs real numbers",
-      description: "Placeholder stats (XXX teams, XXX pins) need to be replaced with actual counts before launch.",
+      description: "Placeholder stats (XXX teams, XXX marks) need to be replaced with actual counts before launch.",
       page: "/",
       status: "open",
       tagIds: ["tag_copy"],
@@ -175,7 +175,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".social-proof", viewport: "1440 × 900", browser: "Chrome 125", os: "macOS 15.4", capturedAt: "2026-04-04T11:00:00.000Z" },
     },
     {
-      id: "PIN-430",
+      id: "MRK-430",
       spaceId: "ver_2026_03_15",
       title: "Onboarding step 2 has dead click area",
       description: "The illustration in step 2 intercepts clicks but doesn't advance the flow. Needs pointer-events: none.",
@@ -186,10 +186,10 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".onboarding-step-2 .illustration", viewport: "1440 × 900", browser: "Chrome 125", os: "macOS 15.3", capturedAt: "2026-03-16T14:00:00.000Z" },
     },
     {
-      id: "PIN-428",
+      id: "MRK-428",
       spaceId: "ver_2026_03_15",
       title: "Welcome copy feels generic",
-      description: "The welcome headline says \"Welcome to Pin\" — should reference the user's workspace name for personalization.",
+      description: "The welcome headline says \"Welcome to Markly\" — should reference the user's workspace name for personalization.",
       page: "/onboarding",
       status: "closed",
       tagIds: ["tag_copy"],
@@ -197,7 +197,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".welcome-heading", viewport: "1280 × 720", browser: "Chrome 125", os: "Windows 11", capturedAt: "2026-03-17T09:30:00.000Z" },
     },
     {
-      id: "PIN-426",
+      id: "MRK-426",
       spaceId: "ver_2026_03_15",
       title: "Skip button is too hidden",
       description: "The skip-onboarding link is grey on grey at the bottom. Users miss it and feel trapped.",
@@ -208,7 +208,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".skip-onboarding", viewport: "1440 × 900", browser: "Chrome 125", os: "macOS 15.3", capturedAt: "2026-03-18T10:45:00.000Z" },
     },
     {
-      id: "PIN-410",
+      id: "MRK-410",
       spaceId: "ver_2026_03_01",
       title: "Dark mode toggle has no transition",
       description: "Theme switch is instant and jarring. Add a 200ms transition on background-color and color.",
@@ -219,7 +219,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".theme-toggle", viewport: "1440 × 900", browser: "Chrome 124", os: "macOS 15.3", capturedAt: "2026-03-02T11:15:00.000Z" },
     },
     {
-      id: "PIN-408",
+      id: "MRK-408",
       spaceId: "ver_2026_03_01",
       title: "Card borders vanish in dark mode",
       description: "Border token uses a lightness that's identical to the dark card background. Needs a separate dark-mode border value.",
@@ -230,7 +230,7 @@ export const mockWorkspace: Workspace = {
       capture: { selector: ".card", viewport: "1280 × 720", browser: "Firefox 126", os: "Windows 11", capturedAt: "2026-03-03T09:00:00.000Z" },
     },
     {
-      id: "PIN-405",
+      id: "MRK-405",
       spaceId: "ver_2026_03_01",
       title: "Focus ring invisible on dark surfaces",
       description: "The brand-red focus ring doesn't contrast enough on dark backgrounds. Consider a lighter ring or double-ring technique.",
@@ -242,12 +242,12 @@ export const mockWorkspace: Workspace = {
     },
   ],
   comments: [
-    { id: "c_1", pinId: "PIN-482", authorId: "usr_1", createdAt: "2026-04-30T14:12:00.000Z", type: "text", body: "Let's align this with the CTA hierarchy and keep it short." },
-    { id: "c_2", pinId: "PIN-482", authorId: "usr_2", createdAt: "2026-04-30T15:02:00.000Z", type: "image", imageUrl: "/window.svg" },
-    { id: "c_3", pinId: "PIN-479", authorId: "usr_3", createdAt: "2026-05-01T09:25:00.000Z", type: "text", body: "I can patch token contrast in this release branch." },
-    { id: "c_4", pinId: "PIN-469", authorId: "usr_2", createdAt: "2026-04-18T12:30:00.000Z", type: "text", body: "Merged. Validation messages are now specific per field." },
-    { id: "c_5", pinId: "PIN-450", authorId: "usr_1", createdAt: "2026-04-03T11:00:00.000Z", type: "text", body: "Fixed with a manual <br> and an orphan-safe CSS approach." },
-    { id: "c_6", pinId: "PIN-430", authorId: "usr_3", createdAt: "2026-03-17T10:00:00.000Z", type: "text", body: "Added pointer-events: none to the SVG wrapper." },
-    { id: "c_7", pinId: "PIN-410", authorId: "usr_2", createdAt: "2026-03-03T14:00:00.000Z", type: "text", body: "Transition added. Also fixed the flash-of-light-theme on load." },
+    { id: "c_1", pinId: "MRK-482", authorId: "usr_1", createdAt: "2026-04-30T14:12:00.000Z", type: "text", body: "Let's align this with the CTA hierarchy and keep it short." },
+    { id: "c_2", pinId: "MRK-482", authorId: "usr_2", createdAt: "2026-04-30T15:02:00.000Z", type: "image", imageUrl: "/window.svg" },
+    { id: "c_3", pinId: "MRK-479", authorId: "usr_3", createdAt: "2026-05-01T09:25:00.000Z", type: "text", body: "I can patch token contrast in this release branch." },
+    { id: "c_4", pinId: "MRK-469", authorId: "usr_2", createdAt: "2026-04-18T12:30:00.000Z", type: "text", body: "Merged. Validation messages are now specific per field." },
+    { id: "c_5", pinId: "MRK-450", authorId: "usr_1", createdAt: "2026-04-03T11:00:00.000Z", type: "text", body: "Fixed with a manual <br> and an orphan-safe CSS approach." },
+    { id: "c_6", pinId: "MRK-430", authorId: "usr_3", createdAt: "2026-03-17T10:00:00.000Z", type: "text", body: "Added pointer-events: none to the SVG wrapper." },
+    { id: "c_7", pinId: "MRK-410", authorId: "usr_2", createdAt: "2026-03-03T14:00:00.000Z", type: "text", body: "Transition added. Also fixed the flash-of-light-theme on load." },
   ],
 };

@@ -12,7 +12,7 @@ export function CoreLoop() {
             </h2>
           </div>
           <p className="max-w-[55ch] text-[1.05rem] leading-relaxed text-ink-2 self-end">
-            Every Pin annotation is a complete brief — the element, the
+            Every mark annotation is a complete brief — the element, the
             environment, the intent — captured in the half second between
             noticing and forgetting.
           </p>
@@ -22,8 +22,8 @@ export function CoreLoop() {
           <Step
             n={1}
             kicker="Click"
-            title="Pin to a real element."
-            body="Hover anything on any live page. The picker locks to the underlying CSS selector — not pixel coordinates. Pins survive deploys."
+            title="Mark a real element."
+            body="Hover anything on any live page. The picker locks to the underlying CSS selector — not pixel coordinates. Marks survive deploys."
             visual={<PickerVisual />}
           />
           <Step

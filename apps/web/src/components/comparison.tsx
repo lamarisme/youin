@@ -2,7 +2,7 @@ const rows = [
   {
     against: "Jam.dev",
     they: "Bug videos for QA. Built for “something is broken.”",
-    pin: "Spatial pins for design review. Built for “this feels off.”",
+    pin: "Spatial marks for design review. Built for “this feels off.”",
   },
   {
     against: "Vercel Comments",
@@ -36,7 +36,7 @@ export function Comparison() {
           <div className="hidden grid-cols-[12rem_1fr_1fr] gap-px border-b border-rule bg-rule font-mono text-[11px] uppercase tracking-[0.14em] text-ink-3 md:grid">
             <div className="bg-paper-2 px-6 py-3">Tool</div>
             <div className="bg-paper-2 px-6 py-3">Their thing</div>
-            <div className="bg-paper-2 px-6 py-3">Pin&rsquo;s thing</div>
+            <div className="bg-paper-2 px-6 py-3">Markly&rsquo;s thing</div>
           </div>
 
           {rows.map((row) => (

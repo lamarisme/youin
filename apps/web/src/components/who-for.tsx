@@ -8,7 +8,7 @@ const personas = [
   {
     role: "Indie dev teams",
     size: "PM + 1–3 devs",
-    body: "Tiny teams that ship fast and skip the QA layer. Pin replaces the whole feedback chain with a comment.",
+    body: "Tiny teams that ship fast and skip the QA layer. Markly replaces the whole feedback chain with a comment.",
     primary: false,
   },
   {
@@ -32,7 +32,7 @@ export function WhoFor() {
           </div>
           <p className="max-w-[55ch] self-end text-[1.05rem] leading-relaxed text-ink-2">
             The reviewer doesn&rsquo;t need to know what a console is. The
-            developer doesn&rsquo;t need to translate a screenshot. Pin is
+            developer doesn&rsquo;t need to translate a screenshot. Markly is
             built for both halves of the room.
           </p>
         </div>

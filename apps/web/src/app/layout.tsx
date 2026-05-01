@@ -23,9 +23,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pin — visual feedback, on the live web",
+  title: "Markly — visual feedback, on the live web",
   description:
-    "Click any element on any live site. Pin a comment. Ship a ticket. Without leaving the browser.",
+    "Click any element on any live site. Mark a comment. Ship a ticket. Without leaving the browser.",
 };
 
 export default function RootLayout({

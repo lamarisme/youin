@@ -35,7 +35,7 @@ export function ProductDemo() {
           </div>
           <span className="hidden md:inline-flex items-center gap-1.5 rounded-md bg-mark-soft px-2 py-1 font-mono text-[10px] font-medium text-mark">
             <span className="block h-1.5 w-1.5 rounded-full bg-mark animate-pulse" />
-            Pin · live
+            Markly · live
           </span>
         </div>
 

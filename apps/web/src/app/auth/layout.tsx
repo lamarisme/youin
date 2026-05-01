@@ -7,8 +7,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex min-h-screen w-full max-w-[1200px] flex-col px-6 py-6 md:px-10">
         <header className="mb-6 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="pin-dot">P</span>
-            <span className="font-display text-lg font-semibold text-ink">Pin</span>
+            <span className="pin-dot">M</span>
+            <span className="font-display text-lg font-semibold text-ink">Markly</span>
           </Link>
           <p className="font-mono text-[0.6875rem] text-ink-3">Workspace access</p>
         </header>
@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <main className="grid flex-1 items-center gap-10 py-8 md:grid-cols-[1.1fr_1fr] md:gap-16 md:py-12">
           <section className="space-y-6">
             <div>
-              <p className="text-eyebrow mb-2">Pin auth</p>
+              <p className="text-eyebrow mb-2">Markly auth</p>
               <h1 className="text-editorial-md text-ink">Review faster. Ship&nbsp;cleaner.</h1>
             </div>
 
@@ -29,7 +29,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <div className="max-w-[30rem] overflow-hidden rounded-lg border border-rule">
               <div className="grid grid-cols-3 gap-px bg-rule">
                 <Stat label="Teams" value="236" />
-                <Stat label="Pins / day" value="12.4k" />
+                <Stat label="Marks / day" value="12.4k" />
                 <Stat label="Median triage" value="11m" />
               </div>
             </div>

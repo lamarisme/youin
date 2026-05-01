@@ -14,7 +14,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useLocalStorageState<Theme>("pin-theme", "light");
+  const [theme, setTheme] = useLocalStorageState<Theme>("markly-theme", "light");
 
   useEffect(() => {
     const root = document.documentElement;

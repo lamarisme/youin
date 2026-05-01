@@ -5,9 +5,9 @@ export function Nav() {
     <header className="relative z-20">
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="pin-dot !h-7 !w-7 !text-[0.78rem]">P</span>
+          <span className="pin-dot !h-7 !w-7 !text-[0.78rem]">M</span>
           <span className="font-display text-[1.35rem] font-semibold tracking-tight">
-            Pin
+            Markly
           </span>
         </Link>
 

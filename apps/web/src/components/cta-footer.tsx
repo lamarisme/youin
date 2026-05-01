@@ -12,8 +12,8 @@ export function CtaFooter() {
               <span className="bg-mark px-2 text-paper">point at</span>.
             </h2>
             <p className="mt-7 max-w-[44ch] text-[1.05rem] leading-relaxed text-paper/70">
-              Install Pin in your team&rsquo;s browsers. The next time someone
-              spots a problem on the live site, they leave a pin instead of a
+              Install Markly in your team&rsquo;s browsers. The next time someone
+              spots a problem on the live site, they leave a mark instead of a
               Slack message. The dev gets a real ticket. Everyone moves on.
             </p>
 
@@ -36,7 +36,7 @@ export function CtaFooter() {
                 </svg>
               </a>
               <a
-                href="mailto:hello@pin.tools"
+                href="mailto:hello@markly.tools"
                 className="inline-flex items-center gap-2 rounded-full border border-paper/20 px-5 py-3 text-[15px] font-medium text-paper hover:bg-paper/10 transition-colors"
               >
                 Talk to a human
@@ -45,7 +45,7 @@ export function CtaFooter() {
           </div>
 
           <aside className="grid content-start gap-6 self-end">
-            <Stat n="60s" label="Onboarding, click to first pin" />
+            <Stat n="60s" label="Onboarding, click to first mark" />
             <Stat n="0" label="Tabs you have to leave" />
             <Stat n="3" label="Connectors at launch — GitHub, Linear, Jira" />
           </aside>
@@ -61,7 +61,7 @@ export function CtaFooter() {
               P
             </span>
             <span className="font-display text-[1.05rem] font-semibold tracking-tight">
-              Pin
+              Markly
             </span>
             <span className="ml-3 font-mono text-[11px] text-paper/50">
               v0.9

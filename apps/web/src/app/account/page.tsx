@@ -19,7 +19,7 @@ export default function AccountPage() {
   const [members, setMembers] = useState<TeamMember[]>(mockWorkspace.members);
   const [invites, setInvites] = useState<TeamInvite[]>(mockWorkspace.invites);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [profile, setProfile] = useLocalStorageState<UserProfile>("pin-profile", defaultProfile);
+  const [profile, setProfile] = useLocalStorageState<UserProfile>("markly-profile", defaultProfile);
   const canInvite = inviteEmail.trim().includes("@") && inviteEmail.trim().includes(".");
 
   function addInvite() {

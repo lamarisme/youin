@@ -64,7 +64,7 @@ export default function SignInPage() {
       </form>
 
       <p className="mt-5 text-center text-[0.8125rem] text-ink-2">
-        New to Pin?{" "}
+        New to Markly?{" "}
         <Link href="/auth/sign-up" className="font-medium text-ink hover:text-mark">
           Create account
         </Link>
