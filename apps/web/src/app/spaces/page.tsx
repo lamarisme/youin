@@ -20,6 +20,7 @@ import {
 
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
+import { PageContainer } from "@/components/page-container";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,7 +192,7 @@ function SpacesPageContent() {
 
     return (
       <AppShell>
-        <div className="mx-auto w-full max-w-6xl">
+        <PageContainer>
           <div className="mb-6">
             <button
               type="button"
@@ -427,7 +428,7 @@ function SpacesPageContent() {
             </div>
           </div>
           </div>
-        </div>
+        </PageContainer>
       </AppShell>
     );
   }
@@ -437,7 +438,7 @@ function SpacesPageContent() {
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-6xl space-y-7">
+      <PageContainer>
         <AppHeader
           title="Spaces"
           eyebrow={workspace.name}
@@ -628,7 +629,7 @@ function SpacesPageContent() {
             </div>
           </div>
         ) : null}
-      </div>
+      </PageContainer>
     </AppShell>
   );
 }

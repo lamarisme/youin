@@ -26,6 +26,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
+import { PageContainer } from "@/components/page-container";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -404,9 +405,9 @@ export function WorkspaceDashboard() {
 
     return (
       <AppShell>
-        <div className="mx-auto w-full max-w-6xl">
-        <div className="motion-enter mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <PageContainer>
+          <div className="motion-enter mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", null)}
@@ -442,11 +443,11 @@ export function WorkspaceDashboard() {
                 <ArrowRight className="size-3.5" />
               </Button>
             </div>
+            </div>
           </div>
-        </div>
 
-        <div key={selectedPin.id} className="motion-enter-delayed grid gap-8 lg:grid-cols-[1fr_320px]">
-          <div className="min-w-0">
+          <div key={selectedPin.id} className="motion-enter-delayed grid gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="min-w-0">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-mark/30 bg-mark-soft px-3 py-1">
               <span className="font-mono text-[0.6875rem] font-semibold text-mark">{selectedPin.id}</span>
               <span className="text-[0.6875rem] text-mark/80">Live mark brief</span>
@@ -706,26 +707,26 @@ export function WorkspaceDashboard() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
-        </div>
-        </div>
+        </PageContainer>
       </AppShell>
     );
   }
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-6xl">
-      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
-        <div className="flex items-center gap-2 text-[0.75rem]">
-          <span className="inline-flex items-center gap-1 rounded-full bg-mark-soft px-2.5 py-1 font-medium text-mark">
-            <span className="font-mono">{spaceStats.open}</span> open
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2.5 py-1 font-medium text-ok">
-            <span className="font-mono">{spaceStats.closed}</span> closed
-          </span>
-        </div>
-      </AppHeader>
+      <PageContainer>
+        <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
+          <div className="flex items-center gap-2 text-[0.75rem]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-mark-soft px-2.5 py-1 font-medium text-mark">
+              <span className="font-mono">{spaceStats.open}</span> open
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-ok-soft px-2.5 py-1 font-medium text-ok">
+              <span className="font-mono">{spaceStats.closed}</span> closed
+            </span>
+          </div>
+        </AppHeader>
 
       <div className="motion-enter mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-rule bg-paper-2 px-4 py-3.5 shadow-[0_10px_28px_-24px_oklch(17%_0.01_50_/_0.45)]">
         <div className="relative min-w-[170px] flex-1 sm:min-w-[220px] sm:flex-none">
@@ -992,7 +993,7 @@ export function WorkspaceDashboard() {
           </div>
         </div>
       ) : null}
-      </div>
+      </PageContainer>
     </AppShell>
   );
 }
