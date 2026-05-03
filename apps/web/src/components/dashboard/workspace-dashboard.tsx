@@ -26,7 +26,6 @@ import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
-import { PageContainer } from "@/components/page-container";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -404,8 +403,7 @@ export function WorkspaceDashboard() {
     const cap = selectedPin.capture;
 
     return (
-      <AppShell>
-        <PageContainer>
+      <AppShell fullBleed>
           <div className="motion-enter mb-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
             <button
@@ -709,14 +707,12 @@ export function WorkspaceDashboard() {
             </div>
             </div>
           </div>
-        </PageContainer>
       </AppShell>
     );
   }
 
   return (
-    <AppShell>
-      <PageContainer>
+    <AppShell fullBleed>
         <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
           <div className="flex items-center gap-2 text-[0.75rem]">
             <span className="inline-flex items-center gap-1 rounded-full bg-mark-soft px-2.5 py-1 font-medium text-mark">
@@ -993,7 +989,6 @@ export function WorkspaceDashboard() {
           </div>
         </div>
       ) : null}
-      </PageContainer>
     </AppShell>
   );
 }

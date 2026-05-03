@@ -438,7 +438,7 @@ function SpacesPageContent() {
 
   return (
     <AppShell>
-      <PageContainer>
+      <PageContainer className="space-y-5">
         <AppHeader
           title="Spaces"
           eyebrow={workspace.name}

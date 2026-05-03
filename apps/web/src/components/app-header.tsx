@@ -7,7 +7,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ title, subtitle, eyebrow, children }: AppHeaderProps) {
   return (
-    <header className="mb-10 pb-8">
+    <header className="pb-5 sm:pb-6">
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div className="space-y-2">
           {eyebrow ? <p className="text-eyebrow">{eyebrow}</p> : null}
@@ -18,7 +18,7 @@ export function AppHeader({ title, subtitle, eyebrow, children }: AppHeaderProps
         </div>
         {children ? <div className="flex items-center gap-2">{children}</div> : null}
       </div>
-      <div className="mt-6 h-px bg-rule" />
+      <div className="mt-4 h-px bg-rule sm:mt-5" />
     </header>
   );
 }
