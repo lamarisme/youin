@@ -124,7 +124,7 @@ function SignInPageContent() {
       </form>
 
       <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
-        New to Markly?{" "}
+        New to youin?{" "}
         <Link href="/auth/sign-up" className="font-medium text-ink hover:text-mark">
           Create account
         </Link>

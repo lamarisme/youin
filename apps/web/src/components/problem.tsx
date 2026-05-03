@@ -51,7 +51,7 @@ export function Problem() {
             </ol>
 
             <p className="mt-10 max-w-[40ch] font-display text-[1.5rem] font-medium leading-tight tracking-tight text-ink">
-              <span className="bg-mark-soft px-1.5 text-mark">Markly</span>{" "}
+              <span className="bg-mark-soft px-1.5 text-mark">youin</span>{" "}
               collapses all five into one click.
             </p>
 

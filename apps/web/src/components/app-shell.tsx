@@ -34,8 +34,8 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
         <aside className="flex flex-col border-b border-rule bg-paper-2 px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-7">
           <div className="mb-3 flex items-center justify-between lg:mb-10">
             <Link href="/dashboard" className="flex items-center gap-2.5 px-1">
-              <span className="pin-dot shrink-0">M</span>
-              <span className="font-display text-lg font-semibold text-ink">Markly</span>
+              <span className="pin-dot shrink-0">Y</span>
+              <span className="font-display text-lg font-semibold text-ink">youin</span>
             </Link>
             <div className="flex items-center gap-1.5 lg:hidden">
               <button

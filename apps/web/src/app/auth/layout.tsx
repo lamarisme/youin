@@ -7,8 +7,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="mx-auto flex min-h-screen w-full max-w-[1360px] flex-col px-5 py-5 sm:px-8 md:px-10">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="pin-dot">M</span>
-            <span className="font-display text-lg font-semibold text-ink">Markly</span>
+            <span className="pin-dot">Y</span>
+            <span className="font-display text-lg font-semibold text-ink">youin</span>
           </Link>
           <p className="font-mono text-[0.6875rem] text-ink-3">Workspace access</p>
         </header>
@@ -18,7 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <main className="grid flex-1 items-center gap-12 py-8 md:grid-cols-[1.12fr_1fr] md:gap-16 md:py-12">
           <section className="section-block">
             <div>
-              <p className="text-eyebrow mb-2">Markly auth</p>
+              <p className="text-eyebrow mb-2">youin auth</p>
               <h1 className="text-editorial-md text-ink">Review faster. Ship&nbsp;cleaner.</h1>
             </div>
 

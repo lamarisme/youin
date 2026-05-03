@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Markly — visual feedback, on the live web",
+  title: "youin — visual feedback, on the live web",
   description:
     "Click any element on any live site. Mark a comment. Ship a ticket. Without leaving the browser.",
 };

@@ -219,7 +219,7 @@ export const mockWorkspace: Workspace = {
       id: "MRK-428",
       spaceId: "ver_2026_03_15",
       title: "Welcome copy feels generic",
-      description: "The welcome headline says \"Welcome to Markly\" — should reference the user's workspace name for personalization.",
+      description: "The welcome headline says \"Welcome to youin\" — should reference the user's workspace name for personalization.",
       page: "/onboarding",
       status: "closed",
       priority: "low",

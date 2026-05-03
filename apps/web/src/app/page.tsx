@@ -82,8 +82,8 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
         <div className="page-shell flex items-center justify-between py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="pin-dot">M</span>
-            <span className="font-display text-lg font-semibold">Markly</span>
+            <span className="pin-dot">Y</span>
+            <span className="font-display text-lg font-semibold">youin</span>
           </Link>
           <nav className="hidden items-center gap-5 text-[0.8125rem] text-ink-2 md:flex">
             {navItems.map((item) => (
@@ -180,7 +180,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="rounded-lg bg-mark-soft px-4 py-3">
-                <p className="text-eyebrow mb-2">With Markly</p>
+                <p className="text-eyebrow mb-2">With youin</p>
                 <p className="text-[0.8125rem] font-medium leading-relaxed text-ink">
                   Click &rarr; comment &rarr; done. Context is captured, the ticket writes itself.
                 </p>
@@ -324,7 +324,7 @@ export default function Home() {
       {/* ── Footer ─────────────────────────────────────────── */}
       <footer className="border-t border-rule bg-paper py-6">
         <div className="page-shell flex items-center justify-between">
-          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 Markly</p>
+          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 youin</p>
           <div className="flex gap-4 text-[0.75rem] text-ink-3">
             <a href="#" className="hover:text-ink">Terms</a>
             <a href="#" className="hover:text-ink">Privacy</a>

@@ -12,7 +12,7 @@ export function CtaFooter() {
               <span className="bg-mark px-2 text-paper">point at</span>.
             </h2>
             <p className="mt-7 max-w-[44ch] text-[1.05rem] leading-relaxed text-paper/70">
-              Install Markly in your team&rsquo;s browsers. The next time someone
+              Install youin in your team&rsquo;s browsers. The next time someone
               spots a problem on the live site, they leave a mark instead of a
               Slack message. The dev gets a real ticket. Everyone moves on.
             </p>
@@ -58,10 +58,10 @@ export function CtaFooter() {
             <span
               className="pin-dot !h-6 !w-6 !text-[0.66rem] [--pin-ring:transparent]"
             >
-              P
+              Y
             </span>
             <span className="font-display text-[1.05rem] font-semibold tracking-tight">
-              Markly
+              youin
             </span>
             <span className="ml-3 font-mono text-[11px] text-paper/50">
               v0.9

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,6 +22,7 @@ import {
   Flag,
   History,
 } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
@@ -51,43 +52,183 @@ function StatusPill({ status }: { status: PinStatus }) {
   );
 }
 
+type FilterState = {
+  statusFilter: "all" | PinStatus;
+  priorityFilter: "all" | PinPriority;
+  pinnedFilter: "all" | "pinned" | "unpinned";
+  tagFilter: string;
+  page: number;
+};
+
+type FilterAction =
+  | { type: "set_status_filter"; value: "all" | PinStatus }
+  | { type: "set_priority_filter"; value: "all" | PinPriority }
+  | { type: "set_pinned_filter"; value: "all" | "pinned" | "unpinned" }
+  | { type: "set_tag_filter"; value: string }
+  | { type: "set_page"; value: number };
+
+const INITIAL_FILTER_STATE: FilterState = {
+  statusFilter: "all",
+  priorityFilter: "all",
+  pinnedFilter: "all",
+  tagFilter: "all",
+  page: 1,
+};
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  if (action.type === "set_status_filter") {
+    return { ...state, statusFilter: action.value, page: 1 };
+  }
+  if (action.type === "set_priority_filter") {
+    return { ...state, priorityFilter: action.value, page: 1 };
+  }
+  if (action.type === "set_pinned_filter") {
+    return { ...state, pinnedFilter: action.value, page: 1 };
+  }
+  if (action.type === "set_tag_filter") {
+    return { ...state, tagFilter: action.value, page: 1 };
+  }
+  if (action.type === "set_page") {
+    return { ...state, page: action.value };
+  }
+  return state;
+}
+
+type NewPinState = {
+  showNewPin: boolean;
+  newPinTitle: string;
+  newPinPage: string;
+  newPinDescription: string;
+  newPinTagId: string;
+  newPinPriority: PinPriority;
+};
+
+type NewPinAction =
+  | { type: "toggle_form" }
+  | { type: "set_title"; value: string }
+  | { type: "set_page"; value: string }
+  | { type: "set_description"; value: string }
+  | { type: "set_tag_id"; value: string }
+  | { type: "set_priority"; value: PinPriority }
+  | { type: "reset_and_close" };
+
+const INITIAL_NEW_PIN_STATE: NewPinState = {
+  showNewPin: false,
+  newPinTitle: "",
+  newPinPage: "",
+  newPinDescription: "",
+  newPinTagId: "all",
+  newPinPriority: "medium",
+};
+
+function newPinReducer(state: NewPinState, action: NewPinAction): NewPinState {
+  if (action.type === "toggle_form") {
+    return { ...state, showNewPin: !state.showNewPin };
+  }
+  if (action.type === "set_title") {
+    return { ...state, newPinTitle: action.value };
+  }
+  if (action.type === "set_page") {
+    return { ...state, newPinPage: action.value };
+  }
+  if (action.type === "set_description") {
+    return { ...state, newPinDescription: action.value };
+  }
+  if (action.type === "set_tag_id") {
+    return { ...state, newPinTagId: action.value };
+  }
+  if (action.type === "set_priority") {
+    return { ...state, newPinPriority: action.value };
+  }
+  if (action.type === "reset_and_close") {
+    return INITIAL_NEW_PIN_STATE;
+  }
+  return state;
+}
+
+type CommentComposerState = {
+  newComment: string;
+  newCommentImage: File | null;
+  isAddingComment: boolean;
+};
+
+type CommentComposerAction =
+  | { type: "set_comment"; value: string }
+  | { type: "set_image"; value: File | null }
+  | { type: "start_submit" }
+  | { type: "stop_submit" }
+  | { type: "reset_composer" };
+
+const INITIAL_COMMENT_COMPOSER_STATE: CommentComposerState = {
+  newComment: "",
+  newCommentImage: null,
+  isAddingComment: false,
+};
+
+function commentComposerReducer(state: CommentComposerState, action: CommentComposerAction): CommentComposerState {
+  if (action.type === "set_comment") {
+    return { ...state, newComment: action.value };
+  }
+  if (action.type === "set_image") {
+    return { ...state, newCommentImage: action.value };
+  }
+  if (action.type === "start_submit") {
+    return { ...state, isAddingComment: true };
+  }
+  if (action.type === "stop_submit") {
+    return { ...state, isAddingComment: false };
+  }
+  if (action.type === "reset_composer") {
+    return { ...state, newComment: "", newCommentImage: null };
+  }
+  return state;
+}
+
 export function WorkspaceDashboard() {
-  const workspace = useCollabStore((s) => s.workspace);
-  const createPinInStore = useCollabStore((s) => s.createPin);
-  const togglePinStatusInStore = useCollabStore((s) => s.togglePinStatus);
-  const togglePinPinnedInStore = useCollabStore((s) => s.togglePinPinned);
-  const updatePinPriorityInStore = useCollabStore((s) => s.updatePinPriority);
-  const updateLinearLinkInStore = useCollabStore((s) => s.updateLinearLink);
-  const addCommentsInStore = useCollabStore((s) => s.addComments);
+  const {
+    workspace,
+    createPinInStore,
+    togglePinStatusInStore,
+    togglePinPinnedInStore,
+    updatePinPriorityInStore,
+    updateLinearLinkInStore,
+    addCommentsInStore,
+  } = useCollabStore(
+    useShallow((s) => ({
+      workspace: s.workspace,
+      createPinInStore: s.createPin,
+      togglePinStatusInStore: s.togglePinStatus,
+      togglePinPinnedInStore: s.togglePinPinned,
+      updatePinPriorityInStore: s.updatePinPriority,
+      updateLinearLinkInStore: s.updateLinearLink,
+      addCommentsInStore: s.addComments,
+    })),
+  );
 
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [statusFilter, setStatusFilter] = useState<"all" | PinStatus>("all");
-  const [priorityFilter, setPriorityFilter] = useState<"all" | PinPriority>("all");
-  const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
-  const [tagFilter, setTagFilter] = useState("all");
-  const [page, setPage] = useState(1);
+  const [filterState, dispatchFilter] = useReducer(filterReducer, INITIAL_FILTER_STATE);
+  const { statusFilter, priorityFilter, pinnedFilter, tagFilter, page } = filterState;
   const pageSize = 6;
-  const [showNewPin, setShowNewPin] = useState(false);
-  const [newPinTitle, setNewPinTitle] = useState("");
-  const [newPinPage, setNewPinPage] = useState("");
-  const [newPinDescription, setNewPinDescription] = useState("");
-  const [newPinTagId, setNewPinTagId] = useState("all");
-  const [newPinPriority, setNewPinPriority] = useState<PinPriority>("medium");
-  const [newComment, setNewComment] = useState("");
-  const [newCommentImage, setNewCommentImage] = useState<File | null>(null);
+  const [newPinState, dispatchNewPin] = useReducer(newPinReducer, INITIAL_NEW_PIN_STATE);
+  const { showNewPin, newPinTitle, newPinPage, newPinDescription, newPinTagId, newPinPriority } = newPinState;
+  const [commentComposer, dispatchCommentComposer] = useReducer(commentComposerReducer, INITIAL_COMMENT_COMPOSER_STATE);
+  const { newComment, newCommentImage, isAddingComment } = commentComposer;
+
+  const spacesById = useMemo(() => new Map(workspace.spaces.map((space) => [space.id, space])), [workspace.spaces]);
+  const pinsById = useMemo(() => new Map(workspace.pins.map((pin) => [pin.id, pin])), [workspace.pins]);
 
   const selectedSpace = useMemo(() => {
     const requestedSpaceId = searchParams.get("space");
     if (requestedSpaceId) {
       if (requestedSpaceId === "all") return null;
-      const requested = workspace.spaces.find((s) => s.id === requestedSpaceId);
+      const requested = spacesById.get(requestedSpaceId);
       if (requested) return requested;
     }
     return null;
-  }, [searchParams, workspace.spaces]);
+  }, [searchParams, spacesById]);
 
   const activeSpaceId = selectedSpace?.id ?? "all";
 
@@ -106,8 +247,8 @@ export function WorkspaceDashboard() {
   const selectedPin = useMemo(() => {
     const requestedPinId = searchParams.get("mark");
     if (!requestedPinId) return null;
-    return workspace.pins.find((pin) => pin.id === requestedPinId) ?? null;
-  }, [searchParams, selectedSpace, workspace.pins]);
+    return pinsById.get(requestedPinId) ?? null;
+  }, [searchParams, pinsById]);
 
   const selectedPinIndex = selectedPin ? visiblePins.findIndex((p) => p.id === selectedPin.id) : -1;
   const canGoPrevPin = selectedPinIndex > 0;
@@ -118,6 +259,14 @@ export function WorkspaceDashboard() {
     return workspace.comments.filter((c) => c.pinId === selectedPin.id);
   }, [selectedPin, workspace.comments]);
 
+  const commentCountByPinId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const comment of workspace.comments) {
+      counts.set(comment.pinId, (counts.get(comment.pinId) ?? 0) + 1);
+    }
+    return counts;
+  }, [workspace.comments]);
+
   const selectedPinEvents = useMemo(() => {
     if (!selectedPin) return [];
     return workspace.markEvents
@@ -127,6 +276,16 @@ export function WorkspaceDashboard() {
 
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
   const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
+  const shortDateTimeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    [],
+  );
 
   const spaceStats = useMemo(() => {
     let open = 0;
@@ -147,11 +306,7 @@ export function WorkspaceDashboard() {
   }, [visiblePins, page]);
 
   useEffect(() => {
-    setPage(1);
-  }, [statusFilter, priorityFilter, pinnedFilter, tagFilter, selectedSpace?.id]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
+    if (page > totalPages) dispatchFilter({ type: "set_page", value: totalPages });
   }, [page, totalPages]);
 
   function updateDashboardUrl(nextSpaceId: string, nextPinId?: string | null) {
@@ -178,12 +333,7 @@ export function WorkspaceDashboard() {
       priority: newPinPriority,
     });
     updateDashboardUrl(targetSpace.id, created.id);
-    setNewPinTitle("");
-    setNewPinPage("");
-    setNewPinDescription("");
-    setNewPinTagId("all");
-    setNewPinPriority("medium");
-    setShowNewPin(false);
+    dispatchNewPin({ type: "reset_and_close" });
   }
 
   function togglePinStatus(pinId: string) {
@@ -205,33 +355,38 @@ export function WorkspaceDashboard() {
   async function addComment() {
     if (!selectedPin) return;
     if (!newComment.trim() && !newCommentImage) return;
+    if (isAddingComment) return;
 
-    const next: PinComment[] = [];
-    if (newComment.trim()) {
-      next.push({
-        id: `c_${Date.now()}_txt`,
-        pinId: selectedPin.id,
-        authorId: "usr_1",
-        createdAt: new Date().toISOString(),
-        type: "text",
-        body: newComment.trim(),
-      });
-    }
-    if (newCommentImage) {
-      const url = await readFileAsDataUrl(newCommentImage);
-      next.push({
-        id: `c_${Date.now()}_img`,
-        pinId: selectedPin.id,
-        authorId: "usr_1",
-        createdAt: new Date().toISOString(),
-        type: "image",
-        imageUrl: url,
-      });
-    }
+    dispatchCommentComposer({ type: "start_submit" });
+    try {
+      const next: PinComment[] = [];
+      if (newComment.trim()) {
+        next.push({
+          id: `c_${Date.now()}_txt`,
+          pinId: selectedPin.id,
+          authorId: "usr_1",
+          createdAt: new Date().toISOString(),
+          type: "text",
+          body: newComment.trim(),
+        });
+      }
+      if (newCommentImage) {
+        const url = await readFileAsDataUrl(newCommentImage);
+        next.push({
+          id: `c_${Date.now()}_img`,
+          pinId: selectedPin.id,
+          authorId: "usr_1",
+          createdAt: new Date().toISOString(),
+          type: "image",
+          imageUrl: url,
+        });
+      }
 
-    addCommentsInStore(next);
-    setNewComment("");
-    setNewCommentImage(null);
+      addCommentsInStore(next);
+      dispatchCommentComposer({ type: "reset_composer" });
+    } finally {
+      dispatchCommentComposer({ type: "stop_submit" });
+    }
   }
 
   function goToAdjacentPin(direction: "prev" | "next") {
@@ -248,13 +403,14 @@ export function WorkspaceDashboard() {
     const cap = selectedPin.capture;
 
     return (
-      <AppShell fullBleed>
+      <AppShell>
+        <div className="mx-auto w-full max-w-6xl">
         <div className="motion-enter mb-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", null)}
-              className="interactive-lift inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
+              className="interactive-lift inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 py-2 text-[0.9375rem] text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:min-h-0 sm:px-2 sm:py-1 sm:text-[0.8125rem]"
             >
               <ArrowLeft className="size-3.5" />
               Back to triage
@@ -263,10 +419,26 @@ export function WorkspaceDashboard() {
               <span className="mr-2 text-[0.6875rem] text-ink-3">
                 {selectedPinIndex >= 0 ? `${selectedPinIndex + 1} of ${visiblePins.length}` : "Mark view"}
               </span>
-              <Button type="button" size="sm" variant="ghost" onClick={() => goToAdjacentPin("prev")} disabled={!canGoPrevPin} className="interactive-lift h-8 px-2.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => goToAdjacentPin("prev")}
+                disabled={!canGoPrevPin}
+                aria-label="Go to previous mark"
+                className="interactive-lift h-11 px-3 sm:h-8 sm:px-2.5"
+              >
                 <ArrowLeft className="size-3.5" />
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => goToAdjacentPin("next")} disabled={!canGoNextPin} className="interactive-lift h-8 px-2.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => goToAdjacentPin("next")}
+                disabled={!canGoNextPin}
+                aria-label="Go to next mark"
+                className="interactive-lift h-11 px-3 sm:h-8 sm:px-2.5"
+              >
                 <ArrowRight className="size-3.5" />
               </Button>
             </div>
@@ -286,14 +458,14 @@ export function WorkspaceDashboard() {
                   <span className="font-mono text-[0.75rem] text-ink-3">{selectedPin.id}</span>
                   <StatusPill status={selectedPin.status} />
                 </div>
-                <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">{selectedPin.title}</h1>
+                <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">{selectedPin.title}</h1>
               </div>
               <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                 <Button
                   size="sm"
                   variant={selectedPin.pinned ? "default" : "outline"}
                   onClick={() => togglePinned(selectedPin.id)}
-                  className="h-8 border-mark/30 text-[0.8125rem]"
+                  className="h-11 border-mark/30 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
                 >
                   <Bookmark className="size-3" />
                   {selectedPin.pinned ? "Pinned" : "Pin"}
@@ -302,19 +474,24 @@ export function WorkspaceDashboard() {
                   aria-label="Mark priority"
                   value={selectedPin.priority}
                   onChange={(e) => updatePriority(selectedPin.id, e.target.value as PinPriority)}
-                  className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.75rem] text-ink"
+                  className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:px-2 sm:text-[0.75rem]"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                   <option value="critical">Critical</option>
                 </select>
-                <Button size="sm" variant="outline" onClick={() => togglePinStatus(selectedPin.id)} className="h-8 text-[0.8125rem]">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => togglePinStatus(selectedPin.id)}
+                  className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+                >
                   {selectedPin.status === "open" ? "Close mark" : "Reopen"}
                 </Button>
                 {selectedPin.linearUrl ? (
-                  <Button size="sm" variant="outline" asChild className="h-8 text-[0.8125rem]">
-                    <a href={selectedPin.linearUrl} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" asChild className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]">
+                    <a href={selectedPin.linearUrl} target="_blank" rel="noreferrer" aria-label="Open linked Linear ticket">
                       <ExternalLink className="size-3" />
                       Linear
                     </a>
@@ -323,7 +500,7 @@ export function WorkspaceDashboard() {
               </div>
             </div>
 
-            <p className="mt-3 max-w-[65ch] text-[1rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
+            <p className="mt-3 max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2">{selectedPin.description}</p>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-medium",
@@ -404,7 +581,7 @@ export function WorkspaceDashboard() {
                 <MetaCell icon={Globe} label="Browser" value={cap.browser ?? "—"} />
                 {cap.os ? <MetaCell icon={Monitor} label="OS" value={cap.os} /> : null}
                 {cap.capturedAt ? (
-                  <MetaCell icon={Globe} label="Captured" value={new Date(cap.capturedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })} />
+                  <MetaCell icon={Globe} label="Captured" value={shortDateTimeFormatter.format(new Date(cap.capturedAt))} />
                 ) : null}
               </div>
             ) : null}
@@ -419,11 +596,13 @@ export function WorkspaceDashboard() {
                   value={selectedPin.linearUrl ?? ""}
                   onChange={(e) => updateLinearLink(selectedPin.id, e.target.value)}
                   placeholder="https://linear.app/..."
-                  className="h-9 max-w-md bg-paper-2 text-[0.8125rem]"
+                  inputMode="url"
+                  maxLength={512}
+                  className="h-11 max-w-md bg-paper-2 text-[1rem] sm:h-9 sm:text-[0.8125rem]"
                 />
                 {selectedPin.linearUrl ? (
-                  <Button size="sm" variant="ghost" asChild className="h-9 shrink-0 px-2.5">
-                    <a href={selectedPin.linearUrl} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="ghost" asChild className="h-11 shrink-0 px-3 sm:h-9 sm:px-2.5">
+                    <a href={selectedPin.linearUrl} target="_blank" rel="noreferrer" aria-label="Open linked Linear ticket in new tab">
                       <Link2 className="size-4" />
                     </a>
                   </Button>
@@ -454,11 +633,11 @@ export function WorkspaceDashboard() {
                           <span className="text-[0.75rem] font-medium text-ink">{author?.name ?? "Unknown"}</span>
                         </div>
                         <span className="text-[0.625rem] text-ink-3">
-                          {new Date(comment.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          {shortDateTimeFormatter.format(new Date(comment.createdAt))}
                         </span>
                       </div>
                       {comment.type === "text" ? (
-                        <p className="text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
+                        <p className="break-words text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
                       ) : comment.imageUrl ? (
                         <div className="overflow-hidden rounded border border-rule">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -471,12 +650,31 @@ export function WorkspaceDashboard() {
               </div>
 
               <div className="mt-4 rounded-lg border border-dashed border-rule bg-paper p-3">
-                <Textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Leave a comment" className="min-h-[56px] bg-paper text-[0.8125rem]" />
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => dispatchCommentComposer({ type: "set_comment", value: e.target.value })}
+                  placeholder="Leave a comment"
+                  maxLength={2000}
+                  disabled={isAddingComment}
+                  className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[56px] sm:text-[0.8125rem]"
+                />
                 <div className="mt-2 flex items-center justify-between gap-2">
-                  <Input type="file" accept="image/*" onChange={(e) => setNewCommentImage(e.target.files?.[0] ?? null)} className="h-8 max-w-[160px] text-[0.6875rem]" />
-                  <Button size="sm" onClick={addComment} disabled={!newComment.trim() && !newCommentImage} className="h-8">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    aria-label="Attach image to comment"
+                    disabled={isAddingComment}
+                    onChange={(e) => dispatchCommentComposer({ type: "set_image", value: e.target.files?.[0] ?? null })}
+                    className="h-11 max-w-[190px] text-[1rem] sm:h-8 sm:max-w-[160px] sm:text-[0.6875rem]"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addComment}
+                    disabled={isAddingComment || (!newComment.trim() && !newCommentImage)}
+                    className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+                  >
                     <MessageCircle className="size-3.5" />
-                    Send
+                    {isAddingComment ? "Sending..." : "Send"}
                   </Button>
                 </div>
               </div>
@@ -498,12 +696,7 @@ export function WorkspaceDashboard() {
                         <div className="mb-1.5 flex items-center justify-between gap-2">
                           <span className="text-[0.75rem] font-medium text-ink">{actor?.name ?? "Unknown member"}</span>
                           <span className="text-[0.625rem] text-ink-3">
-                            {new Date(event.createdAt).toLocaleString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {shortDateTimeFormatter.format(new Date(event.createdAt))}
                           </span>
                         </div>
                         <p className="text-[0.75rem] leading-relaxed text-ink-2">{description}</p>
@@ -515,12 +708,14 @@ export function WorkspaceDashboard() {
             </div>
           </div>
         </div>
+        </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell fullBleed>
+    <AppShell>
+      <div className="mx-auto w-full max-w-6xl">
       <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
         <div className="flex items-center gap-2 text-[0.75rem]">
           <span className="inline-flex items-center gap-1 rounded-full bg-mark-soft px-2.5 py-1 font-medium text-mark">
@@ -538,7 +733,7 @@ export function WorkspaceDashboard() {
             aria-label="Select space"
             value={activeSpaceId}
             onChange={(e) => updateDashboardUrl(e.target.value, null)}
-            className="h-8 appearance-none rounded-md border border-rule bg-paper pl-3 pr-8 text-[0.8125rem] font-medium text-ink transition-colors hover:bg-paper-3"
+            className="h-11 appearance-none rounded-md border border-rule bg-paper pl-3 pr-9 text-[1rem] font-medium text-ink transition-colors hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:pr-8 sm:text-[0.8125rem]"
           >
             <option value="all">All spaces</option>
             {workspace.spaces.map((space) => (
@@ -556,12 +751,19 @@ export function WorkspaceDashboard() {
 
         <div className="ml-auto flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-1.5 w-16 overflow-hidden rounded-full bg-paper-3">
+            <div
+              role="progressbar"
+              aria-label="Mark completion"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={spaceStats.pct}
+              className="flex h-1.5 w-16 overflow-hidden rounded-full bg-paper-3"
+            >
               <div className="rounded-full bg-ok transition-all duration-300" style={{ width: `${spaceStats.pct}%` }} />
             </div>
             <span className="text-[0.6875rem] font-medium text-ink-2">{spaceStats.pct}%</span>
           </div>
-          <Button size="sm" variant="ghost" asChild className="interactive-lift h-7 px-2 text-[0.6875rem] text-ink-3">
+          <Button size="sm" variant="ghost" asChild className="interactive-lift h-10 px-3 text-[0.875rem] text-ink-3 sm:h-7 sm:px-2 sm:text-[0.6875rem]">
             <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
               <Layers className="size-3" />
               Manage
@@ -575,9 +777,9 @@ export function WorkspaceDashboard() {
           <Filter className="size-3.5 text-ink-3" />
           <select
             aria-label="Filter by status"
-            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:px-2 sm:text-[0.8125rem]"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "all" | PinStatus)}
+            onChange={(e) => dispatchFilter({ type: "set_status_filter", value: e.target.value as "all" | PinStatus })}
           >
             <option value="all">All statuses</option>
             <option value="open">Open</option>
@@ -585,9 +787,9 @@ export function WorkspaceDashboard() {
           </select>
           <select
             aria-label="Filter by tag"
-            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:px-2 sm:text-[0.8125rem]"
             value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
+            onChange={(e) => dispatchFilter({ type: "set_tag_filter", value: e.target.value })}
           >
             <option value="all">All tags</option>
             {workspace.tags.map((tag) => (
@@ -598,9 +800,9 @@ export function WorkspaceDashboard() {
           </select>
           <select
             aria-label="Filter by priority"
-            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:px-2 sm:text-[0.8125rem]"
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as "all" | PinPriority)}
+            onChange={(e) => dispatchFilter({ type: "set_priority_filter", value: e.target.value as "all" | PinPriority })}
           >
             <option value="all">All priorities</option>
             <option value="critical">Critical</option>
@@ -610,9 +812,9 @@ export function WorkspaceDashboard() {
           </select>
           <select
             aria-label="Filter by pinned"
-            className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+            className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-8 sm:px-2 sm:text-[0.8125rem]"
             value={pinnedFilter}
-            onChange={(e) => setPinnedFilter(e.target.value as "all" | "pinned" | "unpinned")}
+            onChange={(e) => dispatchFilter({ type: "set_pinned_filter", value: e.target.value as "all" | "pinned" | "unpinned" })}
           >
             <option value="all">Pinned + unpinned</option>
             <option value="pinned">Pinned only</option>
@@ -622,7 +824,12 @@ export function WorkspaceDashboard() {
             {visiblePins.length} marks
           </span>
         </div>
-        <Button size="sm" variant={showNewPin ? "default" : "outline"} onClick={() => setShowNewPin(!showNewPin)} className="h-8">
+        <Button
+          size="sm"
+          variant={showNewPin ? "default" : "outline"}
+          onClick={() => dispatchNewPin({ type: "toggle_form" })}
+          className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+        >
           <Plus className="size-3.5" />
           New mark
         </Button>
@@ -631,12 +838,36 @@ export function WorkspaceDashboard() {
       {showNewPin ? (
         <div className="mb-4 rounded-lg border border-rule bg-paper-2 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input value={newPinTitle} onChange={(e) => setNewPinTitle(e.target.value)} placeholder="Mark title" className="bg-paper text-[0.8125rem]" autoFocus />
-            <Input value={newPinPage} onChange={(e) => setNewPinPage(e.target.value)} placeholder="Page path, e.g. /pricing" className="bg-paper text-[0.8125rem]" />
+            <Input
+              value={newPinTitle}
+              onChange={(e) => dispatchNewPin({ type: "set_title", value: e.target.value })}
+              placeholder="Mark title"
+              maxLength={180}
+              className="h-11 bg-paper text-[1rem] sm:h-9 sm:text-[0.8125rem]"
+              autoFocus
+            />
+            <Input
+              value={newPinPage}
+              onChange={(e) => dispatchNewPin({ type: "set_page", value: e.target.value })}
+              placeholder="Page path, e.g. /pricing"
+              maxLength={300}
+              className="h-11 bg-paper text-[1rem] sm:h-9 sm:text-[0.8125rem]"
+            />
             <div className="sm:col-span-2">
-              <Textarea value={newPinDescription} onChange={(e) => setNewPinDescription(e.target.value)} placeholder="What should change?" className="min-h-[60px] bg-paper text-[0.8125rem]" />
+              <Textarea
+                value={newPinDescription}
+                onChange={(e) => dispatchNewPin({ type: "set_description", value: e.target.value })}
+                placeholder="What should change?"
+                maxLength={3000}
+                className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[60px] sm:text-[0.8125rem]"
+              />
             </div>
-            <select aria-label="Choose tag" className="h-9 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink" value={newPinTagId} onChange={(e) => setNewPinTagId(e.target.value)}>
+            <select
+              aria-label="Choose tag"
+              className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-9 sm:px-2 sm:text-[0.8125rem]"
+              value={newPinTagId}
+              onChange={(e) => dispatchNewPin({ type: "set_tag_id", value: e.target.value })}
+            >
               <option value="all">Tag (optional)</option>
               {workspace.tags.map((tag) => (
                 <option key={tag.id} value={tag.id}>
@@ -646,16 +877,16 @@ export function WorkspaceDashboard() {
             </select>
             <select
               aria-label="Choose priority"
-              className="h-9 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
+              className="h-11 rounded-md border border-rule bg-paper px-3 text-[1rem] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/50 sm:h-9 sm:px-2 sm:text-[0.8125rem]"
               value={newPinPriority}
-              onChange={(e) => setNewPinPriority(e.target.value as PinPriority)}
+              onChange={(e) => dispatchNewPin({ type: "set_priority", value: e.target.value as PinPriority })}
             >
               <option value="critical">Critical priority</option>
               <option value="high">High priority</option>
               <option value="medium">Medium priority</option>
               <option value="low">Low priority</option>
             </select>
-            <Button onClick={createPin} disabled={!newPinTitle.trim() || !newPinPage.trim()} className="h-9">
+            <Button onClick={createPin} disabled={!newPinTitle.trim() || !newPinPage.trim()} className="h-11 px-3 text-[0.9375rem] sm:h-9 sm:px-2.5 sm:text-[0.8125rem]">
               Create mark
             </Button>
           </div>
@@ -671,13 +902,13 @@ export function WorkspaceDashboard() {
         ) : null}
         {paginatedPins.map((pin) => {
           const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
-          const commentCount = workspace.comments.filter((c) => c.pinId === pin.id).length;
+          const commentCount = commentCountByPinId.get(pin.id) ?? 0;
           return (
             <button
               key={pin.id}
               type="button"
               onClick={() => updateDashboardUrl(selectedSpace?.id ?? "all", pin.id)}
-              className="interactive-lift group flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-3.5 text-left hover:border-rule hover:bg-paper-2 hover:shadow-[0_10px_30px_-24px_oklch(17%_0.01_50_/_0.55)]"
+              className="interactive-lift group flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-3.5 text-left transition-colors hover:border-rule hover:bg-paper-2 hover:shadow-[0_10px_30px_-24px_oklch(17%_0.01_50_/_0.55)] focus-visible:border-rule focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40"
             >
               <span className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-paper", pin.status === "open" ? "bg-mark" : "bg-ok")} />
               <div className="min-w-0 flex-1">
@@ -740,8 +971,8 @@ export function WorkspaceDashboard() {
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2.5"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="h-11 px-3 sm:h-8 sm:px-2.5"
+              onClick={() => dispatchFilter({ type: "set_page", value: Math.max(1, page - 1) })}
               disabled={page === 1}
             >
               <ArrowLeft className="size-3.5" />
@@ -751,8 +982,8 @@ export function WorkspaceDashboard() {
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 px-2.5"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="h-11 px-3 sm:h-8 sm:px-2.5"
+              onClick={() => dispatchFilter({ type: "set_page", value: Math.min(totalPages, page + 1) })}
               disabled={page === totalPages}
             >
               Next
@@ -761,6 +992,7 @@ export function WorkspaceDashboard() {
           </div>
         </div>
       ) : null}
+      </div>
     </AppShell>
   );
 }

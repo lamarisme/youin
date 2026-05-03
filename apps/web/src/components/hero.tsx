@@ -52,7 +52,7 @@ export function Hero() {
             <Pin n={2} className="!h-5 !w-5 !text-[0.62rem] shrink-0 mt-0.5" />
             <p className="font-mono text-[12px] leading-relaxed text-ink-3">
               <span className="text-ink-2">Editor&rsquo;s note ·</span> this
-              page was reviewed in Markly. Each numbered mark is a real annotation
+              page was reviewed in youin. Each numbered mark is a real annotation
               we left for ourselves.
             </p>
           </div>
