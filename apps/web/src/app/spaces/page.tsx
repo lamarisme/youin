@@ -191,7 +191,7 @@ function SpacesPageContent() {
     const completionPct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
 
     return (
-      <AppShell>
+      <AppShell fullBleed>
         <PageContainer>
           <div className="mb-6">
             <button
@@ -437,7 +437,7 @@ function SpacesPageContent() {
   const totalOpen = workspace.pins.filter((p) => p.status === "open").length;
 
   return (
-    <AppShell>
+    <AppShell fullBleed>
       <PageContainer className="space-y-5">
         <AppHeader
           title="Spaces"

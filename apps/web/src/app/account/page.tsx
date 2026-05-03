@@ -81,7 +81,7 @@ export default function AccountPage() {
     .toUpperCase() || "U";
 
   return (
-    <AppShell>
+    <AppShell fullBleed>
       <PageContainer>
         <AppHeader
           title="Settings"
