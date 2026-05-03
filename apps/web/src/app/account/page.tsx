@@ -50,7 +50,7 @@ export default function AccountPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto w-full max-w-6xl space-y-10">
         <AppHeader
           title="Settings"
           eyebrow="Account"
@@ -58,7 +58,7 @@ export default function AccountPage() {
         />
 
         {/* Overview row */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-lg border border-rule bg-paper-2 px-4 py-3">
             <p className="text-eyebrow">Plan</p>
             <p className="mt-1 font-display text-lg font-semibold text-ink">Team</p>
@@ -77,7 +77,7 @@ export default function AccountPage() {
         </div>
 
         {/* Team + Controls */}
-        <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
         {/* Team access */}
         <section>
           <h2 className="font-display text-lg font-semibold text-ink">Reviewer access</h2>
@@ -97,7 +97,7 @@ export default function AccountPage() {
             </Button>
           </div>
 
-          <div className="mt-4 space-y-1">
+          <div className="mt-5 space-y-1">
             {members.map((member) => (
               <div
                 key={member.id}
@@ -145,7 +145,7 @@ export default function AccountPage() {
           <h2 className="font-display text-lg font-semibold text-ink">Workspace controls</h2>
           <p className="mt-1 text-[0.8125rem] text-ink-2">Security and notification settings.</p>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 space-y-2.5">
             <div className="flex items-center justify-between rounded-md border border-rule px-3 py-2.5">
               <p className="text-[0.8125rem] text-ink">Two-factor authentication</p>
               <Badge variant="outline" className="text-[0.625rem]">Coming soon</Badge>
@@ -156,7 +156,7 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-5">
             <Button variant="outline" size="sm" className="h-8 text-[0.8125rem]">
               Download account data
             </Button>
@@ -164,7 +164,7 @@ export default function AccountPage() {
         </section>
         </div>
 
-        <div className="my-8 h-px bg-rule" />
+        <div className="h-px bg-rule" />
 
       {/* Profile */}
         <section>
@@ -173,7 +173,7 @@ export default function AccountPage() {
           Controls how teammates identify you in comments and review activity.
         </p>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[200px_1fr]">
+        <div className="mt-6 grid gap-8 lg:grid-cols-[220px_1fr]">
           <div className="flex flex-col items-center gap-3 rounded-lg border border-rule bg-paper-2 p-5">
             <Avatar className="size-16">
               <AvatarFallback className="bg-paper-3 text-xl font-semibold text-ink">{initials}</AvatarFallback>

@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-paper">
       <div className="mx-auto flex min-h-screen w-full max-w-[1360px] flex-col px-5 py-5 sm:px-8 md:px-10">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">M</span>
             <span className="font-display text-lg font-semibold text-ink">Markly</span>
@@ -15,8 +15,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
         <div className="h-px bg-rule" />
 
-        <main className="grid flex-1 items-center gap-10 py-8 md:grid-cols-[1.1fr_1fr] md:gap-14 md:py-12">
-          <section className="space-y-6">
+        <main className="grid flex-1 items-center gap-12 py-8 md:grid-cols-[1.12fr_1fr] md:gap-16 md:py-12">
+          <section className="section-block">
             <div>
               <p className="text-eyebrow mb-2">Markly auth</p>
               <h1 className="text-editorial-md text-ink">Review faster. Ship&nbsp;cleaner.</h1>
@@ -26,7 +26,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
               Sign in to route live feedback into tickets with context attached. Your reviewer stays on the page, your developer opens a complete brief.
             </p>
 
-            <div className="max-w-[30rem] overflow-hidden rounded-lg border border-rule">
+            <div className="max-w-[32rem] overflow-hidden rounded-lg border border-rule">
               <div className="grid grid-cols-3 gap-px bg-rule">
                 <Stat label="Teams" value="236" />
                 <Stat label="Marks / day" value="12.4k" />
@@ -41,7 +41,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </ul>
           </section>
 
-          <section className="w-full md:justify-self-end md:max-w-[460px]">{children}</section>
+          <section className="w-full md:justify-self-end md:max-w-[480px]">{children}</section>
         </main>
       </div>
     </div>

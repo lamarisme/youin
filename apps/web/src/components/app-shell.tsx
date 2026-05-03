@@ -27,12 +27,12 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
     <div className="min-h-screen bg-paper">
       <div
         className={cn(
-          "mx-auto grid w-full gap-0 lg:grid-cols-[220px_1fr]",
+          "mx-auto grid w-full gap-0 lg:grid-cols-[240px_1fr]",
           fullBleed ? "max-w-none" : "max-w-[1520px]",
         )}
       >
-        <aside className="flex flex-col border-b border-rule bg-paper-2 px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-6">
-          <div className="mb-3 flex items-center justify-between lg:mb-8">
+        <aside className="flex flex-col border-b border-rule bg-paper-2 px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-7">
+          <div className="mb-3 flex items-center justify-between lg:mb-10">
             <Link href="/dashboard" className="flex items-center gap-2.5 px-1">
               <span className="pin-dot shrink-0">M</span>
               <span className="font-display text-lg font-semibold text-ink">Markly</span>
@@ -52,7 +52,7 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
             </div>
           </div>
 
-          <nav className="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-0.5 lg:overflow-visible lg:pb-0">
+          <nav className="flex gap-1.5 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -61,7 +61,7 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] transition-colors lg:flex lg:w-full lg:gap-2.5 lg:px-2.5",
+                    "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] transition-colors lg:flex lg:w-full lg:gap-2.5 lg:px-3",
                     isActive
                       ? "bg-mark-soft font-medium text-ink"
                       : "text-ink-2 hover:bg-paper-3 hover:text-ink",
@@ -74,7 +74,7 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
             })}
           </nav>
 
-          <div className="mt-auto hidden pt-8 lg:block">
+          <div className="mt-auto hidden pt-10 lg:block">
             <button
               type="button"
               onClick={toggleTheme}
@@ -98,8 +98,8 @@ export function AppShell({ children, fullBleed = false }: AppShellProps) {
 
         <main
           className={cn(
-            "min-h-screen py-6 sm:py-8 lg:py-8",
-            fullBleed ? "px-3 sm:px-5 lg:px-6 xl:px-8" : "px-4 sm:px-8 lg:px-10",
+            "min-h-screen py-6 sm:py-8 lg:py-10",
+            fullBleed ? "px-3 sm:px-5 lg:px-6 xl:px-8" : "px-4 sm:px-8 lg:px-12 xl:px-14",
           )}
         >
           {children}

@@ -437,7 +437,7 @@ function SpacesPageContent() {
 
   return (
     <AppShell>
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto w-full max-w-6xl space-y-7">
         <AppHeader
           title="Spaces"
           eyebrow={workspace.name}
@@ -455,7 +455,7 @@ function SpacesPageContent() {
           </div>
         </AppHeader>
 
-      <div className="mb-6">
+      <div>
         {showCreate ? (
           <div className="rounded-lg border border-rule bg-paper-2 p-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
@@ -492,7 +492,7 @@ function SpacesPageContent() {
         )}
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <select
           aria-label="Filter spaces by priority"
           className="h-8 rounded-md border border-rule bg-paper px-2 text-[0.8125rem] text-ink"
@@ -518,7 +518,7 @@ function SpacesPageContent() {
         <span className="text-[0.75rem] text-ink-3">{filteredSpaces.length} spaces</span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {paginatedSpaces.map((space) => {
           const stats = statsMap.get(space.id);
           const pct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
@@ -606,13 +606,13 @@ function SpacesPageContent() {
       </div>
 
       {filteredSpaces.length === 0 ? (
-        <div className="mt-4 rounded-lg border border-dashed border-rule py-12 text-center">
+        <div className="rounded-lg border border-dashed border-rule py-12 text-center">
           <p className="text-[0.8125rem] text-ink-3">No spaces match the current filters.</p>
         </div>
       ) : null}
 
         {filteredSpaces.length > 0 ? (
-          <div className="mt-4 flex items-center justify-between border-t border-rule pt-3 text-[0.75rem] text-ink-3">
+          <div className="flex items-center justify-between border-t border-rule pt-4 text-[0.75rem] text-ink-3">
             <span>
               Page {page} of {totalPages}
             </span>

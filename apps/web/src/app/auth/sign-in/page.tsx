@@ -61,15 +61,15 @@ function SignInPageContent() {
   }
 
   return (
-    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6">
-      <div className="mb-5">
+    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
+      <div className="mb-6">
         <h2 className="font-display text-xl font-semibold text-ink">Sign in</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
           Enter your workspace credentials to continue.
         </p>
       </div>
 
-      <form className="space-y-4" onSubmit={handleSignIn}>
+      <form className="space-y-5" onSubmit={handleSignIn}>
         <div className="space-y-1.5">
           <Label htmlFor="email" className="text-[0.75rem] font-medium text-ink-2">
             Email
@@ -105,7 +105,7 @@ function SignInPageContent() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Checkbox id="remember" />
           <Label htmlFor="remember" className="text-[0.8125rem] text-ink-2">
             Keep me signed in for 30 days
@@ -123,7 +123,7 @@ function SignInPageContent() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
         New to Markly?{" "}
         <Link href="/auth/sign-up" className="font-medium text-ink hover:text-mark">
           Create account

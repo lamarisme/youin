@@ -80,7 +80,7 @@ export default function Home() {
     <div className="min-h-screen bg-paper text-ink">
       {/* ── Header ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
+        <div className="page-shell flex items-center justify-between py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">M</span>
             <span className="font-display text-lg font-semibold">Markly</span>
@@ -100,7 +100,7 @@ export default function Home() {
           </div>
         </div>
         {/* Mobile nav */}
-        <div className="mx-auto w-full max-w-6xl px-6 pb-3 md:hidden">
+        <div className="page-shell pb-3 md:hidden">
           <nav aria-label="Mobile navigation" className="flex gap-2 overflow-x-auto">
             {navItems.map((item) => (
               <a
@@ -115,9 +115,9 @@ export default function Home() {
         </div>
       </header>
 
-      <main>
+      <main className="section-stack pb-16 pt-10 md:pb-24 md:pt-14">
         {/* ── Hero ──────────────────────────────────────────── */}
-        <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-14 md:pb-24 md:pt-20">
+        <section className="page-shell">
           <div className="grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-start md:gap-14">
             <div>
               <h1 className="text-editorial text-ink">
@@ -159,10 +159,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+        <div className="page-shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Problem ──────────────────────────────────────── */}
-        <section id="problem" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+        <section id="problem" className="page-shell section-block">
           <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:gap-12">
             <div>
               <h2 className="text-editorial-md text-ink">
@@ -189,10 +189,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+        <div className="page-shell"><div className="h-px bg-rule" /></div>
 
         {/* ── How it works ─────────────────────────────────── */}
-        <section id="loop" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+        <section id="loop" className="page-shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">How it works</p>
             <h2 className="text-editorial-md text-ink">Three moves. One loop.</h2>
@@ -211,10 +211,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+        <div className="page-shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Who it's for ─────────────────────────────────── */}
-        <section id="who" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+        <section id="who" className="page-shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Who it&rsquo;s for</p>
             <h2 className="text-editorial-md text-ink">Built for people who notice first.</h2>
@@ -234,10 +234,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="mx-auto max-w-6xl px-6"><div className="h-px bg-rule" /></div>
+        <div className="page-shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Pricing ──────────────────────────────────────── */}
-        <section id="pricing" className="mx-auto w-full max-w-6xl px-6 py-16 md:py-20">
+        <section id="pricing" className="page-shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Pricing</p>
             <h2 className="text-editorial-md text-ink">Per workspace, not per seat.</h2>
@@ -286,7 +286,7 @@ export default function Home() {
 
         {/* ── CTA ──────────────────────────────────────────── */}
         <section id="install" className="border-t border-rule bg-paper-2">
-          <div className="mx-auto grid w-full max-w-6xl gap-8 px-6 py-16 md:grid-cols-[1.3fr_1fr] md:items-center md:py-20">
+          <div className="page-shell grid gap-8 py-12 md:grid-cols-[1.3fr_1fr] md:items-center md:py-14">
             <div>
               <h2 className="text-editorial-md text-ink">
                 Stop describing the thing you can point&nbsp;at.
@@ -322,8 +322,8 @@ export default function Home() {
       </main>
 
       {/* ── Footer ─────────────────────────────────────────── */}
-      <footer className="border-t border-rule bg-paper px-6 py-6">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between">
+      <footer className="border-t border-rule bg-paper py-6">
+        <div className="page-shell flex items-center justify-between">
           <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 Markly</p>
           <div className="flex gap-4 text-[0.75rem] text-ink-3">
             <a href="#" className="hover:text-ink">Terms</a>

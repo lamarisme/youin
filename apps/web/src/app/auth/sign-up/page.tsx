@@ -104,8 +104,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6">
-      <div className="mb-5 space-y-3">
+    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
+      <div className="mb-6 space-y-4">
         <div>
           <h2 className="font-display text-xl font-semibold text-ink">Create account</h2>
           <p className="mt-1 text-[0.8125rem] text-ink-2">
@@ -125,7 +125,7 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+      <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
         {step === 0 ? (
           <>
             <div className="space-y-1.5">
@@ -169,7 +169,7 @@ export default function SignUpPage() {
               />
             </div>
 
-            <div className="flex items-start gap-2">
+            <div className="flex items-start gap-2.5">
               <Checkbox
                 id="terms"
                 checked={agreedToTerms}
@@ -267,8 +267,8 @@ export default function SignUpPage() {
             <p className="text-[0.8125rem] text-ink-2">
               Choose your defaults. You can change these later in Settings.
             </p>
-            <div className="space-y-2 rounded-lg border border-rule bg-paper p-3">
-              <div className="flex items-start gap-2">
+            <div className="space-y-3 rounded-lg border border-rule bg-paper p-4">
+              <div className="flex items-start gap-2.5">
                 <Checkbox
                   id="all-marks"
                   checked={showAllMarksByDefault}
@@ -279,7 +279,7 @@ export default function SignUpPage() {
                   Open dashboard with all marks across spaces by default
                 </Label>
               </div>
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2.5">
                 <Checkbox
                   id="digest"
                   checked={digestEnabled}
@@ -290,7 +290,7 @@ export default function SignUpPage() {
                   Enable daily digest for workspace activity
                 </Label>
               </div>
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2.5">
                 <Checkbox
                   id="critical"
                   checked={autoPinCritical}
@@ -305,7 +305,7 @@ export default function SignUpPage() {
           </>
         ) : null}
 
-        <div className="flex items-center justify-between gap-2 pt-1">
+        <div className="flex items-center justify-between gap-2 pt-2">
           {step > 0 ? (
             <Button type="button" variant="ghost" onClick={goBack} className="h-9">
               Back
@@ -335,7 +335,7 @@ export default function SignUpPage() {
         {successMessage ? <p className="text-[0.75rem] text-ok">{successMessage}</p> : null}
       </form>
 
-      <p className="mt-5 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
         Already have an account?{" "}
         <Link href="/auth/sign-in" className="font-medium text-ink hover:text-mark">
           Sign in
