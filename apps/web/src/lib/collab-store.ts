@@ -3,16 +3,52 @@
 import { create } from "zustand";
 
 import type {
-  MarkEvent,
-  MarkEventType,
   PinComment,
   PinItem,
   PinPriority,
   SpacePriority,
+  UserProfile,
   Workspace,
   WorkspaceSpace,
 } from "@/lib/collab-types";
-import { mockWorkspace } from "@/lib/mock-workspace";
+import * as ws from "@/lib/workspace/workspace-actions";
+import type { ProfileUpdates } from "@/lib/workspace/workspace-actions";
+import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+
+function workspaceStateFromBundle(bundle: WorkspaceBootstrap) {
+  return {
+    workspaceId: bundle.workspaceId,
+    userId: bundle.userId,
+    workspace: bundle.workspace,
+    profile: bundle.profile,
+  };
+}
+
+function emptyWorkspace(): Workspace {
+  return {
+    id: "",
+    name: "",
+    spaces: [],
+    tags: [],
+    members: [],
+    invites: [],
+    pins: [],
+    comments: [],
+    markEvents: [],
+  };
+}
+
+function emptyProfile(): UserProfile {
+  return {
+    id: "",
+    name: "",
+    email: "",
+    title: "",
+    bio: "",
+    avatarUrl: "",
+    timezone: "UTC",
+  };
+}
 
 interface CreatePinInput {
   title: string;
@@ -20,243 +56,168 @@ interface CreatePinInput {
   page: string;
   spaceId: string;
   tagIds: string[];
-  assigneeId?: string;
+  assigneeId?: string | null;
   priority?: PinPriority;
 }
 
 interface CollabStoreState {
+  workspaceId: string;
+  userId: string;
   workspace: Workspace;
-  createSpace: (name: string, notes: string) => WorkspaceSpace;
-  updateSpace: (spaceId: string, updates: Pick<WorkspaceSpace, "name" | "notes">) => void;
-  toggleSpacePinned: (spaceId: string) => void;
-  updateSpacePriority: (spaceId: string, priority: SpacePriority) => void;
-  deleteSpace: (spaceId: string) => void;
-  createPin: (input: CreatePinInput) => PinItem;
-  togglePinStatus: (pinId: string) => void;
-  togglePinPinned: (pinId: string) => void;
-  updatePinPriority: (pinId: string, priority: PinPriority) => void;
-  updateLinearLink: (pinId: string, linearUrl: string) => void;
-  addComments: (comments: PinComment[]) => void;
-}
-
-const currentActorId = "usr_1";
-
-function buildMarkEvent(
-  pinId: string,
-  type: MarkEventType,
-  options?: {
-    fromValue?: string;
-    toValue?: string;
-    metadata?: string;
-  },
-): MarkEvent {
-  return {
-    id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    pinId,
-    actorId: currentActorId,
-    type,
-    createdAt: new Date().toISOString(),
-    fromValue: options?.fromValue,
-    toValue: options?.toValue,
-    metadata: options?.metadata,
-  };
+  profile: UserProfile;
+  hydrate: (bundle: WorkspaceBootstrap) => void;
+  createSpace: (name: string, notes: string) => Promise<WorkspaceSpace>;
+  updateSpace: (spaceId: string, updates: Pick<WorkspaceSpace, "name" | "notes">) => Promise<void>;
+  toggleSpacePinned: (spaceId: string) => Promise<void>;
+  updateSpacePriority: (spaceId: string, priority: SpacePriority) => Promise<void>;
+  deleteSpace: (spaceId: string) => Promise<void>;
+  createPin: (input: CreatePinInput) => Promise<PinItem>;
+  togglePinStatus: (pinId: string) => Promise<void>;
+  togglePinPinned: (pinId: string) => Promise<void>;
+  updatePinPriority: (pinId: string, priority: PinPriority) => Promise<void>;
+  updateLinearLink: (pinId: string, linearUrl: string) => Promise<void>;
+  addComments: (comments: PinComment[]) => Promise<void>;
+  updateProfile: (updates: ProfileUpdates) => Promise<void>;
+  updateWorkspace: (updates: { name: string }) => Promise<void>;
+  inviteMember: (email: string) => Promise<void>;
+  cancelInvite: (inviteId: string) => Promise<void>;
+  removeMember: (memberUserId: string) => Promise<void>;
+  createTag: (label: string) => Promise<void>;
+  deleteTag: (tagId: string) => Promise<void>;
+  assignMark: (pinId: string, assigneeId: string | null) => Promise<void>;
+  setMarkTags: (pinId: string, tagIds: string[]) => Promise<void>;
 }
 
 export const useCollabStore = create<CollabStoreState>()((set) => ({
-  workspace: mockWorkspace,
+  workspaceId: "",
+  userId: "",
+  workspace: emptyWorkspace(),
+  profile: emptyProfile(),
 
-  createSpace: (name, notes) => {
-    const created: WorkspaceSpace = {
-      id: `spc_${Date.now()}`,
-      name: name.trim(),
-      notes: notes.trim() || "No description",
-      createdAt: new Date().toISOString(),
-      priority: "medium",
-      pinned: false,
-    };
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        spaces: [created, ...state.workspace.spaces],
-      },
-    }));
-    return created;
+  hydrate: (bundle) => {
+    set(workspaceStateFromBundle(bundle));
   },
 
-  updateSpace: (spaceId, updates) => {
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        spaces: state.workspace.spaces.map((space) =>
-          space.id === spaceId
-            ? {
-                ...space,
-                name: updates.name.trim(),
-                notes: updates.notes.trim(),
-              }
-            : space,
-        ),
-      },
-    }));
+  createSpace: async (name, notes) => {
+    const [bundle, createdId] = await ws.createSpaceAction(name, notes);
+    const space = bundle.workspace.spaces.find((s) => s.id === createdId)!;
+    set(workspaceStateFromBundle(bundle));
+    return space;
   },
 
-  toggleSpacePinned: (spaceId) => {
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        spaces: state.workspace.spaces.map((space) =>
-          space.id === spaceId ? { ...space, pinned: !space.pinned } : space,
-        ),
-      },
-    }));
+  updateSpace: async (spaceId, updates) => {
+    const bundle = await ws.updateSpaceAction(spaceId, {
+      name: updates.name,
+      notes: updates.notes,
+    });
+    set(workspaceStateFromBundle(bundle));
   },
 
-  updateSpacePriority: (spaceId, priority) => {
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        spaces: state.workspace.spaces.map((space) =>
-          space.id === spaceId ? { ...space, priority } : space,
-        ),
-      },
-    }));
+  toggleSpacePinned: async (spaceId) => {
+    const bundle = await ws.toggleSpacePinnedAction(spaceId);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  deleteSpace: (spaceId) => {
-    set((state) => ({
-      workspace: (() => {
-        const removedPinIds = state.workspace.pins
-          .filter((pin) => pin.spaceId === spaceId)
-          .map((pin) => pin.id);
-        return {
-          ...state.workspace,
-          spaces: state.workspace.spaces.filter((space) => space.id !== spaceId),
-          pins: state.workspace.pins.filter((pin) => pin.spaceId !== spaceId),
-          comments: state.workspace.comments.filter((comment) =>
-            state.workspace.pins.some((pin) => pin.id === comment.pinId && pin.spaceId !== spaceId),
-          ),
-          markEvents: state.workspace.markEvents.filter((event) => !removedPinIds.includes(event.pinId)),
-        };
-      })(),
-    }));
+  updateSpacePriority: async (spaceId, priority) => {
+    const bundle = await ws.updateSpacePriorityAction(spaceId, priority);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  createPin: (input) => {
-    const created: PinItem = {
-      id: `MRK-${Date.now()}`,
-      title: input.title.trim(),
-      description: input.description.trim() || "No description yet.",
-      page: input.page.trim(),
+  deleteSpace: async (spaceId) => {
+    const bundle = await ws.deleteSpaceAction(spaceId);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  createPin: async (input) => {
+    const [bundle, markId] = await ws.createPinAction({
+      title: input.title,
+      description: input.description,
+      page: input.page,
       spaceId: input.spaceId,
-      status: "open",
-      priority: input.priority ?? "medium",
-      pinned: false,
       tagIds: input.tagIds,
-      assigneeId: input.assigneeId,
-    };
-    const createdEvent = buildMarkEvent(created.id, "created", {
-      metadata: "Mark created in triage.",
+      assigneeId: input.assigneeId ?? null,
+      priority: input.priority,
     });
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        pins: [created, ...state.workspace.pins],
-        markEvents: [createdEvent, ...state.workspace.markEvents],
-      },
-    }));
-    return created;
+    set(workspaceStateFromBundle(bundle));
+    return bundle.workspace.pins.find((p) => p.id === markId)!;
   },
 
-  togglePinStatus: (pinId) => {
-    set((state) => {
-      const currentPin = state.workspace.pins.find((pin) => pin.id === pinId);
-      if (!currentPin) return state;
-      const nextStatus = currentPin.status === "open" ? ("closed" as const) : ("open" as const);
-      const event = buildMarkEvent(pinId, "status_changed", {
-        fromValue: currentPin.status,
-        toValue: nextStatus,
-      });
-      return {
-        workspace: {
-          ...state.workspace,
-          pins: state.workspace.pins.map((pin) => (pin.id === pinId ? { ...pin, status: nextStatus } : pin)),
-          markEvents: [event, ...state.workspace.markEvents],
-        },
-      };
-    });
+  togglePinStatus: async (pinId) => {
+    const bundle = await ws.togglePinStatusAction(pinId);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  togglePinPinned: (pinId) => {
-    set((state) => {
-      const currentPin = state.workspace.pins.find((pin) => pin.id === pinId);
-      if (!currentPin) return state;
-      const nextPinned = !currentPin.pinned;
-      const event = buildMarkEvent(pinId, "pinned_changed", {
-        fromValue: String(currentPin.pinned),
-        toValue: String(nextPinned),
-      });
-      return {
-        workspace: {
-          ...state.workspace,
-          pins: state.workspace.pins.map((pin) => (pin.id === pinId ? { ...pin, pinned: nextPinned } : pin)),
-          markEvents: [event, ...state.workspace.markEvents],
-        },
-      };
-    });
+  togglePinPinned: async (pinId) => {
+    const bundle = await ws.togglePinPinnedAction(pinId);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  updatePinPriority: (pinId, priority) => {
-    set((state) => {
-      const currentPin = state.workspace.pins.find((pin) => pin.id === pinId);
-      if (!currentPin || currentPin.priority === priority) return state;
-      const event = buildMarkEvent(pinId, "priority_changed", {
-        fromValue: currentPin.priority,
-        toValue: priority,
-      });
-      return {
-        workspace: {
-          ...state.workspace,
-          pins: state.workspace.pins.map((pin) => (pin.id === pinId ? { ...pin, priority } : pin)),
-          markEvents: [event, ...state.workspace.markEvents],
-        },
-      };
-    });
+  updatePinPriority: async (pinId, priority) => {
+    const bundle = await ws.updatePinPriorityAction(pinId, priority);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  updateLinearLink: (pinId, linearUrl) => {
-    set((state) => {
-      const currentPin = state.workspace.pins.find((pin) => pin.id === pinId);
-      if (!currentPin || (currentPin.linearUrl ?? "") === linearUrl) return state;
-      const normalized = linearUrl.trim();
-      const event = buildMarkEvent(pinId, "linear_link_updated", {
-        fromValue: currentPin.linearUrl ?? "",
-        toValue: normalized,
-      });
-      return {
-        workspace: {
-          ...state.workspace,
-          pins: state.workspace.pins.map((pin) => (pin.id === pinId ? { ...pin, linearUrl: normalized } : pin)),
-          markEvents: [event, ...state.workspace.markEvents],
-        },
-      };
-    });
+  updateLinearLink: async (pinId, linearUrl) => {
+    const bundle = await ws.updateLinearLinkAction(pinId, linearUrl);
+    set(workspaceStateFromBundle(bundle));
   },
 
-  addComments: (comments) => {
+  addComments: async (comments) => {
     if (!comments.length) return;
-    set((state) => ({
-      workspace: {
-        ...state.workspace,
-        comments: [...comments, ...state.workspace.comments],
-        markEvents: [
-          ...comments.map((comment) =>
-            buildMarkEvent(comment.pinId, "comment_added", {
-              metadata: comment.type === "image" ? "Image comment added." : "Text comment added.",
-            }),
-          ),
-          ...state.workspace.markEvents,
-        ],
-      },
-    }));
+    const pinId = comments[0].pinId;
+    const bundle = await ws.addMarkCommentsAction(
+      pinId,
+      comments.map((c) => ({
+        type: c.type === "image" ? "image" : "text",
+        body: c.body,
+        imageUrl: c.imageUrl,
+      })),
+    );
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  updateProfile: async (updates) => {
+    const bundle = await ws.updateProfileAction(updates);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  updateWorkspace: async (updates) => {
+    const bundle = await ws.updateWorkspaceAction(updates);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  inviteMember: async (email) => {
+    const bundle = await ws.inviteMemberAction(email);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  cancelInvite: async (inviteId) => {
+    const bundle = await ws.cancelInviteAction(inviteId);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  removeMember: async (memberUserId) => {
+    const bundle = await ws.removeMemberAction(memberUserId);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  createTag: async (label) => {
+    const bundle = await ws.createTagAction(label);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  deleteTag: async (tagId) => {
+    const bundle = await ws.deleteTagAction(tagId);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  assignMark: async (pinId, assigneeId) => {
+    const bundle = await ws.assignMarkAction(pinId, assigneeId);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  setMarkTags: async (pinId, tagIds) => {
+    const bundle = await ws.setMarkTagsAction(pinId, tagIds);
+    set(workspaceStateFromBundle(bundle));
   },
 }));

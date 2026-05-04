@@ -16,7 +16,7 @@ export function AppHeader({ title, subtitle, eyebrow, children }: AppHeaderProps
             <p className="max-w-[58ch] text-[0.8125rem] leading-relaxed text-ink-2">{subtitle}</p>
           ) : null}
         </div>
-        {children ? <div className="flex items-center gap-2">{children}</div> : null}
+        {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
       </div>
       <div className="mt-4 h-px bg-rule sm:mt-5" />
     </header>

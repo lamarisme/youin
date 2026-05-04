@@ -1,11 +1,20 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 
-import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
+const WD = dynamic(
+  () =>
+    import("@/components/dashboard/workspace-dashboard").then((mod) => ({
+      default: mod.WorkspaceDashboard,
+    })),
+  { ssr: false },
+);
 
 export default function DashboardPage() {
   return (
     <Suspense fallback={null}>
-      <WorkspaceDashboard />
+      <WD />
     </Suspense>
   );
 }

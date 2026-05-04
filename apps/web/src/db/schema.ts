@@ -27,7 +27,26 @@ export const markEventTypeEnum = pgEnum("mark_event_type", [
   "pinned_changed",
   "linear_link_updated",
   "comment_added",
+  "assignee_changed",
+  "tag_changed",
 ]);
+
+/** Application profile; `id` matches `auth.users.id` (enforced in Postgres / Supabase migration). */
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").primaryKey(),
+    /** Mirror of auth email for member lists (updated from trigger/app). */
+    email: text("email"),
+    fullName: text("full_name"),
+    title: text("title").notNull().default(""),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url").notNull().default(""),
+    timezone: text("timezone").notNull().default("UTC"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("profiles_updated_at_idx").on(table.updatedAt)],
+);
 
 export const workspaces = pgTable(
   "workspaces",
@@ -249,6 +268,7 @@ export const workspaceInvites = pgTable(
   ],
 );
 
+export type Profile = typeof profiles.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Mark = typeof marks.$inferSelect;

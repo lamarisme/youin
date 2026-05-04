@@ -3,12 +3,15 @@ import { ArrowRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 const loopSteps = [
   {
     num: "01",
     title: "Mark an element",
-    body: "Click anything on any live page. The extension captures selector, viewport, browser, and a screenshot automatically.",
+    body: "Click anything on your app from the Chrome extension or the npm dev dep. Selector, viewport, browser, and screenshot are captured automatically.",
   },
   {
     num: "02",
@@ -24,47 +27,47 @@ const loopSteps = [
 
 const personas = [
   {
+    role: "Product teams",
+    detail: "3-15 people",
+    body: "Designers, PMs, and devs annotating the same live surface. Replaces scattered Slack threads and Linear backlogs you keep meaning to clean up.",
+  },
+  {
+    role: "Solo devs",
+    detail: "Indie + small teams",
+    body: "Install youin as an npm dev dep. Treat your own app as a spatial to-do list — the fix lives where the bug lives.",
+  },
+  {
     role: "Web agencies",
     detail: "5-50 people",
-    body: "Multiple client sites, weekly review loops, and feedback that needs to be precise and fast.",
-  },
-  {
-    role: "Product teams",
-    detail: "PM + 1-3 devs",
-    body: "Small teams that cannot afford a QA relay chain across tools and tabs.",
-  },
-  {
-    role: "EU-first orgs",
-    detail: "GDPR-bound",
-    body: "Self-host keeps client data in your infra while preserving the same review workflow.",
+    body: "Multi-client review at scale. Guest links keep clients in your app, not in their inbox.",
   },
 ];
 
 const tiers = [
   {
-    name: "Free",
-    price: "\u20AC0",
-    period: "forever",
-    blurb: "Try the loop on one project.",
-    cta: "Add to Chrome",
-    features: ["1 workspace", "Unlimited marks", "Auto-context capture", "3 AI tickets / mo"],
+    name: "Solo",
+    price: "\u20AC29",
+    period: "/ month",
+    blurb: "For indie devs who think in pages.",
+    cta: "Start 14-day trial",
+    features: ["1 seat", "Chrome extension + npm dev dep", "Unlimited spaces & marks", "50 AI tickets / mo", "GitHub, Linear, Jira"],
   },
   {
     name: "Team",
-    price: "\u20AC29",
-    period: "workspace / mo",
-    blurb: "For studios running live projects.",
+    price: "\u20AC79",
+    period: "/ month",
+    blurb: "For product teams shipping weekly.",
     cta: "Start 14-day trial",
-    features: ["Unlimited workspaces", "Up to 10 members", "Unlimited AI tickets", "GitHub, Linear, Jira"],
+    features: ["Up to 10 seats", "Everything in Solo", "Unlimited AI tickets", "Space archiving", "Team invites"],
     highlighted: true,
   },
   {
     name: "Agency",
-    price: "\u20AC79",
-    period: "workspace / mo",
-    blurb: "For client-facing teams needing control.",
+    price: "\u20AC149",
+    period: "/ month",
+    blurb: "For client-facing teams.",
     cta: "Talk to us",
-    features: ["Everything in Team", "Unlimited members", "Client guest links", "Self-host + local AI"],
+    features: ["Unlimited seats", "Everything in Team", "Client guest links", "White-label widget", "Priority support"],
   },
 ];
 
@@ -75,12 +78,18 @@ const navItems = [
   { href: "#pricing", label: "Pricing" },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isSignedIn = Boolean(user);
+
   return (
     <div className="min-h-screen bg-paper text-ink">
       {/* ── Header ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
-        <div className="page-shell flex items-center justify-between py-3.5">
+        <div className="shell flex items-center justify-between py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">Y</span>
             <span className="font-display text-lg font-semibold">youin</span>
@@ -93,14 +102,25 @@ export default function Home() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/auth/sign-in" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
-              Sign in
-            </Link>
-            <ChromeCtaButton href="#install" compact />
+            {isSignedIn ? (
+              <Button asChild size="sm" className="h-9 px-3.5 text-[0.8125rem]">
+                <Link href="/dashboard?space=all" className="inline-flex items-center gap-2">
+                  Open dashboard
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Link href="/auth/sign-in" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
+                  Sign in
+                </Link>
+                <ChromeCtaButton href="#install" compact />
+              </>
+            )}
           </div>
         </div>
         {/* Mobile nav */}
-        <div className="page-shell pb-3 md:hidden">
+        <div className="shell pb-3 md:hidden">
           <nav aria-label="Mobile navigation" className="flex gap-2 overflow-x-auto">
             {navItems.map((item) => (
               <a
@@ -115,23 +135,23 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="section-stack pb-16 pt-10 md:pb-24 md:pt-14">
+      <main className="section-stack page-y-loose">
         {/* ── Hero ──────────────────────────────────────────── */}
-        <section className="page-shell">
+        <section className="shell">
           <div className="grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-start md:gap-14">
             <div>
               <h1 className="text-editorial text-ink">
-                The feedback layer for the live&nbsp;web.
+                Your to-do list lives on your&nbsp;app.
               </h1>
-              <p className="mt-5 max-w-[50ch] text-[1.0625rem] leading-relaxed text-ink-2">
-                Click any element on any live site, mark a comment, and ship a ticket without leaving the page.
+              <p className="mt-5 max-w-[52ch] text-[1.0625rem] leading-relaxed text-ink-2">
+                Click any element. Write what needs to change. Push it as a Linear, GitHub, or Jira ticket — all without leaving your live app. No spreadsheets. No Slack chains.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
-                <ChromeCtaButton href="#install">Add to Chrome — free</ChromeCtaButton>
+                <ChromeCtaButton href="#install">Add to Chrome</ChromeCtaButton>
                 <SecondaryCtaButton href="#loop">See the loop</SecondaryCtaButton>
               </div>
               <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
-                Chrome MV3 &middot; GitHub &middot; Linear &middot; Jira &middot; Self-host
+                Chrome extension &middot; npm dev dep &middot; Linear &middot; GitHub &middot; Jira
               </p>
             </div>
 
@@ -159,10 +179,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="page-shell"><div className="h-px bg-rule" /></div>
+        <div className="shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Problem ──────────────────────────────────────── */}
-        <section id="problem" className="page-shell section-block">
+        <section id="problem" className="shell section-block">
           <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:gap-12">
             <div>
               <h2 className="text-editorial-md text-ink">
@@ -189,10 +209,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="page-shell"><div className="h-px bg-rule" /></div>
+        <div className="shell"><div className="h-px bg-rule" /></div>
 
         {/* ── How it works ─────────────────────────────────── */}
-        <section id="loop" className="page-shell section-block">
+        <section id="loop" className="shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">How it works</p>
             <h2 className="text-editorial-md text-ink">Three moves. One loop.</h2>
@@ -211,10 +231,10 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="page-shell"><div className="h-px bg-rule" /></div>
+        <div className="shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Who it's for ─────────────────────────────────── */}
-        <section id="who" className="page-shell section-block">
+        <section id="who" className="shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Who it&rsquo;s for</p>
             <h2 className="text-editorial-md text-ink">Built for people who notice first.</h2>
@@ -234,13 +254,16 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="page-shell"><div className="h-px bg-rule" /></div>
+        <div className="shell"><div className="h-px bg-rule" /></div>
 
         {/* ── Pricing ──────────────────────────────────────── */}
-        <section id="pricing" className="page-shell section-block">
+        <section id="pricing" className="shell section-block">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Pricing</p>
-            <h2 className="text-editorial-md text-ink">Per workspace, not per seat.</h2>
+            <h2 className="text-editorial-md text-ink">Paid from day&nbsp;one.</h2>
+            <p className="mt-3 max-w-[52ch] text-[0.9375rem] leading-relaxed text-ink-2">
+              No free tier. Either the product earns its keep on day one, or it doesn&rsquo;t.
+            </p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -286,7 +309,7 @@ export default function Home() {
 
         {/* ── CTA ──────────────────────────────────────────── */}
         <section id="install" className="border-t border-rule bg-paper-2">
-          <div className="page-shell grid gap-8 py-12 md:grid-cols-[1.3fr_1fr] md:items-center md:py-14">
+          <div className="shell page-y-loose grid gap-8 md:grid-cols-[1.3fr_1fr] md:items-center">
             <div>
               <h2 className="text-editorial-md text-ink">
                 Stop describing the thing you can point&nbsp;at.
@@ -295,8 +318,8 @@ export default function Home() {
                 The next time someone spots a live issue, leave a mark instead of a message thread.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <ChromeCtaButton href="#install">Add to Chrome — free</ChromeCtaButton>
-                <SecondaryCtaButton href="mailto:hello@markly.tools">Talk to a human</SecondaryCtaButton>
+                <ChromeCtaButton href="#install">Add to Chrome</ChromeCtaButton>
+                <SecondaryCtaButton href="/contact">Talk to a human</SecondaryCtaButton>
               </div>
             </div>
 
@@ -323,7 +346,7 @@ export default function Home() {
 
       {/* ── Footer ─────────────────────────────────────────── */}
       <footer className="border-t border-rule bg-paper py-6">
-        <div className="page-shell flex items-center justify-between">
+        <div className="shell flex items-center justify-between">
           <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 youin</p>
           <div className="flex gap-4 text-[0.75rem] text-ink-3">
             <a href="#" className="hover:text-ink">Terms</a>

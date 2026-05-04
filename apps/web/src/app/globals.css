@@ -33,6 +33,17 @@
   --space-2xl: 3rem;
   --space-3xl: 4rem;
   --space-4xl: 6rem;
+
+  /* Container system — single source of truth for page widths and gutters */
+  --container-max: 76rem;        /* 1216px — landing, app inner content */
+  --container-max-wide: 90rem;   /* 1440px — dashboard / fullbleed app surfaces */
+  --container-pad: clamp(1rem, 2.4vw, 2rem);
+
+  /* Section vertical rhythm — paired with .shell for page padding */
+  --page-y: clamp(1.5rem, 3vw, 2.5rem);          /* app pages (dashboard, settings) */
+  --page-y-loose: clamp(2.5rem, 5vw, 4.5rem);    /* landing, marketing surfaces */
+  --section-gap: clamp(2.5rem, 5vw, 4.5rem);     /* between landing sections */
+  --block-gap: clamp(1.25rem, 2.4vw, 2rem);      /* within a section */
 }
 
 :root {
@@ -137,6 +148,26 @@
   ::selection {
     background: oklch(52% 0.19 25 / 0.22);
     color: inherit;
+  }
+
+  /* Native buttons default to arrow in many resets; keep pointer for affordance. */
+  button:not(:disabled):not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  input[type="button"]:not(:disabled),
+  input[type="reset"]:not(:disabled),
+  input[type="submit"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  a[href] {
+    cursor: pointer;
   }
 
   a:focus-visible,
@@ -269,21 +300,34 @@
     background: var(--color-rule);
   }
 
-  .page-shell {
+  .shell {
     margin-inline: auto;
     width: 100%;
-    max-width: 76rem;
-    padding-inline: clamp(1rem, 2.2vw, 2rem);
+    max-width: var(--container-max);
+    padding-inline: var(--container-pad);
+  }
+
+  .shell-full {
+    width: 100%;
+    padding-inline: var(--container-pad);
+  }
+
+  .page-y {
+    padding-block: var(--page-y);
+  }
+
+  .page-y-loose {
+    padding-block: var(--page-y-loose);
   }
 
   .section-stack {
     display: grid;
-    gap: clamp(2.5rem, 5vw, 4.5rem);
+    gap: var(--section-gap);
   }
 
   .section-block {
     display: grid;
-    gap: clamp(1.25rem, 2.4vw, 2rem);
+    gap: var(--block-gap);
   }
 
   .motion-enter {

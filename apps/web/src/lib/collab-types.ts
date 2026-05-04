@@ -7,7 +7,9 @@ export type MarkEventType =
   | "priority_changed"
   | "pinned_changed"
   | "linear_link_updated"
-  | "comment_added";
+  | "comment_added"
+  | "assignee_changed"
+  | "tag_changed";
 
 export type TeamRole = "owner" | "member";
 

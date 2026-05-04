@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-paper">
-      <div className="mx-auto flex min-h-screen w-full max-w-[1360px] flex-col px-5 py-5 sm:px-8 md:px-10">
+      <div className="shell flex min-h-screen flex-col page-y">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">Y</span>

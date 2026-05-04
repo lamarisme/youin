@@ -13,7 +13,12 @@ import { createClient } from "@/lib/supabase/client";
 function SignInPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = useMemo(() => searchParams.get("next") || "/dashboard?space=all", [searchParams]);
+  const next = useMemo(() => {
+    const requested = searchParams.get("next");
+    if (!requested) return "/dashboard?space=all";
+    return requested.startsWith("/") ? requested : "/dashboard?space=all";
+  }, [searchParams]);
+  const callbackError = useMemo(() => searchParams.get("error"), [searchParams]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,10 +51,12 @@ function SignInPageContent() {
     try {
       const supabase = createClient();
       const origin = window.location.origin;
+      const redirectTo = new URL("/auth/callback", origin);
+      redirectTo.searchParams.set("next", next);
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/dashboard?space=all`,
+          redirectTo: redirectTo.toString(),
         },
       });
       if (oauthError) {
@@ -90,7 +97,7 @@ function SignInPageContent() {
             <Label htmlFor="password" className="text-[0.75rem] font-medium text-ink-2">
               Password
             </Label>
-            <Link href="#" className="text-[0.6875rem] text-ink-3 hover:text-ink">
+            <Link href="/auth/forgot-password" className="text-[0.6875rem] text-ink-3 hover:text-ink">
               Forgot password?
             </Link>
           </div>
@@ -112,7 +119,7 @@ function SignInPageContent() {
           </Label>
         </div>
 
-        {error ? <p className="text-[0.75rem] text-mark">{error}</p> : null}
+        {error || callbackError ? <p className="text-[0.75rem] text-mark">{error ?? callbackError}</p> : null}
 
         <Button type="submit" className="w-full bg-mark text-paper hover:bg-mark-bright" disabled={loading}>
           {loading ? "Signing in..." : "Sign in"}
