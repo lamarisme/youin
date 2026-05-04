@@ -7,6 +7,8 @@ import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { useCollabStore } from "@/lib/collab-store";
 
+import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
+
 import { SpaceDetailView } from "./space-detail-view";
 import { SpacesListView } from "./spaces-list-view";
 
@@ -48,7 +50,7 @@ function SpacesClientContent() {
 
 export default function SpacesClient() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<WorkspaceMainSkeleton />}>
       <SpacesClientContent />
     </Suspense>
   );

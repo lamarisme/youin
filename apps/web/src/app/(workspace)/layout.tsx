@@ -6,19 +6,21 @@ import { getWorkspaceBootstrap } from "@/lib/workspace/workspace-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountLayout({ children }: { children: React.ReactNode }) {
+const DEFAULT_AFTER_SIGN_IN = "/dashboard?space=all";
+
+export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/auth/sign-in?next=${encodeURIComponent("/account")}`);
+    redirect(`/auth/sign-in?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
 
   const bootstrap = await getWorkspaceBootstrap();
   if (!bootstrap) {
-    redirect(`/auth/error?reason=incomplete&next=${encodeURIComponent("/account")}`);
+    redirect(`/auth/error?reason=incomplete&next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
 
   return <WorkspaceDataProvider bootstrap={bootstrap}>{children}</WorkspaceDataProvider>;

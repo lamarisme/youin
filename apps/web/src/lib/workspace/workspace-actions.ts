@@ -11,6 +11,7 @@ import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 function revalidateWorkspaceViews(): void {
   revalidatePath("/dashboard");
   revalidatePath("/spaces");
+  revalidatePath("/account");
 }
 
 async function requireSession(): Promise<{
