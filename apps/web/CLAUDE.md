@@ -17,6 +17,7 @@
 - Theme strategy: light-first with high-quality dark mode support.
 - Motion: expressive where it improves clarity and perceived momentum, always with reduced-motion accommodations.
 - Explicit anti-reference: avoid over-minimal layouts that feel empty or under-informative.
+- Reference calibration (identity only, not a visual clone): **Linear / Raycast-class** — dense calm surfaces, fast scanning, keyboard-forward patterns where they reduce friction.
 
 ### Design Principles
 - Build one visible workflow: every major surface should reinforce Capture -> Triage -> Ship.
@@ -24,3 +25,11 @@
 - Keep density intentional: rich information without clutter, avoiding both visual noise and excessive emptiness.
 - Use accents as decision signals, not decoration: emphasis should guide status, priority, and next action.
 - Craft interactions for operational trust: responsive controls, clear state transitions, and context-preserving details.
+- Prefer scannable, low-friction layouts suited to long review sessions and repeated triage.
+
+### Accessibility & inclusion
+- Baseline: WCAG 2.2 AA where applicable.
+- Respect `prefers-reduced-motion`; decorative motion should degrade gracefully.
+
+### Repository note
+- Full typography/token/stack notes for agents live in the root `.impeccable.md`; keep this Design Context section in sync when either file changes.
