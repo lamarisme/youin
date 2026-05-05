@@ -37,7 +37,7 @@ export function TeamTab() {
       toast.success(`Invite sent to ${inviteEmail.trim()}.`);
       setInviteEmail("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send invite.");
+      toast.error(err instanceof Error ? err.message : "Couldn't send invite.");
     } finally {
       setIsInviting(false);
     }
@@ -48,7 +48,7 @@ export function TeamTab() {
       await cancelInvite(inviteId);
       toast.success(`Cancelled invite for ${email}.`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not cancel invite.");
+      toast.error(err instanceof Error ? err.message : "Couldn't cancel invite.");
     }
   }
 
@@ -58,7 +58,7 @@ export function TeamTab() {
       await removeMember(memberUserId);
       toast.success(`Removed ${name} from the workspace.`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not remove member.");
+      toast.error(err instanceof Error ? err.message : "Couldn't remove member.");
     }
   }
 

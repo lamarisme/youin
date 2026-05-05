@@ -21,7 +21,7 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
     <button
       type="button"
       onClick={onSelect}
-      className="group flex w-full items-center gap-4 rounded-lg border border-rule bg-paper px-4 py-4 text-left transition-colors hover:bg-paper-2"
+      className="interactive-lift group flex w-full items-center gap-4 px-4 py-4 text-left hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
     >
       <div className="relative flex size-12 shrink-0 items-center justify-center">
         <svg viewBox="0 0 36 36" className="size-12 -rotate-90">

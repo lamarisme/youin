@@ -14,8 +14,14 @@ import {
 } from "@/components/select-options";
 import { Field } from "@/components/field";
 import { Pagination } from "@/components/pagination";
-import { Surface } from "@/components/surface";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { actionErrorMessage } from "@/lib/action-error";
 import type { SpacePriority } from "@/lib/collab-types";
@@ -41,6 +47,8 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
   const [priorityFilter, setPriorityFilter] = useState<"all" | SpacePriority>("all");
   const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
   const [page, setPage] = useState(1);
+
+  const todayName = `Release-${new Date().toISOString().slice(0, 10)}`;
 
   const statsMap = useSpaceStats(workspace);
 
@@ -86,29 +94,72 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
           <span className="font-mono text-ink">{workspace.spaces.length}</span>
           <span>spaces</span>
-          <span className="mx-1 text-rule">/</span>
+          <span aria-hidden className="mx-1 text-rule">/</span>
           <span className="font-mono text-ink">{totalPins}</span>
           <span>marks</span>
-          <span className="mx-1 text-rule">/</span>
+          <span aria-hidden className="mx-1 text-rule">/</span>
           <span className="font-mono text-mark">{totalOpen}</span>
           <span>open</span>
         </div>
       </AppHeader>
 
       <div>
-        {showCreate ? (
-          <Surface padding="md">
-            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCreate(true)}
+          className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+        >
+          <Plus className="size-3.5" />
+          New space
+        </Button>
+
+        <Dialog
+          open={showCreate}
+          onOpenChange={(open) => {
+            setShowCreate(open);
+            if (!open) {
+              setNewName("");
+              setNewNotes("");
+            }
+          }}
+        >
+          <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>New space</DialogTitle>
+              <DialogDescription>
+                Scope marks to a release, project, or review session.
+              </DialogDescription>
+            </DialogHeader>
+            <div
+              className="grid gap-4"
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void handleCreate();
+                }
+              }}
+            >
               <Field id="new-space-name" label="Name">
                 <Input
                   id="new-space-name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Release-2026-05-01"
+                  placeholder={todayName}
                   className="h-9 bg-paper text-[0.8125rem]"
                   autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                  onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && handleCreate()}
                 />
+                {!newName.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setNewName(todayName)}
+                    className="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] text-ink-3 transition-colors hover:text-mark"
+                  >
+                    Use today&apos;s date{" "}
+                    <span className="font-mono text-[0.625rem] text-ink-2">{todayName}</span>
+                  </button>
+                ) : null}
               </Field>
               <Field id="new-space-notes" label="Description">
                 <Input
@@ -119,30 +170,28 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
                   className="h-9 bg-paper text-[0.8125rem]"
                 />
               </Field>
-              <div className="flex items-end gap-2">
-                <Button onClick={handleCreate} disabled={!newName.trim()} className="h-9">
-                  Create
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setShowCreate(false);
-                    setNewName("");
-                    setNewNotes("");
-                  }}
-                  className="h-9"
-                >
-                  Cancel
-                </Button>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                    ⌘
+                  </kbd>
+                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                    Enter
+                  </kbd>
+                  <span>to create</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" onClick={() => setShowCreate(false)} className="h-9">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                    Create
+                  </Button>
+                </div>
               </div>
             </div>
-          </Surface>
-        ) : (
-          <Button variant="outline" size="sm" onClick={() => setShowCreate(true)} className="h-8">
-            <Plus className="size-3.5" />
-            New space
-          </Button>
-        )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -169,20 +218,27 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
         <span className="text-[0.75rem] text-ink-3">{filteredSpaces.length} spaces</span>
       </div>
 
-      <div className="space-y-2.5">
-        {paginatedSpaces.map((space) => (
-          <SpaceListItem
-            key={space.id}
-            space={space}
-            stats={statsMap.get(space.id)}
-            onSelect={() => onSelectSpace(space.id)}
+      <div className="overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.38)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)]">
+        {filteredSpaces.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            className="rounded-none border-0 px-6 py-16"
+            title="No spaces match the current filters."
+            description="Try clearing filters, or create a new space."
           />
-        ))}
+        ) : (
+          <div className="divide-y divide-rule">
+            {paginatedSpaces.map((space) => (
+              <SpaceListItem
+                key={space.id}
+                space={space}
+                stats={statsMap.get(space.id)}
+                onSelect={() => onSelectSpace(space.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {filteredSpaces.length === 0 ? (
-        <EmptyState title="No spaces match the current filters." />
-      ) : null}
 
       {filteredSpaces.length > 0 ? (
         <Pagination

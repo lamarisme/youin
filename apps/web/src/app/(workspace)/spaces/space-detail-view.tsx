@@ -13,10 +13,12 @@ import {
   Edit3,
   Link2,
   MessageCircle,
+  Plus,
   Trash2,
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
+import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
@@ -25,10 +27,17 @@ import { PriorityBadge } from "@/components/priority-badge";
 import { Surface } from "@/components/surface";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/action-error";
-import type { SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
+import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -40,13 +49,14 @@ interface SpaceDetailViewProps {
 }
 
 export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
-  const { workspace, updateSpace, toggleSpacePinned, updateSpacePriority, deleteSpace } = useCollabStore(
+  const { workspace, updateSpace, toggleSpacePinned, updateSpacePriority, deleteSpace, createPin } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       updateSpace: s.updateSpace,
       toggleSpacePinned: s.toggleSpacePinned,
       updateSpacePriority: s.updateSpacePriority,
       deleteSpace: s.deleteSpace,
+      createPin: s.createPin,
     })),
   );
 
@@ -63,6 +73,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(space.name);
   const [editNotes, setEditNotes] = useState(space.notes);
+  const [showNew, setShowNew] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   function startEdit() {
     setEditing(true);
@@ -81,11 +94,39 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   }
 
   async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
     try {
       await deleteSpace(space.id);
+      setConfirmDelete(false);
       onBack();
     } catch (e) {
       toast.error(actionErrorMessage(e, "Couldn't delete this space."));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleCreatePin(input: {
+    title: string;
+    page: string;
+    description: string;
+    tagIds: string[];
+    priority: PinPriority;
+  }) {
+    try {
+      await createPin({
+        title: input.title,
+        description: input.description,
+        page: input.page,
+        spaceId: space.id,
+        tagIds: input.tagIds,
+        assigneeId: workspace.members[0]?.id,
+        priority: input.priority,
+      });
+      setShowNew(false);
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't create this mark."));
     }
   }
 
@@ -109,7 +150,19 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               {editing ? (
-                <div className="space-y-2">
+                <div
+                  key="edit"
+                  className="motion-enter space-y-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      setEditing(false);
+                    } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                      e.preventDefault();
+                      void saveEdit();
+                    }
+                  }}
+                >
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
@@ -121,26 +174,46 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                     onChange={(e) => setEditNotes(e.target.value)}
                     className="min-h-[60px] bg-paper-2 text-[0.8125rem]"
                   />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={saveEdit} className="h-8">
-                      Save
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="h-8">
-                      Cancel
-                    </Button>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                    <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                        ⌘
+                      </kbd>
+                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                        Enter
+                      </kbd>
+                      <span>to save</span>
+                      <span className="text-rule">·</span>
+                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                        Esc
+                      </kbd>
+                      <span>to cancel</span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="h-8">
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={saveEdit} className="h-8">
+                        Save
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <>
-                  <h1 className="font-display text-2xl font-semibold text-ink">{space.name}</h1>
-                  <p className="mt-1 max-w-[50ch] text-[0.8125rem] text-ink-2">{space.notes}</p>
+                <div key="display" className="motion-enter min-w-0">
+                  <h1 className="break-words font-display text-2xl font-semibold tracking-tight text-ink">
+                    {space.name}
+                  </h1>
+                  <p className="mt-1 max-w-[50ch] break-words text-[0.8125rem] text-ink-2">
+                    {space.notes}
+                  </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <PriorityBadge priority={space.priority} />
                     {space.pinned ? (
                       <Pill icon={<Bookmark className="size-3" />}>Pinned</Pill>
                     ) : null}
                   </div>
-                </>
+                </div>
               )}
             </div>
             <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
@@ -149,7 +222,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 variant={space.pinned ? "default" : "outline"}
                 onClick={() =>
                   toggleSpacePinned(space.id).catch((e) =>
-                    toast.error(actionErrorMessage(e, "Couldn't update the pin.")),
+                    toast.error(actionErrorMessage(e, "Couldn't update pin status.")),
                   )
                 }
                 className="h-8 px-2.5"
@@ -169,14 +242,21 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 triggerClassName="h-8 w-[110px]"
               />
               {!editing ? (
-                <Button size="sm" variant="ghost" onClick={startEdit} className="h-8 px-2.5 text-ink-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={startEdit}
+                  aria-label="Edit space details"
+                  className="h-8 px-2.5 text-ink-2"
+                >
                   <Edit3 className="size-3.5" />
                 </Button>
               ) : null}
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={handleDelete}
+                onClick={() => setConfirmDelete(true)}
+                aria-label="Delete space"
                 className="h-8 px-2.5 text-ink-3 hover:text-mark"
               >
                 <Trash2 className="size-3.5" />
@@ -216,18 +296,48 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </Surface>
 
           <div className="mt-6">
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-eyebrow">Marks in this space</p>
-              <Button size="sm" variant="outline" asChild className="h-7 text-[0.6875rem]">
-                <Link href={`/dashboard?space=${space.id}`}>
-                  Open in dashboard
-                  <ArrowRight className="ml-1 size-3" />
-                </Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowNew(true)}
+                  className="h-11 px-3 text-[0.875rem] sm:h-8 sm:px-2.5 sm:text-[0.75rem]"
+                >
+                  <Plus className="size-3.5" />
+                  New mark
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  asChild
+                  className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+                >
+                  <Link href={`/dashboard?space=${space.id}`}>
+                    Open in dashboard
+                    <ArrowRight className="size-3" />
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             {spacePins.length === 0 ? (
-              <EmptyState title="No marks in this space yet." />
+              <EmptyState
+                title="No marks in this space yet."
+                description="Capture feedback on a page to start filling this space with marks."
+                action={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowNew(true)}
+                    className="h-11 px-3 text-[0.875rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+                  >
+                    <Plus className="size-3.5" />
+                    New mark
+                  </Button>
+                }
+              />
             ) : (
               <div className="space-y-px">
                 {spacePins.map((pin) => {
@@ -331,7 +441,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             ) : null}
 
             <div>
-              <p className="text-eyebrow mb-2">Members active</p>
+              <p className="text-eyebrow mb-2">Active members</p>
               <div className="flex -space-x-1.5">
                 {workspace.members.map((m) => (
                   <Avatar key={m.id} className="size-7 border-2 border-paper">
@@ -345,6 +455,59 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </div>
         </aside>
       </div>
+
+      <Dialog open={showNew} onOpenChange={setShowNew}>
+        <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New mark</DialogTitle>
+            <DialogDescription>
+              Creates a mark inside <span className="font-medium text-ink">{space.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <NewMarkForm
+            tags={workspace.tags}
+            open={showNew}
+            variant="plain"
+            targetSpaceLabel={space.name}
+            onSubmit={handleCreatePin}
+            onCancel={() => setShowNew(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this space?</DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-ink">{space.name}</span> will be permanently deleted
+              {stats && stats.total > 0 ? (
+                <>
+                  {" "}along with its <span className="font-medium text-ink">{stats.total} mark{stats.total === 1 ? "" : "s"}</span>
+                </>
+              ) : null}
+              . This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+            >
+              {deleting ? "Deleting…" : "Delete space"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

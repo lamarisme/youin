@@ -101,10 +101,10 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
 
   return (
     <div>
-      <p className="mb-4 flex items-center gap-1.5 text-eyebrow">
-        <MessageCircle className="size-3.5" />
+      <h2 className="mb-4 flex items-center gap-1.5 text-eyebrow">
+        <MessageCircle className="size-3.5" aria-hidden />
         Discussion{comments.length > 0 ? ` (${comments.length})` : ""}
-      </p>
+      </h2>
       <div className="annotation-rail space-y-3">
         {comments.length === 0 ? (
           <p className="text-[0.8125rem] text-ink-3">No comments yet. Start the conversation.</p>
@@ -132,9 +132,17 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
               {comment.type === "text" ? (
                 <p className="break-words text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
               ) : comment.imageUrl ? (
-                <div className="overflow-hidden rounded border border-rule">
+                <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={comment.imageUrl} alt="Uploaded screenshot" className="h-28 w-full object-cover" />
+                  <img
+                    src={comment.imageUrl}
+                    alt="Uploaded screenshot"
+                    width={640}
+                    height={280}
+                    loading="lazy"
+                    decoding="async"
+                    className="size-full object-cover"
+                  />
                 </div>
               ) : null}
             </div>
@@ -143,7 +151,11 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
       </div>
 
       <div className="mt-4 rounded-lg border border-dashed border-rule bg-paper p-3">
+        <label htmlFor="comment-composer" className="sr-only">
+          Add a comment
+        </label>
         <Textarea
+          id="comment-composer"
           value={text}
           onChange={(e) => dispatch({ type: "set_text", value: e.target.value })}
           placeholder="Leave a comment"

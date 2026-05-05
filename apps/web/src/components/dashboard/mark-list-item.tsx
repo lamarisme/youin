@@ -20,13 +20,14 @@ export function MarkListItem({ pin, assignee, tagsById, commentCount, onSelect }
     <button
       type="button"
       onClick={onSelect}
-      className="interactive-lift group flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-3.5 text-left transition-colors hover:border-rule hover:bg-paper-2 hover:shadow-[0_10px_30px_-24px_oklch(17%_0.01_50_/_0.55)] focus-visible:border-rule focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40"
+      className="interactive-lift group flex w-full items-start gap-4 px-4 py-3.5 text-left hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
     >
       {pin.status === "open" ? (
-        <CircleDashed className="mt-[3px] size-3.5 shrink-0 text-mark" aria-label="Open" />
+        <CircleDashed className="mt-px size-3.5 shrink-0 text-mark" aria-hidden />
       ) : (
-        <CheckCircle2 className="mt-[3px] size-3.5 shrink-0 text-ok" aria-label="Closed" />
+        <CheckCircle2 className="mt-px size-3.5 shrink-0 text-ok" aria-hidden />
       )}
+      <span className="sr-only">{pin.status === "open" ? "Open." : "Closed."}</span>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
           <p className="truncate text-[0.875rem] font-semibold text-ink group-hover:text-mark">{pin.title}</p>

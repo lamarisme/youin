@@ -45,7 +45,7 @@ export function OverviewTab() {
       toast.success("Workspace renamed.");
       setRenaming(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not rename workspace.");
+      toast.error(err instanceof Error ? err.message : "Couldn't rename workspace.");
     } finally {
       setSaving(false);
     }

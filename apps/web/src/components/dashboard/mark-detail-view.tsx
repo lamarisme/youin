@@ -15,7 +15,9 @@ import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import { FilterSelect } from "@/components/filter-select";
+import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
+import { TagPicker } from "@/components/tag-picker";
 import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { StatusPill } from "@/components/status-pill";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { actionErrorMessage } from "@/lib/action-error";
-import type { PinItem, PinPriority } from "@/lib/collab-types";
+import type { PinItem, PinPriority, WorkspaceTag } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -38,13 +40,15 @@ interface MarkDetailViewProps {
 }
 
 export function MarkDetailView({ pin }: MarkDetailViewProps) {
-  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, updateLinearLink } = useCollabStore(
+  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, updateLinearLink, setMarkTags, createTag } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       togglePinStatus: s.togglePinStatus,
       togglePinPinned: s.togglePinPinned,
       updatePinPriority: s.updatePinPriority,
       updateLinearLink: s.updateLinearLink,
+      setMarkTags: s.setMarkTags,
+      createTag: s.createTag,
     })),
   );
   const { update } = useDashboardFilters();
@@ -67,7 +71,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   );
 
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
-  const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
   const dateTimeFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(undefined, {
@@ -90,7 +93,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
 
   return (
     <>
-      <div className="motion-enter mb-6">
+      <div className="motion-enter border-b border-rule pb-6 mb-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button
             type="button"
@@ -150,12 +153,18 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 variant={pin.pinned ? "default" : "outline"}
                 onClick={() =>
                   togglePinPinned(pin.id).catch((e) =>
-                    toast.error(actionErrorMessage(e, "Couldn't update the bookmark.")),
+                    toast.error(actionErrorMessage(e, "Couldn't update pin status.")),
                   )
                 }
+                aria-pressed={pin.pinned}
                 className="h-11 border-mark/30 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
               >
-                <Bookmark className="size-3" />
+                <Bookmark
+                  className={cn(
+                    "size-3 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                    pin.pinned && "-rotate-6 scale-110",
+                  )}
+                />
                 {pin.pinned ? "Pinned" : "Pin"}
               </Button>
               <FilterSelect<PinPriority>
@@ -167,7 +176,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 }
                 options={PIN_PRIORITY_OPTIONS_TRIAGE}
                 ariaLabel="Mark priority"
-                triggerClassName="h-8 w-[110px]"
+                triggerClassName="h-11 w-[110px] sm:h-8"
               />
               <Button
                 size="sm"
@@ -197,23 +206,8 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
             {pin.pinned ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-paper-3 px-2 py-0.5 text-[0.6875rem] font-medium text-ink">
-                <Bookmark className="size-3" />
-                Pinned
-              </span>
+              <Pill icon={<Bookmark className="size-3" aria-hidden />}>Pinned</Pill>
             ) : null}
-            {pin.tagIds.map((tid) => {
-              const tag = tagsById.get(tid);
-              if (!tag) return null;
-              return (
-                <span
-                  key={tid}
-                  className="rounded-md bg-paper-3 px-2 py-0.5 text-[0.6875rem] font-medium text-ink-2"
-                >
-                  {tag.label}
-                </span>
-              );
-            })}
             {assignee ? (
               <span className="flex items-center gap-1.5 text-[0.75rem] text-ink-2">
                 <Avatar className="size-5">
@@ -226,7 +220,33 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             ) : null}
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_10px_30px_-20px_oklch(17%_0.01_50_/_0.45)]">
+          <div className="mt-4 grid gap-1.5">
+            <p className="text-eyebrow">Tags</p>
+            <TagPicker
+              tags={workspace.tags}
+              selectedIds={pin.tagIds}
+              onChange={(next) =>
+                setMarkTags(pin.id, next).catch((e) =>
+                  toast.error(actionErrorMessage(e, "Couldn't update tags.")),
+                )
+              }
+              onCreate={async (label): Promise<WorkspaceTag | undefined> => {
+                try {
+                  await createTag(label);
+                  const next = useCollabStore.getState().workspace.tags;
+                  return next.find(
+                    (t) => t.label.trim().toLowerCase() === label.trim().toLowerCase(),
+                  );
+                } catch (e) {
+                  toast.error(actionErrorMessage(e, "Couldn't create tag."));
+                  return undefined;
+                }
+              }}
+              placeholder="Tag this mark…"
+            />
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_10px_30px_-20px_oklch(17%_0.01_50_/_0.45)] dark:shadow-[0_10px_30px_-20px_oklch(0%_0_0_/_0.55)]">
             <div className="flex items-center gap-1.5 border-b border-rule bg-paper-2 px-3 py-2.5">
               <span className="size-2 rounded-full bg-paper-3" />
               <span className="size-2 rounded-full bg-paper-3" />

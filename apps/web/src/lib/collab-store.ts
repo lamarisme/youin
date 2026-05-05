@@ -88,7 +88,7 @@ interface CollabStoreState {
   setMarkTags: (pinId: string, tagIds: string[]) => Promise<void>;
 }
 
-export const useCollabStore = create<CollabStoreState>()((set) => ({
+export const useCollabStore = create<CollabStoreState>()((set, get) => ({
   workspaceId: "",
   userId: "",
   workspace: emptyWorkspace(),
@@ -114,13 +114,44 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
   },
 
   toggleSpacePinned: async (spaceId) => {
-    const bundle = await ws.toggleSpacePinnedAction(spaceId);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const space = workspace.spaces.find((s) => s.id === spaceId);
+    if (!space) return;
+    const before = workspace;
+    const nextPinned = !space.pinned;
+    set({
+      workspace: {
+        ...workspace,
+        spaces: workspace.spaces.map((s) =>
+          s.id === spaceId ? { ...s, pinned: nextPinned } : s,
+        ),
+      },
+    });
+    try {
+      const bundle = await ws.toggleSpacePinnedAction(spaceId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   updateSpacePriority: async (spaceId, priority) => {
-    const bundle = await ws.updateSpacePriorityAction(spaceId, priority);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        spaces: workspace.spaces.map((s) => (s.id === spaceId ? { ...s, priority } : s)),
+      },
+    });
+    try {
+      const bundle = await ws.updateSpacePriorityAction(spaceId, priority);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   deleteSpace: async (spaceId) => {
@@ -143,18 +174,65 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
   },
 
   togglePinStatus: async (pinId) => {
-    const bundle = await ws.togglePinStatusAction(pinId);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const pin = workspace.pins.find((p) => p.id === pinId);
+    if (!pin) return;
+    const before = workspace;
+    const nextStatus = pin.status === "closed" ? "open" : "closed";
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) => (p.id === pinId ? { ...p, status: nextStatus } : p)),
+      },
+    });
+    try {
+      const bundle = await ws.togglePinStatusAction(pinId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   togglePinPinned: async (pinId) => {
-    const bundle = await ws.togglePinPinnedAction(pinId);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const pin = workspace.pins.find((p) => p.id === pinId);
+    if (!pin) return;
+    const before = workspace;
+    const nextPinned = !pin.pinned;
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) => (p.id === pinId ? { ...p, pinned: nextPinned } : p)),
+      },
+    });
+    try {
+      const bundle = await ws.togglePinPinnedAction(pinId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   updatePinPriority: async (pinId, priority) => {
-    const bundle = await ws.updatePinPriorityAction(pinId, priority);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const pin = workspace.pins.find((p) => p.id === pinId);
+    if (!pin) return;
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) => (p.id === pinId ? { ...p, priority } : p)),
+      },
+    });
+    try {
+      const bundle = await ws.updatePinPriorityAction(pinId, priority);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   updateLinearLink: async (pinId, linearUrl) => {
@@ -212,12 +290,47 @@ export const useCollabStore = create<CollabStoreState>()((set) => ({
   },
 
   assignMark: async (pinId, assigneeId) => {
-    const bundle = await ws.assignMarkAction(pinId, assigneeId);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const pin = workspace.pins.find((p) => p.id === pinId);
+    if (!pin) return;
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) =>
+          p.id === pinId ? { ...p, assigneeId: assigneeId ?? undefined } : p,
+        ),
+      },
+    });
+    try {
+      const bundle = await ws.assignMarkAction(pinId, assigneeId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   setMarkTags: async (pinId, tagIds) => {
-    const bundle = await ws.setMarkTagsAction(pinId, tagIds);
-    set(workspaceStateFromBundle(bundle));
+    const { workspace } = get();
+    const pin = workspace.pins.find((p) => p.id === pinId);
+    if (!pin) return;
+    const before = workspace;
+    const nextTagIds = Array.from(new Set(tagIds));
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) =>
+          p.id === pinId ? { ...p, tagIds: nextTagIds } : p,
+        ),
+      },
+    });
+    try {
+      const bundle = await ws.setMarkTagsAction(pinId, tagIds);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 }));

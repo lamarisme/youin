@@ -36,7 +36,7 @@ export function Pagination({
           type="button"
           size="sm"
           variant="ghost"
-          className="h-10 gap-1 px-2.5 sm:h-8"
+          className="h-11 gap-1 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
           aria-label="Previous page"
@@ -48,7 +48,7 @@ export function Pagination({
           type="button"
           size="sm"
           variant="ghost"
-          className="h-10 gap-1 px-2.5 sm:h-8"
+          className="h-11 gap-1 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
           aria-label="Next page"

@@ -96,7 +96,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
   }
 
   return (
-    <div className="motion-enter-delayed mb-4 space-y-2">
+    <div className="motion-enter-delayed mb-5 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-2 py-1.5 xl:w-auto">
           <Filter className="size-3.5 text-ink-3" />
@@ -114,7 +114,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
             onClick={() => setShowMore((v) => !v)}
             aria-expanded={showMore}
             aria-controls="more-filters-panel"
-            className="h-8 gap-1.5 px-2.5 text-[0.8125rem] text-ink-2 hover:text-ink"
+            className="h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           >
             <span>
               More filters{secondaryCount > 0 ? ` (${secondaryCount})` : ""}
@@ -175,7 +175,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
               <button
                 type="button"
                 onClick={f.reset}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-full max-sm:px-0.5 sm:min-h-0"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full max-sm:px-0.5 sm:min-h-0"
                 aria-label={`Clear ${f.label} filter (${f.value})`}
               >
                 <span className="text-ink-3">{f.label}:</span>

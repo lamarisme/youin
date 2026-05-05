@@ -16,7 +16,7 @@ export function formatMarkEvent(
     return `Changed priority from ${fromValue ?? "unknown"} to ${toValue ?? "unknown"}.`;
   }
   if (type === "pinned_changed") {
-    return toValue === "true" ? "Pinned this mark in triage." : "Unpinned this mark.";
+    return toValue === "true" ? "Pinned this mark." : "Unpinned this mark.";
   }
   if (type === "linear_link_updated") {
     return toValue ? "Updated the Linear ticket link." : "Removed the Linear ticket link.";

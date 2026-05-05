@@ -13,6 +13,13 @@ import { Pagination } from "@/components/pagination";
 import { Pill } from "@/components/pill";
 import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
@@ -76,18 +83,21 @@ export function TriageView() {
     title: string;
     page: string;
     description: string;
-    tagId: string;
+    tagIds: string[];
     priority: PinPriority;
   }) {
     const targetSpace = selectedSpace ?? workspace.spaces[0];
-    if (!targetSpace) return;
+    if (!targetSpace) {
+      toast.error("Create a space before adding marks.");
+      return;
+    }
     try {
       const created = await createPin({
         title: input.title,
         description: input.description,
         page: input.page,
         spaceId: targetSpace.id,
-        tagIds: input.tagId === "all" ? [] : [input.tagId],
+        tagIds: input.tagIds,
         assigneeId: workspace.members[0]?.id,
         priority: input.priority,
       });
@@ -101,7 +111,7 @@ export function TriageView() {
   return (
     <>
       <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
-        <div className="flex items-center gap-2 text-[0.75rem] tabular-nums">
+        <div className="flex items-center gap-2.5 text-[0.75rem] tabular-nums">
           <Pill variant="mark">
             <span className="font-mono">{spaceStats.open}</span> open
           </Pill>
@@ -118,16 +128,21 @@ export function TriageView() {
             onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
             options={spaceOptions}
             ariaLabel="Select space"
-            triggerClassName="h-9"
+            triggerClassName="h-11 sm:h-9"
           />
         </div>
         <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">
           {selectedSpace ? selectedSpace.notes : "Showing marks from every space"}
         </span>
-        <Button size="sm" variant="ghost" asChild className="interactive-lift ml-auto h-7 px-2 text-[0.6875rem] text-ink-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          asChild
+          className="interactive-lift ml-auto h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+        >
           <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
             <Layers className="size-3" />
-            Manage
+            Manage spaces
           </Link>
         </Button>
       </ToolbarPanel>
@@ -140,9 +155,9 @@ export function TriageView() {
         trailing={
           <Button
             size="sm"
-            variant={showNew ? "default" : "outline"}
-            onClick={() => setShowNew((v) => !v)}
-            className="h-8 px-2.5 text-[0.8125rem]"
+            variant="outline"
+            onClick={() => setShowNew(true)}
+            className="h-11 shrink-0 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           >
             <Plus className="size-3.5" />
             New mark
@@ -150,24 +165,48 @@ export function TriageView() {
         }
       />
 
-      {showNew ? (
-        <NewMarkForm tags={workspace.tags} onSubmit={handleCreatePin} onCancel={() => setShowNew(false)} />
-      ) : null}
-
-      <div className="space-y-px [contain:layout]">
-        {visiblePins.length === 0 ? (
-          <EmptyState icon={CircleDashed} title="No marks match the current filters." />
-        ) : null}
-        {paginatedPins.map((pin) => (
-          <MarkListItem
-            key={pin.id}
-            pin={pin}
-            assignee={pin.assigneeId ? membersById.get(pin.assigneeId) : undefined}
-            tagsById={tagsById}
-            commentCount={commentCountByPinId.get(pin.id) ?? 0}
-            onSelect={() => update({ markId: pin.id })}
+      <Dialog open={showNew} onOpenChange={setShowNew}>
+        <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New mark</DialogTitle>
+            <DialogDescription>
+              Creates a mark in the space selected above, or your first space when viewing all spaces.
+            </DialogDescription>
+          </DialogHeader>
+          <NewMarkForm
+            tags={workspace.tags}
+            open={showNew}
+            variant="plain"
+            targetSpaceLabel={(selectedSpace ?? workspace.spaces[0])?.name}
+            onSubmit={handleCreatePin}
+            onCancel={() => setShowNew(false)}
           />
-        ))}
+        </DialogContent>
+      </Dialog>
+
+      <div className="rounded-xl border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.38)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)] overflow-hidden">
+        {visiblePins.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            className="rounded-none border-0 px-6 py-16"
+            icon={CircleDashed}
+            title="No marks match the current filters."
+            description="Try a different space, clear the filters, or switch the status."
+          />
+        ) : (
+          <div className="divide-y divide-rule">
+            {paginatedPins.map((pin) => (
+              <MarkListItem
+                key={pin.id}
+                pin={pin}
+                assignee={pin.assigneeId ? membersById.get(pin.assigneeId) : undefined}
+                tagsById={tagsById}
+                commentCount={commentCountByPinId.get(pin.id) ?? 0}
+                onSelect={() => update({ markId: pin.id })}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {visiblePins.length > 0 ? (
@@ -175,7 +214,7 @@ export function TriageView() {
           page={displayPage}
           totalPages={totalPages}
           onPageChange={(p) => update({ page: p })}
-          className="mt-4"
+          className="mt-6"
         />
       ) : null}
     </>

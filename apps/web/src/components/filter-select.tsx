@@ -40,7 +40,9 @@ export function FilterSelect<TValue extends string = string>({
       <SelectTrigger
         aria-label={ariaLabel}
         className={cn(
-          size === "sm" ? "h-8 text-[0.8125rem]" : "h-10 text-[0.875rem]",
+          size === "sm"
+            ? "h-11 text-[0.9375rem] sm:h-8 sm:text-[0.8125rem]"
+            : "h-11 text-[0.9375rem] sm:h-10 sm:text-[0.875rem]",
           "bg-paper text-ink",
           triggerClassName,
           className,

@@ -1,20 +1,26 @@
 "use client";
 
-import { useReducer } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 
-import { FilterSelect, type FilterOption } from "@/components/filter-select";
+import { Field } from "@/components/field";
+import { FilterSelect } from "@/components/filter-select";
+import { Pill } from "@/components/pill";
+import { PriorityBadge } from "@/components/priority-badge";
 import { NEW_MARK_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Surface } from "@/components/surface";
+import { TagPicker } from "@/components/tag-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { PinPriority, WorkspaceTag } from "@/lib/collab-types";
+import { useCollabStore } from "@/lib/collab-store";
 
 interface NewMarkFormState {
   title: string;
   page: string;
   description: string;
-  tagId: string;
+  tagIds: string[];
   priority: PinPriority;
 }
 
@@ -22,7 +28,7 @@ type Action =
   | { type: "set_title"; value: string }
   | { type: "set_page"; value: string }
   | { type: "set_description"; value: string }
-  | { type: "set_tag_id"; value: string }
+  | { type: "set_tag_ids"; value: string[] }
   | { type: "set_priority"; value: PinPriority }
   | { type: "reset" };
 
@@ -30,7 +36,7 @@ const INITIAL: NewMarkFormState = {
   title: "",
   page: "",
   description: "",
-  tagId: "all",
+  tagIds: [],
   priority: "medium",
 };
 
@@ -42,8 +48,8 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
       return { ...state, page: action.value };
     case "set_description":
       return { ...state, description: action.value };
-    case "set_tag_id":
-      return { ...state, tagId: action.value };
+    case "set_tag_ids":
+      return { ...state, tagIds: action.value };
     case "set_priority":
       return { ...state, priority: action.value };
     case "reset":
@@ -53,66 +59,113 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
 
 interface NewMarkFormProps {
   tags: WorkspaceTag[];
-  onSubmit: (input: { title: string; page: string; description: string; tagId: string; priority: PinPriority }) => void | Promise<void>;
+  onSubmit: (input: { title: string; page: string; description: string; tagIds: string[]; priority: PinPriority }) => void | Promise<void>;
   onCancel?: () => void;
+  /** When `false`, clears fields (e.g. dialog closed). Omit if not controlled by a dialog. */
+  open?: boolean;
+  /** `surface`: legacy inline card. `plain`: body only for dialog content. */
+  variant?: "surface" | "plain";
+  /** Name of the space the mark will land in — shown in the live preview row. */
+  targetSpaceLabel?: string;
 }
 
-export function NewMarkForm({ tags, onSubmit, onCancel }: NewMarkFormProps) {
+export function NewMarkForm({
+  tags,
+  onSubmit,
+  onCancel,
+  open,
+  variant = "surface",
+  targetSpaceLabel,
+}: NewMarkFormProps) {
+  const createTag = useCollabStore((s) => s.createTag);
   const [state, dispatch] = useReducer(reducer, INITIAL);
+
+  useEffect(() => {
+    if (open === false) dispatch({ type: "reset" });
+  }, [open]);
   const canSubmit = state.title.trim() && state.page.trim();
 
-  const tagOptions: ReadonlyArray<FilterOption> = [
-    { value: "all", label: "Tag (optional)" },
-    ...tags.map((t) => ({ value: t.id, label: t.label })),
-  ];
+  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+  const selectedPreviewTags = state.tagIds
+    .map((id) => tagsById.get(id))
+    .filter((t): t is WorkspaceTag => Boolean(t));
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    const normalizedPage = normalizePagePath(state.page);
     await onSubmit({
       title: state.title,
-      page: state.page,
+      page: normalizedPage,
       description: state.description,
-      tagId: state.tagId,
+      tagIds: state.tagIds,
       priority: state.priority,
     });
     dispatch({ type: "reset" });
   }
 
-  return (
-    <Surface padding="md" className="mb-4">
-      <div className="grid gap-3 sm:grid-cols-2">
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      void handleSubmit();
+    }
+  }
+
+  async function handleCreateTag(label: string): Promise<WorkspaceTag | undefined> {
+    await createTag(label);
+    const next = useCollabStore.getState().workspace.tags;
+    return next.find((t) => t.label.trim().toLowerCase() === label.trim().toLowerCase());
+  }
+
+  const grid = (
+    <div className="grid gap-3 sm:grid-cols-2" onKeyDown={handleKeyDown}>
+      <Field id="new-mark-title" label="Title">
         <Input
+          id="new-mark-title"
           value={state.title}
           onChange={(e) => dispatch({ type: "set_title", value: e.target.value })}
-          placeholder="Mark title"
+          placeholder="What needs attention?"
           maxLength={180}
           className="h-9 bg-paper text-[0.8125rem]"
           autoFocus
         />
+      </Field>
+      <Field id="new-mark-page" label="Page path">
         <Input
+          id="new-mark-page"
           value={state.page}
           onChange={(e) => dispatch({ type: "set_page", value: e.target.value })}
-          placeholder="Page path, e.g. /pricing"
+          onBlur={(e) => {
+            const normalized = normalizePagePath(e.target.value);
+            if (normalized !== e.target.value) dispatch({ type: "set_page", value: normalized });
+          }}
+          placeholder="/pricing"
           maxLength={300}
           className="h-9 bg-paper text-[0.8125rem]"
         />
-        <div className="sm:col-span-2">
+      </Field>
+      <div className="sm:col-span-2">
+        <Field id="new-mark-description" label="Description">
           <Textarea
+            id="new-mark-description"
             value={state.description}
             onChange={(e) => dispatch({ type: "set_description", value: e.target.value })}
             placeholder="What should change?"
             maxLength={3000}
             className="min-h-[60px] bg-paper text-[0.8125rem]"
           />
-        </div>
-        <FilterSelect
-          value={state.tagId}
-          onValueChange={(v) => dispatch({ type: "set_tag_id", value: v })}
-          options={tagOptions}
-          ariaLabel="Choose tag"
-          size="sm"
-          triggerClassName="h-9"
+        </Field>
+      </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <Label className="block text-[0.75rem] font-medium text-ink-2">Tags</Label>
+        <TagPicker
+          tags={tags}
+          selectedIds={state.tagIds}
+          onChange={(next) => dispatch({ type: "set_tag_ids", value: next })}
+          onCreate={handleCreateTag}
         />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="block text-[0.75rem] font-medium text-ink-2">Priority</Label>
         <FilterSelect<PinPriority>
           value={state.priority}
           onValueChange={(v) => dispatch({ type: "set_priority", value: v })}
@@ -121,17 +174,69 @@ export function NewMarkForm({ tags, onSubmit, onCancel }: NewMarkFormProps) {
           size="sm"
           triggerClassName="h-9"
         />
-        <div className="flex gap-2 sm:col-span-2">
-          <Button onClick={handleSubmit} disabled={!canSubmit} className="h-9">
-            Create mark
-          </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-3 py-2 sm:col-span-2">
+        <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3">
+          Preview
+        </span>
+        <PriorityBadge priority={state.priority} size="sm" />
+        {selectedPreviewTags.map((tag) => (
+          <Pill key={tag.id} size="sm">{tag.label}</Pill>
+        ))}
+        {targetSpaceLabel ? (
+          <span className="ml-auto truncate text-[0.75rem] text-ink-3">
+            in <span className="font-medium text-ink">{targetSpaceLabel}</span>
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-2">
+        <KeyboardHint />
+        <div className="flex items-center gap-2">
           {onCancel ? (
             <Button variant="ghost" onClick={onCancel} className="h-9">
               Cancel
             </Button>
           ) : null}
+          <Button onClick={handleSubmit} disabled={!canSubmit} className="h-9">
+            Create mark
+          </Button>
         </div>
       </div>
+    </div>
+  );
+
+  if (variant === "plain") return grid;
+
+  return (
+    <Surface padding="md" className="mb-4">
+      {grid}
     </Surface>
+  );
+}
+
+function normalizePagePath(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function KeyboardHint() {
+  return (
+    <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+      <Kbd>⌘</Kbd>
+      <Kbd>Enter</Kbd>
+      <span>to create</span>
+    </p>
+  );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+      {children}
+    </kbd>
   );
 }

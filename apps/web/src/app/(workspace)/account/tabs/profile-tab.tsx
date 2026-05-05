@@ -47,7 +47,7 @@ export function ProfileTab() {
       await updateProfile(draft);
       toast.success("Profile saved.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save profile.");
+      toast.error(err instanceof Error ? err.message : "Couldn't save profile.");
     } finally {
       setSaving(false);
     }
@@ -60,7 +60,7 @@ export function ProfileTab() {
       <div>
         <h2 className="font-display text-lg font-semibold text-ink">Your profile</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
-          Controls how teammates identify you in comments and review activity.
+          How you appear to teammates in comments and reviews.
         </p>
       </div>
 

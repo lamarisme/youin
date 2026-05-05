@@ -16,10 +16,10 @@ interface MarkHistoryProps {
 export function MarkHistory({ events, membersById, dateTimeFormatter }: MarkHistoryProps) {
   return (
     <div>
-      <p className="mb-3 flex items-center gap-1.5 text-eyebrow">
-        <History className="size-3.5" />
+      <h2 className="mb-3 flex items-center gap-1.5 text-eyebrow">
+        <History className="size-3.5" aria-hidden />
         Mark history{events.length > 0 ? ` (${events.length})` : ""}
-      </p>
+      </h2>
       <div className="annotation-rail space-y-2.5">
         {events.length === 0 ? (
           <p className="text-[0.8125rem] text-ink-3">No history yet.</p>
