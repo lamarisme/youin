@@ -5,7 +5,7 @@ import type { DashboardFilters, SortMode } from "./use-dashboard-filters";
 /** URL-driven dashboard filters applied to marks (pins). */
 export type PinDashboardFilterSlice = Pick<
   DashboardFilters,
-  "spaceId" | "status" | "priority" | "pinned" | "tag" | "q" | "sort"
+  "spaceId" | "status" | "priority" | "pinned" | "tag" | "assignee" | "q" | "sort"
 >;
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -18,8 +18,10 @@ const PRIORITY_RANK: Record<string, number> = {
 export function filterPinsByDashboardFilters(
   pins: readonly PinItem[],
   filters: PinDashboardFilterSlice,
+  context?: { viewerId: string | null },
 ): PinItem[] {
   const query = filters.q.trim().toLowerCase();
+  const viewerId = context?.viewerId ?? null;
   const filtered = pins.filter((pin) => {
     if (filters.spaceId !== "all" && pin.spaceId !== filters.spaceId) return false;
     if (filters.status !== "all" && pin.status !== filters.status) return false;
@@ -27,6 +29,12 @@ export function filterPinsByDashboardFilters(
     if (filters.pinned === "pinned" && !pin.pinned) return false;
     if (filters.pinned === "unpinned" && pin.pinned) return false;
     if (filters.tag !== "all" && !pin.tagIds.includes(filters.tag)) return false;
+    if (filters.assignee === "me") {
+      if (!viewerId || pin.assigneeId !== viewerId) return false;
+    }
+    if (filters.assignee === "unassigned") {
+      if (pin.assigneeId) return false;
+    }
     if (query) {
       const haystack = `${pin.title} ${pin.description} ${pin.page} ${pin.id}`.toLowerCase();
       if (!haystack.includes(query)) return false;

@@ -9,6 +9,7 @@ export type StatusFilter = "all" | PinStatus;
 export type PriorityFilter = "all" | PinPriority;
 export type PinnedFilter = "all" | "pinned" | "unpinned";
 export type SortMode = "recent" | "oldest" | "priority" | "status";
+export type AssigneeFilter = "all" | "me" | "unassigned";
 
 export interface DashboardFilters {
   spaceId: string; // "all" or a UUID
@@ -17,6 +18,7 @@ export interface DashboardFilters {
   priority: PriorityFilter;
   pinned: PinnedFilter;
   tag: string; // "all" or a tag id
+  assignee: AssigneeFilter;
   q: string; // free-text search query
   sort: SortMode;
   page: number;
@@ -26,6 +28,7 @@ const STATUS_VALUES: StatusFilter[] = ["all", "open", "closed"];
 const PRIORITY_VALUES: PriorityFilter[] = ["all", "low", "medium", "high", "critical"];
 const PINNED_VALUES: PinnedFilter[] = ["all", "pinned", "unpinned"];
 const SORT_VALUES: SortMode[] = ["recent", "oldest", "priority", "status"];
+const ASSIGNEE_VALUES: AssigneeFilter[] = ["all", "me", "unassigned"];
 
 function parseEnum<T extends string>(value: string | null, allowed: T[]): T {
   return value && (allowed as string[]).includes(value) ? (value as T) : (allowed[0] as T);
@@ -45,6 +48,7 @@ export function useDashboardFilters() {
       priority: parseEnum(searchParams.get("priority"), PRIORITY_VALUES),
       pinned: parseEnum(searchParams.get("pinned"), PINNED_VALUES),
       tag: searchParams.get("tag") ?? "all",
+      assignee: parseEnum(searchParams.get("assignee"), ASSIGNEE_VALUES),
       q: searchParams.get("q") ?? "",
       sort: parseEnum(searchParams.get("sort"), SORT_VALUES),
       page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,

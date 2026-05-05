@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import type { PinItem, TeamMember, WorkspaceTag } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
+import { MarkPageOpenButton } from "./mark-page-open";
+
 interface MarkListItemProps {
   pin: PinItem;
   assignee?: TeamMember;
@@ -64,6 +66,12 @@ export function MarkListItem({
           />
         )}
       </div>
+      <MarkPageOpenButton
+        page={pin.page}
+        appearance="icon"
+        stopPropagation
+        className="mt-0.5 border-transparent bg-transparent opacity-100 shadow-none hover:bg-paper-3 sm:opacity-0 sm:group-hover/row:opacity-100"
+      />
       <button
         type="button"
         onClick={onSelect}

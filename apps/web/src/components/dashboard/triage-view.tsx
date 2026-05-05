@@ -187,12 +187,14 @@ export function TriageView() {
   return (
     <>
       <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
-        <div className="flex items-center gap-2.5 text-[0.75rem] tabular-nums">
-          <Pill variant="mark">
-            <span className="font-mono">{spaceStats.open}</span> open
+        <div className="flex items-center gap-2 text-[0.75rem] tabular-nums">
+          <Pill variant="outline" className="gap-1.5 text-ink-3">
+            <span className="font-mono text-[0.6875rem] text-mark">{spaceStats.open}</span>
+            open
           </Pill>
-          <Pill variant="ok">
-            <span className="font-mono">{spaceStats.closed}</span> closed
+          <Pill variant="outline" className="gap-1.5 text-ink-3">
+            <span className="font-mono text-[0.6875rem] text-ok">{spaceStats.closed}</span>
+            closed
           </Pill>
         </div>
       </AppHeader>
@@ -210,17 +212,28 @@ export function TriageView() {
         <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">
           {selectedSpace ? selectedSpace.notes : "Showing marks from every space"}
         </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          asChild
-          className="interactive-lift ml-auto h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-7 sm:px-2 sm:text-[0.6875rem]"
-        >
-          <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
-            <Layers className="size-3" />
-            Manage spaces
-          </Link>
-        </Button>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowNew(true)}
+            className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
+          >
+            <Plus className="size-3.5 shrink-0 opacity-80" />
+            New mark
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            asChild
+            className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+          >
+            <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
+              <Layers className="size-3" />
+              Manage spaces
+            </Link>
+          </Button>
+        </div>
       </ToolbarPanel>
 
       <MarkFilters
@@ -228,17 +241,6 @@ export function TriageView() {
         visibleCount={visiblePins.length}
         tags={workspace.tags}
         onChange={update}
-        trailing={
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowNew(true)}
-            className="h-11 shrink-0 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
-          >
-            <Plus className="size-3.5" />
-            New mark
-          </Button>
-        }
       />
 
       <Dialog open={showNew} onOpenChange={setShowNew}>

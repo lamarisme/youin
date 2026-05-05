@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { CommentThread } from "./comment-thread";
 import { MarkHistory } from "./mark-history";
 import { shortMarkLabel } from "./format-mark-event";
+import { MarkPageOpenButton } from "./mark-page-open";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 
@@ -293,6 +294,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               >
                 {pin.status === "open" ? "Close mark" : "Reopen"}
               </Button>
+              <MarkPageOpenButton page={pin.page} appearance="labeled" className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]" />
               {pin.linearUrl ? (
                 <Button size="sm" variant="outline" asChild className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]">
                   <a href={pin.linearUrl} target="_blank" rel="noreferrer" aria-label="Open linked Linear ticket">
@@ -443,9 +445,10 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               <span className="size-2 rounded-full bg-paper-3" />
               <span className="size-2 rounded-full bg-paper-3" />
               <span className="size-2 rounded-full bg-paper-3" />
-              <span className="ml-2 flex-1 truncate rounded bg-paper px-2 py-0.5 font-mono text-[0.625rem] text-ink-3">
+              <span className="ml-2 min-w-0 flex-1 truncate rounded bg-paper px-2 py-0.5 font-mono text-[0.625rem] text-ink-3">
                 {pin.page}
               </span>
+              <MarkPageOpenButton page={pin.page} appearance="icon" className="size-8 shrink-0 border-transparent bg-paper hover:bg-paper-3" />
             </div>
             <div className="relative bg-paper-2 px-6 py-9">
               <div className="mx-auto max-w-sm space-y-3">
