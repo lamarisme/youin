@@ -104,7 +104,6 @@ function SignInPageContent() {
           <Input
             id="password"
             type="password"
-            placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
             className="h-9 bg-paper text-[0.8125rem]"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
