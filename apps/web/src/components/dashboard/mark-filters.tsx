@@ -1,16 +1,18 @@
 "use client";
 
-import { ChevronDown, Filter, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDownUp, ChevronDown, Filter, Search, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { FilterSelect, type FilterOption } from "@/components/filter-select";
 import {
   DASHBOARD_PINNED_FILTER_OPTIONS,
   DASHBOARD_PRIORITY_FILTER_OPTIONS,
   DASHBOARD_STATUS_FILTER_OPTIONS,
+  MARK_SORT_OPTIONS,
 } from "@/components/select-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { PinPriority, PinStatus, WorkspaceTag } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +20,7 @@ import type {
   DashboardFilters,
   PinnedFilter,
   PriorityFilter,
+  SortMode,
   StatusFilter,
 } from "./use-dashboard-filters";
 
@@ -31,7 +34,22 @@ interface MarkFiltersProps {
 
 export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }: MarkFiltersProps) {
   const [showMore, setShowMore] = useState(false);
+  const [queryDraft, setQueryDraft] = useState(filters.q);
+  const [lastSyncedQ, setLastSyncedQ] = useState(filters.q);
   const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+
+  if (filters.q !== lastSyncedQ) {
+    setLastSyncedQ(filters.q);
+    setQueryDraft(filters.q);
+  }
+
+  useEffect(() => {
+    if (queryDraft === filters.q) return;
+    const handle = window.setTimeout(() => {
+      onChange({ q: queryDraft }, { resetPage: true });
+    }, 200);
+    return () => window.clearTimeout(handle);
+  }, [queryDraft, filters.q, onChange]);
 
   const tagOptions: ReadonlyArray<FilterOption> = useMemo(
     () => [
@@ -80,6 +98,14 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
         reset: () => onChange({ pinned: "all" }, { resetPage: true }),
       });
     }
+    if (filters.q.trim()) {
+      out.push({
+        key: "q",
+        label: "Search",
+        value: `“${filters.q.trim()}”`,
+        reset: () => onChange({ q: null }, { resetPage: true }),
+      });
+    }
     return out;
   }, [filters, tagsById, onChange]);
 
@@ -90,7 +116,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
 
   function clearAll() {
     onChange(
-      { status: "all", priority: "all", pinned: "all", tag: "all" },
+      { status: "all", priority: "all", pinned: "all", tag: "all", q: null },
       { resetPage: true },
     );
   }
@@ -99,12 +125,53 @@ export function MarkFilters({ filters, visibleCount, tags, onChange, trailing }:
     <div className="motion-enter-delayed mb-5 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex w-full flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-2 py-1.5 xl:w-auto">
+          <div className="relative flex min-w-[180px] flex-1 items-center sm:flex-none sm:basis-[260px]">
+            <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
+            <Input
+              type="search"
+              role="searchbox"
+              value={queryDraft}
+              onChange={(e) => setQueryDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && queryDraft) {
+                  e.preventDefault();
+                  setQueryDraft("");
+                  onChange({ q: null }, { resetPage: true });
+                }
+              }}
+              placeholder="Search marks…"
+              aria-label="Search marks by title, description, or page"
+              className="h-11 border-transparent bg-transparent pl-8 pr-8 text-[0.9375rem] shadow-none focus-visible:border-rule focus-visible:bg-paper sm:h-8 sm:text-[0.8125rem]"
+            />
+            {queryDraft ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setQueryDraft("");
+                  onChange({ q: null }, { resetPage: true });
+                }}
+                aria-label="Clear search"
+                className="absolute right-1.5 inline-flex size-6 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
+          </div>
+          <span aria-hidden className="hidden h-5 w-px bg-rule sm:inline-block" />
           <Filter className="size-3.5 text-ink-3" />
           <FilterSelect<StatusFilter>
             value={filters.status}
             onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
             options={DASHBOARD_STATUS_FILTER_OPTIONS}
             ariaLabel="Filter by status"
+            triggerClassName="w-[150px]"
+          />
+          <ArrowDownUp aria-hidden className="size-3.5 text-ink-3" />
+          <FilterSelect<SortMode>
+            value={filters.sort}
+            onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
+            options={MARK_SORT_OPTIONS}
+            ariaLabel="Sort marks"
             triggerClassName="w-[150px]"
           />
           <Button

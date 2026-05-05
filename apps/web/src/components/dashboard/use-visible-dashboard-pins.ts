@@ -20,7 +20,18 @@ export function useVisibleDashboardPins() {
         priority: filters.priority,
         pinned: filters.pinned,
         tag: filters.tag,
+        q: filters.q,
+        sort: filters.sort,
       }),
-    [pins, filters.spaceId, filters.status, filters.priority, filters.pinned, filters.tag],
+    [
+      pins,
+      filters.spaceId,
+      filters.status,
+      filters.priority,
+      filters.pinned,
+      filters.tag,
+      filters.q,
+      filters.sort,
+    ],
   );
 }

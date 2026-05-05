@@ -1,11 +1,18 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
-import { useReducer } from "react";
+import { Check, MessageCircle, Pencil, Trash2, X } from "lucide-react";
+import { useReducer, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
@@ -109,45 +116,15 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
         {comments.length === 0 ? (
           <p className="text-[0.8125rem] text-ink-3">No comments yet. Start the conversation.</p>
         ) : null}
-        {comments.map((comment) => {
-          const author = membersById.get(comment.authorId);
-          return (
-            <div
-              key={comment.id}
-              className="rounded-lg border border-rule bg-paper-2 p-3 shadow-[0_8px_24px_-20px_oklch(17%_0.01_50_/_0.4)]"
-            >
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Avatar className="size-5">
-                    <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
-                      {author?.initials ?? "?"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-[0.75rem] font-medium text-ink">{author?.name ?? "Unknown"}</span>
-                </div>
-                <span className="text-[0.625rem] text-ink-3">
-                  {dateTimeFormatter.format(new Date(comment.createdAt))}
-                </span>
-              </div>
-              {comment.type === "text" ? (
-                <p className="break-words text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
-              ) : comment.imageUrl ? (
-                <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={comment.imageUrl}
-                    alt="Uploaded screenshot"
-                    width={640}
-                    height={280}
-                    loading="lazy"
-                    decoding="async"
-                    className="size-full object-cover"
-                  />
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
+        {comments.map((comment) => (
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            author={membersById.get(comment.authorId)}
+            isOwn={comment.authorId === userId}
+            dateTimeFormatter={dateTimeFormatter}
+          />
+        ))}
       </div>
 
       <div className="mt-4 rounded-lg border border-dashed border-rule bg-paper p-3">
@@ -184,5 +161,186 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
         </div>
       </div>
     </div>
+  );
+}
+
+interface CommentItemProps {
+  comment: PinComment;
+  author?: TeamMember;
+  isOwn: boolean;
+  dateTimeFormatter: Intl.DateTimeFormat;
+}
+
+function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemProps) {
+  const updateComment = useCollabStore((s) => s.updateComment);
+  const deleteComment = useCollabStore((s) => s.deleteComment);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(comment.body ?? "");
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleSave() {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === comment.body || saving) return;
+    setSaving(true);
+    try {
+      await updateComment(comment.id, trimmed);
+      setEditing(false);
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't update comment."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deleteComment(comment.id);
+      setConfirmDelete(false);
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't delete comment."));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="group rounded-lg border border-rule bg-paper-2 p-3 shadow-[0_8px_24px_-20px_oklch(17%_0.01_50_/_0.4)] dark:shadow-[0_8px_24px_-20px_oklch(0%_0_0_/_0.5)]">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <Avatar className="size-5">
+              <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                {author?.initials ?? "?"}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-[0.75rem] font-medium text-ink">{author?.name ?? "Unknown"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-[0.625rem] text-ink-3">
+              {dateTimeFormatter.format(new Date(comment.createdAt))}
+            </span>
+            {isOwn && !editing ? (
+              <span className="ml-1 hidden gap-0.5 group-hover:inline-flex group-focus-within:inline-flex">
+                {comment.type === "text" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(comment.body ?? "");
+                      setEditing(true);
+                    }}
+                    className="rounded p-1 text-ink-3 transition-colors hover:bg-paper hover:text-ink"
+                    aria-label="Edit comment"
+                  >
+                    <Pencil className="size-3" aria-hidden />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="rounded p-1 text-ink-3 transition-colors hover:bg-paper hover:text-mark"
+                  aria-label="Delete comment"
+                >
+                  <Trash2 className="size-3" aria-hidden />
+                </button>
+              </span>
+            ) : null}
+          </div>
+        </div>
+        {editing && comment.type === "text" ? (
+          <div
+            className="space-y-2"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setEditing(false);
+                setDraft(comment.body ?? "");
+              } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void handleSave();
+              }
+            }}
+          >
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={2000}
+              autoFocus
+              className="min-h-[60px] bg-paper text-[0.8125rem]"
+            />
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditing(false);
+                  setDraft(comment.body ?? "");
+                }}
+                disabled={saving}
+                className="h-7 px-2 text-[0.75rem]"
+              >
+                <X className="size-3" aria-hidden />
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || !draft.trim() || draft.trim() === comment.body}
+                className="h-7 px-2 text-[0.75rem]"
+              >
+                <Check className="size-3" aria-hidden />
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        ) : comment.type === "text" ? (
+          <p className="break-words text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
+        ) : comment.imageUrl ? (
+          <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={comment.imageUrl}
+              alt="Uploaded screenshot"
+              width={640}
+              height={280}
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover"
+            />
+          </div>
+        ) : null}
+      </div>
+
+      <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this comment?</DialogTitle>
+            <DialogDescription>This can&apos;t be undone.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

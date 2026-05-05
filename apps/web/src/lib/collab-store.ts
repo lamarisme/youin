@@ -76,7 +76,11 @@ interface CollabStoreState {
   togglePinPinned: (pinId: string) => Promise<void>;
   updatePinPriority: (pinId: string, priority: PinPriority) => Promise<void>;
   updateLinearLink: (pinId: string, linearUrl: string) => Promise<void>;
+  deletePin: (pinId: string) => Promise<void>;
+  updatePin: (pinId: string, updates: { title?: string; description?: string; page?: string; spaceId?: string }) => Promise<void>;
   addComments: (comments: PinComment[]) => Promise<void>;
+  updateComment: (commentId: string, body: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
   updateProfile: (updates: ProfileUpdates) => Promise<void>;
   updateWorkspace: (updates: { name: string }) => Promise<void>;
   inviteMember: (email: string) => Promise<void>;
@@ -240,6 +244,52 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
     set(workspaceStateFromBundle(bundle));
   },
 
+  deletePin: async (pinId) => {
+    const { workspace } = get();
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.filter((p) => p.id !== pinId),
+      },
+    });
+    try {
+      const bundle = await ws.deletePinAction(pinId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
+  },
+
+  updatePin: async (pinId, updates) => {
+    const { workspace } = get();
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        pins: workspace.pins.map((p) =>
+          p.id === pinId
+            ? {
+                ...p,
+                ...(typeof updates.title === "string" ? { title: updates.title } : {}),
+                ...(typeof updates.description === "string" ? { description: updates.description } : {}),
+                ...(typeof updates.page === "string" ? { page: updates.page } : {}),
+                ...(typeof updates.spaceId === "string" ? { spaceId: updates.spaceId } : {}),
+              }
+            : p,
+        ),
+      },
+    });
+    try {
+      const bundle = await ws.updatePinFieldsAction(pinId, updates);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
+  },
+
   addComments: async (comments) => {
     if (!comments.length) return;
     const pinId = comments[0].pinId;
@@ -252,6 +302,48 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
       })),
     );
     set(workspaceStateFromBundle(bundle));
+  },
+
+  updateComment: async (commentId, body) => {
+    const { workspace } = get();
+    const target = workspace.comments.find((c) => c.id === commentId);
+    if (!target) return;
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        comments: workspace.comments.map((c) =>
+          c.id === commentId ? { ...c, body } : c,
+        ),
+      },
+    });
+    try {
+      const bundle = await ws.updateMarkCommentAction(commentId, body);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
+  },
+
+  deleteComment: async (commentId) => {
+    const { workspace } = get();
+    const target = workspace.comments.find((c) => c.id === commentId);
+    if (!target) return;
+    const before = workspace;
+    set({
+      workspace: {
+        ...workspace,
+        comments: workspace.comments.filter((c) => c.id !== commentId),
+      },
+    });
+    try {
+      const bundle = await ws.deleteMarkCommentAction(commentId);
+      set(workspaceStateFromBundle(bundle));
+    } catch (e) {
+      set({ workspace: before });
+      throw e;
+    }
   },
 
   updateProfile: async (updates) => {

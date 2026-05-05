@@ -73,6 +73,7 @@ export interface PinItem {
   linearUrl?: string;
   assigneeId?: string;
   capture?: PinCapture;
+  createdAt: string;
 }
 
 export interface WorkspaceSpace {

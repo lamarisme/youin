@@ -1,5 +1,5 @@
 import type { FilterOption } from "@/components/filter-select";
-import type { PinnedFilter, PriorityFilter, StatusFilter } from "@/components/dashboard/use-dashboard-filters";
+import type { PinnedFilter, PriorityFilter, SortMode, StatusFilter } from "@/components/dashboard/use-dashboard-filters";
 import type { PinPriority, SpacePriority } from "@/lib/collab-types";
 
 export const DASHBOARD_STATUS_FILTER_OPTIONS: ReadonlyArray<FilterOption<StatusFilter>> = [
@@ -20,6 +20,13 @@ export const DASHBOARD_PINNED_FILTER_OPTIONS: ReadonlyArray<FilterOption<PinnedF
   { value: "all", label: "All marks" },
   { value: "pinned", label: "Pinned" },
   { value: "unpinned", label: "Not pinned" },
+];
+
+export const MARK_SORT_OPTIONS: ReadonlyArray<FilterOption<SortMode>> = [
+  { value: "recent", label: "Most recent" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "priority", label: "By priority" },
+  { value: "status", label: "By status" },
 ];
 
 /** Mark detail: severity low → critical (read flow). */

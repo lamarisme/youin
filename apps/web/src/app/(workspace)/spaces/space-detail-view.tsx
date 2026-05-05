@@ -49,7 +49,7 @@ interface SpaceDetailViewProps {
 }
 
 export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
-  const { workspace, updateSpace, toggleSpacePinned, updateSpacePriority, deleteSpace, createPin } = useCollabStore(
+  const { workspace, updateSpace, toggleSpacePinned, updateSpacePriority, deleteSpace, createPin, userId } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       updateSpace: s.updateSpace,
@@ -57,6 +57,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
       updateSpacePriority: s.updateSpacePriority,
       deleteSpace: s.deleteSpace,
       createPin: s.createPin,
+      userId: s.userId,
     })),
   );
 
@@ -113,6 +114,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     description: string;
     tagIds: string[];
     priority: PinPriority;
+    assigneeId: string | null;
   }) {
     try {
       await createPin({
@@ -121,7 +123,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         page: input.page,
         spaceId: space.id,
         tagIds: input.tagIds,
-        assigneeId: workspace.members[0]?.id,
+        assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
       setShowNew(false);
@@ -466,6 +468,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </DialogHeader>
           <NewMarkForm
             tags={workspace.tags}
+            members={workspace.members}
+            defaultAssigneeId={userId ?? undefined}
             open={showNew}
             variant="plain"
             targetSpaceLabel={space.name}

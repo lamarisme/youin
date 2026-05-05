@@ -23,6 +23,7 @@ import {
 import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
 import { MarkListItem } from "./mark-list-item";
 import { NewMarkForm } from "./new-mark-form";
@@ -32,11 +33,26 @@ import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 const PAGE_SIZE = 6;
 
 export function TriageView() {
-  const { workspace, createPin } = useCollabStore(
-    useShallow((s) => ({ workspace: s.workspace, createPin: s.createPin })),
+  const {
+    workspace,
+    createPin,
+    userId,
+    togglePinStatus,
+    updatePinPriority,
+    deletePin,
+  } = useCollabStore(
+    useShallow((s) => ({
+      workspace: s.workspace,
+      createPin: s.createPin,
+      userId: s.userId,
+      togglePinStatus: s.togglePinStatus,
+      updatePinPriority: s.updatePinPriority,
+      deletePin: s.deletePin,
+    })),
   );
   const { filters, update } = useDashboardFilters();
   const [showNew, setShowNew] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const selectedSpace = useMemo(() => {
     if (filters.spaceId === "all") return null;
@@ -44,6 +60,12 @@ export function TriageView() {
   }, [filters.spaceId, workspace.spaces]);
 
   const visiblePins = useVisibleDashboardPins();
+
+  const selectedPins = useMemo(
+    () => visiblePins.filter((p) => selectedIds.has(p.id)),
+    [visiblePins, selectedIds],
+  );
+  const allSelectedClosed = selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
 
   const totalPages = Math.max(1, Math.ceil(visiblePins.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, filters.page), totalPages);
@@ -79,12 +101,66 @@ export function TriageView() {
     [workspace.spaces],
   );
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkSetStatus(target: "open" | "closed") {
+    const targets = selectedPins.filter((p) => p.status !== target);
+    if (targets.length === 0) {
+      setSelectedIds(new Set());
+      return;
+    }
+    try {
+      await Promise.all(targets.map((p) => togglePinStatus(p.id)));
+      toast.success(
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
+      );
+      setSelectedIds(new Set());
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't update those marks."));
+    }
+  }
+
+  async function handleBulkSetPriority(priority: PinPriority) {
+    const targets = selectedPins.filter((p) => p.priority !== priority);
+    if (targets.length === 0) {
+      toast.success("Already set.");
+      return;
+    }
+    try {
+      await Promise.all(targets.map((p) => updatePinPriority(p.id, priority)));
+      toast.success(`${targets.length} mark${targets.length === 1 ? "" : "s"} updated.`);
+      setSelectedIds(new Set());
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't update priority."));
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = selectedPins.map((p) => p.id);
+    if (ids.length === 0) return;
+    try {
+      await Promise.all(ids.map((id) => deletePin(id)));
+      toast.success(`${ids.length} mark${ids.length === 1 ? "" : "s"} deleted.`);
+      setSelectedIds(new Set());
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't delete those marks."));
+    }
+  }
+
   async function handleCreatePin(input: {
     title: string;
     page: string;
     description: string;
     tagIds: string[];
     priority: PinPriority;
+    assigneeId: string | null;
   }) {
     const targetSpace = selectedSpace ?? workspace.spaces[0];
     if (!targetSpace) {
@@ -98,7 +174,7 @@ export function TriageView() {
         page: input.page,
         spaceId: targetSpace.id,
         tagIds: input.tagIds,
-        assigneeId: workspace.members[0]?.id,
+        assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
       update({ spaceId: targetSpace.id, markId: created.id });
@@ -175,6 +251,8 @@ export function TriageView() {
           </DialogHeader>
           <NewMarkForm
             tags={workspace.tags}
+            members={workspace.members}
+            defaultAssigneeId={userId ?? undefined}
             open={showNew}
             variant="plain"
             targetSpaceLabel={(selectedSpace ?? workspace.spaces[0])?.name}
@@ -203,6 +281,9 @@ export function TriageView() {
                 tagsById={tagsById}
                 commentCount={commentCountByPinId.get(pin.id) ?? 0}
                 onSelect={() => update({ markId: pin.id })}
+                selectable={selectedPins.length > 0}
+                selected={selectedIds.has(pin.id)}
+                onToggleSelected={() => toggleSelected(pin.id)}
               />
             ))}
           </div>
@@ -215,6 +296,17 @@ export function TriageView() {
           totalPages={totalPages}
           onPageChange={(p) => update({ page: p })}
           className="mt-6"
+        />
+      ) : null}
+
+      {selectedPins.length > 0 ? (
+        <BulkActionBar
+          count={selectedPins.length}
+          allClosed={allSelectedClosed}
+          onSetStatus={handleBulkSetStatus}
+          onSetPriority={handleBulkSetPriority}
+          onDelete={handleBulkDelete}
+          onClear={() => setSelectedIds(new Set())}
         />
       ) : null}
     </>

@@ -209,6 +209,55 @@ export async function createPinAction(input: {
   return [bundle, markId];
 }
 
+export async function deletePinAction(pinId: string): Promise<WorkspaceBootstrap> {
+  const { supabase, workspaceId } = await requireSession();
+  const { error } = await supabase
+    .from("marks")
+    .delete()
+    .eq("id", pinId)
+    .eq("workspace_id", workspaceId);
+  if (error) throw error;
+  return afterMutation();
+}
+
+export async function updatePinFieldsAction(
+  pinId: string,
+  updates: { title?: string; description?: string; page?: string; spaceId?: string },
+): Promise<WorkspaceBootstrap> {
+  const { supabase, userId, workspaceId } = await requireSession();
+  const patch: Record<string, string> = { updated_at: new Date().toISOString() };
+  if (typeof updates.title === "string") patch.title = updates.title.trim();
+  if (typeof updates.description === "string") patch.description = updates.description.trim();
+  if (typeof updates.page === "string") patch.page = updates.page.trim();
+  if (typeof updates.spaceId === "string") patch.space_id = updates.spaceId;
+  const { data: row, error: rErr } = await supabase
+    .from("marks")
+    .select("space_id")
+    .eq("id", pinId)
+    .eq("workspace_id", workspaceId)
+    .single();
+  if (rErr || !row) throw rErr ?? new Error("Mark not found.");
+  const { error } = await supabase
+    .from("marks")
+    .update(patch)
+    .eq("id", pinId)
+    .eq("workspace_id", workspaceId);
+  if (error) throw error;
+  if (typeof updates.spaceId === "string" && updates.spaceId !== row.space_id) {
+    const { error: eErr } = await supabase.from("mark_events").insert({
+      workspace_id: workspaceId,
+      mark_id: pinId,
+      actor_user_id: userId,
+      type: "tag_changed",
+      from_value: String(row.space_id),
+      to_value: updates.spaceId,
+      metadata: { summary: "Moved to a different space." },
+    });
+    if (eErr) throw eErr;
+  }
+  return afterMutation();
+}
+
 export async function togglePinStatusAction(pinId: string): Promise<WorkspaceBootstrap> {
   const { supabase, userId, workspaceId } = await requireSession();
   const { data: row, error: rErr } = await supabase
@@ -362,6 +411,43 @@ export async function addMarkCommentsAction(
   }));
   const { error: eventsErr } = await supabase.from("mark_events").insert(events);
   if (eventsErr) throw eventsErr;
+  return afterMutation();
+}
+
+export async function updateMarkCommentAction(commentId: string, body: string): Promise<WorkspaceBootstrap> {
+  const { supabase, userId } = await requireSession();
+  const trimmed = body.trim();
+  if (!trimmed) throw new Error("Comment can't be empty.");
+  const { data: row, error: rErr } = await supabase
+    .from("mark_comments")
+    .select("author_user_id, type")
+    .eq("id", commentId)
+    .single();
+  if (rErr || !row) throw rErr ?? new Error("Comment not found.");
+  if (row.author_user_id !== userId) throw new Error("You can only edit your own comments.");
+  if (row.type !== "text") throw new Error("Only text comments can be edited.");
+  const { error } = await supabase
+    .from("mark_comments")
+    .update({ body: trimmed })
+    .eq("id", commentId);
+  if (error) throw error;
+  return afterMutation();
+}
+
+export async function deleteMarkCommentAction(commentId: string): Promise<WorkspaceBootstrap> {
+  const { supabase, userId } = await requireSession();
+  const { data: row, error: rErr } = await supabase
+    .from("mark_comments")
+    .select("author_user_id")
+    .eq("id", commentId)
+    .single();
+  if (rErr || !row) throw rErr ?? new Error("Comment not found.");
+  if (row.author_user_id !== userId) throw new Error("You can only delete your own comments.");
+  const { error } = await supabase
+    .from("mark_comments")
+    .delete()
+    .eq("id", commentId);
+  if (error) throw error;
   return afterMutation();
 }
 

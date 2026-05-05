@@ -233,6 +233,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
       linearUrl: (m.linear_url as string | null | undefined) ?? undefined,
       assigneeId: (m.assignee_user_id as string | null | undefined) ?? undefined,
       capture: cap,
+      createdAt: m.created_at as string,
     };
   });
 

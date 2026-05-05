@@ -13,8 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinPriority, WorkspaceTag } from "@/lib/collab-types";
+import type { PinPriority, TeamMember, WorkspaceTag } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+
+const UNASSIGNED = "__unassigned";
 
 interface NewMarkFormState {
   title: string;
@@ -22,6 +24,7 @@ interface NewMarkFormState {
   description: string;
   tagIds: string[];
   priority: PinPriority;
+  assigneeId: string;
 }
 
 type Action =
@@ -30,15 +33,19 @@ type Action =
   | { type: "set_description"; value: string }
   | { type: "set_tag_ids"; value: string[] }
   | { type: "set_priority"; value: PinPriority }
-  | { type: "reset" };
+  | { type: "set_assignee"; value: string }
+  | { type: "reset"; assigneeDefault: string };
 
-const INITIAL: NewMarkFormState = {
-  title: "",
-  page: "",
-  description: "",
-  tagIds: [],
-  priority: "medium",
-};
+function makeInitial(assigneeDefault: string): NewMarkFormState {
+  return {
+    title: "",
+    page: "",
+    description: "",
+    tagIds: [],
+    priority: "medium",
+    assigneeId: assigneeDefault,
+  };
+}
 
 function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
   switch (action.type) {
@@ -52,14 +59,19 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
       return { ...state, tagIds: action.value };
     case "set_priority":
       return { ...state, priority: action.value };
+    case "set_assignee":
+      return { ...state, assigneeId: action.value };
     case "reset":
-      return INITIAL;
+      return makeInitial(action.assigneeDefault);
   }
 }
 
 interface NewMarkFormProps {
   tags: WorkspaceTag[];
-  onSubmit: (input: { title: string; page: string; description: string; tagIds: string[]; priority: PinPriority }) => void | Promise<void>;
+  members: TeamMember[];
+  /** Default assignee — usually the current user's id. Pass empty string to start unassigned. */
+  defaultAssigneeId?: string;
+  onSubmit: (input: { title: string; page: string; description: string; tagIds: string[]; priority: PinPriority; assigneeId: string | null }) => void | Promise<void>;
   onCancel?: () => void;
   /** When `false`, clears fields (e.g. dialog closed). Omit if not controlled by a dialog. */
   open?: boolean;
@@ -71,6 +83,8 @@ interface NewMarkFormProps {
 
 export function NewMarkForm({
   tags,
+  members,
+  defaultAssigneeId,
   onSubmit,
   onCancel,
   open,
@@ -78,17 +92,30 @@ export function NewMarkForm({
   targetSpaceLabel,
 }: NewMarkFormProps) {
   const createTag = useCollabStore((s) => s.createTag);
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
+    ? defaultAssigneeId
+    : UNASSIGNED;
+  const [state, dispatch] = useReducer(reducer, makeInitial(assigneeDefault));
 
   useEffect(() => {
-    if (open === false) dispatch({ type: "reset" });
-  }, [open]);
+    if (open === false) dispatch({ type: "reset", assigneeDefault });
+  }, [open, assigneeDefault]);
   const canSubmit = state.title.trim() && state.page.trim();
 
   const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+  const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
   const selectedPreviewTags = state.tagIds
     .map((id) => tagsById.get(id))
     .filter((t): t is WorkspaceTag => Boolean(t));
+  const previewAssignee = state.assigneeId !== UNASSIGNED ? membersById.get(state.assigneeId) : undefined;
+
+  const assigneeOptions = useMemo(
+    () => [
+      { value: UNASSIGNED, label: "Unassigned" },
+      ...members.map((m) => ({ value: m.id, label: m.name })),
+    ],
+    [members],
+  );
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -99,8 +126,9 @@ export function NewMarkForm({
       description: state.description,
       tagIds: state.tagIds,
       priority: state.priority,
+      assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
     });
-    dispatch({ type: "reset" });
+    dispatch({ type: "reset", assigneeDefault });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -175,6 +203,17 @@ export function NewMarkForm({
           triggerClassName="h-9"
         />
       </div>
+      <div className="space-y-1.5">
+        <Label className="block text-[0.75rem] font-medium text-ink-2">Assignee</Label>
+        <FilterSelect
+          value={state.assigneeId}
+          onValueChange={(v) => dispatch({ type: "set_assignee", value: v })}
+          options={assigneeOptions}
+          ariaLabel="Choose assignee"
+          size="sm"
+          triggerClassName="h-9"
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-3 py-2 sm:col-span-2">
         <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3">
@@ -184,6 +223,14 @@ export function NewMarkForm({
         {selectedPreviewTags.map((tag) => (
           <Pill key={tag.id} size="sm">{tag.label}</Pill>
         ))}
+        {previewAssignee ? (
+          <span className="inline-flex items-center gap-1 text-[0.6875rem] text-ink-2">
+            <span className="inline-flex size-4 items-center justify-center rounded-full bg-paper-3 text-[0.5625rem] font-medium text-ink-2">
+              {previewAssignee.initials}
+            </span>
+            {previewAssignee.name}
+          </span>
+        ) : null}
         {targetSpaceLabel ? (
           <span className="ml-auto truncate text-[0.75rem] text-ink-3">
             in <span className="font-medium text-ink">{targetSpaceLabel}</span>

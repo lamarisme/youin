@@ -9,10 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { OverviewTab } from "./tabs/overview-tab";
 import { ProfileTab } from "./tabs/profile-tab";
+import { TagsTab } from "./tabs/tags-tab";
 import { TeamTab } from "./tabs/team-tab";
 
 export default function AccountPage() {
   const memberCount = useCollabStore((s) => s.workspace.members.length);
+  const tagCount = useCollabStore((s) => s.workspace.tags.length);
 
   return (
     <AppShell>
@@ -27,6 +29,7 @@ export default function AccountPage() {
           <TabsList className="rounded-xl border border-rule bg-paper-2 p-1">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="team">Team access ({memberCount})</TabsTrigger>
+            <TabsTrigger value="tags">Tags ({tagCount})</TabsTrigger>
             <TabsTrigger value="profile">Profile</TabsTrigger>
           </TabsList>
 
@@ -35,6 +38,9 @@ export default function AccountPage() {
           </TabsContent>
           <TabsContent value="team" className="mt-0">
             <TeamTab />
+          </TabsContent>
+          <TabsContent value="tags" className="mt-0">
+            <TagsTab />
           </TabsContent>
           <TabsContent value="profile" className="mt-0">
             <ProfileTab />

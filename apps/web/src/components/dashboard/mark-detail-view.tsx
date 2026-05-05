@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Bookmark,
+  Check,
   ExternalLink,
   Globe,
   Link2,
   Monitor,
   Mouse,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
@@ -22,8 +26,16 @@ import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { StatusPill } from "@/components/status-pill";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/action-error";
 import type { PinItem, PinPriority, WorkspaceTag } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
@@ -40,7 +52,7 @@ interface MarkDetailViewProps {
 }
 
 export function MarkDetailView({ pin }: MarkDetailViewProps) {
-  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, updateLinearLink, setMarkTags, createTag } = useCollabStore(
+  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, updateLinearLink, setMarkTags, createTag, assignMark, deletePin, updatePin } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       togglePinStatus: s.togglePinStatus,
@@ -49,6 +61,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
       updateLinearLink: s.updateLinearLink,
       setMarkTags: s.setMarkTags,
       createTag: s.createTag,
+      assignMark: s.assignMark,
+      deletePin: s.deletePin,
+      updatePin: s.updatePin,
     })),
   );
   const { update } = useDashboardFilters();
@@ -84,6 +99,58 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
 
   const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
   const cap = pin.capture;
+
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(pin.title);
+  const [editDescription, setEditDescription] = useState(pin.description);
+  const [editPage, setEditPage] = useState(pin.page);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  function startEdit() {
+    setEditTitle(pin.title);
+    setEditDescription(pin.description);
+    setEditPage(pin.page);
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (savingEdit) return;
+    const title = editTitle.trim();
+    const page = editPage.trim();
+    if (!title || !page) {
+      toast.error("Title and page can't be empty.");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await updatePin(pin.id, {
+        title,
+        description: editDescription.trim(),
+        page: page.startsWith("/") || /^https?:\/\//i.test(page) ? page : `/${page}`,
+      });
+      setEditing(false);
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't save changes."));
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await deletePin(pin.id);
+      setConfirmDelete(false);
+      update({ markId: null });
+    } catch (e) {
+      toast.error(actionErrorMessage(e, "Couldn't delete this mark."));
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function goAdjacent(direction: "prev" | "next") {
     if (selectedIndex < 0) return;
@@ -143,9 +210,19 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 <span className="font-mono text-[0.75rem] font-semibold text-mark">{pin.id}</span>
                 <StatusPill status={pin.status} />
               </div>
-              <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">
-                {pin.title}
-              </h1>
+              {editing ? (
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="mt-2 h-12 break-words bg-paper-2 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+                  maxLength={180}
+                  autoFocus
+                />
+              ) : (
+                <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">
+                  {pin.title}
+                </h1>
+              )}
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <Button
@@ -178,6 +255,32 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 ariaLabel="Mark priority"
                 triggerClassName="h-11 w-[110px] sm:h-8"
               />
+              <FilterSelect
+                value={pin.assigneeId ?? "__unassigned"}
+                onValueChange={(v) =>
+                  assignMark(pin.id, v === "__unassigned" ? null : v).catch((e) =>
+                    toast.error(actionErrorMessage(e, "Couldn't update assignee.")),
+                  )
+                }
+                options={[
+                  { value: "__unassigned", label: "Unassigned" },
+                  ...workspace.members.map((m) => ({ value: m.id, label: m.name })),
+                ]}
+                ariaLabel="Mark assignee"
+                triggerClassName="h-11 w-[140px] sm:h-8"
+              />
+              <FilterSelect
+                value={pin.spaceId}
+                onValueChange={(v) => {
+                  if (v === pin.spaceId) return;
+                  updatePin(pin.id, { spaceId: v }).catch((e) =>
+                    toast.error(actionErrorMessage(e, "Couldn't move this mark.")),
+                  );
+                }}
+                options={workspace.spaces.map((s) => ({ value: s.id, label: s.name }))}
+                ariaLabel="Mark space"
+                triggerClassName="h-11 w-[160px] sm:h-8"
+              />
               <Button
                 size="sm"
                 variant="outline"
@@ -198,10 +301,99 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                   </a>
                 </Button>
               ) : null}
+              {!editing ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={startEdit}
+                  aria-label="Edit mark details"
+                  className="h-11 px-2.5 text-ink-2 hover:text-ink sm:h-8"
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                aria-label="Delete mark"
+                className="h-11 px-2.5 text-ink-3 hover:text-mark sm:h-8"
+              >
+                <Trash2 className="size-3.5" aria-hidden />
+              </Button>
             </div>
           </div>
 
-          <p className="mt-3 max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2">{pin.description}</p>
+          {editing ? (
+            <div
+              className="mt-3 space-y-2"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setEditing(false);
+                } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  void saveEdit();
+                }
+              }}
+            >
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Describe what should change…"
+                maxLength={3000}
+                className="min-h-[88px] max-w-[65ch] bg-paper-2 text-[0.9375rem] leading-relaxed"
+              />
+              <div className="flex items-center gap-2">
+                <Label htmlFor="mark-edit-page" className="shrink-0 text-[0.75rem] font-medium text-ink-2">
+                  Page
+                </Label>
+                <Input
+                  id="mark-edit-page"
+                  value={editPage}
+                  onChange={(e) => setEditPage(e.target.value)}
+                  placeholder="/pricing"
+                  className="h-9 max-w-md bg-paper-2 font-mono text-[0.8125rem]"
+                  maxLength={300}
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">⌘</kbd>
+                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Enter</kbd>
+                  <span>to save</span>
+                  <span className="text-rule">·</span>
+                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Esc</kbd>
+                  <span>to cancel</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditing(false)}
+                    disabled={savingEdit}
+                    className="h-8"
+                  >
+                    <X className="size-3.5" aria-hidden />
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={saveEdit}
+                    disabled={savingEdit || !editTitle.trim() || !editPage.trim()}
+                    className="h-8"
+                  >
+                    <Check className="size-3.5" aria-hidden />
+                    {savingEdit ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2">{pin.description}</p>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
@@ -333,6 +525,34 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
         </div>
       </div>
+
+      <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this mark?</DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-ink">{pin.title}</span> and all its comments and history will be permanently deleted. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmDelete(false)}
+              disabled={deleting}
+              className="h-9"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+            >
+              {deleting ? "Deleting…" : "Delete mark"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
