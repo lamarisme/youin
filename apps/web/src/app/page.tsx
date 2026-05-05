@@ -138,7 +138,7 @@ export default async function Home() {
       <main className="section-stack page-y-loose">
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="shell">
-          <div className="grid gap-10 md:grid-cols-[1.6fr_1fr] md:items-start md:gap-14">
+          <div className="grid gap-10 md:items-start md:gap-14">
             <div>
               <h1 className="text-editorial text-ink">
                 Your to-do list lives on your&nbsp;app.
@@ -153,28 +153,6 @@ export default async function Home() {
               <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
                 Chrome extension &middot; npm dev dep &middot; Linear &middot; GitHub &middot; Jira
               </p>
-            </div>
-
-            {/* Annotation preview */}
-            <div className="rounded-xl border border-rule bg-paper-2 p-5">
-              <p className="text-eyebrow mb-3">Live annotation</p>
-              <div className="rounded-lg bg-paper p-4">
-                <p className="text-[0.8125rem] leading-relaxed text-ink">
-                  &ldquo;Most popular&rdquo; label should be explicit on the middle pricing card.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[0.625rem] text-ink-3">
-                  <span>browser: Chrome 121</span>
-                  <span>viewport: 1440&times;900</span>
-                  <span>selector: .pricing-card h3</span>
-                  <span>url: /pricing</span>
-                </div>
-              </div>
-              <div className="mt-3 flex items-center justify-between text-[0.75rem]">
-                <span className="text-ink-2">Mira &middot; just now</span>
-                <Badge variant="outline" className="bg-mark-soft text-[0.625rem] font-medium text-mark">
-                  ready for ticket
-                </Badge>
-              </div>
             </div>
           </div>
         </section>
@@ -270,11 +248,10 @@ export default async function Home() {
             {tiers.map((tier) => (
               <div
                 key={tier.name}
-                className={`flex flex-col rounded-xl border p-6 ${
-                  tier.highlighted
+                className={`flex flex-col rounded-xl border p-6 ${tier.highlighted
                     ? "border-mark bg-mark-soft"
                     : "border-rule bg-paper-2"
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-lg font-semibold text-ink">{tier.name}</h3>
