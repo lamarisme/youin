@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import {
@@ -33,8 +42,50 @@ interface Command {
   run: () => void;
 }
 
-export function CommandPalette() {
+const OpenCommandPaletteContext = createContext<(() => void) | null>(null);
+
+/** Opens the workspace command palette (must be rendered inside CommandPaletteProvider). */
+export function useOpenCommandPalette() {
+  const open = useContext(OpenCommandPaletteContext);
+  if (!open) {
+    throw new Error("useOpenCommandPalette must be used within CommandPaletteProvider");
+  }
+  return open;
+}
+
+export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setOpen((o) => !o);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const openPalette = useCallback(() => {
+    setOpen(true);
+  }, []);
+
+  return (
+    <OpenCommandPaletteContext.Provider value={openPalette}>
+      {children}
+      <CommandPaletteDialog open={open} onOpenChange={setOpen} />
+    </OpenCommandPaletteContext.Provider>
+  );
+}
+
+function CommandPaletteDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}) {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const router = useRouter();
@@ -50,17 +101,6 @@ export function CommandPalette() {
     })),
   );
   const inbox = useInbox(workspace, workspaceId, userId);
-
-  useEffect(() => {
-    function handler(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    }
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
 
   useEffect(() => {
     if (open) return;
@@ -110,6 +150,12 @@ export function CommandPalette() {
       reset();
     };
   }, [open, router]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    setActiveIndex(0);
+  }, [open]);
 
   const commands = useMemo<Command[]>(() => {
     const baseCommands: Command[] = [
@@ -213,18 +259,14 @@ export function CommandPalette() {
   }, [clampedActiveIndex, open]);
 
   function handleOpenChange(next: boolean) {
-    setOpen(next);
-    if (next) {
-      setQuery("");
-      setActiveIndex(0);
-    }
+    onOpenChange(next);
   }
 
   function runActive() {
     const cmd = filtered[clampedActiveIndex];
     if (!cmd) return;
     cmd.run();
-    setOpen(false);
+    onOpenChange(false);
   }
 
   function handleKey(e: React.KeyboardEvent) {
@@ -310,7 +352,7 @@ export function CommandPalette() {
                           onMouseEnter={() => setActiveIndex(idx)}
                           onClick={() => {
                             cmd.run();
-                            setOpen(false);
+                            onOpenChange(false);
                           }}
                           className={cn(
                             "mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[0.875rem] transition-colors",

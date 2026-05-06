@@ -2,11 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, ChevronRight, Inbox as InboxIcon, Layers, LayoutGrid, LogOut, Moon, Sun } from "lucide-react";
+import {
+  BarChart3,
+  ChevronRight,
+  Inbox as InboxIcon,
+  Layers,
+  LayoutGrid,
+  LogOut,
+  Moon,
+  Search,
+  Sun,
+} from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useCollabStore } from "@/lib/collab-store";
@@ -39,6 +50,7 @@ export function AppSidebar() {
   );
 
   const inbox = useInbox(workspace, workspaceId, userId);
+  const openCommandPalette = useOpenCommandPalette();
 
   const displayName = profileName.trim() || profileEmail.split("@")[0] || "Member";
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
@@ -59,26 +71,49 @@ export function AppSidebar() {
 
   return (
     <aside className="flex flex-col border-b border-rule bg-paper-2 px-3 py-3 lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-4 lg:py-7">
-      <div className="mb-3 flex items-center justify-between lg:mb-10">
-        <Link href="/dashboard" className="flex items-center gap-2.5 px-1">
-          <span className="pin-dot shrink-0">Y</span>
-          <span className="font-display text-lg font-semibold text-ink">youin</span>
-        </Link>
-        <div className="flex items-center gap-1.5 lg:hidden">
-          <ThemeToggleButton theme={theme} onToggle={toggleTheme} compact />
-          <Link
-            href="/account"
-            aria-label="Open account settings"
-            aria-current={accountActive ? "page" : undefined}
-            className="rounded-full ring-2 ring-transparent transition-shadow hover:ring-mark/30 focus-visible:outline-none focus-visible:ring-mark/60 aria-[current=page]:ring-mark/40"
-          >
-            <Avatar className="size-8">
-              <AvatarFallback className="bg-paper-3 text-[10px] font-medium text-ink">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+      <div className="mb-3 space-y-2.5 lg:mb-5">
+        <div className="flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2.5 px-1">
+            <span className="pin-dot shrink-0">Y</span>
+            <span className="font-display text-lg font-semibold text-ink">youin</span>
           </Link>
+          <div className="flex items-center gap-1.5 lg:hidden">
+            <ThemeToggleButton theme={theme} onToggle={toggleTheme} compact />
+            <Link
+              href="/account"
+              aria-label="Open account settings"
+              aria-current={accountActive ? "page" : undefined}
+              className="rounded-full ring-2 ring-transparent transition-shadow hover:ring-mark/30 focus-visible:outline-none focus-visible:ring-mark/60 aria-[current=page]:ring-mark/40"
+            >
+              <Avatar className="size-8">
+                <AvatarFallback className="bg-paper-3 text-[10px] font-medium text-ink">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          aria-label="Open command palette"
+          className={cn(
+            "flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-rule bg-paper px-2.5 text-left shadow-[inset_0_1px_0_0_oklch(100%_0_0/_0.04)] outline-none transition-colors",
+            "hover:border-ink/12 hover:bg-paper-3",
+            "focus-visible:border-mark/35 focus-visible:ring-2 focus-visible:ring-mark/40 dark:shadow-none",
+          )}
+        >
+          <Search className="size-[1rem] shrink-0 text-ink-3" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">Search or jump…</span>
+          <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
+            <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3 dark:bg-paper">
+              ⌘
+            </kbd>
+            <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3 dark:bg-paper">
+              K
+            </kbd>
+          </span>
+        </button>
       </div>
 
       <nav className="flex gap-1.5 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
@@ -114,14 +149,6 @@ export function AppSidebar() {
           );
         })}
       </nav>
-
-      <div className="mt-3 hidden items-center justify-between rounded-md px-2.5 py-1.5 text-[0.6875rem] text-ink-3 lg:flex">
-        <span>Commands</span>
-        <span className="inline-flex items-center gap-0.5">
-          <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">⌘</kbd>
-          <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">K</kbd>
-        </span>
-      </div>
 
       <div className="mt-auto hidden pt-10 lg:block">
         <ThemeToggleButton theme={theme} onToggle={toggleTheme} />
