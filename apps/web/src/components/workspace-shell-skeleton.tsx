@@ -1,3 +1,5 @@
+import { BarChart3, Inbox as InboxIcon, Layers, LayoutGrid, type LucideIcon } from "lucide-react";
+
 function ShimmerBar({ className }: { className?: string }) {
   return (
     <div
@@ -6,6 +8,13 @@ function ShimmerBar({ className }: { className?: string }) {
     />
   );
 }
+
+const NAV_PLACEHOLDERS: Array<{ label: string; icon: LucideIcon }> = [
+  { label: "Triage", icon: LayoutGrid },
+  { label: "Inbox", icon: InboxIcon },
+  { label: "Spaces", icon: Layers },
+  { label: "Analytics", icon: BarChart3 },
+];
 
 /** Full AppShell-shaped placeholder for route transitions (sidebar + main). */
 export function WorkspaceShellSkeleton({ id }: { id?: string }) {
@@ -18,24 +27,35 @@ export function WorkspaceShellSkeleton({ id }: { id?: string }) {
         >
           <div className="mb-3 flex items-center justify-between lg:mb-10">
             <div className="flex items-center gap-2.5 px-1">
-              <ShimmerBar className="size-9 rounded-full" />
-              <ShimmerBar className="h-7 w-[4.75rem]" />
-            </div>
-            <div className="flex items-center gap-1.5 lg:hidden">
-              <ShimmerBar className="size-10 rounded-md" />
-              <ShimmerBar className="size-8 rounded-full" />
+              <span className="pin-dot shrink-0">Y</span>
+              <span className="font-display text-lg font-semibold text-ink">youin</span>
             </div>
           </div>
 
-          <div className="flex gap-1.5 pb-1 lg:flex-col lg:space-y-1 lg:pb-0">
-            <ShimmerBar className="h-10 w-[7.75rem] shrink-0 lg:w-full" />
-            <ShimmerBar className="h-10 w-[6.75rem] shrink-0 lg:w-full" />
+          <nav className="flex gap-1.5 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
+            {NAV_PLACEHOLDERS.map(({ label, icon: Icon }) => (
+              <span
+                key={label}
+                className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] text-ink-2 lg:flex lg:w-full lg:gap-2.5 lg:px-3"
+              >
+                <Icon className="size-[1.1rem]" />
+                <span>{label}</span>
+              </span>
+            ))}
+          </nav>
+
+          <div className="mt-3 hidden items-center justify-between rounded-md px-2.5 py-1.5 text-[0.6875rem] text-ink-3 lg:flex">
+            <span>Commands</span>
+            <span className="inline-flex items-center gap-0.5">
+              <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">⌘</kbd>
+              <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">K</kbd>
+            </span>
           </div>
 
-          <div className="mt-auto hidden pt-10 lg:flex lg:flex-col">
-            <ShimmerBar className="h-10 w-full" />
+          <div className="mt-auto hidden pt-10 lg:block">
+            <div className="h-10" />
             <ShimmerBar className="mt-3 h-[3.375rem] w-full rounded-lg" />
-            <ShimmerBar className="mt-3 h-10 w-full" />
+            <div className="mt-3 h-10" />
           </div>
         </aside>
 
