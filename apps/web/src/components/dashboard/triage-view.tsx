@@ -248,7 +248,7 @@ export function TriageView() {
             asChild
             className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
           >
-            <Link href="/dashboard/analytics">
+            <Link href="/analytics">
               <BarChart3 className="size-3" />
               Analytics
             </Link>

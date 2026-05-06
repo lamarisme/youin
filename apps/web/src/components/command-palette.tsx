@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/(workspace)/dashboard/inbox/use-inbox";
+import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
@@ -91,9 +91,9 @@ export function CommandPalette() {
       }
       const navMap: Record<string, string> = {
         d: "/dashboard",
-        i: "/dashboard/inbox",
+        i: "/inbox",
         s: "/spaces",
-        a: "/dashboard/analytics",
+        a: "/analytics",
         c: "/account",
       };
       const key = e.key.toLowerCase();
@@ -129,7 +129,7 @@ export function CommandPalette() {
         group: "Navigate",
         shortcut: "G I",
         icon: Inbox,
-        run: () => router.push("/dashboard/inbox"),
+        run: () => router.push("/inbox"),
       },
       {
         id: "nav-analytics",
@@ -138,7 +138,7 @@ export function CommandPalette() {
         group: "Navigate",
         shortcut: "G A",
         icon: BarChart3,
-        run: () => router.push("/dashboard/analytics"),
+        run: () => router.push("/analytics"),
       },
       {
         id: "nav-spaces",

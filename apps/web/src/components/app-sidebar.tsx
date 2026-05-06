@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Inbox as InboxIcon, Layers, LayoutGrid, LogOut, Moon, Sun } from "lucide-react";
+import { BarChart3, ChevronRight, Inbox as InboxIcon, Layers, LayoutGrid, LogOut, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/(workspace)/dashboard/inbox/use-inbox";
+import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useCollabStore } from "@/lib/collab-store";
@@ -15,9 +15,10 @@ import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid, exactOnly: false },
-  { href: "/dashboard/inbox", label: "Inbox", icon: InboxIcon, exactOnly: true },
+  { href: "/dashboard", label: "Triage", icon: LayoutGrid, exactOnly: false },
+  { href: "/inbox", label: "Inbox", icon: InboxIcon, exactOnly: false },
   { href: "/spaces", label: "Spaces", icon: Layers, exactOnly: false },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, exactOnly: false },
 ] as const;
 
 export function AppSidebar() {
@@ -86,7 +87,7 @@ export function AppSidebar() {
           const isActive = item.exactOnly
             ? pathname === item.href
             : pathname === item.href || pathname.startsWith(item.href + "/");
-          const showInboxBadge = item.href === "/dashboard/inbox" && inbox.unreadCount > 0;
+          const showInboxBadge = item.href === "/inbox" && inbox.unreadCount > 0;
           return (
             <Link
               key={item.href}
@@ -115,7 +116,7 @@ export function AppSidebar() {
       </nav>
 
       <div className="mt-3 hidden items-center justify-between rounded-md px-2.5 py-1.5 text-[0.6875rem] text-ink-3 lg:flex">
-        <span>Quick command</span>
+        <span>Commands</span>
         <span className="inline-flex items-center gap-0.5">
           <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">⌘</kbd>
           <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">K</kbd>
