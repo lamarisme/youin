@@ -43,9 +43,15 @@ import { cn } from "@/lib/utils";
 
 import { CommentThread } from "./comment-thread";
 import { MarkHistory } from "./mark-history";
+import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { shortMarkLabel } from "./format-mark-event";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { useDashboardFilters } from "./use-dashboard-filters";
+import {
+  clickByAria,
+  focusElementById,
+  useMarkDetailShortcuts,
+} from "./use-mark-detail-shortcuts";
 import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 
 interface MarkDetailViewProps {
@@ -108,6 +114,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   const [savingEdit, setSavingEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   function startEdit() {
     setEditTitle(pin.title);
@@ -159,6 +166,37 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     if (next) update({ markId: next.id });
   }
 
+  useMarkDetailShortcuts({
+    enabled: !editing && !confirmDelete && !showHelp,
+    onNext: () => goAdjacent("next"),
+    onPrev: () => goAdjacent("prev"),
+    onEdit: () => startEdit(),
+    onToggleStatus: () => {
+      togglePinStatus(pin.id).catch((e) =>
+        toast.error(actionErrorMessage(e, "Couldn't update status.")),
+      );
+    },
+    onTogglePinned: () => {
+      togglePinPinned(pin.id).catch((e) =>
+        toast.error(actionErrorMessage(e, "Couldn't update pin status.")),
+      );
+    },
+    onFocusComment: () => {
+      focusElementById("comment-composer");
+    },
+    onOpenAssignee: () => {
+      clickByAria("Mark assignee");
+    },
+    onOpenPriority: () => {
+      clickByAria("Mark priority");
+    },
+    onOpenSpace: () => {
+      clickByAria("Mark space");
+    },
+    onShowHelp: () => setShowHelp(true),
+    onBack: () => update({ markId: null }),
+  });
+
   return (
     <>
       <div className="motion-enter border-b border-rule pb-6 mb-8">
@@ -168,6 +206,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             variant="ghost"
             size="sm"
             onClick={() => update({ markId: null })}
+            aria-keyshortcuts="Escape"
             className="interactive-lift min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
           >
             <ArrowLeft className="size-3.5" />
@@ -184,6 +223,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               onClick={() => goAdjacent("prev")}
               disabled={!canPrev}
               aria-label="Go to previous mark"
+              aria-keyshortcuts="K"
               className="interactive-lift h-11 px-3 sm:h-8 sm:px-2.5"
             >
               <ArrowLeft className="size-3.5" />
@@ -195,9 +235,21 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               onClick={() => goAdjacent("next")}
               disabled={!canNext}
               aria-label="Go to next mark"
+              aria-keyshortcuts="J"
               className="interactive-lift h-11 px-3 sm:h-8 sm:px-2.5"
             >
               <ArrowRight className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowHelp(true)}
+              aria-label="Show keyboard shortcuts"
+              aria-keyshortcuts="?"
+              className="interactive-lift h-11 px-2.5 text-ink-3 hover:text-ink sm:h-8 sm:px-2"
+            >
+              <span className="font-mono text-[0.75rem]">?</span>
             </Button>
           </div>
         </div>
@@ -235,6 +287,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                   )
                 }
                 aria-pressed={pin.pinned}
+                aria-keyshortcuts="B"
                 className="h-11 border-mark/30 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
               >
                 <Bookmark
@@ -290,6 +343,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                     toast.error(actionErrorMessage(e, "Couldn't update status.")),
                   )
                 }
+                aria-keyshortcuts="X"
                 className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
               >
                 {pin.status === "open" ? "Close mark" : "Reopen"}
@@ -309,6 +363,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                   variant="ghost"
                   onClick={startEdit}
                   aria-label="Edit mark details"
+                  aria-keyshortcuts="E"
                   className="h-11 px-2.5 text-ink-2 hover:text-ink sm:h-8"
                 >
                   <Pencil className="size-3.5" aria-hidden />
@@ -528,6 +583,8 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
         </div>
       </div>
+
+      <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
 
       <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
         <DialogContent className="sm:max-w-md">

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MessageCircle, Pencil, Trash2, X } from "lucide-react";
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -20,6 +20,10 @@ import { actionErrorMessage } from "@/lib/action-error";
 import { useCollabStore } from "@/lib/collab-store";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getMarkUploadUrlAction } from "@/lib/workspace/workspace-actions";
+
+import { MentionPopover } from "./mention-popover";
+import { MentionRender } from "./mention-render";
+import { useMentionPicker } from "./use-mention-picker";
 
 type ComposerState = {
   text: string;
@@ -61,8 +65,15 @@ interface CommentThreadProps {
 export function CommentThread({ pin, comments, membersById, dateTimeFormatter }: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
   const addCommentsInStore = useCollabStore((s) => s.addComments);
+  const members = useCollabStore((s) => s.workspace.members);
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const { text, image, submitting } = state;
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const mention = useMentionPicker({
+    setText: (value) => dispatch({ type: "set_text", value }),
+    members,
+    textareaRef: composerRef,
+  });
 
   async function handleSubmit() {
     if (!text.trim() && !image) return;
@@ -131,15 +142,39 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
         <label htmlFor="comment-composer" className="sr-only">
           Add a comment
         </label>
-        <Textarea
-          id="comment-composer"
-          value={text}
-          onChange={(e) => dispatch({ type: "set_text", value: e.target.value })}
-          placeholder="Leave a comment"
-          maxLength={2000}
-          disabled={submitting}
-          className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[56px] sm:text-[0.8125rem]"
-        />
+        <div className="relative">
+          <Textarea
+            id="comment-composer"
+            ref={composerRef}
+            value={text}
+            onChange={(e) => {
+              dispatch({ type: "set_text", value: e.target.value });
+              mention.refresh();
+            }}
+            onSelect={() => mention.refresh()}
+            onKeyDown={(e) => {
+              if (mention.handleKeyDown(e)) return;
+            }}
+            onBlur={(e) => {
+              if (e.relatedTarget && e.currentTarget.parentElement?.contains(e.relatedTarget)) {
+                return;
+              }
+              mention.refresh();
+            }}
+            placeholder="Leave a comment — type @ to mention a teammate"
+            maxLength={2000}
+            disabled={submitting}
+            className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[56px] sm:text-[0.8125rem]"
+          />
+          {mention.open ? (
+            <MentionPopover
+              members={mention.filteredMembers}
+              activeIndex={mention.activeIndex}
+              onSelect={mention.selectMember}
+              onActiveIndexChange={mention.setActiveIndex}
+            />
+          ) : null}
+        </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <Input
             type="file"
@@ -174,11 +209,18 @@ interface CommentItemProps {
 function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemProps) {
   const updateComment = useCollabStore((s) => s.updateComment);
   const deleteComment = useCollabStore((s) => s.deleteComment);
+  const members = useCollabStore((s) => s.workspace.members);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body ?? "");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const editRef = useRef<HTMLTextAreaElement>(null);
+  const editMention = useMentionPicker({
+    setText: setDraft,
+    members,
+    textareaRef: editRef,
+  });
 
   async function handleSave() {
     const trimmed = draft.trim();
@@ -254,6 +296,7 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
           <div
             className="space-y-2"
             onKeyDown={(e) => {
+              if (editMention.open) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 setEditing(false);
@@ -264,13 +307,31 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
               }
             }}
           >
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              maxLength={2000}
-              autoFocus
-              className="min-h-[60px] bg-paper text-[0.8125rem]"
-            />
+            <div className="relative">
+              <Textarea
+                ref={editRef}
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  editMention.refresh();
+                }}
+                onSelect={() => editMention.refresh()}
+                onKeyDown={(e) => {
+                  if (editMention.handleKeyDown(e)) return;
+                }}
+                maxLength={2000}
+                autoFocus
+                className="min-h-[60px] bg-paper text-[0.8125rem]"
+              />
+              {editMention.open ? (
+                <MentionPopover
+                  members={editMention.filteredMembers}
+                  activeIndex={editMention.activeIndex}
+                  onSelect={editMention.selectMember}
+                  onActiveIndexChange={editMention.setActiveIndex}
+                />
+              ) : null}
+            </div>
             <div className="flex items-center justify-end gap-1.5">
               <Button
                 type="button"
@@ -299,7 +360,11 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
             </div>
           </div>
         ) : comment.type === "text" ? (
-          <p className="break-words text-[0.8125rem] leading-relaxed text-ink">{comment.body}</p>
+          <MentionRender
+            body={comment.body ?? ""}
+            members={members}
+            className="break-words text-[0.8125rem] leading-relaxed text-ink"
+          />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { CommandPalette } from "@/components/command-palette";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ export function AppShell({ children }: AppShellProps) {
         <AppSidebar />
         <main className="page-y min-h-screen">{children}</main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

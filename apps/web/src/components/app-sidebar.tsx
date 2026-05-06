@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Layers, LayoutGrid, LogOut, Moon, Sun } from "lucide-react";
+import { ChevronRight, Inbox as InboxIcon, Layers, LayoutGrid, LogOut, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
+import { useInbox } from "@/app/(workspace)/dashboard/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useCollabStore } from "@/lib/collab-store";
@@ -14,8 +15,9 @@ import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { href: "/spaces", label: "Spaces", icon: Layers },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutGrid, exactOnly: false },
+  { href: "/dashboard/inbox", label: "Inbox", icon: InboxIcon, exactOnly: true },
+  { href: "/spaces", label: "Spaces", icon: Layers, exactOnly: false },
 ] as const;
 
 export function AppSidebar() {
@@ -24,13 +26,18 @@ export function AppSidebar() {
   const { theme, toggleTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const { profileName, profileEmail, workspaceName } = useCollabStore(
+  const { profileName, profileEmail, workspaceName, workspace, workspaceId, userId } = useCollabStore(
     useShallow((s) => ({
       profileName: s.profile.name,
       profileEmail: s.profile.email,
       workspaceName: s.workspace.name,
+      workspace: s.workspace,
+      workspaceId: s.workspaceId,
+      userId: s.userId,
     })),
   );
+
+  const inbox = useInbox(workspace, workspaceId, userId);
 
   const displayName = profileName.trim() || profileEmail.split("@")[0] || "Member";
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
@@ -76,11 +83,15 @@ export function AppSidebar() {
       <nav className="flex gap-1.5 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = item.exactOnly
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
+          const showInboxBadge = item.href === "/dashboard/inbox" && inbox.unreadCount > 0;
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] transition-colors lg:flex lg:w-full lg:gap-2.5 lg:px-3",
                 isActive
@@ -89,11 +100,27 @@ export function AppSidebar() {
               )}
             >
               <Icon className="size-[1.1rem]" />
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {showInboxBadge ? (
+                <span
+                  aria-label={`${inbox.unreadCount} unread`}
+                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark px-1.5 text-[0.625rem] font-semibold tabular-nums text-paper"
+                >
+                  {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}
       </nav>
+
+      <div className="mt-3 hidden items-center justify-between rounded-md px-2.5 py-1.5 text-[0.6875rem] text-ink-3 lg:flex">
+        <span>Quick command</span>
+        <span className="inline-flex items-center gap-0.5">
+          <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">⌘</kbd>
+          <kbd className="rounded border border-rule bg-paper px-1.5 py-0.5 font-mono text-[0.625rem]">K</kbd>
+        </span>
+      </div>
 
       <div className="mt-auto hidden pt-10 lg:block">
         <ThemeToggleButton theme={theme} onToggle={toggleTheme} />

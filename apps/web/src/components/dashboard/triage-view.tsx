@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { CircleDashed, Layers, Plus } from "lucide-react";
+import { BarChart3, CircleDashed, Layers, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
@@ -27,7 +27,9 @@ import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
 import { MarkListItem } from "./mark-list-item";
 import { NewMarkForm } from "./new-mark-form";
+import { SavedViewsBar } from "./saved-views-bar";
 import { useDashboardFilters } from "./use-dashboard-filters";
+import { useSavedViews, type SavedViewFilters } from "./use-saved-views";
 import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 
 const PAGE_SIZE = 6;
@@ -35,6 +37,7 @@ const PAGE_SIZE = 6;
 export function TriageView() {
   const {
     workspace,
+    workspaceId,
     createPin,
     userId,
     togglePinStatus,
@@ -43,6 +46,7 @@ export function TriageView() {
   } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
+      workspaceId: s.workspaceId,
       createPin: s.createPin,
       userId: s.userId,
       togglePinStatus: s.togglePinStatus,
@@ -51,6 +55,22 @@ export function TriageView() {
     })),
   );
   const { filters, update } = useDashboardFilters();
+  const { views: savedViews, saveView, deleteView } = useSavedViews(workspaceId);
+
+  function applySavedView(snapshot: SavedViewFilters) {
+    update(
+      {
+        status: snapshot.status,
+        priority: snapshot.priority,
+        pinned: snapshot.pinned,
+        tag: snapshot.tag,
+        assignee: snapshot.assignee,
+        q: snapshot.q || null,
+        sort: snapshot.sort,
+      },
+      { resetPage: true },
+    );
+  }
   const [showNew, setShowNew] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
@@ -228,6 +248,17 @@ export function TriageView() {
             asChild
             className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
           >
+            <Link href="/dashboard/analytics">
+              <BarChart3 className="size-3" />
+              Analytics
+            </Link>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            asChild
+            className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+          >
             <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
               <Layers className="size-3" />
               Manage spaces
@@ -235,6 +266,14 @@ export function TriageView() {
           </Button>
         </div>
       </ToolbarPanel>
+
+      <SavedViewsBar
+        views={savedViews}
+        currentFilters={filters}
+        onApply={applySavedView}
+        onSave={(name, snapshot) => saveView(name, snapshot)}
+        onDelete={deleteView}
+      />
 
       <MarkFilters
         filters={filters}
