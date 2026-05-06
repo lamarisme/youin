@@ -70,6 +70,20 @@ export function ProductDemo() {
 
           {/* Pricing cards inside the mock — middle card carries the pin */}
           <div className="relative grid grid-cols-3 gap-3">
+            {/* Cursor — glides in toward the middle card pin on first paint */}
+            <svg
+              className="pd-anim-cursor pointer-events-none absolute z-20 size-5 text-ink drop-shadow-[0_2px_4px_oklch(20%_0.012_60_/_0.25)]"
+              style={{ left: "62%", top: "-10px" }}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              stroke="white"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m4 4 7.07 17 2.51-7.39L21 11.07z" />
+            </svg>
+
             {MOCK_TIERS.map((tier, i) => {
               const isPinned = i === 1;
               return (
@@ -100,8 +114,8 @@ export function ProductDemo() {
 
                   {isPinned && (
                     <>
-                      <div className="absolute inset-0 rounded-xl ring-2 ring-mark/70 ring-offset-2 ring-offset-paper-2 pointer-events-none" />
-                      <div className="absolute -top-3 -right-3">
+                      <div className="pd-anim-pin pointer-events-none absolute inset-0 rounded-xl ring-2 ring-mark/70 ring-offset-2 ring-offset-paper-2" />
+                      <div className="pd-anim-pin absolute -top-3 -right-3">
                         <Pin n={1} />
                       </div>
                     </>
@@ -112,7 +126,7 @@ export function ProductDemo() {
           </div>
 
           {/* Comment popover — anchored to the right edge of the cards row */}
-          <div className="pointer-events-none absolute z-10 right-4 md:right-6 top-[58%] w-[260px] sm:w-[268px]">
+          <div className="pd-anim-comment pointer-events-none absolute z-10 right-4 md:right-6 top-[58%] w-[260px] sm:w-[268px]">
             <div className="rounded-xl border border-rule bg-white p-3.5 shadow-[0_18px_40px_-18px_oklch(20%_0.012_60_/_0.35)]">
               <div className="flex items-center gap-2">
                 <span className="block h-6 w-6 rounded-full bg-[oklch(80%_0.06_50)] ring-2 ring-paper" />

@@ -15,7 +15,7 @@
   --color-rule: oklch(86% 0.009 65);
   --color-ink: oklch(17% 0.01 50);
   --color-ink-2: oklch(40% 0.009 50);
-  --color-ink-3: oklch(56% 0.008 50);
+  --color-ink-3: oklch(50% 0.008 50);
   --color-mark: oklch(52% 0.19 25);
   --color-mark-bright: oklch(58% 0.21 25);
   --color-mark-soft: oklch(95% 0.03 25);
@@ -366,6 +366,67 @@
     }
   }
 
+  /* Hero ProductDemo intro — plays once on first paint */
+  .pd-anim-cursor {
+    opacity: 0;
+    animation: pd-anim-cursor-glide 720ms var(--ease-out-quart) forwards;
+  }
+
+  .pd-anim-pin {
+    opacity: 0;
+    animation: pd-anim-pin-pop 240ms var(--ease-out-quart) 520ms forwards;
+  }
+
+  .pd-anim-comment {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: pd-anim-comment-rise 420ms var(--ease-out-expo) 820ms forwards;
+  }
+
+  @keyframes pd-anim-cursor-glide {
+    0% {
+      opacity: 0;
+      transform: translate(-160px, -48px);
+    }
+    18% {
+      opacity: 1;
+    }
+    65% {
+      opacity: 1;
+      transform: translate(0, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(0, 0);
+    }
+  }
+
+  @keyframes pd-anim-pin-pop {
+    0% {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pd-anim-comment-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .pin-dot::after {
       animation: none;
@@ -383,6 +444,17 @@
     .interactive-lift:hover,
     .interactive-lift:active {
       transform: none;
+    }
+
+    .pd-anim-cursor {
+      display: none;
+    }
+
+    .pd-anim-pin,
+    .pd-anim-comment {
+      opacity: 1;
+      transform: none;
+      animation: none;
     }
   }
 }
