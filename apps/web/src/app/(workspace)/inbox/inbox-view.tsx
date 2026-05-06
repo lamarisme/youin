@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowLeft, ArrowRight, CheckCheck, Inbox } from "lucide-react";
+import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
@@ -36,18 +36,16 @@ export function InboxView() {
   return (
     <AppShell>
       <div className="shell-full">
-        <div className="motion-enter mb-6 flex flex-wrap items-center justify-between gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="interactive-lift min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
-          >
-            <Link href="/dashboard">
-              <ArrowLeft className="size-3.5" />
-              Back to triage
-            </Link>
-          </Button>
+        <AppHeader
+          title="Inbox"
+          eyebrow={workspace.name}
+          subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
+        >
+          {inbox.unreadCount > 0 ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
+              {inbox.unreadCount} new
+            </span>
+          ) : null}
           {inbox.totalEvents > 0 ? (
             <Button
               type="button"
@@ -60,18 +58,6 @@ export function InboxView() {
               <CheckCheck className="size-3.5" aria-hidden />
               {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
             </Button>
-          ) : null}
-        </div>
-
-        <AppHeader
-          title="Inbox"
-          eyebrow={workspace.name}
-          subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
-        >
-          {inbox.unreadCount > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
-              {inbox.unreadCount} new
-            </span>
           ) : null}
         </AppHeader>
 

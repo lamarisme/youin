@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, BarChart3 } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import { AppShell } from "@/components/app-shell";
@@ -31,20 +31,6 @@ export function AnalyticsView() {
   return (
     <AppShell>
       <div className="shell-full">
-        <div className="motion-enter mb-6 flex flex-wrap items-center justify-between gap-2">
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="interactive-lift min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
-          >
-            <Link href="/dashboard">
-              <ArrowLeft className="size-3.5" />
-              Back to triage
-            </Link>
-          </Button>
-        </div>
-
         <AppHeader
           title="Analytics"
           eyebrow={workspace.name}
