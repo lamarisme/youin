@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, CheckCircle2, CircleDashed, Link2, MessageCircle } from "lucide-react";
+import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-react";
 
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -119,12 +119,6 @@ export function MarkListItem({
               <span className="flex items-center gap-1 text-[0.625rem] text-ink-3">
                 <MessageCircle className="size-3" />
                 {commentCount}
-              </span>
-            ) : null}
-            {pin.linearUrl ? (
-              <span className="flex items-center gap-1 text-[0.625rem] text-ink-3">
-                <Link2 className="size-3" />
-                Linked
               </span>
             ) : null}
           </div>

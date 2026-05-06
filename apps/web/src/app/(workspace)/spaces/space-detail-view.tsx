@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   CircleDashed,
   Edit3,
-  Link2,
   MessageCircle,
   Plus,
   Trash2,
@@ -376,12 +375,6 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                                 {assignee.initials}
                               </AvatarFallback>
                             </Avatar>
-                          ) : null}
-                          {pin.linearUrl ? (
-                            <span className="flex items-center gap-1 text-[0.625rem] text-ink-3">
-                              <Link2 className="size-3" />
-                              Linked
-                            </span>
                           ) : null}
                         </div>
                       </div>

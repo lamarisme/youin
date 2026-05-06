@@ -6,9 +6,7 @@ import {
   ArrowRight,
   Bookmark,
   Check,
-  ExternalLink,
   Globe,
-  Link2,
   Monitor,
   Mouse,
   Pencil,
@@ -59,13 +57,12 @@ interface MarkDetailViewProps {
 }
 
 export function MarkDetailView({ pin }: MarkDetailViewProps) {
-  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, updateLinearLink, setMarkTags, createTag, assignMark, deletePin, updatePin } = useCollabStore(
+  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, setMarkTags, createTag, assignMark, deletePin, updatePin } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       togglePinStatus: s.togglePinStatus,
       togglePinPinned: s.togglePinPinned,
       updatePinPriority: s.updatePinPriority,
-      updateLinearLink: s.updateLinearLink,
       setMarkTags: s.setMarkTags,
       createTag: s.createTag,
       assignMark: s.assignMark,
@@ -349,14 +346,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 {pin.status === "open" ? "Close mark" : "Reopen"}
               </Button>
               <MarkPageOpenButton page={pin.page} appearance="labeled" className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]" />
-              {pin.linearUrl ? (
-                <Button size="sm" variant="outline" asChild className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]">
-                  <a href={pin.linearUrl} target="_blank" rel="noreferrer" aria-label="Open linked Linear ticket">
-                    <ExternalLink className="size-3" />
-                    Linear
-                  </a>
-                </Button>
-              ) : null}
               {!editing ? (
                 <Button
                   size="sm"
@@ -541,34 +530,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               ) : null}
             </div>
           ) : null}
-
-          <div className="mt-6">
-            <Label htmlFor="linear-link" className="text-[0.75rem] font-medium text-ink-2">
-              Linear ticket
-            </Label>
-            <div className="mt-1.5 flex gap-2">
-              <Input
-                id="linear-link"
-                value={pin.linearUrl ?? ""}
-                onChange={(e) =>
-                  updateLinearLink(pin.id, e.target.value).catch((err) =>
-                    toast.error(actionErrorMessage(err, "Couldn't save the link.")),
-                  )
-                }
-                placeholder="https://linear.app/..."
-                inputMode="url"
-                maxLength={512}
-                className="h-11 max-w-md bg-paper-2 text-[1rem] sm:h-9 sm:text-[0.8125rem]"
-              />
-              {pin.linearUrl ? (
-                <Button size="sm" variant="ghost" asChild className="h-11 shrink-0 px-3 sm:h-9 sm:px-2.5">
-                  <a href={pin.linearUrl} target="_blank" rel="noreferrer" aria-label="Open linked Linear ticket in new tab">
-                    <Link2 className="size-4" />
-                  </a>
-                </Button>
-              ) : null}
-            </div>
-          </div>
         </div>
 
         <div className="lg:border-l lg:border-rule lg:pl-6">
