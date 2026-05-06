@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS "workspace_invites" (
 CREATE TABLE IF NOT EXISTS "spaces" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "workspace_id" uuid NOT NULL,
+  "code" text NOT NULL,
+  "next_mark_seq" integer DEFAULT 0 NOT NULL,
   "name" text NOT NULL,
   "notes" text DEFAULT '' NOT NULL,
   "priority" "mark_priority" DEFAULT 'medium' NOT NULL,
@@ -101,6 +103,7 @@ CREATE TABLE IF NOT EXISTS "marks" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "workspace_id" uuid NOT NULL,
   "space_id" uuid NOT NULL,
+  "seq" integer DEFAULT 0 NOT NULL,
   "title" text NOT NULL,
   "page" text NOT NULL,
   "description" text DEFAULT '' NOT NULL,
@@ -232,9 +235,11 @@ CREATE INDEX IF NOT EXISTS "workspaces_name_idx" ON "workspaces" USING btree ("n
 CREATE INDEX IF NOT EXISTS "workspace_members_user_workspace_idx" ON "workspace_members" USING btree ("user_id", "workspace_id");
 CREATE INDEX IF NOT EXISTS "workspace_invites_workspace_email_idx" ON "workspace_invites" USING btree ("workspace_id", "email");
 CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_name_unique" ON "spaces" USING btree ("workspace_id", "name");
+CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_code_unique" ON "spaces" USING btree ("workspace_id", "code");
 CREATE INDEX IF NOT EXISTS "spaces_workspace_priority_idx" ON "spaces" USING btree ("workspace_id", "priority");
 CREATE INDEX IF NOT EXISTS "spaces_workspace_pinned_idx" ON "spaces" USING btree ("workspace_id", "pinned");
 CREATE UNIQUE INDEX IF NOT EXISTS "mark_tags_workspace_label_unique" ON "mark_tags" USING btree ("workspace_id", "label");
+CREATE UNIQUE INDEX IF NOT EXISTS "marks_space_seq_unique" ON "marks" USING btree ("space_id", "seq");
 CREATE INDEX IF NOT EXISTS "marks_space_status_priority_idx" ON "marks" USING btree ("space_id", "status", "priority");
 CREATE INDEX IF NOT EXISTS "marks_workspace_pinned_idx" ON "marks" USING btree ("workspace_id", "pinned");
 CREATE INDEX IF NOT EXISTS "marks_workspace_created_at_idx" ON "marks" USING btree ("workspace_id", "created_at");
@@ -242,6 +247,44 @@ CREATE INDEX IF NOT EXISTS "mark_comments_mark_created_at_idx" ON "mark_comments
 CREATE INDEX IF NOT EXISTS "mark_events_mark_created_at_idx" ON "mark_events" USING btree ("mark_id", "created_at");
 CREATE INDEX IF NOT EXISTS "mark_events_workspace_created_at_idx" ON "mark_events" USING btree ("workspace_id", "created_at");
 CREATE INDEX IF NOT EXISTS "mark_events_workspace_type_idx" ON "mark_events" USING btree ("workspace_id", "type");
+
+CREATE OR REPLACE FUNCTION public.marks_assign_sequence()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  next_n integer;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE spaces
+    SET next_mark_seq = next_mark_seq + 1
+    WHERE id = NEW.space_id
+    RETURNING next_mark_seq INTO next_n;
+    IF next_n IS NULL THEN
+      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
+    END IF;
+    NEW.seq := next_n;
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' AND OLD.space_id IS DISTINCT FROM NEW.space_id THEN
+    UPDATE spaces
+    SET next_mark_seq = next_mark_seq + 1
+    WHERE id = NEW.space_id
+    RETURNING next_mark_seq INTO next_n;
+    IF next_n IS NULL THEN
+      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
+    END IF;
+    NEW.seq := next_n;
+    RETURN NEW;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS marks_assign_sequence_trg ON marks;
+CREATE TRIGGER marks_assign_sequence_trg
+  BEFORE INSERT OR UPDATE OF space_id ON marks
+  FOR EACH ROW
+  EXECUTE PROCEDURE public.marks_assign_sequence();
 
 -- ── 5. AUTH ↔ PROFILES TRIGGER ──────────────────────────────────────────────
 ALTER TABLE public.profiles

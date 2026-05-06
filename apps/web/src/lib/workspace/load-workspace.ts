@@ -18,6 +18,7 @@ import type {
 
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { tagColorClass } from "@/lib/workspace/tag-styles";
+import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
 
 export async function loadUserProfile(
   supabase: SupabaseClient,
@@ -143,12 +144,15 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
 
   const spaces: WorkspaceSpace[] = (spacesRows ?? []).map((s) => ({
     id: s.id as string,
+    code: String(s.code ?? "SP").toUpperCase(),
     name: s.name as string,
     notes: (s.notes as string) || "",
     createdAt: s.created_at as string,
     priority: (s.priority as SpacePriority) ?? "medium",
     pinned: Boolean(s.pinned),
   }));
+
+  const codeBySpaceId = new Map(spaces.map((s) => [s.id, s.code]));
 
   const tags: WorkspaceTag[] = (tagsRows ?? []).map((t) => ({
     id: t.id as string,
@@ -220,9 +224,16 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
             }
           : undefined;
 
+    const spaceId = m.space_id as string;
+    const spaceCode = codeBySpaceId.get(spaceId) ?? "UNKN";
+    const seq = Number((m as { seq?: unknown }).seq ?? 0);
+
     return {
       id: m.id as string,
-      spaceId: m.space_id as string,
+      spaceId,
+      spaceCode,
+      seq,
+      displayKey: formatPinDisplayKey(spaceCode, seq),
       title: m.title as string,
       page: m.page as string,
       description: (m.description as string) ?? "",

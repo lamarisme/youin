@@ -91,6 +91,13 @@ export const spaces = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
+    /** Short uppercase key for mark display ids (e.g. WEB-42), unique per workspace. */
+    code: text("code").notNull(),
+    /**
+     * Running counter for mark numbers in this space.
+     * Incremented by trigger when a mark is inserted or moved into this space.
+     */
+    nextMarkSeq: integer("next_mark_seq").notNull().default(0),
     name: text("name").notNull(),
     notes: text("notes").notNull().default(""),
     priority: markPriorityEnum("priority").notNull().default("medium"),
@@ -103,6 +110,7 @@ export const spaces = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("spaces_workspace_code_unique").on(table.workspaceId, table.code),
     uniqueIndex("spaces_workspace_name_unique").on(
       table.workspaceId,
       table.name,
@@ -133,6 +141,8 @@ export const marks = pgTable(
     pinned: boolean("pinned").notNull().default(false),
     linearUrl: text("linear_url"),
     assigneeUserId: uuid("assignee_user_id"),
+    /** Monotonic sequence number within {@link spaceId} (e.g. key WEB-{@link seq}). */
+    seq: integer("seq").notNull().default(0),
     selector: text("selector"),
     viewport: text("viewport"),
     browser: text("browser"),
@@ -148,6 +158,7 @@ export const marks = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("marks_space_seq_unique").on(table.spaceId, table.seq),
     index("marks_space_status_priority_idx").on(
       table.spaceId,
       table.status,

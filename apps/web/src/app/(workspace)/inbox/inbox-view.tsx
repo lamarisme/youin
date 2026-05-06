@@ -107,7 +107,7 @@ function InboxGroupRow({
   return (
     <li>
       <Link
-        href={`/dashboard?mark=${group.pinId}`}
+        href={`/dashboard?mark=${encodeURIComponent(group.pinDisplayKey)}`}
         className="interactive-lift group flex items-start gap-3 px-4 py-3 hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
         <UnreadDot active={group.unreadCount > 0} />

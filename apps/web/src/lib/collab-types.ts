@@ -63,6 +63,11 @@ export interface PinCapture {
 export interface PinItem {
   id: string;
   spaceId: string;
+  /** Uppercase per-space key; with {@link seq} forms {@link displayKey}. */
+  spaceCode: string;
+  seq: number;
+  /** Human-friendly id, e.g. `WEB-42` (unique per workspace given unique space codes). */
+  displayKey: string;
   title: string;
   page: string;
   description: string;
@@ -78,6 +83,8 @@ export interface PinItem {
 
 export interface WorkspaceSpace {
   id: string;
+  /** Uppercase short key; marks in this space use `CODE-seq` display ids. */
+  code: string;
   name: string;
   notes: string;
   createdAt: string;

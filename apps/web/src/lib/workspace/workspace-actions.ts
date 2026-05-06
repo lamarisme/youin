@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PinPriority, SpacePriority } from "@/lib/collab-types";
 import { createClient } from "@/lib/supabase/server";
 import { loadUserProfile, loadWorkspaceAggregate } from "@/lib/workspace/load-workspace";
+import { proposeSpaceCodeFromName } from "@/lib/workspace/space-code";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
@@ -78,14 +79,40 @@ export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null
   }
 }
 
+async function allocateSpaceCode(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  spaceName: string,
+): Promise<string> {
+  const base = proposeSpaceCodeFromName(spaceName);
+  const { data: rows, error } = await supabase.from("spaces").select("code").eq("workspace_id", workspaceId);
+  if (error) throw error;
+  const taken = new Set((rows ?? []).map((r) => String((r as { code: string }).code).toUpperCase()));
+  function tryReserve(candidate: string): string | null {
+    const key = candidate.toUpperCase().slice(0, 14);
+    if (key.length < 2) return null;
+    return taken.has(key) ? null : key;
+  }
+  let cand = tryReserve(base);
+  if (cand) return cand;
+  for (let n = 2; n < 2000; n++) {
+    cand = tryReserve(`${base}${n}`);
+    if (cand) return cand;
+  }
+  const salt = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+  return tryReserve(`SP${salt}`) ?? `SP${salt}`.slice(0, 14);
+}
+
 export async function createSpaceAction(name: string, notes: string): Promise<[WorkspaceBootstrap, string]> {
   const { supabase, workspaceId } = await requireSession();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Space name is required.");
+  const code = await allocateSpaceCode(supabase, workspaceId, trimmed);
   const { data: sp, error } = await supabase
     .from("spaces")
     .insert({
       workspace_id: workspaceId,
+      code,
       name: trimmed,
       notes: notes.trim(),
       priority: "medium",

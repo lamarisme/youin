@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { findPinByMarkRouteParam } from "@/lib/workspace/mark-display-id";
 import { useCollabStore } from "@/lib/collab-store";
 
 import { MarkDetailView } from "./mark-detail-view";
@@ -15,7 +16,7 @@ export function WorkspaceDashboard() {
 
   const selectedPin = useMemo(() => {
     if (!filters.markId) return null;
-    return pins.find((p) => p.id === filters.markId) ?? null;
+    return findPinByMarkRouteParam(filters.markId, pins) ?? null;
   }, [filters.markId, pins]);
 
   return (

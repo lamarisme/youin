@@ -275,7 +275,6 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
                 ...(typeof updates.title === "string" ? { title: updates.title } : {}),
                 ...(typeof updates.description === "string" ? { description: updates.description } : {}),
                 ...(typeof updates.page === "string" ? { page: updates.page } : {}),
-                ...(typeof updates.spaceId === "string" ? { spaceId: updates.spaceId } : {}),
               }
             : p,
         ),

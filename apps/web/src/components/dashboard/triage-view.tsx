@@ -116,7 +116,7 @@ export function TriageView() {
   const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
     () => [
       { value: "all", label: "All spaces" },
-      ...workspace.spaces.map((s) => ({ value: s.id, label: s.name })),
+      ...workspace.spaces.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` })),
     ],
     [workspace.spaces],
   );
@@ -197,7 +197,7 @@ export function TriageView() {
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
-      update({ spaceId: targetSpace.id, markId: created.id });
+      update({ spaceId: targetSpace.id, markId: created.displayKey });
       setShowNew(false);
     } catch (e) {
       toast.error(actionErrorMessage(e, "Couldn't create this mark."));
@@ -321,7 +321,7 @@ export function TriageView() {
                 assignee={pin.assigneeId ? membersById.get(pin.assigneeId) : undefined}
                 tagsById={tagsById}
                 commentCount={commentCountByPinId.get(pin.id) ?? 0}
-                onSelect={() => update({ markId: pin.id })}
+                onSelect={() => update({ markId: pin.displayKey })}
                 selectable={selectedPins.length > 0}
                 selected={selectedIds.has(pin.id)}
                 onToggleSelected={() => toggleSelected(pin.id)}

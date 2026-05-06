@@ -44,6 +44,9 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <p className="font-display text-[0.9375rem] font-semibold text-ink group-hover:text-mark">{space.name}</p>
+          <span className="rounded bg-paper-3 px-1.5 py-px font-mono text-[0.625rem] font-medium uppercase text-ink-2">
+            {space.code}
+          </span>
           <span className="text-[0.6875rem] text-ink-3">
             {new Date(space.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
           </span>

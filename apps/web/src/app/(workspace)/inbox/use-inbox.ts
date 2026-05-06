@@ -47,6 +47,7 @@ export interface InboxEvent {
 
 export interface InboxGroup {
   pinId: string;
+  pinDisplayKey: string;
   pinTitle: string;
   spaceId: string;
   events: InboxEvent[];
@@ -146,8 +147,10 @@ export function useInbox(
         if (ev.createdAt > existing.latestAt) existing.latestAt = ev.createdAt;
         if (ev.unread) existing.unreadCount += 1;
       } else {
+        const pin = pinMap.get(ev.pinId);
         groupMap.set(ev.pinId, {
           pinId: ev.pinId,
+          pinDisplayKey: pin?.displayKey ?? ev.pinId,
           pinTitle: ev.pinTitle,
           spaceId: ev.spaceId,
           events: [ev],

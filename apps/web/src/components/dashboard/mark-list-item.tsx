@@ -86,7 +86,7 @@ export function MarkListItem({
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
             <p className="truncate text-[0.875rem] font-semibold text-ink group-hover/row:text-mark">{pin.title}</p>
-            <span className="hidden shrink-0 font-mono text-[0.625rem] text-ink-3 sm:inline">{pin.id}</span>
+            <span className="hidden shrink-0 font-mono text-[0.625rem] text-ink-3 sm:inline">{pin.displayKey}</span>
           </div>
           <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2">

@@ -160,7 +160,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   function goAdjacent(direction: "prev" | "next") {
     if (selectedIndex < 0) return;
     const next = visiblePins[direction === "prev" ? selectedIndex - 1 : selectedIndex + 1];
-    if (next) update({ markId: next.id });
+    if (next) update({ markId: next.displayKey });
   }
 
   useMarkDetailShortcuts({
@@ -257,7 +257,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-[0.75rem] font-semibold text-mark">{pin.id}</span>
+                <span className="font-mono text-[0.75rem] font-semibold text-mark">{pin.displayKey}</span>
                 <StatusPill status={pin.status} />
               </div>
               {editing ? (
@@ -328,7 +328,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                     toast.error(actionErrorMessage(e, "Couldn't move this mark.")),
                   );
                 }}
-                options={workspace.spaces.map((s) => ({ value: s.id, label: s.name }))}
+                options={workspace.spaces.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))}
                 ariaLabel="Mark space"
                 triggerClassName="h-11 w-[160px] sm:h-8"
               />
@@ -503,7 +503,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                   <div className="h-16 rounded bg-paper-3/40" />
                   <div className="relative h-16 rounded bg-paper-3/40">
                     <span className="pin-dot absolute -right-2 -top-2 z-10 !size-5 !text-[8px]">
-                      {shortMarkLabel(pin.id)}
+                      {shortMarkLabel(pin.displayKey)}
                     </span>
                   </div>
                   <div className="h-16 rounded bg-paper-3/40" />

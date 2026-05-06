@@ -32,6 +32,8 @@ export function formatMarkEvent(
   return metadata ?? "Added a comment.";
 }
 
-export function shortMarkLabel(markId: string): string {
-  return markId.replace(/-/g, "").slice(0, 6).toUpperCase();
+export function shortMarkLabel(displayKeyOrUuid: string): string {
+  const t = displayKeyOrUuid.trim();
+  if (/^[a-z\d]+-\d+$/i.test(t)) return t.toUpperCase();
+  return displayKeyOrUuid.replace(/-/g, "").slice(0, 6).toUpperCase();
 }

@@ -36,6 +36,7 @@ DECLARE
   v_user_id uuid := auth.uid();
   v_workspace_id uuid;
   v_invite_email text;
+  v_space_code text;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -48,9 +49,25 @@ BEGIN
   INSERT INTO public.workspace_members (workspace_id, user_id, role)
   VALUES (v_workspace_id, v_user_id, 'owner'::public.workspace_role);
 
-  INSERT INTO public.spaces (workspace_id, name, notes, priority, pinned)
+  v_space_code :=
+    upper(substring(
+      regexp_replace(
+        COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
+        '[^a-zA-Z0-9]',
+        '',
+        'g'
+      ),
+      1,
+      8
+    ));
+  IF length(v_space_code) < 2 THEN
+    v_space_code := 'GN';
+  END IF;
+
+  INSERT INTO public.spaces (workspace_id, code, name, notes, priority, pinned)
   VALUES (
     v_workspace_id,
+    v_space_code,
     COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
     COALESCE(p_space_notes, ''),
     'medium'::public.mark_priority,

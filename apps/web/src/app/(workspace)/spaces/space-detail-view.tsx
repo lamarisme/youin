@@ -346,7 +346,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   return (
                     <Link
                       key={pin.id}
-                      href={`/dashboard?space=${space.id}&mark=${pin.id}`}
+                      href={`/dashboard?space=${space.id}&mark=${encodeURIComponent(pin.displayKey)}`}
                       className="flex items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-paper-2"
                     >
                       <span className={cn("mt-1 size-2 shrink-0 rounded-full", pin.status === "open" ? "bg-mark" : "bg-ok")} />

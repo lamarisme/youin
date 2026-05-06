@@ -13,6 +13,7 @@ export type AssigneeFilter = "all" | "me" | "unassigned";
 
 export interface DashboardFilters {
   spaceId: string; // "all" or a UUID
+  /** Raw `mark` query param: stable UUID or friendly key (`CODE-123`). */
   markId: string | null;
   status: StatusFilter;
   priority: PriorityFilter;
