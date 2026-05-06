@@ -461,7 +461,7 @@ export default function SignUpPage() {
               </button>
             ) : (
               <Link
-                href="/auth/sign-in"
+                href="/login"
                 className="inline-flex min-h-9 items-center text-[0.8125rem] text-ink-2 transition-colors hover:text-ink"
               >
                 I already have an account

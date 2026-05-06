@@ -41,7 +41,10 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const pathWithSearch = `${request.nextUrl.pathname}${request.nextUrl.search}`;
-  const isAuthRoute = path.startsWith("/auth");
+  const isAuthRoute =
+    path.startsWith("/auth") ||
+    path === "/login" ||
+    path === "/signup";
   // Reset-password requires an active recovery session, so authed users must be
   // allowed to reach it. Callback handles its own session exchange + redirects.
   const isAuthRouteAllowedWhileSignedIn =
@@ -56,7 +59,7 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && isProtectedRoute) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/auth/sign-in";
+    redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("next", pathWithSearch);
     return NextResponse.redirect(redirectUrl);
   }

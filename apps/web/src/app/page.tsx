@@ -111,7 +111,7 @@ export default async function Home() {
               </Button>
             ) : (
               <>
-                <Link href="/auth/sign-in" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
+                <Link href="/login" className="hidden text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:block">
                   Sign in
                 </Link>
                 <ChromeCtaButton href="#install" compact />

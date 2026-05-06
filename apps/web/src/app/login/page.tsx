@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 
-function SignInPageContent() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = useMemo(() => {
@@ -131,7 +131,7 @@ function SignInPageContent() {
 
       <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
         New to youin?{" "}
-        <Link href="/auth/sign-up" className="font-medium text-ink hover:text-mark">
+        <Link href="/signup" className="font-medium text-ink hover:text-mark">
           Create account
         </Link>
       </p>
@@ -139,10 +139,10 @@ function SignInPageContent() {
   );
 }
 
-export default function SignInPage() {
+export default function LoginPage() {
   return (
     <Suspense fallback={null}>
-      <SignInPageContent />
+      <LoginPageContent />
     </Suspense>
   );
 }

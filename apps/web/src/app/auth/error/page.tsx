@@ -31,7 +31,7 @@ function AuthErrorContent() {
   const message =
     REASON_MESSAGES[reasonKey] ?? REASON_MESSAGES.incomplete;
 
-  const signInHref = `/auth/sign-in?next=${encodeURIComponent(next)}`;
+  const signInHref = `/login?next=${encodeURIComponent(next)}`;
 
   return (
     <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
@@ -51,7 +51,7 @@ function AuthErrorContent() {
 
       <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
         Need an account?{" "}
-        <Link href="/auth/sign-up" className="font-medium text-ink hover:text-mark">
+        <Link href="/signup" className="font-medium text-ink hover:text-mark">
           Create one
         </Link>
       </p>

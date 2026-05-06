@@ -49,7 +49,7 @@ export default function ContactPage() {
                 </a>
               </Button>
               <Button variant="outline" asChild className="h-11 px-5 text-[0.875rem]">
-                <Link href="/auth/sign-up">Or start a trial</Link>
+                <Link href="/signup">Or start a trial</Link>
               </Button>
             </div>
           </div>

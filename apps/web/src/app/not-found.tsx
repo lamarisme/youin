@@ -14,10 +14,10 @@ export default function NotFound() {
           </Link>
           <nav className="flex items-center gap-2 md:gap-3">
             <Button variant="ghost" size="sm" asChild className="h-8 text-[0.8125rem] text-ink-2 hover:text-ink">
-              <Link href="/auth/sign-in">Sign in</Link>
+              <Link href="/login">Sign in</Link>
             </Button>
             <Button size="sm" asChild className="h-8 bg-mark text-paper text-[0.8125rem] hover:bg-mark-bright">
-              <Link href="/auth/sign-up" className="inline-flex items-center gap-1.5">
+              <Link href="/signup" className="inline-flex items-center gap-1.5">
                 Create account
                 <ArrowRight className="size-3 opacity-90" aria-hidden />
               </Link>
@@ -98,7 +98,7 @@ export default function NotFound() {
       <footer className="mt-auto border-t border-rule bg-paper-2/40">
         <div className="shell flex flex-wrap items-center justify-between gap-[var(--space-sm)] py-[var(--space-md)] font-mono text-[0.6875rem] text-ink-3">
           <p>youin — feedback on the live web</p>
-          <Link href="/auth/sign-in" className="text-ink-2 underline-offset-2 hover:text-ink hover:underline">
+          <Link href="/login" className="text-ink-2 underline-offset-2 hover:text-ink hover:underline">
             Sign in instead
           </Link>
         </div>

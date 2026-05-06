@@ -62,7 +62,7 @@ export function AppSidebar() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      router.replace("/auth/sign-in");
+      router.replace("/login");
       router.refresh();
     } finally {
       setIsSigningOut(false);

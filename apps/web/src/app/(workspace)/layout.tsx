@@ -15,7 +15,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/auth/sign-in?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
+    redirect(`/login?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
 
   const bootstrap = await getWorkspaceBootstrap();
