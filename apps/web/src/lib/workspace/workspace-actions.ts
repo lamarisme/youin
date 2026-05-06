@@ -6,6 +6,7 @@ import type { PinPriority, SpacePriority } from "@/lib/collab-types";
 import { createClient } from "@/lib/supabase/server";
 import { loadUserProfile, loadWorkspaceAggregate } from "@/lib/workspace/load-workspace";
 import { proposeSpaceCodeFromName } from "@/lib/workspace/space-code";
+import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
@@ -481,7 +482,7 @@ export async function deleteMarkCommentAction(commentId: string): Promise<Worksp
 export interface ProfileUpdates {
   name?: string;
   title?: string;
-  bio?: string;
+  about?: string;
   avatarUrl?: string;
   timezone?: string;
 }
@@ -493,7 +494,7 @@ export async function updateProfileAction(updates: ProfileUpdates): Promise<Work
   };
   if (updates.name !== undefined) patch.full_name = updates.name.trim();
   if (updates.title !== undefined) patch.title = updates.title.trim();
-  if (updates.bio !== undefined) patch.bio = updates.bio.trim();
+  if (updates.about !== undefined) patch.about = updates.about.trim();
   if (updates.avatarUrl !== undefined) patch.avatar_url = updates.avatarUrl.trim();
   if (updates.timezone !== undefined) patch.timezone = updates.timezone.trim() || "UTC";
 
@@ -511,6 +512,32 @@ export async function updateWorkspaceAction(updates: { name: string }): Promise<
     .update({ name: trimmed, updated_at: new Date().toISOString() })
     .eq("id", workspaceId);
   if (error) throw error;
+  return afterMutation();
+}
+
+export async function updateMyWorkspaceUsernameAction(username: string): Promise<WorkspaceBootstrap> {
+  const { supabase, userId, workspaceId } = await requireSession();
+  const normalized = assertValidWorkspaceUsername(username);
+
+  const { data: taken, error: findErr } = await supabase
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", workspaceId)
+    .neq("user_id", userId)
+    .ilike("username", normalized)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (taken?.user_id) {
+    throw new Error("That username is already taken in this workspace.");
+  }
+
+  const { error } = await supabase
+    .from("workspace_members")
+    .update({ username: normalized })
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId);
+  if (error) throw error;
+
   return afterMutation();
 }
 

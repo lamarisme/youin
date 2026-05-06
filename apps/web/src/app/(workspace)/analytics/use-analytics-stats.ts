@@ -13,8 +13,7 @@ const TIMEFRAME_DAYS: Record<Exclude<AnalyticsTimeframe, "all">, number> = {
 };
 
 const HEATMAP_MAX_WEEKS = 26;
-const HOUR_MS = 1000 * 60 * 60;
-const DAY_MS = HOUR_MS * 24;
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 export interface HeadlineDelta {
   current: number;
@@ -26,35 +25,6 @@ export interface ThroughputBucket {
   date: string;
   opened: number;
   closed: number;
-}
-
-export interface AssigneeLoad {
-  memberId: string | null;
-  name: string;
-  initials: string;
-  openCount: number;
-  closedCount: number;
-}
-
-export interface SpaceBreakdown {
-  spaceId: string;
-  name: string;
-  openCount: number;
-  totalCount: number;
-  percentClosed: number;
-}
-
-export interface TagBreakdown {
-  tagId: string;
-  label: string;
-  colorClass: string;
-  count: number;
-}
-
-export interface TimeToCloseBucket {
-  label: string;
-  hoursMax: number;
-  count: number;
 }
 
 export interface HeatmapCell {
@@ -76,16 +46,6 @@ export interface AnalyticsStats {
     closedInPeriod: HeadlineDelta;
   };
   throughput: ThroughputBucket[];
-  assignees: AssigneeLoad[];
-  spaces: SpaceBreakdown[];
-  tags: TagBreakdown[];
-  timeToClose: {
-    buckets: TimeToCloseBucket[];
-    totalSamples: number;
-    medianHours: number | null;
-    eventCoverage: number;
-    closedConsidered: number;
-  };
   heatmap: {
     cells: HeatmapCell[];
     weeks: number;
@@ -106,14 +66,9 @@ function localDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-const TTC_BUCKET_DEFS: Array<{ label: string; max: number }> = [
-  { label: "<1h", max: 1 },
-  { label: "<1d", max: 24 },
-  { label: "<3d", max: 24 * 3 },
-  { label: "<1w", max: 24 * 7 },
-  { label: "<1mo", max: 24 * 30 },
-  { label: ">1mo", max: Number.POSITIVE_INFINITY },
-];
+function isMarkCloseEvent(e: { type: string; toValue?: string }): boolean {
+  return e.type === "status_changed" && e.toValue === "closed";
+}
 
 export function useAnalyticsStats(
   workspace: Workspace,
@@ -215,108 +170,6 @@ export function useAnalyticsStats(
       .map(([date, v]) => ({ date, opened: v.opened, closed: v.closed }))
       .sort((a, b) => (a.date < b.date ? -1 : 1));
 
-    const memberMap = new Map(workspace.members.map((m) => [m.id, m]));
-    const assigneeAgg = new Map<string | null, { open: number; closed: number }>();
-    for (const pin of workspace.pins) {
-      const key = pin.assigneeId ?? null;
-      const cur = assigneeAgg.get(key) ?? { open: 0, closed: 0 };
-      if (pin.status === "open") cur.open += 1;
-      else cur.closed += 1;
-      assigneeAgg.set(key, cur);
-    }
-    const assignees: AssigneeLoad[] = Array.from(assigneeAgg.entries()).map(([id, v]) => {
-      if (id === null) {
-        return {
-          memberId: null,
-          name: "Unassigned",
-          initials: "··",
-          openCount: v.open,
-          closedCount: v.closed,
-        };
-      }
-      const member = memberMap.get(id);
-      return {
-        memberId: id,
-        name: member?.name ?? "Unknown",
-        initials: member?.initials ?? "?",
-        openCount: v.open,
-        closedCount: v.closed,
-      };
-    });
-    assignees.sort(
-      (a, b) => b.openCount - a.openCount || b.closedCount - a.closedCount,
-    );
-
-    const spaceAgg = new Map<string, { open: number; total: number }>();
-    for (const space of workspace.spaces) spaceAgg.set(space.id, { open: 0, total: 0 });
-    for (const pin of workspace.pins) {
-      const cur = spaceAgg.get(pin.spaceId);
-      if (!cur) continue;
-      cur.total += 1;
-      if (pin.status === "open") cur.open += 1;
-    }
-    const spaces: SpaceBreakdown[] = workspace.spaces.map((s) => {
-      const v = spaceAgg.get(s.id) ?? { open: 0, total: 0 };
-      const pct = v.total ? Math.round(((v.total - v.open) / v.total) * 100) : 0;
-      return {
-        spaceId: s.id,
-        name: s.name,
-        openCount: v.open,
-        totalCount: v.total,
-        percentClosed: pct,
-      };
-    });
-    spaces.sort((a, b) => b.totalCount - a.totalCount);
-
-    const tagCounts = new Map<string, number>();
-    for (const pin of workspace.pins) {
-      for (const tid of pin.tagIds) tagCounts.set(tid, (tagCounts.get(tid) ?? 0) + 1);
-    }
-    const tags: TagBreakdown[] = workspace.tags
-      .map((t) => ({
-        tagId: t.id,
-        label: t.label,
-        colorClass: t.colorClass,
-        count: tagCounts.get(t.id) ?? 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    const ttcBucketCounts = TTC_BUCKET_DEFS.map(() => 0);
-    const ttcSamples: number[] = [];
-    let closedConsidered = 0;
-    let usingEventClose = 0;
-    for (const pin of workspace.pins) {
-      if (pin.status !== "closed") continue;
-      closedConsidered += 1;
-      const evt = closeEventByPin.get(pin.id);
-      if (!evt) continue;
-      usingEventClose += 1;
-      const closeStamp = new Date(evt.createdAt);
-      if (rangeStart && (closeStamp < rangeStart || closeStamp > rangeEnd)) continue;
-      const created = new Date(pin.createdAt);
-      const hours = (closeStamp.getTime() - created.getTime()) / HOUR_MS;
-      if (hours < 0) continue;
-      ttcSamples.push(hours);
-      const idx = TTC_BUCKET_DEFS.findIndex((b) => hours < b.max);
-      if (idx >= 0) ttcBucketCounts[idx] += 1;
-      else ttcBucketCounts[TTC_BUCKET_DEFS.length - 1] += 1;
-    }
-    const sortedSamples = [...ttcSamples].sort((a, b) => a - b);
-    const median =
-      sortedSamples.length === 0
-        ? null
-        : sortedSamples.length % 2 === 1
-          ? sortedSamples[(sortedSamples.length - 1) / 2]
-          : (sortedSamples[sortedSamples.length / 2 - 1] +
-              sortedSamples[sortedSamples.length / 2]) /
-            2;
-    const ttcBuckets: TimeToCloseBucket[] = TTC_BUCKET_DEFS.map((b, i) => ({
-      label: b.label,
-      hoursMax: b.max,
-      count: ttcBucketCounts[i],
-    }));
-    const eventCoverage = closedConsidered === 0 ? 1 : usingEventClose / closedConsidered;
-
     const heatmapEnd = startOfLocalDay(rangeEnd);
     const heatmapDays = (() => {
       if (timeframe === "all") return HEATMAP_MAX_WEEKS * 7;
@@ -330,6 +183,7 @@ export function useAnalyticsStats(
 
     const heatmapCounts = new Map<string, number>();
     for (const e of workspace.markEvents) {
+      if (isMarkCloseEvent(e)) continue;
       const d = new Date(e.createdAt);
       if (d < alignedStart || d > rangeEnd) continue;
       const key = localDateKey(d);
@@ -373,16 +227,6 @@ export function useAnalyticsStats(
         },
       },
       throughput,
-      assignees,
-      spaces,
-      tags,
-      timeToClose: {
-        buckets: ttcBuckets,
-        totalSamples: ttcSamples.length,
-        medianHours: median,
-        eventCoverage,
-        closedConsidered,
-      },
       heatmap: { cells, weeks: weekSpan, maxCount },
     };
   }, [workspace, timeframe]);

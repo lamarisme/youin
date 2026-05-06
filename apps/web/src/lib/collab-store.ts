@@ -44,7 +44,7 @@ function emptyProfile(): UserProfile {
     name: "",
     email: "",
     title: "",
-    bio: "",
+    about: "",
     avatarUrl: "",
     timezone: "UTC",
   };
@@ -82,6 +82,7 @@ interface CollabStoreState {
   updateComment: (commentId: string, body: string) => Promise<void>;
   deleteComment: (commentId: string) => Promise<void>;
   updateProfile: (updates: ProfileUpdates) => Promise<void>;
+  updateMyWorkspaceUsername: (username: string) => Promise<void>;
   updateWorkspace: (updates: { name: string }) => Promise<void>;
   inviteMember: (email: string) => Promise<void>;
   cancelInvite: (inviteId: string) => Promise<void>;
@@ -347,6 +348,11 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
 
   updateProfile: async (updates) => {
     const bundle = await ws.updateProfileAction(updates);
+    set(workspaceStateFromBundle(bundle));
+  },
+
+  updateMyWorkspaceUsername: async (username) => {
+    const bundle = await ws.updateMyWorkspaceUsernameAction(username);
     set(workspaceStateFromBundle(bundle));
   },
 

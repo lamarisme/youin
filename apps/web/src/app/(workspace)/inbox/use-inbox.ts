@@ -37,6 +37,7 @@ export interface InboxEvent {
   spaceId: string;
   actorId: string;
   actorName: string;
+  actorUsername: string;
   actorInitials: string;
   type: MarkEventType;
   fromValue?: string;
@@ -128,6 +129,7 @@ export function useInbox(
         spaceId: pin.spaceId,
         actorId: e.actorId,
         actorName: actor?.name ?? "Unknown",
+        actorUsername: actor?.username ?? "",
         actorInitials: actor?.initials ?? "?",
         type: e.type,
         fromValue: e.fromValue,
@@ -176,7 +178,10 @@ export function useInbox(
   return { ...data, markAllRead };
 }
 
-export function describeEvent(event: InboxEvent, members: Map<string, { name: string }>): string {
+export function describeEvent(
+  event: InboxEvent,
+  members: Map<string, { name: string; username: string }>,
+): string {
   switch (event.type) {
     case "created":
       return "created this mark";
@@ -192,7 +197,12 @@ export function describeEvent(event: InboxEvent, members: Map<string, { name: st
       return "commented on this mark";
     case "assignee_changed":
       if (!event.toValue) return "unassigned this mark";
-      return `assigned to ${members.get(event.toValue)?.name ?? "a teammate"}`;
+      {
+        const m = members.get(event.toValue);
+        if (m?.username) return `assigned to @${m.username}`;
+        if (m?.name) return `assigned to ${m.name}`;
+        return "assigned to a teammate";
+      }
     case "tag_changed":
       return "updated tags";
     default:

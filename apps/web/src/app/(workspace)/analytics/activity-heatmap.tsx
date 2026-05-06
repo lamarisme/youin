@@ -31,7 +31,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-4 py-3">
         <div>
           <h2 className="font-display text-[0.9375rem] font-semibold text-ink">Activity</h2>
-          <p className="text-[0.75rem] text-ink-3">All mark events per day</p>
+          <p className="text-[0.75rem] text-ink-3">Mark events per day (closing a mark excluded)</p>
         </div>
         <Legend max={data.maxCount} />
       </header>

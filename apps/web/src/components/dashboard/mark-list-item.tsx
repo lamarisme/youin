@@ -8,8 +8,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { PinItem, TeamMember, WorkspaceTag } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
-import { MarkPageOpenButton } from "./mark-page-open";
+import { MarkPageOpenButton, absoluteHrefForMarkPage } from "./mark-page-open";
 
 interface MarkListItemProps {
   pin: PinItem;
@@ -66,12 +67,14 @@ export function MarkListItem({
           />
         )}
       </div>
-      <MarkPageOpenButton
-        page={pin.page}
-        appearance="icon"
-        stopPropagation
-        className="mt-0.5 border-transparent bg-transparent opacity-100 shadow-none hover:bg-paper-3 sm:opacity-0 sm:group-hover/row:opacity-100"
-      />
+      {absoluteHrefForMarkPage(pin.page) ? (
+        <MarkPageOpenButton
+          page={pin.page}
+          appearance="icon"
+          stopPropagation
+          className="mt-0.5 border-transparent bg-transparent opacity-100 shadow-none hover:bg-paper-3 sm:opacity-0 sm:group-hover/row:opacity-100"
+        />
+      ) : null}
       <button
         type="button"
         onClick={onSelect}
@@ -109,11 +112,13 @@ export function MarkListItem({
               );
             })}
             {assignee ? (
-              <Avatar className="size-5">
-                <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
-                  {assignee.initials}
-                </AvatarFallback>
-              </Avatar>
+              <span title={memberPickerLabel(assignee)}>
+                <Avatar className="size-5">
+                  <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                    {assignee.initials}
+                  </AvatarFallback>
+                </Avatar>
+              </span>
             ) : null}
             {commentCount > 0 ? (
               <span className="flex items-center gap-1 text-[0.625rem] text-ink-3">

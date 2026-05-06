@@ -4,6 +4,7 @@ import { History } from "lucide-react";
 
 import { Surface } from "@/components/surface";
 import type { MarkEvent, TeamMember } from "@/lib/collab-types";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { formatMarkEvent } from "./format-mark-event";
 
@@ -30,7 +31,9 @@ export function MarkHistory({ events, membersById, dateTimeFormatter }: MarkHist
           return (
             <Surface key={event.id} padding="sm">
               <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="text-[0.75rem] font-medium text-ink">{actor?.name ?? "Unknown member"}</span>
+                <span className="text-[0.75rem] font-medium text-ink" title={actor ? memberPickerLabel(actor) : undefined}>
+                  {actor ? `${actor.username} · ${actor.name}` : "Unknown member"}
+                </span>
                 <span className="text-[0.625rem] text-ink-3">
                   {dateTimeFormatter.format(new Date(event.createdAt))}
                 </span>

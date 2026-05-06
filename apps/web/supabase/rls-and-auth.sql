@@ -162,6 +162,17 @@ CREATE POLICY workspace_members_insert ON public.workspace_members
     )
   );
 
+CREATE POLICY workspace_members_update_self ON public.workspace_members
+  FOR UPDATE TO authenticated
+  USING (
+    public.user_workspace_member(workspace_id)
+    AND user_id = auth.uid()
+  )
+  WITH CHECK (
+    public.user_workspace_member(workspace_id)
+    AND user_id = auth.uid()
+  );
+
 CREATE POLICY workspace_members_delete_owner ON public.workspace_members
   FOR DELETE TO authenticated
   USING (

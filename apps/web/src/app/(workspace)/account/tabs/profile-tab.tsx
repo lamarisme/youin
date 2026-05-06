@@ -22,20 +22,20 @@ export function ProfileTab() {
   const [draft, setDraft] = useState({
     name: profile.name,
     title: profile.title,
-    bio: profile.bio,
+    about: profile.about,
     avatarUrl: profile.avatarUrl,
     timezone: profile.timezone,
   });
   const [saving, setSaving] = useState(false);
 
-  const profileSig = `${profile.name}${profile.title}${profile.bio}${profile.avatarUrl}${profile.timezone}`;
+  const profileSig = `${profile.name}${profile.title}${profile.about}${profile.avatarUrl}${profile.timezone}`;
   const [lastProfileSig, setLastProfileSig] = useState(profileSig);
   if (profileSig !== lastProfileSig) {
     setLastProfileSig(profileSig);
     setDraft({
       name: profile.name,
       title: profile.title,
-      bio: profile.bio,
+      about: profile.about,
       avatarUrl: profile.avatarUrl,
       timezone: profile.timezone,
     });
@@ -101,11 +101,11 @@ export function ProfileTab() {
               className="h-9 bg-paper-2 text-[0.8125rem]"
             />
           </Field>
-          <Field id="profile-bio" label="Bio" className="sm:col-span-2">
+          <Field id="profile-about" label="About" className="sm:col-span-2">
             <Textarea
-              id="profile-bio"
-              value={draft.bio}
-              onChange={(e) => setDraft((prev) => ({ ...prev, bio: e.target.value }))}
+              id="profile-about"
+              value={draft.about}
+              onChange={(e) => setDraft((prev) => ({ ...prev, about: e.target.value }))}
               className="min-h-[80px] bg-paper-2 text-[0.8125rem]"
             />
           </Field>

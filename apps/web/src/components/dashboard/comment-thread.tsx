@@ -19,6 +19,7 @@ import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
 import { useCollabStore } from "@/lib/collab-store";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { getMarkUploadUrlAction } from "@/lib/workspace/workspace-actions";
 
 import { MentionPopover } from "./mention-popover";
@@ -259,7 +260,12 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
                 {author?.initials ?? "?"}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[0.75rem] font-medium text-ink">{author?.name ?? "Unknown"}</span>
+            <span
+              className="text-[0.75rem] font-medium text-ink"
+              title={author ? memberPickerLabel(author) : undefined}
+            >
+              {author ? `${author.username} · ${author.name}` : "Unknown"}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <span className="text-[0.625rem] text-ink-3">

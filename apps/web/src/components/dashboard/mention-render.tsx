@@ -32,9 +32,9 @@ function MentionChip({ member }: { member: TeamMember }) {
   return (
     <span
       className="inline-flex items-baseline rounded bg-mark-soft px-1 align-baseline font-medium text-mark"
-      title={member.email || member.name}
+      title={`${member.name}${member.email ? ` · ${member.email}` : ""}`}
     >
-      @{member.name}
+      @{member.username}
     </span>
   );
 }

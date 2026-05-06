@@ -39,13 +39,37 @@ export type MentionSegment =
   | { type: "text"; value: string }
   | { type: "mention"; value: string; member: TeamMember };
 
+function matchMemberAfterAt(
+  body: string,
+  atIndex: number,
+  members: TeamMember[],
+): { member: TeamMember; sourceLength: number } | null {
+  const byUsername = [...members].sort((a, b) => b.username.length - a.username.length);
+  for (const m of byUsername) {
+    if (!m.username) continue;
+    const slice = body.slice(atIndex + 1, atIndex + 1 + m.username.length);
+    if (slice.toLowerCase() !== m.username.toLowerCase()) continue;
+    const after = body[atIndex + 1 + m.username.length];
+    if (after !== undefined && !WORD_BREAK_AFTER.test(after)) continue;
+    return { member: m, sourceLength: m.username.length };
+  }
+  const byName = [...members].sort((a, b) => b.name.length - a.name.length);
+  for (const m of byName) {
+    if (!m.name) continue;
+    const candidate = body.slice(atIndex + 1, atIndex + 1 + m.name.length);
+    if (candidate !== m.name) continue;
+    const after = body[atIndex + 1 + m.name.length];
+    if (after !== undefined && !WORD_BREAK_AFTER.test(after)) continue;
+    return { member: m, sourceLength: m.name.length };
+  }
+  return null;
+}
+
 /**
- * Split a comment body into text and resolved-mention segments.
- * Tries longer member names first so e.g. `@Alex Smith` matches before `@Alex`.
+ * Split comment text into segments. Resolves @{username} first; then legacy @{full name}.
  */
 export function parseMentions(body: string, members: TeamMember[]): MentionSegment[] {
   if (!body) return [];
-  const sorted = [...members].sort((a, b) => b.name.length - a.name.length);
 
   const segments: MentionSegment[] = [];
   let buffer = "";
@@ -57,24 +81,18 @@ export function parseMentions(body: string, members: TeamMember[]): MentionSegme
       const prev = i === 0 ? "" : body[i - 1];
       const atWordBoundary = prev === "" || WORD_BREAK_BEFORE.test(prev);
       if (atWordBoundary) {
-        const matched = sorted.find((m) => {
-          if (!m.name) return false;
-          const candidate = body.slice(i + 1, i + 1 + m.name.length);
-          if (candidate !== m.name) return false;
-          const after = body[i + 1 + m.name.length];
-          return after === undefined || WORD_BREAK_AFTER.test(after);
-        });
-        if (matched) {
+        const hit = matchMemberAfterAt(body, i, members);
+        if (hit) {
           if (buffer) {
             segments.push({ type: "text", value: buffer });
             buffer = "";
           }
           segments.push({
             type: "mention",
-            value: `@${matched.name}`,
-            member: matched,
+            value: `@${hit.member.username}`,
+            member: hit.member,
           });
-          i += 1 + matched.name.length;
+          i += 1 + hit.sourceLength;
           continue;
         }
       }
@@ -87,14 +105,14 @@ export function parseMentions(body: string, members: TeamMember[]): MentionSegme
   return segments;
 }
 
-/** Replace the active `@…` token with `@Name ` and return the new text + caret. */
+/** Replace the active `@…` token with `@username ` and return the new text + caret. */
 export function applyMention(
   text: string,
   active: ActiveMention,
   caret: number,
   member: TeamMember,
 ): { text: string; caret: number } {
-  const insertion = `@${member.name} `;
+  const insertion = `@${member.username} `;
   const before = text.slice(0, active.start);
   const after = text.slice(caret);
   const next = `${before}${insertion}${after}`;

@@ -180,7 +180,7 @@ function CommandPaletteDialog({
       {
         id: "nav-analytics",
         title: "Analytics",
-        subtitle: "Throughput, workload, and time-to-close",
+        subtitle: "Throughput and workspace activity",
         group: "Navigate",
         shortcut: "G A",
         icon: BarChart3,

@@ -40,7 +40,7 @@ export const profiles = pgTable(
     email: text("email"),
     fullName: text("full_name"),
     title: text("title").notNull().default(""),
-    bio: text("bio").notNull().default(""),
+    about: text("about").notNull().default(""),
     avatarUrl: text("avatar_url").notNull().default(""),
     timezone: text("timezone").notNull().default("UTC"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -70,6 +70,11 @@ export const workspaceMembers = pgTable(
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
     userId: uuid("user_id").notNull(),
+    /**
+     * Handle unique within this workspace (case-insensitive in DB via unique expression index).
+     * Lowercase `[a-z0-9_]`, 2–48 chars enforced in application layer.
+     */
+    username: text("username").notNull(),
     role: roleEnum("role").notNull().default("member"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

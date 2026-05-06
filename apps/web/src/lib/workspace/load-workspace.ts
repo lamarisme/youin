@@ -26,7 +26,7 @@ export async function loadUserProfile(
 ): Promise<UserProfile> {
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, email, title, bio, avatar_url, timezone")
+    .select("id, full_name, email, title, about, avatar_url, timezone")
     .eq("id", userId)
     .maybeSingle();
 
@@ -35,7 +35,7 @@ export async function loadUserProfile(
     name: (data?.full_name as string | null)?.trim() || "",
     email: (data?.email as string | null) ?? "",
     title: (data?.title as string | null) ?? "",
-    bio: (data?.bio as string | null) ?? "",
+    about: (data?.about as string | null) ?? "",
     avatarUrl: (data?.avatar_url as string | null) ?? "",
     timezone: (data?.timezone as string | null) || "UTC",
   };
@@ -93,7 +93,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
 
   const { data: membersRows } = await supabase
     .from("workspace_members")
-    .select("user_id,role")
+    .select("user_id,role,username")
     .eq("workspace_id", workspaceId);
 
   const userIds = (membersRows ?? []).map((m) => m.user_id as string);
@@ -169,6 +169,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
       "Member";
     return {
       id: uid,
+      username: String((row as { username?: unknown }).username ?? "").toLowerCase(),
       name,
       initials: initialsFromFullName(prof?.full_name ?? prof?.email),
       email: prof?.email ?? "",

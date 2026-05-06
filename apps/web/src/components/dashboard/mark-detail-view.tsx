@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/action-error";
 import type { PinItem, PinPriority, WorkspaceTag } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
 import { CommentThread } from "./comment-thread";
@@ -315,7 +316,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 }
                 options={[
                   { value: "__unassigned", label: "Unassigned" },
-                  ...workspace.members.map((m) => ({ value: m.id, label: m.name })),
+                  ...workspace.members.map((m) => ({ value: m.id, label: memberPickerLabel(m) })),
                 ]}
                 ariaLabel="Mark assignee"
                 triggerClassName="h-11 w-[140px] sm:h-8"
@@ -453,7 +454,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                     {assignee.initials}
                   </AvatarFallback>
                 </Avatar>
-                {assignee.name}
+                <span className="truncate" title={memberPickerLabel(assignee)}>
+                  {assignee.username} · {assignee.name}
+                </span>
               </span>
             ) : null}
           </div>

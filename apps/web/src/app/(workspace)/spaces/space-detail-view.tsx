@@ -39,6 +39,7 @@ import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { useSpaceStats } from "./use-space-stats";
 
@@ -353,7 +354,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <p className="truncate text-[0.8125rem] font-medium text-ink">{pin.title}</p>
-                          <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">{pin.id}</span>
+                          <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">{pin.displayKey}</span>
                         </div>
                         <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -370,11 +371,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                             );
                           })}
                           {assignee ? (
-                            <Avatar className="size-5">
-                              <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
-                                {assignee.initials}
-                              </AvatarFallback>
-                            </Avatar>
+                            <span className="flex items-center gap-1.5 text-[0.6875rem] text-ink-2" title={memberPickerLabel(assignee)}>
+                              <Avatar className="size-5">
+                                <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                                  {assignee.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="max-w-[9rem] truncate">
+                                {assignee.username} · {assignee.name}
+                              </span>
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -439,7 +445,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <p className="text-eyebrow mb-2">Active members</p>
               <div className="flex -space-x-1.5">
                 {workspace.members.map((m) => (
-                  <Avatar key={m.id} className="size-7 border-2 border-paper">
+                  <Avatar key={m.id} className="size-7 border-2 border-paper" title={memberPickerLabel(m)}>
                     <AvatarFallback className="bg-paper-3 text-[9px] font-medium text-ink-2">
                       {m.initials}
                     </AvatarFallback>

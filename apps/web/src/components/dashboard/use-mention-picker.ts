@@ -33,7 +33,7 @@ export function useMentionPicker(options: Options): MentionPickerState {
     const q = active.query.trim().toLowerCase();
     if (!q) return members;
     return members.filter((m) => {
-      const haystack = `${m.name} ${m.email ?? ""}`.toLowerCase();
+      const haystack = `${m.username} ${m.name} ${m.email ?? ""}`.toLowerCase();
       return haystack.includes(q);
     });
   }, [active, members]);

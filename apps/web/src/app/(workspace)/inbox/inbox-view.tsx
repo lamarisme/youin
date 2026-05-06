@@ -25,7 +25,7 @@ export function InboxView() {
 
   const inbox = useInbox(workspace, workspaceId, userId);
   const memberLookup = useMemo(
-    () => new Map(workspace.members.map((m) => [m.id, { name: m.name }])),
+    () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
     [workspace.members],
   );
   const spaceLookup = useMemo(
@@ -100,7 +100,7 @@ function InboxGroupRow({
 }: {
   group: InboxGroup;
   spaceName: string | null;
-  members: Map<string, { name: string }>;
+  members: Map<string, { name: string; username: string }>;
 }) {
   const top = group.events[0];
   const extras = group.events.length - 1;
@@ -155,12 +155,22 @@ function UnreadDot({ active }: { active: boolean }) {
 }
 
 function ActorChip({ event }: { event: InboxEvent }) {
+  const handle = event.actorUsername.trim();
   return (
     <span className="inline-flex items-center gap-1.5 align-baseline">
       <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-[0.625rem] font-semibold text-ink-2">
         {event.actorInitials}
       </span>
-      <span className="font-medium text-ink">{event.actorName}</span>
+      <span className="min-w-0 truncate font-medium text-ink" title={handle ? `@${handle} · ${event.actorName}` : event.actorName}>
+        {handle ? (
+          <>
+            <span className="text-ink">@{handle}</span>
+            <span className="text-ink-3"> · {event.actorName}</span>
+          </>
+        ) : (
+          event.actorName
+        )}
+      </span>
     </span>
   );
 }

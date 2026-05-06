@@ -43,6 +43,27 @@
       "when": 1778073023941,
       "tag": "0005_space_codes_mark_seq",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778074738070,
+      "tag": "0006_workspace_member_username",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778075562805,
+      "tag": "0007_workspace_members_update_self",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778170000000,
+      "tag": "0008_profiles_bio_to_about",
+      "breakpoints": true
     }
   ]
 }

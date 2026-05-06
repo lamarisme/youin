@@ -17,6 +17,8 @@ export type CommentType = "text" | "image";
 
 export interface TeamMember {
   id: string;
+  /** Workspace-unique handle (lowercase) for @mentions and references. */
+  username: string;
   name: string;
   initials: string;
   email: string;
@@ -115,7 +117,7 @@ export interface UserProfile {
   name: string;
   email: string;
   title: string;
-  bio: string;
+  about: string;
   avatarUrl: string;
   timezone: string;
 }

@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { PinPriority, TeamMember, WorkspaceTag } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 const UNASSIGNED = "__unassigned";
 
@@ -112,7 +113,7 @@ export function NewMarkForm({
   const assigneeOptions = useMemo(
     () => [
       { value: UNASSIGNED, label: "Unassigned" },
-      ...members.map((m) => ({ value: m.id, label: m.name })),
+      ...members.map((m) => ({ value: m.id, label: memberPickerLabel(m) })),
     ],
     [members],
   );

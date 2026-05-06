@@ -21,6 +21,48 @@
 DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[]);
 DROP FUNCTION IF EXISTS public.attach_user_via_invite();
 
+CREATE OR REPLACE FUNCTION public.member_username_from_email(p_workspace_id uuid, p_email text)
+RETURNS text
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  base text;
+  cand text;
+  n int := 0;
+BEGIN
+  base := substring(
+    regexp_replace(lower(split_part(trim(coalesce(p_email, '')), '@', 1)), '[^a-z0-9_]', '_', 'g'),
+    1,
+    32
+  );
+  base := trim(both '_' from base);
+  IF base IS NULL OR length(base) < 2 THEN
+    base := 'member';
+  END IF;
+
+  LOOP
+    cand := substring(base || CASE WHEN n = 0 THEN '' ELSE n::text END FROM 1 FOR 48);
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM workspace_members wm
+      WHERE wm.workspace_id = p_workspace_id
+        AND lower(wm.username) = lower(cand)
+    );
+    n := n + 1;
+    IF n > 5000 THEN
+      cand := substring('u' || replace(gen_random_uuid()::text, '-', '') FROM 1 FOR 32);
+      EXIT;
+    END IF;
+  END LOOP;
+  RETURN lower(cand);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.member_username_from_email(uuid, text) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION public.bootstrap_workspace(
   p_workspace_name text,
   p_space_name text DEFAULT 'General',
@@ -46,8 +88,16 @@ BEGIN
   VALUES (COALESCE(NULLIF(TRIM(p_workspace_name), ''), 'My workspace'))
   RETURNING id INTO v_workspace_id;
 
-  INSERT INTO public.workspace_members (workspace_id, user_id, role)
-  VALUES (v_workspace_id, v_user_id, 'owner'::public.workspace_role);
+  INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
+  VALUES (
+    v_workspace_id,
+    v_user_id,
+    'owner'::public.workspace_role,
+    public.member_username_from_email(
+      v_workspace_id,
+      (SELECT COALESCE(email, '') FROM auth.users WHERE id = v_user_id LIMIT 1)
+    )
+  );
 
   v_space_code :=
     upper(substring(
@@ -131,8 +181,13 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  INSERT INTO public.workspace_members (workspace_id, user_id, role)
-  VALUES (v_workspace_id, v_user_id, 'member'::public.workspace_role)
+  INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
+  VALUES (
+    v_workspace_id,
+    v_user_id,
+    'member'::public.workspace_role,
+    public.member_username_from_email(v_workspace_id, v_email)
+  )
   ON CONFLICT (workspace_id, user_id) DO NOTHING;
 
   UPDATE public.workspace_invites

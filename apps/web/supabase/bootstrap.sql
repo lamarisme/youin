@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS "profiles" (
   "email" text,
   "full_name" text,
   "title" text DEFAULT '' NOT NULL,
-  "bio" text DEFAULT '' NOT NULL,
+  "about" text DEFAULT '' NOT NULL,
   "avatar_url" text DEFAULT '' NOT NULL,
   "timezone" text DEFAULT 'UTC' NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS "workspaces" (
 CREATE TABLE IF NOT EXISTS "workspace_members" (
   "workspace_id" uuid NOT NULL,
   "user_id" uuid NOT NULL,
+  "username" text NOT NULL,
   "role" "workspace_role" DEFAULT 'member' NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "workspace_members_workspace_id_user_id_pk" PRIMARY KEY ("workspace_id", "user_id")
@@ -233,6 +234,7 @@ ALTER TABLE "mark_events"
 CREATE INDEX IF NOT EXISTS "profiles_updated_at_idx" ON "profiles" USING btree ("updated_at");
 CREATE INDEX IF NOT EXISTS "workspaces_name_idx" ON "workspaces" USING btree ("name");
 CREATE INDEX IF NOT EXISTS "workspace_members_user_workspace_idx" ON "workspace_members" USING btree ("user_id", "workspace_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "workspace_members_workspace_username_lower" ON "workspace_members" USING btree ("workspace_id", lower("username"));
 CREATE INDEX IF NOT EXISTS "workspace_invites_workspace_email_idx" ON "workspace_invites" USING btree ("workspace_id", "email");
 CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_name_unique" ON "spaces" USING btree ("workspace_id", "name");
 CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_code_unique" ON "spaces" USING btree ("workspace_id", "code");
@@ -447,6 +449,17 @@ CREATE POLICY workspace_members_insert ON public.workspace_members
     )
   );
 
+CREATE POLICY workspace_members_update_self ON public.workspace_members
+  FOR UPDATE TO authenticated
+  USING (
+    public.user_workspace_member(workspace_id)
+    AND user_id = auth.uid()
+  )
+  WITH CHECK (
+    public.user_workspace_member(workspace_id)
+    AND user_id = auth.uid()
+  );
+
 CREATE POLICY workspace_members_delete_owner ON public.workspace_members
   FOR DELETE TO authenticated
   USING (
@@ -625,6 +638,48 @@ CREATE POLICY mark_images_delete_owner ON storage.objects
 DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[]);
 DROP FUNCTION IF EXISTS public.attach_user_via_invite();
 
+CREATE OR REPLACE FUNCTION public.member_username_from_email(p_workspace_id uuid, p_email text)
+RETURNS text
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  base text;
+  cand text;
+  n int := 0;
+BEGIN
+  base := substring(
+    regexp_replace(lower(split_part(trim(coalesce(p_email, '')), '@', 1)), '[^a-z0-9_]', '_', 'g'),
+    1,
+    32
+  );
+  base := trim(both '_' from base);
+  IF base IS NULL OR length(base) < 2 THEN
+    base := 'member';
+  END IF;
+
+  LOOP
+    cand := substring(base || CASE WHEN n = 0 THEN '' ELSE n::text END FROM 1 FOR 48);
+    EXIT WHEN NOT EXISTS (
+      SELECT 1
+      FROM workspace_members wm
+      WHERE wm.workspace_id = p_workspace_id
+        AND lower(wm.username) = lower(cand)
+    );
+    n := n + 1;
+    IF n > 5000 THEN
+      cand := substring('u' || replace(gen_random_uuid()::text, '-', '') FROM 1 FOR 32);
+      EXIT;
+    END IF;
+  END LOOP;
+  RETURN lower(cand);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.member_username_from_email(uuid, text) FROM PUBLIC;
+
 CREATE OR REPLACE FUNCTION public.bootstrap_workspace(
   p_workspace_name text,
   p_space_name text DEFAULT 'General',
@@ -640,6 +695,7 @@ DECLARE
   v_user_id uuid := auth.uid();
   v_workspace_id uuid;
   v_invite_email text;
+  v_space_code text;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
@@ -649,12 +705,36 @@ BEGIN
   VALUES (COALESCE(NULLIF(TRIM(p_workspace_name), ''), 'My workspace'))
   RETURNING id INTO v_workspace_id;
 
-  INSERT INTO public.workspace_members (workspace_id, user_id, role)
-  VALUES (v_workspace_id, v_user_id, 'owner'::public.workspace_role);
-
-  INSERT INTO public.spaces (workspace_id, name, notes, priority, pinned)
+  INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
   VALUES (
     v_workspace_id,
+    v_user_id,
+    'owner'::public.workspace_role,
+    public.member_username_from_email(
+      v_workspace_id,
+      (SELECT COALESCE(email, '') FROM auth.users WHERE id = v_user_id LIMIT 1)
+    )
+  );
+
+  v_space_code :=
+    upper(substring(
+      regexp_replace(
+        COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
+        '[^a-zA-Z0-9]',
+        '',
+        'g'
+      ),
+      1,
+      8
+    ));
+  IF length(v_space_code) < 2 THEN
+    v_space_code := 'GN';
+  END IF;
+
+  INSERT INTO public.spaces (workspace_id, code, name, notes, priority, pinned)
+  VALUES (
+    v_workspace_id,
+    v_space_code,
     COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
     COALESCE(p_space_notes, ''),
     'medium'::public.mark_priority,
@@ -718,8 +798,13 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  INSERT INTO public.workspace_members (workspace_id, user_id, role)
-  VALUES (v_workspace_id, v_user_id, 'member'::public.workspace_role)
+  INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
+  VALUES (
+    v_workspace_id,
+    v_user_id,
+    'member'::public.workspace_role,
+    public.member_username_from_email(v_workspace_id, v_email)
+  )
   ON CONFLICT (workspace_id, user_id) DO NOTHING;
 
   UPDATE public.workspace_invites

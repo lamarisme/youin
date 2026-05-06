@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCollabStore } from "@/lib/collab-store";
+import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 
 export function TeamTab() {
-  const { members, invites, userId, isOwner, inviteMember, cancelInvite, removeMember } = useCollabStore(
+  const { members, invites, userId, isOwner, inviteMember, cancelInvite, removeMember, updateMyWorkspaceUsername } =
+    useCollabStore(
     useShallow((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
@@ -22,12 +24,40 @@ export function TeamTab() {
       inviteMember: s.inviteMember,
       cancelInvite: s.cancelInvite,
       removeMember: s.removeMember,
+      updateMyWorkspaceUsername: s.updateMyWorkspaceUsername,
     })),
   );
 
+  const me = members.find((m) => m.id === userId);
+  const [usernameDraft, setUsernameDraft] = useState(me?.username ?? "");
+  useEffect(() => {
+    setUsernameDraft(me?.username ?? "");
+  }, [me?.username]);
+
+  const [usernameSaving, setUsernameSaving] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const canInvite = inviteEmail.trim().includes("@") && inviteEmail.trim().includes(".") && !isInviting;
+
+  async function handleSaveUsername() {
+    if (!me || usernameSaving) return;
+    try {
+      assertValidWorkspaceUsername(usernameDraft);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invalid username.");
+      return;
+    }
+    if (usernameDraft.trim().toLowerCase() === me.username) return;
+    setUsernameSaving(true);
+    try {
+      await updateMyWorkspaceUsername(usernameDraft);
+      toast.success("Workspace username updated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't update username.");
+    } finally {
+      setUsernameSaving(false);
+    }
+  }
 
   async function handleInvite() {
     if (!canInvite) return;
@@ -69,6 +99,45 @@ export function TeamTab() {
         <p className="mt-1 text-[0.8125rem] text-ink-2">Invite teammates and manage workspace members.</p>
       </div>
 
+      {me ? (
+        <div className="rounded-lg border border-rule bg-paper-2 px-3 py-3">
+          <Label htmlFor="workspace-username" className="text-[0.75rem] font-medium text-ink-2">
+            Your username in this workspace
+          </Label>
+          <p className="mt-0.5 text-[0.6875rem] text-ink-3">
+            Lowercase letters, numbers, underscores. Used for @mentions and assigning work. Unique in this workspace.
+          </p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="font-mono text-[0.8125rem] text-ink-3" aria-hidden>
+              @
+            </span>
+            <Input
+              id="workspace-username"
+              value={usernameDraft}
+              onChange={(e) => setUsernameDraft(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              maxLength={32}
+              className="h-9 flex-1 bg-paper font-mono text-[0.8125rem]"
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={
+                usernameSaving ||
+                usernameDraft.trim().toLowerCase() === me.username ||
+                usernameDraft.trim().length < 2
+              }
+              onClick={() => void handleSaveUsername()}
+              className="h-9 shrink-0"
+            >
+              {usernameSaving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-2 sm:flex-row">
         <Label htmlFor="invite-email" className="sr-only">
           Invite teammate email
@@ -100,10 +169,11 @@ export function TeamTab() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-[0.8125rem] font-medium text-ink">
-                  {member.name}
+                <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-ink">
+                  <span>{member.name}</span>
+                  <span className="font-mono text-[0.6875rem] font-normal text-mark">@{member.username}</span>
                   {member.id === userId ? (
-                    <span className="ml-1.5 text-[0.6875rem] font-normal text-ink-3">(you)</span>
+                    <span className="text-[0.6875rem] font-normal text-ink-3">(you)</span>
                   ) : null}
                 </p>
                 <p className="text-[0.6875rem] text-ink-3">{member.email}</p>
