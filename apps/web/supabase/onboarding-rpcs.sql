@@ -124,9 +124,9 @@ BEGIN
     false
   );
 
-  INSERT INTO public.mark_tags (workspace_id, label)
-  SELECT v_workspace_id, label
-  FROM unnest(ARRAY['Copy', 'UI', 'A11y', 'Bug']) AS label;
+  INSERT INTO public.mark_labels (workspace_id, name)
+  SELECT v_workspace_id, name
+  FROM unnest(ARRAY['Copy', 'UI', 'A11y', 'Bug']) AS name;
 
   IF p_invite_emails IS NOT NULL THEN
     FOREACH v_invite_email IN ARRAY p_invite_emails LOOP

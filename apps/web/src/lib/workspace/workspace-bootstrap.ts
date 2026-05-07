@@ -24,7 +24,7 @@ export async function syncProfileFromUser(supabase: SupabaseClient, user: User):
  *   1. Existing membership → return its workspace_id.
  *   2. Pending invite for this user's email → attach via RPC, return workspace_id.
  *   3. Otherwise → bootstrap a fresh workspace via RPC (creates workspace, adds
- *      the user as owner, seeds default space + tags, fans out signup invites).
+ *      the user as owner, seeds default space + labels, fans out signup invites).
  *
  * The two RPCs are SECURITY DEFINER (see supabase/onboarding-rpcs.sql); they are
  * required to atomically work around the RLS chicken-and-egg problem where a

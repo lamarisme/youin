@@ -7,7 +7,7 @@ import { useCollabStore } from "@/lib/collab-store";
 import { filterPinsByDashboardFilters } from "./pin-filter-utils";
 import { useDashboardFilters } from "./use-dashboard-filters";
 
-/** Pins visible under the current dashboard URL filters (space, status, priority, pinned, tag, assignee). */
+/** Pins visible under the current dashboard URL filters (space, status, priority, pinned, label, assignee). */
 export function useVisibleDashboardPins() {
   const pins = useCollabStore((s) => s.workspace.pins);
   const userId = useCollabStore((s) => s.userId);
@@ -22,7 +22,7 @@ export function useVisibleDashboardPins() {
           status: filters.status,
           priority: filters.priority,
           pinned: filters.pinned,
-          tag: filters.tag,
+          label: filters.label,
           assignee: filters.assignee,
           q: filters.q,
           sort: filters.sort,
@@ -36,7 +36,7 @@ export function useVisibleDashboardPins() {
       filters.status,
       filters.priority,
       filters.pinned,
-      filters.tag,
+      filters.label,
       filters.assignee,
       filters.q,
       filters.sort,

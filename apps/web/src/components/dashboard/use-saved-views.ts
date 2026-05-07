@@ -6,7 +6,7 @@ import type { DashboardFilters } from "./use-dashboard-filters";
 
 export type SavedViewFilters = Pick<
   DashboardFilters,
-  "status" | "priority" | "pinned" | "tag" | "assignee" | "q" | "sort"
+  "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 export interface SavedView {
@@ -58,7 +58,7 @@ export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
     status: filters.status,
     priority: filters.priority,
     pinned: filters.pinned,
-    tag: filters.tag,
+    label: filters.label,
     assignee: filters.assignee,
     q: filters.q,
     sort: filters.sort,
@@ -70,7 +70,7 @@ export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
     snapshot.status === "all" &&
     snapshot.priority === "all" &&
     snapshot.pinned === "all" &&
-    snapshot.tag === "all" &&
+    snapshot.label === "all" &&
     snapshot.assignee === "all" &&
     snapshot.q.trim() === "" &&
     snapshot.sort === "recent"

@@ -18,7 +18,7 @@ export interface DashboardFilters {
   status: StatusFilter;
   priority: PriorityFilter;
   pinned: PinnedFilter;
-  tag: string; // "all" or a tag id
+  label: string; // "all" or a label id
   assignee: AssigneeFilter;
   q: string; // free-text search query
   sort: SortMode;
@@ -48,7 +48,7 @@ export function useDashboardFilters() {
       status: parseEnum(searchParams.get("status"), STATUS_VALUES),
       priority: parseEnum(searchParams.get("priority"), PRIORITY_VALUES),
       pinned: parseEnum(searchParams.get("pinned"), PINNED_VALUES),
-      tag: searchParams.get("tag") ?? "all",
+      label: searchParams.get("label") ?? "all",
       assignee: parseEnum(searchParams.get("assignee"), ASSIGNEE_VALUES),
       q: searchParams.get("q") ?? "",
       sort: parseEnum(searchParams.get("sort"), SORT_VALUES),

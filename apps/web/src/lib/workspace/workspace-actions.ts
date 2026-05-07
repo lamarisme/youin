@@ -196,7 +196,7 @@ export async function createPinAction(input: {
   description: string;
   page: string;
   spaceId: string;
-  tagIds: string[];
+  labelIds: string[];
   assigneeId?: string | null;
   priority?: PinPriority;
 }): Promise<[WorkspaceBootstrap, string]> {
@@ -219,9 +219,9 @@ export async function createPinAction(input: {
     .single();
   if (error || !mk) throw error ?? new Error("Failed to create mark.");
   const markId = mk.id as string;
-  if (input.tagIds.length) {
-    const { error: tErr } = await supabase.from("marks_to_tags").insert(
-      input.tagIds.map((tagId) => ({ mark_id: markId, tag_id: tagId })),
+  if (input.labelIds.length) {
+    const { error: tErr } = await supabase.from("marks_to_labels").insert(
+      input.labelIds.map((labelId) => ({ mark_id: markId, label_id: labelId })),
     );
     if (tErr) throw tErr;
   }
@@ -276,7 +276,7 @@ export async function updatePinFieldsAction(
       workspace_id: workspaceId,
       mark_id: pinId,
       actor_user_id: userId,
-      type: "tag_changed",
+      type: "label_changed",
       from_value: String(row.space_id),
       to_value: updates.spaceId,
       metadata: { summary: "Moved to a different space." },
@@ -595,24 +595,24 @@ export async function removeMemberAction(memberUserId: string): Promise<Workspac
   return afterMutation();
 }
 
-export async function createTagAction(label: string): Promise<WorkspaceBootstrap> {
+export async function createLabelAction(name: string): Promise<WorkspaceBootstrap> {
   const { supabase, workspaceId } = await requireSession();
-  const trimmed = label.trim();
-  if (!trimmed) throw new Error("Tag label is required.");
-  const { error } = await supabase.from("mark_tags").insert({
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Label name is required.");
+  const { error } = await supabase.from("mark_labels").insert({
     workspace_id: workspaceId,
-    label: trimmed,
+    name: trimmed,
   });
   if (error) throw error;
   return afterMutation();
 }
 
-export async function deleteTagAction(tagId: string): Promise<WorkspaceBootstrap> {
+export async function deleteLabelAction(labelId: string): Promise<WorkspaceBootstrap> {
   const { supabase, workspaceId } = await requireSession();
   const { error } = await supabase
-    .from("mark_tags")
+    .from("mark_labels")
     .delete()
-    .eq("id", tagId)
+    .eq("id", labelId)
     .eq("workspace_id", workspaceId);
   if (error) throw error;
   return afterMutation();
@@ -684,32 +684,32 @@ export async function getMarkUploadUrlAction(
   return { path, token: upload.token, signedUrl: upload.signedUrl };
 }
 
-export async function setMarkTagsAction(pinId: string, tagIds: string[]): Promise<WorkspaceBootstrap> {
+export async function setMarkLabelsAction(pinId: string, labelIds: string[]): Promise<WorkspaceBootstrap> {
   const { supabase, userId, workspaceId } = await requireSession();
-  const desired = Array.from(new Set(tagIds));
+  const desired = Array.from(new Set(labelIds));
 
   const { data: existingRows, error: readErr } = await supabase
-    .from("marks_to_tags")
-    .select("tag_id")
+    .from("marks_to_labels")
+    .select("label_id")
     .eq("mark_id", pinId);
   if (readErr) throw readErr;
-  const existing = new Set((existingRows ?? []).map((r) => r.tag_id as string));
+  const existing = new Set((existingRows ?? []).map((r) => r.label_id as string));
 
   const toAdd = desired.filter((id) => !existing.has(id));
   const toRemove = [...existing].filter((id) => !desired.includes(id));
 
   if (toRemove.length) {
     const { error } = await supabase
-      .from("marks_to_tags")
+      .from("marks_to_labels")
       .delete()
       .eq("mark_id", pinId)
-      .in("tag_id", toRemove);
+      .in("label_id", toRemove);
     if (error) throw error;
   }
   if (toAdd.length) {
     const { error } = await supabase
-      .from("marks_to_tags")
-      .insert(toAdd.map((tagId) => ({ mark_id: pinId, tag_id: tagId })));
+      .from("marks_to_labels")
+      .insert(toAdd.map((labelId) => ({ mark_id: pinId, label_id: labelId })));
     if (error) throw error;
   }
 
@@ -718,7 +718,7 @@ export async function setMarkTagsAction(pinId: string, tagIds: string[]): Promis
       workspace_id: workspaceId,
       mark_id: pinId,
       actor_user_id: userId,
-      type: "tag_changed",
+      type: "label_changed",
       metadata: {
         added: toAdd.length,
         removed: toRemove.length,

@@ -29,7 +29,7 @@ function emptyWorkspace(): Workspace {
     id: "",
     name: "",
     spaces: [],
-    tags: [],
+    labels: [],
     members: [],
     invites: [],
     pins: [],
@@ -55,7 +55,7 @@ interface CreatePinInput {
   description: string;
   page: string;
   spaceId: string;
-  tagIds: string[];
+  labelIds: string[];
   assigneeId?: string | null;
   priority?: PinPriority;
 }
@@ -87,10 +87,10 @@ interface CollabStoreState {
   inviteMember: (email: string) => Promise<void>;
   cancelInvite: (inviteId: string) => Promise<void>;
   removeMember: (memberUserId: string) => Promise<void>;
-  createTag: (label: string) => Promise<void>;
-  deleteTag: (tagId: string) => Promise<void>;
+  createLabel: (name: string) => Promise<void>;
+  deleteLabel: (labelId: string) => Promise<void>;
   assignMark: (pinId: string, assigneeId: string | null) => Promise<void>;
-  setMarkTags: (pinId: string, tagIds: string[]) => Promise<void>;
+  setMarkLabels: (pinId: string, labelIds: string[]) => Promise<void>;
 }
 
 export const useCollabStore = create<CollabStoreState>()((set, get) => ({
@@ -170,7 +170,7 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
       description: input.description,
       page: input.page,
       spaceId: input.spaceId,
-      tagIds: input.tagIds,
+      labelIds: input.labelIds,
       assigneeId: input.assigneeId ?? null,
       priority: input.priority,
     });
@@ -376,13 +376,13 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
     set(workspaceStateFromBundle(bundle));
   },
 
-  createTag: async (label) => {
-    const bundle = await ws.createTagAction(label);
+  createLabel: async (name) => {
+    const bundle = await ws.createLabelAction(name);
     set(workspaceStateFromBundle(bundle));
   },
 
-  deleteTag: async (tagId) => {
-    const bundle = await ws.deleteTagAction(tagId);
+  deleteLabel: async (labelId) => {
+    const bundle = await ws.deleteLabelAction(labelId);
     set(workspaceStateFromBundle(bundle));
   },
 
@@ -408,22 +408,22 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
     }
   },
 
-  setMarkTags: async (pinId, tagIds) => {
+  setMarkLabels: async (pinId, labelIds) => {
     const { workspace } = get();
     const pin = workspace.pins.find((p) => p.id === pinId);
     if (!pin) return;
     const before = workspace;
-    const nextTagIds = Array.from(new Set(tagIds));
+    const nextLabelIds = Array.from(new Set(labelIds));
     set({
       workspace: {
         ...workspace,
         pins: workspace.pins.map((p) =>
-          p.id === pinId ? { ...p, tagIds: nextTagIds } : p,
+          p.id === pinId ? { ...p, labelIds: nextLabelIds } : p,
         ),
       },
     });
     try {
-      const bundle = await ws.setMarkTagsAction(pinId, tagIds);
+      const bundle = await ws.setMarkLabelsAction(pinId, labelIds);
       set(workspaceStateFromBundle(bundle));
     } catch (e) {
       set({ workspace: before });

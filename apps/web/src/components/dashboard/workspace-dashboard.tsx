@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 
-import { AppShell } from "@/components/app-shell";
 import { findPinByMarkRouteParam } from "@/lib/workspace/mark-display-id";
 import { useCollabStore } from "@/lib/collab-store";
 
@@ -20,10 +19,8 @@ export function WorkspaceDashboard() {
   }, [filters.markId, pins]);
 
   return (
-    <AppShell>
-      <div className="shell-full">
-        {selectedPin ? <MarkDetailView pin={selectedPin} /> : <TriageView />}
-      </div>
-    </AppShell>
+    <div className="shell-full">
+      {selectedPin ? <MarkDetailView pin={selectedPin} /> : <TriageView />}
+    </div>
   );
 }

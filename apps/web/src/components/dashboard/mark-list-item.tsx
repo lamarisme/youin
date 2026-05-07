@@ -6,7 +6,7 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { PinItem, TeamMember, WorkspaceTag } from "@/lib/collab-types";
+import type { PinItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -15,7 +15,7 @@ import { MarkPageOpenButton, absoluteHrefForMarkPage } from "./mark-page-open";
 interface MarkListItemProps {
   pin: PinItem;
   assignee?: TeamMember;
-  tagsById: Map<string, WorkspaceTag>;
+  labelsById: Map<string, WorkspaceLabel>;
   commentCount: number;
   onSelect: () => void;
   selectable?: boolean;
@@ -26,7 +26,7 @@ interface MarkListItemProps {
 export function MarkListItem({
   pin,
   assignee,
-  tagsById,
+  labelsById,
   commentCount,
   onSelect,
   selectable = false,
@@ -99,15 +99,15 @@ export function MarkListItem({
                 Pinned
               </Pill>
             ) : null}
-            {pin.tagIds.map((tid) => {
-              const tag = tagsById.get(tid);
-              if (!tag) return null;
+            {pin.labelIds.map((lid) => {
+              const label = labelsById.get(lid);
+              if (!label) return null;
               return (
                 <span
-                  key={tid}
+                  key={lid}
                   className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2"
                 >
-                  {tag.label}
+                  {label.name}
                 </span>
               );
             })}

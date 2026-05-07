@@ -203,8 +203,8 @@ export function describeEvent(
         if (m?.name) return `assigned to ${m.name}`;
         return "assigned to a teammate";
       }
-    case "tag_changed":
-      return "updated tags";
+    case "label_changed":
+      return "updated labels";
     default:
       return "updated this mark";
   }

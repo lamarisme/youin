@@ -63,7 +63,7 @@ export function TriageView() {
         status: snapshot.status,
         priority: snapshot.priority,
         pinned: snapshot.pinned,
-        tag: snapshot.tag,
+        label: snapshot.label,
         assignee: snapshot.assignee,
         q: snapshot.q || null,
         sort: snapshot.sort,
@@ -87,6 +87,21 @@ export function TriageView() {
   );
   const allSelectedClosed = selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
 
+  const filtersActive =
+    filters.status !== "all" ||
+    filters.priority !== "all" ||
+    filters.pinned !== "all" ||
+    filters.label !== "all" ||
+    filters.assignee !== "all" ||
+    filters.q.trim().length > 0;
+
+  function clearFilters() {
+    update(
+      { status: "all", priority: "all", pinned: "all", label: "all", assignee: "all", q: null },
+      { resetPage: true },
+    );
+  }
+
   const totalPages = Math.max(1, Math.ceil(visiblePins.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, filters.page), totalPages);
   const paginatedPins = useMemo(
@@ -95,7 +110,7 @@ export function TriageView() {
   );
 
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
-  const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
+  const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const commentCountByPinId = useMemo(() => {
     const counts = new Map<string, number>();
     for (const c of workspace.comments) counts.set(c.pinId, (counts.get(c.pinId) ?? 0) + 1);
@@ -178,7 +193,7 @@ export function TriageView() {
     title: string;
     page: string;
     description: string;
-    tagIds: string[];
+    labelIds: string[];
     priority: PinPriority;
     assigneeId: string | null;
   }) {
@@ -193,7 +208,7 @@ export function TriageView() {
         description: input.description,
         page: input.page,
         spaceId: targetSpace.id,
-        tagIds: input.tagIds,
+        labelIds: input.labelIds,
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
@@ -206,7 +221,15 @@ export function TriageView() {
 
   return (
     <>
-      <AppHeader title="Triage" eyebrow={workspace.name} subtitle="Review, filter, and resolve marks across your spaces.">
+      <AppHeader
+        title="Triage"
+        eyebrow={workspace.name}
+        subtitle={
+          selectedSpace
+            ? `${selectedSpace.code} · ${selectedSpace.name}`
+            : "All marks across every space."
+        }
+      >
         <div className="flex items-center gap-2 text-[0.75rem] tabular-nums">
           <Pill variant="outline" className="gap-1.5 text-ink-3">
             <span className="font-mono text-[0.6875rem] text-mark">{spaceStats.open}</span>
@@ -230,7 +253,7 @@ export function TriageView() {
           />
         </div>
         <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">
-          {selectedSpace ? selectedSpace.notes : "Showing marks from every space"}
+          {selectedSpace ? selectedSpace.notes : "All spaces"}
         </span>
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
           <Button
@@ -261,7 +284,7 @@ export function TriageView() {
           >
             <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
               <Layers className="size-3" />
-              Manage spaces
+              {selectedSpace ? "Open space" : "All spaces"}
             </Link>
           </Button>
         </div>
@@ -278,7 +301,7 @@ export function TriageView() {
       <MarkFilters
         filters={filters}
         visibleCount={visiblePins.length}
-        tags={workspace.tags}
+        labels={workspace.labels}
         onChange={update}
       />
 
@@ -287,11 +310,13 @@ export function TriageView() {
           <DialogHeader>
             <DialogTitle>New mark</DialogTitle>
             <DialogDescription>
-              Creates a mark in the space selected above, or your first space when viewing all spaces.
+              {(selectedSpace ?? workspace.spaces[0])
+                ? `Will be added to ${(selectedSpace ?? workspace.spaces[0])!.name}.`
+                : "Create a space first to add marks."}
             </DialogDescription>
           </DialogHeader>
           <NewMarkForm
-            tags={workspace.tags}
+            labels={workspace.labels}
             members={workspace.members}
             defaultAssigneeId={userId ?? undefined}
             open={showNew}
@@ -309,8 +334,19 @@ export function TriageView() {
             variant="plain"
             className="rounded-none border-0 px-6 py-16"
             icon={CircleDashed}
-            title="No marks match the current filters."
-            description="Try a different space, clear the filters, or switch the status."
+            title={filtersActive ? "Nothing matches these filters." : "No marks here yet."}
+            description={
+              filtersActive
+                ? "Clear filters to see every mark in this view."
+                : "Capture marks from the Chrome extension and they'll show up here."
+            }
+            action={
+              filtersActive ? (
+                <Button type="button" variant="outline" size="sm" className="h-9" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }
           />
         ) : (
           <div className="divide-y divide-rule">
@@ -319,7 +355,7 @@ export function TriageView() {
                 key={pin.id}
                 pin={pin}
                 assignee={pin.assigneeId ? membersById.get(pin.assigneeId) : undefined}
-                tagsById={tagsById}
+                labelsById={labelsById}
                 commentCount={commentCountByPinId.get(pin.id) ?? 0}
                 onSelect={() => update({ markId: pin.displayKey })}
                 selectable={selectedPins.length > 0}

@@ -9,7 +9,7 @@ export type MarkEventType =
   | "linear_link_updated"
   | "comment_added"
   | "assignee_changed"
-  | "tag_changed";
+  | "label_changed";
 
 export type TeamRole = "owner" | "member";
 
@@ -76,7 +76,7 @@ export interface PinItem {
   status: PinStatus;
   priority: PinPriority;
   pinned: boolean;
-  tagIds: string[];
+  labelIds: string[];
   linearUrl?: string;
   assigneeId?: string;
   capture?: PinCapture;
@@ -94,9 +94,9 @@ export interface WorkspaceSpace {
   pinned: boolean;
 }
 
-export interface WorkspaceTag {
+export interface WorkspaceLabel {
   id: string;
-  label: string;
+  name: string;
   colorClass: string;
 }
 
@@ -104,7 +104,7 @@ export interface Workspace {
   id: string;
   name: string;
   spaces: WorkspaceSpace[];
-  tags: WorkspaceTag[];
+  labels: WorkspaceLabel[];
   members: TeamMember[];
   invites: TeamInvite[];
   pins: PinItem[];

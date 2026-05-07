@@ -4,7 +4,7 @@
   Run this in the Supabase SQL editor AFTER applying all Drizzle migrations
   (0000–0004). It bundles three idempotent steps in the correct order:
 
-    1. extend mark_event_type with assignee_changed + tag_changed (0004)
+    1. extend mark_event_type with assignee_changed + label_changed (0004)
     2. rls-and-auth.sql (profiles trigger, user_workspace_member fn, RLS policies)
     3. storage.sql (mark-images bucket + storage RLS)
 
@@ -13,7 +13,7 @@
 
 -- ── 1. Migration 0004 (idempotent) ─────────────────────────────────────────
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';
-ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'tag_changed';
+ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
 
 -- ── 2. RLS + auth wiring ────────────────────────────────────────────────────
 ALTER TABLE public.profiles
@@ -76,9 +76,9 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.spaces ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.mark_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mark_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.marks_to_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marks_to_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
 
@@ -96,9 +96,9 @@ BEGIN
         'workspace_members',
         'workspace_invites',
         'spaces',
-        'mark_tags',
+        'mark_labels',
         'marks',
-        'marks_to_tags',
+        'marks_to_labels',
         'mark_comments',
         'mark_events'
       )
@@ -208,7 +208,7 @@ CREATE POLICY spaces_all_member ON public.spaces
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));
 
-CREATE POLICY mark_tags_all_member ON public.mark_tags
+CREATE POLICY mark_labels_all_member ON public.mark_labels
   FOR ALL TO authenticated
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));
@@ -233,32 +233,32 @@ CREATE POLICY marks_delete_member ON public.marks
   FOR DELETE TO authenticated
   USING (public.user_workspace_member(workspace_id));
 
-CREATE POLICY marks_to_tags_select ON public.marks_to_tags
+CREATE POLICY marks_to_labels_select ON public.marks_to_labels
   FOR SELECT TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );
 
-CREATE POLICY marks_to_tags_write ON public.marks_to_tags
+CREATE POLICY marks_to_labels_write ON public.marks_to_labels
   FOR INSERT TO authenticated
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );
 
-CREATE POLICY marks_to_tags_delete ON public.marks_to_tags
+CREATE POLICY marks_to_labels_delete ON public.marks_to_labels
   FOR DELETE TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );

@@ -414,7 +414,7 @@ export default function SignUpPage() {
                 <PreferenceRow
                   id="critical"
                   label="Auto-pin critical marks"
-                  description="Marks tagged 'critical' appear at the top of triage automatically."
+                  description="Marks set to 'critical' priority appear at the top of triage automatically."
                   checked={autoPinCritical}
                   onChange={setAutoPinCritical}
                   isLast

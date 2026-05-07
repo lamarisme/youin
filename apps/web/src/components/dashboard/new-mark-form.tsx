@@ -8,12 +8,12 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { NEW_MARK_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Surface } from "@/components/surface";
-import { TagPicker } from "@/components/tag-picker";
+import { LabelPicker } from "@/components/label-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { PinPriority, TeamMember, WorkspaceTag } from "@/lib/collab-types";
+import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -23,7 +23,7 @@ interface NewMarkFormState {
   title: string;
   page: string;
   description: string;
-  tagIds: string[];
+  labelIds: string[];
   priority: PinPriority;
   assigneeId: string;
 }
@@ -32,7 +32,7 @@ type Action =
   | { type: "set_title"; value: string }
   | { type: "set_page"; value: string }
   | { type: "set_description"; value: string }
-  | { type: "set_tag_ids"; value: string[] }
+  | { type: "set_label_ids"; value: string[] }
   | { type: "set_priority"; value: PinPriority }
   | { type: "set_assignee"; value: string }
   | { type: "reset"; assigneeDefault: string };
@@ -42,7 +42,7 @@ function makeInitial(assigneeDefault: string): NewMarkFormState {
     title: "",
     page: "",
     description: "",
-    tagIds: [],
+    labelIds: [],
     priority: "medium",
     assigneeId: assigneeDefault,
   };
@@ -56,8 +56,8 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
       return { ...state, page: action.value };
     case "set_description":
       return { ...state, description: action.value };
-    case "set_tag_ids":
-      return { ...state, tagIds: action.value };
+    case "set_label_ids":
+      return { ...state, labelIds: action.value };
     case "set_priority":
       return { ...state, priority: action.value };
     case "set_assignee":
@@ -68,11 +68,11 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
 }
 
 interface NewMarkFormProps {
-  tags: WorkspaceTag[];
+  labels: WorkspaceLabel[];
   members: TeamMember[];
   /** Default assignee — usually the current user's id. Pass empty string to start unassigned. */
   defaultAssigneeId?: string;
-  onSubmit: (input: { title: string; page: string; description: string; tagIds: string[]; priority: PinPriority; assigneeId: string | null }) => void | Promise<void>;
+  onSubmit: (input: { title: string; page: string; description: string; labelIds: string[]; priority: PinPriority; assigneeId: string | null }) => void | Promise<void>;
   onCancel?: () => void;
   /** When `false`, clears fields (e.g. dialog closed). Omit if not controlled by a dialog. */
   open?: boolean;
@@ -83,7 +83,7 @@ interface NewMarkFormProps {
 }
 
 export function NewMarkForm({
-  tags,
+  labels,
   members,
   defaultAssigneeId,
   onSubmit,
@@ -92,7 +92,7 @@ export function NewMarkForm({
   variant = "surface",
   targetSpaceLabel,
 }: NewMarkFormProps) {
-  const createTag = useCollabStore((s) => s.createTag);
+  const createLabel = useCollabStore((s) => s.createLabel);
   const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
     ? defaultAssigneeId
     : UNASSIGNED;
@@ -103,11 +103,11 @@ export function NewMarkForm({
   }, [open, assigneeDefault]);
   const canSubmit = state.title.trim() && state.page.trim();
 
-  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+  const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
-  const selectedPreviewTags = state.tagIds
-    .map((id) => tagsById.get(id))
-    .filter((t): t is WorkspaceTag => Boolean(t));
+  const selectedPreviewLabels = state.labelIds
+    .map((id) => labelsById.get(id))
+    .filter((l): l is WorkspaceLabel => Boolean(l));
   const previewAssignee = state.assigneeId !== UNASSIGNED ? membersById.get(state.assigneeId) : undefined;
 
   const assigneeOptions = useMemo(
@@ -125,7 +125,7 @@ export function NewMarkForm({
       title: state.title,
       page: normalizedPage,
       description: state.description,
-      tagIds: state.tagIds,
+      labelIds: state.labelIds,
       priority: state.priority,
       assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
     });
@@ -139,10 +139,10 @@ export function NewMarkForm({
     }
   }
 
-  async function handleCreateTag(label: string): Promise<WorkspaceTag | undefined> {
-    await createTag(label);
-    const next = useCollabStore.getState().workspace.tags;
-    return next.find((t) => t.label.trim().toLowerCase() === label.trim().toLowerCase());
+  async function handleCreateLabel(name: string): Promise<WorkspaceLabel | undefined> {
+    await createLabel(name);
+    const next = useCollabStore.getState().workspace.labels;
+    return next.find((l) => l.name.trim().toLowerCase() === name.trim().toLowerCase());
   }
 
   const grid = (
@@ -185,12 +185,12 @@ export function NewMarkForm({
         </Field>
       </div>
       <div className="space-y-1.5 sm:col-span-2">
-        <Label className="block text-[0.75rem] font-medium text-ink-2">Tags</Label>
-        <TagPicker
-          tags={tags}
-          selectedIds={state.tagIds}
-          onChange={(next) => dispatch({ type: "set_tag_ids", value: next })}
-          onCreate={handleCreateTag}
+        <Label className="block text-[0.75rem] font-medium text-ink-2">Labels</Label>
+        <LabelPicker
+          labels={labels}
+          selectedIds={state.labelIds}
+          onChange={(next) => dispatch({ type: "set_label_ids", value: next })}
+          onCreate={handleCreateLabel}
         />
       </div>
       <div className="space-y-1.5">
@@ -221,8 +221,8 @@ export function NewMarkForm({
           Preview
         </span>
         <PriorityBadge priority={state.priority} size="sm" />
-        {selectedPreviewTags.map((tag) => (
-          <Pill key={tag.id} size="sm">{tag.label}</Pill>
+        {selectedPreviewLabels.map((label) => (
+          <Pill key={label.id} size="sm">{label.name}</Pill>
         ))}
         {previewAssignee ? (
           <span className="inline-flex items-center gap-1 text-[0.6875rem] text-ink-2">

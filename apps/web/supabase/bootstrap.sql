@@ -7,7 +7,7 @@
   Order:
     1. Enums          (mark_priority, mark_status, workspace_role, mark_event_type)
     2. Tables         (profiles, workspaces, workspace_members, workspace_invites,
-                       spaces, mark_tags, marks, marks_to_tags, mark_comments, mark_events)
+                       spaces, mark_labels, marks, marks_to_labels, mark_comments, mark_events)
     3. Foreign keys
     4. Indexes
     5. Auth + profiles trigger
@@ -32,13 +32,13 @@ EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE TYPE "public"."mark_event_type" AS ENUM (
     'created', 'status_changed', 'priority_changed', 'pinned_changed',
-    'linear_link_updated', 'comment_added', 'assignee_changed', 'tag_changed'
+    'linear_link_updated', 'comment_added', 'assignee_changed', 'label_changed'
   );
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- in case the type already exists at an older version, top up missing values
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';
-ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'tag_changed';
+ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
 
 -- ── 2. TABLES ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS "profiles" (
@@ -93,10 +93,10 @@ CREATE TABLE IF NOT EXISTS "spaces" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "mark_tags" (
+CREATE TABLE IF NOT EXISTS "mark_labels" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "workspace_id" uuid NOT NULL,
-  "label" text NOT NULL,
+  "name" text NOT NULL,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -124,10 +124,10 @@ CREATE TABLE IF NOT EXISTS "marks" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "marks_to_tags" (
+CREATE TABLE IF NOT EXISTS "marks_to_labels" (
   "mark_id" uuid NOT NULL,
-  "tag_id" uuid NOT NULL,
-  CONSTRAINT "marks_to_tags_mark_id_tag_id_pk" PRIMARY KEY ("mark_id", "tag_id")
+  "label_id" uuid NOT NULL,
+  CONSTRAINT "marks_to_labels_mark_id_label_id_pk" PRIMARY KEY ("mark_id", "label_id")
 );
 
 CREATE TABLE IF NOT EXISTS "mark_comments" (
@@ -174,10 +174,10 @@ ALTER TABLE "spaces"
   FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id")
   ON DELETE cascade ON UPDATE no action;
 
-ALTER TABLE "mark_tags"
-  DROP CONSTRAINT IF EXISTS "mark_tags_workspace_id_workspaces_id_fk";
-ALTER TABLE "mark_tags"
-  ADD CONSTRAINT "mark_tags_workspace_id_workspaces_id_fk"
+ALTER TABLE "mark_labels"
+  DROP CONSTRAINT IF EXISTS "mark_labels_workspace_id_workspaces_id_fk";
+ALTER TABLE "mark_labels"
+  ADD CONSTRAINT "mark_labels_workspace_id_workspaces_id_fk"
   FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id")
   ON DELETE cascade ON UPDATE no action;
 
@@ -195,18 +195,18 @@ ALTER TABLE "marks"
   FOREIGN KEY ("space_id") REFERENCES "public"."spaces"("id")
   ON DELETE cascade ON UPDATE no action;
 
-ALTER TABLE "marks_to_tags"
-  DROP CONSTRAINT IF EXISTS "marks_to_tags_mark_id_marks_id_fk";
-ALTER TABLE "marks_to_tags"
-  ADD CONSTRAINT "marks_to_tags_mark_id_marks_id_fk"
+ALTER TABLE "marks_to_labels"
+  DROP CONSTRAINT IF EXISTS "marks_to_labels_mark_id_marks_id_fk";
+ALTER TABLE "marks_to_labels"
+  ADD CONSTRAINT "marks_to_labels_mark_id_marks_id_fk"
   FOREIGN KEY ("mark_id") REFERENCES "public"."marks"("id")
   ON DELETE cascade ON UPDATE no action;
 
-ALTER TABLE "marks_to_tags"
-  DROP CONSTRAINT IF EXISTS "marks_to_tags_tag_id_mark_tags_id_fk";
-ALTER TABLE "marks_to_tags"
-  ADD CONSTRAINT "marks_to_tags_tag_id_mark_tags_id_fk"
-  FOREIGN KEY ("tag_id") REFERENCES "public"."mark_tags"("id")
+ALTER TABLE "marks_to_labels"
+  DROP CONSTRAINT IF EXISTS "marks_to_labels_label_id_mark_labels_id_fk";
+ALTER TABLE "marks_to_labels"
+  ADD CONSTRAINT "marks_to_labels_label_id_mark_labels_id_fk"
+  FOREIGN KEY ("label_id") REFERENCES "public"."mark_labels"("id")
   ON DELETE cascade ON UPDATE no action;
 
 ALTER TABLE "mark_comments"
@@ -240,7 +240,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_name_unique" ON "spaces" USI
 CREATE UNIQUE INDEX IF NOT EXISTS "spaces_workspace_code_unique" ON "spaces" USING btree ("workspace_id", "code");
 CREATE INDEX IF NOT EXISTS "spaces_workspace_priority_idx" ON "spaces" USING btree ("workspace_id", "priority");
 CREATE INDEX IF NOT EXISTS "spaces_workspace_pinned_idx" ON "spaces" USING btree ("workspace_id", "pinned");
-CREATE UNIQUE INDEX IF NOT EXISTS "mark_tags_workspace_label_unique" ON "mark_tags" USING btree ("workspace_id", "label");
+CREATE UNIQUE INDEX IF NOT EXISTS "mark_labels_workspace_name_unique" ON "mark_labels" USING btree ("workspace_id", "name");
 CREATE UNIQUE INDEX IF NOT EXISTS "marks_space_seq_unique" ON "marks" USING btree ("space_id", "seq");
 CREATE INDEX IF NOT EXISTS "marks_space_status_priority_idx" ON "marks" USING btree ("space_id", "status", "priority");
 CREATE INDEX IF NOT EXISTS "marks_workspace_pinned_idx" ON "marks" USING btree ("workspace_id", "pinned");
@@ -365,9 +365,9 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.spaces ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.mark_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mark_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.marks_to_tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.marks_to_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
 
@@ -381,7 +381,7 @@ BEGIN
     WHERE schemaname = 'public'
       AND tablename IN (
         'profiles', 'workspaces', 'workspace_members', 'workspace_invites',
-        'spaces', 'mark_tags', 'marks', 'marks_to_tags', 'mark_comments', 'mark_events'
+        'spaces', 'mark_labels', 'marks', 'marks_to_labels', 'mark_comments', 'mark_events'
       )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', r.policyname, r.tablename);
@@ -494,8 +494,8 @@ CREATE POLICY spaces_all_member ON public.spaces
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));
 
--- mark_tags
-CREATE POLICY mark_tags_all_member ON public.mark_tags
+-- mark_labels
+CREATE POLICY mark_labels_all_member ON public.mark_labels
   FOR ALL TO authenticated
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));
@@ -521,33 +521,33 @@ CREATE POLICY marks_delete_member ON public.marks
   FOR DELETE TO authenticated
   USING (public.user_workspace_member(workspace_id));
 
--- marks_to_tags
-CREATE POLICY marks_to_tags_select ON public.marks_to_tags
+-- marks_to_labels
+CREATE POLICY marks_to_labels_select ON public.marks_to_labels
   FOR SELECT TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );
 
-CREATE POLICY marks_to_tags_write ON public.marks_to_tags
+CREATE POLICY marks_to_labels_write ON public.marks_to_labels
   FOR INSERT TO authenticated
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );
 
-CREATE POLICY marks_to_tags_delete ON public.marks_to_tags
+CREATE POLICY marks_to_labels_delete ON public.marks_to_labels
   FOR DELETE TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_tags.mark_id
+      WHERE m.id = marks_to_labels.mark_id
         AND public.user_workspace_member(m.workspace_id)
     )
   );
@@ -741,9 +741,9 @@ BEGIN
     false
   );
 
-  INSERT INTO public.mark_tags (workspace_id, label)
-  SELECT v_workspace_id, label
-  FROM unnest(ARRAY['Copy', 'UI', 'A11y', 'Bug']) AS label;
+  INSERT INTO public.mark_labels (workspace_id, name)
+  SELECT v_workspace_id, name
+  FROM unnest(ARRAY['Copy', 'UI', 'A11y', 'Bug']) AS name;
 
   IF p_invite_emails IS NOT NULL THEN
     FOREACH v_invite_email IN ARRAY p_invite_emails LOOP

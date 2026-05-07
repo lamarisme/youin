@@ -28,7 +28,7 @@ export const markEventTypeEnum = pgEnum("mark_event_type", [
   "linear_link_updated",
   "comment_added",
   "assignee_changed",
-  "tag_changed",
+  "label_changed",
 ]);
 
 /** Application profile; `id` matches `auth.users.id` (enforced in Postgres / Supabase migration). */
@@ -177,37 +177,37 @@ export const marks = pgTable(
   ],
 );
 
-export const markTags = pgTable(
-  "mark_tags",
+export const markLabels = pgTable(
+  "mark_labels",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    label: text("label").notNull(),
+    name: text("name").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("mark_tags_workspace_label_unique").on(
+    uniqueIndex("mark_labels_workspace_name_unique").on(
       table.workspaceId,
-      table.label,
+      table.name,
     ),
   ],
 );
 
-export const marksToTags = pgTable(
-  "marks_to_tags",
+export const marksToLabels = pgTable(
+  "marks_to_labels",
   {
     markId: uuid("mark_id")
       .notNull()
       .references(() => marks.id, { onDelete: "cascade" }),
-    tagId: uuid("tag_id")
+    labelId: uuid("label_id")
       .notNull()
-      .references(() => markTags.id, { onDelete: "cascade" }),
+      .references(() => markLabels.id, { onDelete: "cascade" }),
   },
-  (table) => [primaryKey({ columns: [table.markId, table.tagId] })],
+  (table) => [primaryKey({ columns: [table.markId, table.labelId] })],
 );
 
 export const markComments = pgTable(

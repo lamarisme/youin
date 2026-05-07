@@ -6,7 +6,6 @@ import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
-import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { useCollabStore } from "@/lib/collab-store";
@@ -34,62 +33,56 @@ export function InboxView() {
   );
 
   return (
-    <AppShell>
-      <div className="shell-full">
-        <AppHeader
-          title="Inbox"
-          eyebrow={workspace.name}
-          subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
-        >
-          {inbox.unreadCount > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
-              {inbox.unreadCount} new
-            </span>
-          ) : null}
-          {inbox.totalEvents > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={inbox.markAllRead}
-              disabled={inbox.unreadCount === 0}
-              className="h-9 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
-            >
-              <CheckCheck className="size-3.5" aria-hidden />
-              {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
-            </Button>
-          ) : null}
-        </AppHeader>
+    <div className="shell-full">
+      <AppHeader
+        title="Inbox"
+        eyebrow={workspace.name}
+        subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
+      >
+        {inbox.unreadCount > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
+            {inbox.unreadCount} new
+          </span>
+        ) : null}
+        {inbox.totalEvents > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={inbox.markAllRead}
+            disabled={inbox.unreadCount === 0}
+            className="h-9 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
+          >
+            <CheckCheck className="size-3.5" aria-hidden />
+            {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
+          </Button>
+        ) : null}
+      </AppHeader>
 
-        {inbox.groups.length === 0 ? (
-          <EmptyState
-            icon={Inbox}
-            title={
-              userId
-                ? "Inbox empty."
-                : "Sign in to see your inbox."
-            }
-            description={
-              userId
-                ? "When teammates act on marks you're assigned to or have commented on, those updates land here."
-                : undefined
-            }
-            className="mt-2"
-          />
-        ) : (
-          <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
-            {inbox.groups.map((group) => (
-              <InboxGroupRow
-                key={group.pinId}
-                group={group}
-                spaceName={spaceLookup.get(group.spaceId) ?? null}
-                members={memberLookup}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-    </AppShell>
+      {inbox.groups.length === 0 ? (
+        <EmptyState
+          icon={Inbox}
+          title={userId ? "Inbox empty." : "Sign in to see your inbox."}
+          description={
+            userId
+              ? "When teammates act on marks you're assigned to or have commented on, those updates land here."
+              : undefined
+          }
+          className="mt-2"
+        />
+      ) : (
+        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
+          {inbox.groups.map((group) => (
+            <InboxGroupRow
+              key={group.pinId}
+              group={group}
+              spaceName={spaceLookup.get(group.spaceId) ?? null}
+              members={memberLookup}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

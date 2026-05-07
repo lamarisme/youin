@@ -14,25 +14,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { WorkspaceTag } from "@/lib/collab-types";
+import type { WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 
-export function TagsTab() {
-  const { tags, pins, deleteTag } = useCollabStore(
+export function LabelsTab() {
+  const { labels, pins, deleteLabel } = useCollabStore(
     useShallow((s) => ({
-      tags: s.workspace.tags,
+      labels: s.workspace.labels,
       pins: s.workspace.pins,
-      deleteTag: s.deleteTag,
+      deleteLabel: s.deleteLabel,
     })),
   );
 
-  const [pending, setPending] = useState<WorkspaceTag | null>(null);
+  const [pending, setPending] = useState<WorkspaceLabel | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const usageById = useMemo(() => {
     const counts = new Map<string, number>();
     for (const pin of pins) {
-      for (const tid of pin.tagIds) counts.set(tid, (counts.get(tid) ?? 0) + 1);
+      for (const lid of pin.labelIds) counts.set(lid, (counts.get(lid) ?? 0) + 1);
     }
     return counts;
   }, [pins]);
@@ -41,10 +41,10 @@ export function TagsTab() {
     if (!pending) return;
     setDeleting(true);
     try {
-      await deleteTag(pending.id);
+      await deleteLabel(pending.id);
       setPending(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't delete tag.");
+      toast.error(e instanceof Error ? e.message : "Couldn't delete label.");
     } finally {
       setDeleting(false);
     }
@@ -53,29 +53,29 @@ export function TagsTab() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display text-lg font-semibold text-ink">Tags</h2>
+        <h2 className="font-display text-lg font-semibold text-ink">Labels</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
-          Tags are created on the fly when you tag a mark. Manage and clean up unused ones here.
+          Labels are created on the fly when you label a mark. Manage and clean up unused ones here.
         </p>
       </div>
 
-      {tags.length === 0 ? (
+      {labels.length === 0 ? (
         <EmptyState
-          title="No tags yet."
-          description="Tags appear here once you create one from the mark detail or new-mark form."
+          title="No labels yet."
+          description="Labels appear here once you create one from the mark detail or new-mark form."
         />
       ) : (
         <ul className="divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
-          {tags.map((tag) => {
-            const count = usageById.get(tag.id) ?? 0;
+          {labels.map((label) => {
+            const count = usageById.get(label.id) ?? 0;
             return (
               <li
-                key={tag.id}
+                key={label.id}
                 className="flex items-center justify-between gap-3 px-4 py-3"
               >
                 <span className="inline-flex items-center gap-2">
                   <Tag className="size-3.5 text-ink-3" aria-hidden />
-                  <span className="text-[0.8125rem] font-medium text-ink">{tag.label}</span>
+                  <span className="text-[0.8125rem] font-medium text-ink">{label.name}</span>
                   <span className="font-mono text-[0.6875rem] text-ink-3 tabular-nums">
                     {count} mark{count === 1 ? "" : "s"}
                   </span>
@@ -84,8 +84,8 @@ export function TagsTab() {
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => setPending(tag)}
-                  aria-label={`Delete tag ${tag.label}`}
+                  onClick={() => setPending(label)}
+                  aria-label={`Delete label ${label.name}`}
                   className="h-8 px-2.5 text-ink-3 hover:text-mark"
                 >
                   <Trash2 className="size-3.5" />
@@ -99,11 +99,11 @@ export function TagsTab() {
       <Dialog open={Boolean(pending)} onOpenChange={(open) => !deleting && !open && setPending(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete this tag?</DialogTitle>
+            <DialogTitle>Delete this label?</DialogTitle>
             <DialogDescription>
               {pending ? (
                 <>
-                  <span className="font-medium text-ink">{pending.label}</span> will be removed from{" "}
+                  <span className="font-medium text-ink">{pending.name}</span> will be removed from{" "}
                   <span className="font-medium text-ink">
                     {usageById.get(pending.id) ?? 0} mark
                     {(usageById.get(pending.id) ?? 0) === 1 ? "" : "s"}
@@ -127,7 +127,7 @@ export function TagsTab() {
               disabled={deleting}
               className="h-9 bg-mark text-paper hover:bg-mark-bright"
             >
-              {deleting ? "Deleting…" : "Delete tag"}
+              {deleting ? "Deleting…" : "Delete label"}
             </Button>
           </div>
         </DialogContent>

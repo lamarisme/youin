@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { PinPriority, PinStatus, WorkspaceTag } from "@/lib/collab-types";
+import type { PinPriority, PinStatus, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
 import { useCollabStore } from "@/lib/collab-store";
@@ -38,16 +38,16 @@ import type {
 interface MarkFiltersProps {
   filters: DashboardFilters;
   visibleCount: number;
-  tags: WorkspaceTag[];
+  labels: WorkspaceLabel[];
   onChange: (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => void;
 }
 
-export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFiltersProps) {
+export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFiltersProps) {
   const viewerId = useCollabStore((s) => s.userId);
   const [showMore, setShowMore] = useState(false);
   const [queryDraft, setQueryDraft] = useState(filters.q);
   const [lastSyncedQ, setLastSyncedQ] = useState(filters.q);
-  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
+  const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
 
   function toggleAssigneePreset(next: AssigneeFilter) {
     onChange({ assignee: filters.assignee === next ? "all" : next }, { resetPage: true });
@@ -66,12 +66,12 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
     return () => window.clearTimeout(handle);
   }, [queryDraft, filters.q, onChange]);
 
-  const tagOptions: ReadonlyArray<FilterOption> = useMemo(
+  const labelOptions: ReadonlyArray<FilterOption> = useMemo(
     () => [
-      { value: "all", label: "All tags" },
-      ...tags.map((tag) => ({ value: tag.id, label: tag.label })),
+      { value: "all", label: "All labels" },
+      ...labels.map((l) => ({ value: l.id, label: l.name })),
     ],
-    [tags],
+    [labels],
   );
 
   const activeFilters = useMemo(() => {
@@ -89,12 +89,12 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
         reset: () => onChange({ status: "all" }, { resetPage: true }),
       });
     }
-    if (filters.tag !== "all") {
+    if (filters.label !== "all") {
       out.push({
-        key: "tag",
-        label: "Tag",
-        value: tagsById.get(filters.tag)?.label ?? filters.tag,
-        reset: () => onChange({ tag: "all" }, { resetPage: true }),
+        key: "label",
+        label: "Label",
+        value: labelsById.get(filters.label)?.name ?? filters.label,
+        reset: () => onChange({ label: "all" }, { resetPage: true }),
       });
     }
     if (filters.priority !== "all") {
@@ -138,10 +138,10 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
       });
     }
     return out;
-  }, [filters, tagsById, onChange]);
+  }, [filters, labelsById, onChange]);
 
   const secondaryCount =
-    (filters.tag !== "all" ? 1 : 0) +
+    (filters.label !== "all" ? 1 : 0) +
     (filters.priority !== "all" ? 1 : 0) +
     (filters.pinned !== "all" ? 1 : 0);
 
@@ -151,7 +151,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
         status: "all",
         priority: "all",
         pinned: "all",
-        tag: "all",
+        label: "all",
         assignee: "all",
         q: null,
       },
@@ -184,7 +184,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
                     onChange({ q: null }, { resetPage: true });
                   }
                 }}
-                placeholder="Search marks…"
+                placeholder="Search title, description, or URL…"
                 aria-label="Search marks by title, description, or page"
                 className="h-11 border-transparent bg-transparent pl-8 pr-8 text-[0.9375rem] shadow-none focus-visible:border-rule focus-visible:bg-paper sm:h-8 sm:text-[0.8125rem]"
               />
@@ -237,7 +237,7 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
                 )}
               >
                 <span className="tabular-nums">
-                  More
+                  More filters
                   {secondaryCount > 0 ? (
                     <span className="text-ink-3"> · {secondaryCount}</span>
                   ) : null}
@@ -300,10 +300,10 @@ export function MarkFilters({ filters, visibleCount, tags, onChange }: MarkFilte
           className="flex flex-wrap items-center gap-2 rounded-xl border border-rule bg-paper-2/90 px-2.5 py-2"
         >
           <FilterSelect
-            value={filters.tag}
-            onValueChange={(v) => onChange({ tag: v }, { resetPage: true })}
-            options={tagOptions}
-            ariaLabel="Filter by tag"
+            value={filters.label}
+            onValueChange={(v) => onChange({ label: v }, { resetPage: true })}
+            options={labelOptions}
+            ariaLabel="Filter by label"
             triggerClassName="w-[150px]"
           />
           <FilterSelect<PriorityFilter>

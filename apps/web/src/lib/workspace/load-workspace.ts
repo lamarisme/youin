@@ -13,11 +13,11 @@ import type {
   UserProfile,
   Workspace,
   WorkspaceSpace,
-  WorkspaceTag,
+  WorkspaceLabel,
 } from "@/lib/collab-types";
 
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
-import { tagColorClass } from "@/lib/workspace/tag-styles";
+import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
 
 export async function loadUserProfile(
@@ -79,14 +79,14 @@ async function resolveImageUrls(
 }
 
 export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspaceId: string): Promise<Workspace> {
-  const [{ data: wsRow, error: wsErr }, { data: spacesRows }, { data: tagsRows }] = await Promise.all([
+  const [{ data: wsRow, error: wsErr }, { data: spacesRows }, { data: labelsRows }] = await Promise.all([
     supabase.from("workspaces").select("id,name").eq("id", workspaceId).single(),
     supabase
       .from("spaces")
       .select("*")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false }),
-    supabase.from("mark_tags").select("*").eq("workspace_id", workspaceId).order("label"),
+    supabase.from("mark_labels").select("*").eq("workspace_id", workspaceId).order("name"),
   ]);
 
   if (wsErr || !wsRow) throw wsErr ?? new Error("Workspace not found.");
@@ -118,28 +118,28 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
 
   const markIds = (marksRows ?? []).map((m) => m.id as string);
 
-  let mttRows: { mark_id: string; tag_id: string }[] = [];
+  let mtlRows: { mark_id: string; label_id: string }[] = [];
   let commentsRows: Record<string, unknown>[] = [];
   let eventsRows: Record<string, unknown>[] = [];
 
   if (markIds.length) {
     const markIdSet = new Set(markIds);
     const [r1, r2, r3] = await Promise.all([
-      supabase.from("marks_to_tags").select("mark_id,tag_id").in("mark_id", markIds),
+      supabase.from("marks_to_labels").select("mark_id,label_id").in("mark_id", markIds),
       supabase.from("mark_comments").select("*").in("mark_id", markIds).order("created_at", { ascending: true }),
       supabase.from("mark_events").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
     ]);
-    mttRows = r1.data ?? [];
+    mtlRows = r1.data ?? [];
     commentsRows = r2.data ?? [];
     eventsRows = (r3.data ?? []).filter((e) => markIdSet.has(String(e.mark_id)));
   }
 
-  const tagsByMark = new Map<string, string[]>();
-  for (const row of mttRows) {
+  const labelsByMark = new Map<string, string[]>();
+  for (const row of mtlRows) {
     const mid = row.mark_id as string;
-    const tid = row.tag_id as string;
-    if (!tagsByMark.has(mid)) tagsByMark.set(mid, []);
-    tagsByMark.get(mid)!.push(tid);
+    const lid = row.label_id as string;
+    if (!labelsByMark.has(mid)) labelsByMark.set(mid, []);
+    labelsByMark.get(mid)!.push(lid);
   }
 
   const spaces: WorkspaceSpace[] = (spacesRows ?? []).map((s) => ({
@@ -154,10 +154,10 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
 
   const codeBySpaceId = new Map(spaces.map((s) => [s.id, s.code]));
 
-  const tags: WorkspaceTag[] = (tagsRows ?? []).map((t) => ({
+  const labels: WorkspaceLabel[] = (labelsRows ?? []).map((t) => ({
     id: t.id as string,
-    label: t.label as string,
-    colorClass: tagColorClass(t.id as string),
+    name: t.name as string,
+    colorClass: labelColorClass(t.id as string),
   }));
 
   const members: TeamMember[] = (membersRows ?? []).map((row) => {
@@ -241,7 +241,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
       status: m.status === "closed" ? "closed" : "open",
       priority: (m.priority as PinPriority) ?? "medium",
       pinned: Boolean(m.pinned),
-      tagIds: tagsByMark.get(m.id as string) ?? [],
+      labelIds: labelsByMark.get(m.id as string) ?? [],
       linearUrl: (m.linear_url as string | null | undefined) ?? undefined,
       assigneeId: (m.assignee_user_id as string | null | undefined) ?? undefined,
       capture: cap,
@@ -287,7 +287,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
     id: wsRow.id as string,
     name: wsRow.name as string,
     spaces,
-    tags,
+    labels,
     members,
     invites,
     pins,

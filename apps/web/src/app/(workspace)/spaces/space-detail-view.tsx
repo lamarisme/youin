@@ -19,6 +19,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { EmptyState } from "@/components/empty-state";
+import { Field } from "@/components/field";
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Pill } from "@/components/pill";
@@ -63,7 +64,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
   const statsMap = useSpaceStats(workspace);
   const stats = statsMap.get(space.id);
-  const tagsById = useMemo(() => new Map(workspace.tags.map((t) => [t.id, t])), [workspace.tags]);
+  const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
   const spacePins = useMemo(
     () => workspace.pins.filter((p) => p.spaceId === space.id),
@@ -74,23 +75,27 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(space.name);
   const [editNotes, setEditNotes] = useState(space.notes);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   function startEdit() {
-    setEditing(true);
     setEditName(space.name);
     setEditNotes(space.notes);
+    setEditing(true);
   }
 
   async function saveEdit() {
-    if (!editName.trim()) return;
+    if (savingEdit || !editName.trim()) return;
+    setSavingEdit(true);
     try {
       await updateSpace(space.id, { name: editName, notes: editNotes });
       setEditing(false);
     } catch (e) {
       toast.error(actionErrorMessage(e, "Couldn't save these details."));
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -112,7 +117,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     title: string;
     page: string;
     description: string;
-    tagIds: string[];
+    labelIds: string[];
     priority: PinPriority;
     assigneeId: string | null;
   }) {
@@ -122,7 +127,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         description: input.description,
         page: input.page,
         spaceId: space.id,
-        tagIds: input.tagIds,
+        labelIds: input.labelIds,
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
@@ -151,72 +156,22 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
-              {editing ? (
-                <div
-                  key="edit"
-                  className="motion-enter space-y-2"
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      setEditing(false);
-                    } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                      e.preventDefault();
-                      void saveEdit();
-                    }
-                  }}
-                >
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="h-9 bg-paper-2 font-display text-lg font-semibold"
-                    autoFocus
-                  />
-                  <Textarea
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    className="min-h-[60px] bg-paper-2 text-[0.8125rem]"
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-                    <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-                        ⌘
-                      </kbd>
-                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-                        Enter
-                      </kbd>
-                      <span>to save</span>
-                      <span className="text-rule">·</span>
-                      <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-                        Esc
-                      </kbd>
-                      <span>to cancel</span>
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="h-8">
-                        Cancel
-                      </Button>
-                      <Button size="sm" onClick={saveEdit} className="h-8">
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div key="display" className="motion-enter min-w-0">
-                  <h1 className="break-words font-display text-2xl font-semibold tracking-tight text-ink">
-                    {space.name}
-                  </h1>
+              <div className="min-w-0">
+                <h1 className="break-words font-display text-2xl font-semibold tracking-tight text-ink">
+                  {space.name}
+                </h1>
+                {space.notes ? (
                   <p className="mt-1 max-w-[50ch] break-words text-[0.8125rem] text-ink-2">
                     {space.notes}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <PriorityBadge priority={space.priority} />
-                    {space.pinned ? (
-                      <Pill icon={<Bookmark className="size-3" />}>Pinned</Pill>
-                    ) : null}
-                  </div>
+                ) : null}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <PriorityBadge priority={space.priority} />
+                  {space.pinned ? (
+                    <Pill icon={<Bookmark className="size-3" />}>Pinned</Pill>
+                  ) : null}
                 </div>
-              )}
+              </div>
             </div>
             <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
               <Button
@@ -243,17 +198,15 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 ariaLabel="Space priority"
                 triggerClassName="h-8 w-[110px]"
               />
-              {!editing ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={startEdit}
-                  aria-label="Edit space details"
-                  className="h-8 px-2.5 text-ink-2"
-                >
-                  <Edit3 className="size-3.5" />
-                </Button>
-              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={startEdit}
+                aria-label="Edit space details"
+                className="h-8 px-2.5 text-ink-2"
+              >
+                <Edit3 className="size-3.5" />
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -358,15 +311,15 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                         </div>
                         <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          {pin.tagIds.map((tid) => {
-                            const tag = tagsById.get(tid);
-                            if (!tag) return null;
+                          {pin.labelIds.map((lid) => {
+                            const label = labelsById.get(lid);
+                            if (!label) return null;
                             return (
                               <span
-                                key={tid}
+                                key={lid}
                                 className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2"
                               >
-                                {tag.label}
+                                {label.name}
                               </span>
                             );
                           })}
@@ -423,16 +376,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               </div>
             </div>
 
-            {stats && stats.tagBreakdown.size > 0 ? (
+            {stats && stats.labelBreakdown.size > 0 ? (
               <div>
-                <p className="text-eyebrow mb-2">Tags</p>
+                <p className="text-eyebrow mb-2">Labels</p>
                 <div className="space-y-1.5">
-                  {Array.from(stats.tagBreakdown.entries()).map(([tid, count]) => {
-                    const tag = tagsById.get(tid);
-                    if (!tag) return null;
+                  {Array.from(stats.labelBreakdown.entries()).map(([lid, count]) => {
+                    const label = labelsById.get(lid);
+                    if (!label) return null;
                     return (
-                      <div key={tid} className="flex items-center justify-between text-[0.8125rem]">
-                        <span className="text-ink-2">{tag.label}</span>
+                      <div key={lid} className="flex items-center justify-between text-[0.8125rem]">
+                        <span className="text-ink-2">{label.name}</span>
                         <span className="font-mono text-[0.75rem] text-ink">{count}</span>
                       </div>
                     );
@@ -457,6 +410,70 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         </aside>
       </div>
 
+      <Dialog open={editing} onOpenChange={(open) => !savingEdit && setEditing(open)}>
+        <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit space</DialogTitle>
+            <DialogDescription>
+              Update the name or description for{" "}
+              <span className="font-mono text-ink">{space.code}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="grid gap-4"
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void saveEdit();
+              }
+            }}
+          >
+            <Field id="space-edit-name" label="Name">
+              <Input
+                id="space-edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-9 bg-paper text-[0.8125rem]"
+                autoFocus
+              />
+            </Field>
+            <Field id="space-edit-notes" label="Description">
+              <Textarea
+                id="space-edit-notes"
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="What this space covers"
+                className="min-h-[80px] bg-paper text-[0.8125rem]"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">⌘</kbd>
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Enter</kbd>
+                <span>to save</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditing(false)}
+                  disabled={savingEdit}
+                  className="h-9"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={saveEdit}
+                  disabled={savingEdit || !editName.trim()}
+                  className="h-9"
+                >
+                  {savingEdit ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
@@ -466,7 +483,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             </DialogDescription>
           </DialogHeader>
           <NewMarkForm
-            tags={workspace.tags}
+            labels={workspace.labels}
             members={workspace.members}
             defaultAssigneeId={userId ?? undefined}
             open={showNew}

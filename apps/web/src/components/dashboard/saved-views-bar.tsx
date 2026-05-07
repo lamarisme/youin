@@ -156,7 +156,7 @@ function snapshotsEqual(a: SavedViewFilters, b: SavedViewFilters): boolean {
     a.status === b.status &&
     a.priority === b.priority &&
     a.pinned === b.pinned &&
-    a.tag === b.tag &&
+    a.label === b.label &&
     a.assignee === b.assignee &&
     a.q.trim() === b.q.trim() &&
     a.sort === b.sort

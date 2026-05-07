@@ -5,21 +5,20 @@ import {
   ArrowLeft,
   ArrowRight,
   Bookmark,
-  Check,
   Globe,
   Monitor,
   Mouse,
   Pencil,
   Trash2,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
+import { Field } from "@/components/field";
 import { FilterSelect } from "@/components/filter-select";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
-import { TagPicker } from "@/components/tag-picker";
+import { LabelPicker } from "@/components/label-picker";
 import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { StatusPill } from "@/components/status-pill";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -32,10 +31,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/action-error";
-import type { PinItem, PinPriority, WorkspaceTag } from "@/lib/collab-types";
+import type { PinItem, PinPriority, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
@@ -58,14 +56,14 @@ interface MarkDetailViewProps {
 }
 
 export function MarkDetailView({ pin }: MarkDetailViewProps) {
-  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, setMarkTags, createTag, assignMark, deletePin, updatePin } = useCollabStore(
+  const { workspace, togglePinStatus, togglePinPinned, updatePinPriority, setMarkLabels, createLabel, assignMark, deletePin, updatePin } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       togglePinStatus: s.togglePinStatus,
       togglePinPinned: s.togglePinPinned,
       updatePinPriority: s.updatePinPriority,
-      setMarkTags: s.setMarkTags,
-      createTag: s.createTag,
+      setMarkLabels: s.setMarkLabels,
+      createLabel: s.createLabel,
       assignMark: s.assignMark,
       deletePin: s.deletePin,
       updatePin: s.updatePin,
@@ -261,19 +259,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 <span className="font-mono text-[0.75rem] font-semibold text-mark">{pin.displayKey}</span>
                 <StatusPill status={pin.status} />
               </div>
-              {editing ? (
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="mt-2 h-12 break-words bg-paper-2 font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
-                  maxLength={180}
-                  autoFocus
-                />
-              ) : (
-                <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">
-                  {pin.title}
-                </h1>
-              )}
+              <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">
+                {pin.title}
+              </h1>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
               <Button
@@ -347,18 +335,16 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 {pin.status === "open" ? "Close mark" : "Reopen"}
               </Button>
               <MarkPageOpenButton page={pin.page} appearance="labeled" className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]" />
-              {!editing ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={startEdit}
-                  aria-label="Edit mark details"
-                  aria-keyshortcuts="E"
-                  className="h-11 px-2.5 text-ink-2 hover:text-ink sm:h-8"
-                >
-                  <Pencil className="size-3.5" aria-hidden />
-                </Button>
-              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={startEdit}
+                aria-label="Edit mark details"
+                aria-keyshortcuts="E"
+                className="h-11 px-2.5 text-ink-2 hover:text-ink sm:h-8"
+              >
+                <Pencil className="size-3.5" aria-hidden />
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -371,76 +357,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             </div>
           </div>
 
-          {editing ? (
-            <div
-              className="mt-3 space-y-2"
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setEditing(false);
-                } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void saveEdit();
-                }
-              }}
-            >
-              <Textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="Describe what should change…"
-                maxLength={3000}
-                className="min-h-[88px] max-w-[65ch] bg-paper-2 text-[0.9375rem] leading-relaxed"
-              />
-              <div className="flex items-center gap-2">
-                <Label htmlFor="mark-edit-page" className="shrink-0 text-[0.75rem] font-medium text-ink-2">
-                  Page
-                </Label>
-                <Input
-                  id="mark-edit-page"
-                  value={editPage}
-                  onChange={(e) => setEditPage(e.target.value)}
-                  placeholder="/pricing"
-                  className="h-9 max-w-md bg-paper-2 font-mono text-[0.8125rem]"
-                  maxLength={300}
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">⌘</kbd>
-                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Enter</kbd>
-                  <span>to save</span>
-                  <span className="text-rule">·</span>
-                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Esc</kbd>
-                  <span>to cancel</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditing(false)}
-                    disabled={savingEdit}
-                    className="h-8"
-                  >
-                    <X className="size-3.5" aria-hidden />
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={saveEdit}
-                    disabled={savingEdit || !editTitle.trim() || !editPage.trim()}
-                    className="h-8"
-                  >
-                    <Check className="size-3.5" aria-hidden />
-                    {savingEdit ? "Saving…" : "Save"}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
+          {pin.description ? (
             <p className="mt-3 max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2">{pin.description}</p>
-          )}
+          ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
@@ -462,28 +381,28 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
 
           <div className="mt-4 grid gap-1.5">
-            <p className="text-eyebrow">Tags</p>
-            <TagPicker
-              tags={workspace.tags}
-              selectedIds={pin.tagIds}
+            <p className="text-eyebrow">Labels</p>
+            <LabelPicker
+              labels={workspace.labels}
+              selectedIds={pin.labelIds}
               onChange={(next) =>
-                setMarkTags(pin.id, next).catch((e) =>
-                  toast.error(actionErrorMessage(e, "Couldn't update tags.")),
+                setMarkLabels(pin.id, next).catch((e) =>
+                  toast.error(actionErrorMessage(e, "Couldn't update labels.")),
                 )
               }
-              onCreate={async (label): Promise<WorkspaceTag | undefined> => {
+              onCreate={async (name): Promise<WorkspaceLabel | undefined> => {
                 try {
-                  await createTag(label);
-                  const next = useCollabStore.getState().workspace.tags;
+                  await createLabel(name);
+                  const next = useCollabStore.getState().workspace.labels;
                   return next.find(
-                    (t) => t.label.trim().toLowerCase() === label.trim().toLowerCase(),
+                    (l) => l.name.trim().toLowerCase() === name.trim().toLowerCase(),
                   );
                 } catch (e) {
-                  toast.error(actionErrorMessage(e, "Couldn't create tag."));
+                  toast.error(actionErrorMessage(e, "Couldn't create label."));
                   return undefined;
                 }
               }}
-              placeholder="Tag this mark…"
+              placeholder="Label this mark…"
             />
           </div>
 
@@ -549,6 +468,83 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
       </div>
 
       <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
+
+      <Dialog open={editing} onOpenChange={(open) => !savingEdit && setEditing(open)}>
+        <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit mark</DialogTitle>
+            <DialogDescription>
+              Update the title, page, or description for{" "}
+              <span className="font-mono text-ink">{pin.displayKey}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="grid gap-4"
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void saveEdit();
+              }
+            }}
+          >
+            <Field id="mark-edit-title" label="Title">
+              <Input
+                id="mark-edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="What needs attention?"
+                maxLength={180}
+                className="h-9 bg-paper text-[0.8125rem]"
+                autoFocus
+              />
+            </Field>
+            <Field id="mark-edit-page" label="Page path">
+              <Input
+                id="mark-edit-page"
+                value={editPage}
+                onChange={(e) => setEditPage(e.target.value)}
+                placeholder="/pricing"
+                maxLength={300}
+                className="h-9 bg-paper font-mono text-[0.8125rem]"
+              />
+            </Field>
+            <Field id="mark-edit-description" label="Description">
+              <Textarea
+                id="mark-edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Describe what should change…"
+                maxLength={3000}
+                className="min-h-[120px] bg-paper text-[0.8125rem]"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">⌘</kbd>
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Enter</kbd>
+                <span>to save</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => setEditing(false)}
+                  disabled={savingEdit}
+                  className="h-9"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={saveEdit}
+                  disabled={savingEdit || !editTitle.trim() || !editPage.trim()}
+                  className="h-9"
+                >
+                  {savingEdit ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
         <DialogContent className="sm:max-w-md">

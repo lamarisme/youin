@@ -10,7 +10,7 @@ export interface SpaceStats {
   closed: number;
   comments: number;
   lastActivity: string | null;
-  tagBreakdown: Map<string, number>;
+  labelBreakdown: Map<string, number>;
 }
 
 export function useSpaceStats(workspace: Workspace): Map<string, SpaceStats> {
@@ -23,7 +23,7 @@ export function useSpaceStats(workspace: Workspace): Map<string, SpaceStats> {
         closed: 0,
         comments: 0,
         lastActivity: null,
-        tagBreakdown: new Map(),
+        labelBreakdown: new Map(),
       });
     }
     for (const pin of workspace.pins) {
@@ -32,8 +32,8 @@ export function useSpaceStats(workspace: Workspace): Map<string, SpaceStats> {
       stats.total += 1;
       if (pin.status === "open") stats.open += 1;
       else stats.closed += 1;
-      for (const tid of pin.tagIds) {
-        stats.tagBreakdown.set(tid, (stats.tagBreakdown.get(tid) ?? 0) + 1);
+      for (const lid of pin.labelIds) {
+        stats.labelBreakdown.set(lid, (stats.labelBreakdown.get(lid) ?? 0) + 1);
       }
     }
     for (const comment of workspace.comments) {

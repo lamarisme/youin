@@ -198,7 +198,7 @@ function CommandPaletteDialog({
       {
         id: "nav-account",
         title: "Account settings",
-        subtitle: "Profile, team, and tags",
+        subtitle: "Profile, team, and labels",
         group: "Navigate",
         shortcut: "G C",
         icon: User,

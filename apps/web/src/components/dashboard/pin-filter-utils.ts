@@ -5,7 +5,7 @@ import type { DashboardFilters, SortMode } from "./use-dashboard-filters";
 /** URL-driven dashboard filters applied to marks (pins). */
 export type PinDashboardFilterSlice = Pick<
   DashboardFilters,
-  "spaceId" | "status" | "priority" | "pinned" | "tag" | "assignee" | "q" | "sort"
+  "spaceId" | "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -28,7 +28,7 @@ export function filterPinsByDashboardFilters(
     if (filters.priority !== "all" && pin.priority !== filters.priority) return false;
     if (filters.pinned === "pinned" && !pin.pinned) return false;
     if (filters.pinned === "unpinned" && pin.pinned) return false;
-    if (filters.tag !== "all" && !pin.tagIds.includes(filters.tag)) return false;
+    if (filters.label !== "all" && !pin.labelIds.includes(filters.label)) return false;
     if (filters.assignee === "me") {
       if (!viewerId || pin.assigneeId !== viewerId) return false;
     }

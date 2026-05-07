@@ -3,15 +3,15 @@
 import { Plus, X } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 
-import type { WorkspaceTag } from "@/lib/collab-types";
+import type { WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
-interface TagPickerProps {
-  tags: WorkspaceTag[];
+interface LabelPickerProps {
+  labels: WorkspaceLabel[];
   selectedIds: string[];
   onChange: (next: string[]) => void;
-  /** Returns the created tag (for immediate selection) or `undefined` to skip auto-select. */
-  onCreate?: (label: string) => Promise<WorkspaceTag | undefined>;
+  /** Returns the created label (for immediate selection) or `undefined` to skip auto-select. */
+  onCreate?: (name: string) => Promise<WorkspaceLabel | undefined>;
   placeholder?: string;
   disabled?: boolean;
   ariaLabel?: string;
@@ -20,16 +20,16 @@ interface TagPickerProps {
 
 const MAX_OPTIONS = 6;
 
-export function TagPicker({
-  tags,
+export function LabelPicker({
+  labels,
   selectedIds,
   onChange,
   onCreate,
-  placeholder = "Add or create tag…",
+  placeholder = "Add or create label…",
   disabled,
-  ariaLabel = "Tags",
+  ariaLabel = "Labels",
   className,
-}: TagPickerProps) {
+}: LabelPickerProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -37,17 +37,17 @@ export function TagPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
-  const tagsById = useMemo(() => new Map(tags.map((t) => [t.id, t])), [tags]);
-  const selectedTags = selectedIds
-    .map((id) => tagsById.get(id))
-    .filter((t): t is WorkspaceTag => Boolean(t));
+  const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
+  const selectedLabels = selectedIds
+    .map((id) => labelsById.get(id))
+    .filter((l): l is WorkspaceLabel => Boolean(l));
 
   const normalizedQuery = query.trim().toLowerCase();
-  const unselectedTags = tags.filter((t) => !selectedIds.includes(t.id));
+  const unselectedLabels = labels.filter((l) => !selectedIds.includes(l.id));
   const filteredOptions = normalizedQuery
-    ? unselectedTags.filter((t) => t.label.toLowerCase().includes(normalizedQuery))
-    : unselectedTags;
-  const exactMatch = tags.find((t) => t.label.trim().toLowerCase() === normalizedQuery);
+    ? unselectedLabels.filter((l) => l.name.toLowerCase().includes(normalizedQuery))
+    : unselectedLabels;
+  const exactMatch = labels.find((l) => l.name.trim().toLowerCase() === normalizedQuery);
   const canCreate = Boolean(onCreate) && Boolean(normalizedQuery) && !exactMatch;
 
   function add(id: string) {
@@ -103,7 +103,7 @@ export function TagPicker({
   }
 
   const showOptions = open && (filteredOptions.length > 0 || canCreate);
-  const hasInput = selectedTags.length > 0 || query.length > 0;
+  const hasInput = selectedLabels.length > 0 || query.length > 0;
 
   return (
     <div
@@ -118,20 +118,20 @@ export function TagPicker({
         className="flex flex-wrap items-center gap-1.5 px-2 py-1.5"
         onClick={() => inputRef.current?.focus()}
       >
-        {selectedTags.map((tag) => (
+        {selectedLabels.map((label) => (
           <span
-            key={tag.id}
+            key={label.id}
             className="inline-flex max-w-[16rem] items-center gap-0.5 rounded-md bg-paper-3 py-0.5 pl-2 pr-0.5 text-[0.6875rem] font-medium text-ink"
           >
-            <span className="truncate" title={tag.label}>{tag.label}</span>
+            <span className="truncate" title={label.name}>{label.name}</span>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                remove(tag.id);
+                remove(label.id);
               }}
               className="shrink-0 rounded-sm p-0.5 text-ink-3 transition-colors hover:bg-paper hover:text-mark"
-              aria-label={`Remove ${tag.label}`}
+              aria-label={`Remove ${label.name}`}
               disabled={disabled}
             >
               <X className="size-3" aria-hidden />
@@ -146,7 +146,7 @@ export function TagPicker({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={hasInput ? "Add tag…" : placeholder}
+          placeholder={hasInput ? "Add label…" : placeholder}
           disabled={disabled}
           aria-label={ariaLabel}
           aria-autocomplete="list"
@@ -158,22 +158,22 @@ export function TagPicker({
 
       {showOptions ? (
         <div id={listboxId} role="listbox" className="border-t border-rule p-1">
-          {filteredOptions.slice(0, MAX_OPTIONS).map((tag, i) => {
+          {filteredOptions.slice(0, MAX_OPTIONS).map((label, i) => {
             const isFirst = i === 0;
             const showEnter = isFirst && normalizedQuery.length > 0 && !canCreate;
             return (
               <button
-                key={tag.id}
+                key={label.id}
                 type="button"
                 role="option"
                 aria-selected={isFirst}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  add(tag.id);
+                  add(label.id);
                 }}
                 className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[0.8125rem] text-ink transition-colors hover:bg-paper-2"
               >
-                <span className="truncate">{tag.label}</span>
+                <span className="truncate">{label.name}</span>
                 {showEnter ? (
                   <kbd className="inline-flex items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-3">
                     ↵

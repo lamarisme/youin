@@ -26,8 +26,8 @@ export function formatMarkEvent(
     if (!fromValue) return "Assigned this mark.";
     return "Reassigned this mark.";
   }
-  if (type === "tag_changed") {
-    return metadata ?? "Updated the mark's tags.";
+  if (type === "label_changed") {
+    return metadata ?? "Updated the mark's labels.";
   }
   return metadata ?? "Added a comment.";
 }

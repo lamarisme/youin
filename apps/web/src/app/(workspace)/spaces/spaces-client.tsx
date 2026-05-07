@@ -3,7 +3,6 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useMemo } from "react";
 
-import { AppShell } from "@/components/app-shell";
 import { PageContainer } from "@/components/page-container";
 import { useCollabStore } from "@/lib/collab-store";
 
@@ -36,15 +35,13 @@ function SpacesClientContent() {
   );
 
   return (
-    <AppShell>
-      <PageContainer>
-        {selectedSpace ? (
-          <SpaceDetailView space={selectedSpace} onBack={() => updateSpacesUrl(null)} />
-        ) : (
-          <SpacesListView onSelectSpace={(id) => updateSpacesUrl(id)} />
-        )}
-      </PageContainer>
-    </AppShell>
+    <PageContainer>
+      {selectedSpace ? (
+        <SpaceDetailView space={selectedSpace} onBack={() => updateSpacesUrl(null)} />
+      ) : (
+        <SpacesListView onSelectSpace={(id) => updateSpacesUrl(id)} />
+      )}
+    </PageContainer>
   );
 }
 
