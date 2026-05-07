@@ -4,10 +4,58 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
+import { CheckCircle2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
+
+function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12 || /[!@#$%^&*]/.test(pw)) score++;
+  if (/[A-Z]/.test(pw) && /[0-9]/.test(pw)) score++;
+  return Math.min(score, 3) as 0 | 1 | 2 | 3;
+}
+
+function PasswordStrength({ score }: { score: 0 | 1 | 2 | 3 }) {
+  const labels = ["Too short", "Weak", "Fair", "Strong"] as const;
+  const colors = ["bg-paper-3", "bg-mark/60", "bg-mark", "bg-ok"] as const;
+  return (
+    <div className="flex items-center gap-2">
+      <div
+        role="meter"
+        aria-valuenow={score}
+        aria-valuemin={0}
+        aria-valuemax={3}
+        aria-label="Password strength"
+        className="flex flex-1 items-center gap-1"
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={cn(
+              "h-[3px] flex-1 rounded-full transition-colors duration-200",
+              i < score ? colors[score] : "bg-paper-3",
+            )}
+          />
+        ))}
+      </div>
+      <span
+        className={cn(
+          "font-mono text-[0.625rem] uppercase tracking-wider",
+          score === 0 ? "text-ink-3" : score === 3 ? "text-ok" : "text-ink-2",
+        )}
+      >
+        {labels[score]}
+      </span>
+    </div>
+  );
+}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -17,6 +65,9 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
+
+  const strength = passwordStrength(password);
+  const passwordsMatch = confirm.length > 0 && password === confirm;
 
   useEffect(() => {
     const supabase = createClient();
@@ -39,7 +90,7 @@ export default function ResetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setError("Passwords don&rsquo;t match.");
+      setError("Passwords don't match.");
       return;
     }
 
@@ -52,7 +103,7 @@ export default function ResetPasswordPage() {
         return;
       }
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard?space=all"), 1200);
+      setTimeout(() => router.push("/dashboard?space=all"), 1500);
     } finally {
       setLoading(false);
     }
@@ -71,10 +122,16 @@ export default function ResetPasswordPage() {
 
       {hasSession === false ? (
         <div className="space-y-4">
-          <div className="rounded-md border border-rule bg-paper px-3 py-2 text-[0.8125rem] text-ink-2">
-            This reset link has expired or already been used. Request a new one to continue.
+          <div className="flex items-start gap-3 rounded-md border border-mark/25 bg-mark-soft px-3 py-2.5">
+            <div className="mt-0.5 size-4 shrink-0 rounded-full border-2 border-mark" />
+            <div>
+              <p className="text-[0.8125rem] font-medium text-mark">Link expired</p>
+              <p className="mt-0.5 text-[0.75rem] text-ink-2">
+                This reset link has expired or already been used. Request a new one to continue.
+              </p>
+            </div>
           </div>
-          <Button asChild className="w-full">
+          <Button asChild className="w-full bg-mark text-paper hover:bg-mark-bright">
             <Link href="/auth/forgot-password">Request a new link</Link>
           </Button>
         </div>
@@ -84,9 +141,8 @@ export default function ResetPasswordPage() {
             <Label htmlFor="password" className="text-[0.75rem] font-medium text-ink-2">
               New password
             </Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="At least 8 characters"
               className="h-9 bg-paper text-[0.8125rem]"
               value={password}
@@ -94,32 +150,48 @@ export default function ResetPasswordPage() {
               required
               autoFocus
               disabled={loading || success}
+              autoComplete="new-password"
             />
+            <PasswordStrength score={strength} />
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="confirm" className="text-[0.75rem] font-medium text-ink-2">
               Confirm new password
             </Label>
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               placeholder="Type it again"
               className="h-9 bg-paper text-[0.8125rem]"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
               disabled={loading || success}
+              autoComplete="new-password"
             />
+            {confirm.length > 0 && passwordsMatch && (
+              <p className="flex items-center gap-1 text-[0.6875rem] text-ok">
+                <CheckCircle2 className="size-3" />
+                Passwords match
+              </p>
+            )}
           </div>
 
-          {error ? <p className="text-[0.75rem] text-mark">{error}</p> : null}
-          {success ? <p className="text-[0.75rem] text-ok">Password updated.</p> : null}
+          {error ? (
+            <p role="alert" className="rounded-md border border-mark/25 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark">
+              {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p role="status" className="rounded-md border border-ok/25 bg-ok-soft px-3 py-2 text-[0.75rem] text-ok">
+              Password updated successfully.
+            </p>
+          ) : null}
 
           <Button
             type="submit"
             className="w-full bg-mark text-paper hover:bg-mark-bright"
-            disabled={loading || success || hasSession === null}
+            disabled={loading || success || hasSession === null || !password || !confirm}
           >
             {loading ? "Updating..." : success ? "Done" : "Update password"}
           </Button>

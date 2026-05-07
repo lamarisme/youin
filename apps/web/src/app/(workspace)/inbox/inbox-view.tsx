@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -169,14 +170,5 @@ function ActorChip({ event }: { event: InboxEvent }) {
 }
 
 function formatRelative(iso: string): string {
-  const date = new Date(iso);
-  const diffMs = Date.now() - date.getTime();
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (diffMs < minute) return "just now";
-  if (diffMs < hour) return `${Math.floor(diffMs / minute)}m ago`;
-  if (diffMs < day) return `${Math.floor(diffMs / hour)}h ago`;
-  if (diffMs < 7 * day) return `${Math.floor(diffMs / day)}d ago`;
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDistanceToNow(new Date(iso), { addSuffix: true });
 }

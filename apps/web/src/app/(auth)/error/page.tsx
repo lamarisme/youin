@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
+
+import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -36,6 +38,9 @@ function AuthErrorContent() {
   return (
     <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
       <div className="mb-6">
+        <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg border border-mark/25 bg-mark-soft">
+          <AlertTriangle className="size-5 text-mark" />
+        </div>
         <h2 className="font-display text-xl font-semibold text-ink">Something went wrong</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">{message}</p>
       </div>

@@ -330,15 +330,6 @@
     gap: var(--block-gap);
   }
 
-  .motion-enter {
-    animation: enter-up 420ms var(--ease-out-quart) both;
-  }
-
-  .motion-enter-delayed {
-    animation: enter-up 520ms var(--ease-out-expo) both;
-    animation-delay: 80ms;
-  }
-
   .interactive-lift {
     transition:
       transform 220ms var(--ease-out-quart),
@@ -353,17 +344,6 @@
 
   .interactive-lift:active {
     transform: translateY(0) scale(0.99);
-  }
-
-  @keyframes enter-up {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
   }
 
   /* Hero ProductDemo intro — plays once on first paint */
@@ -429,11 +409,6 @@
 
   @media (prefers-reduced-motion: reduce) {
     .pin-dot::after {
-      animation: none;
-    }
-
-    .motion-enter,
-    .motion-enter-delayed {
       animation: none;
     }
 

@@ -23,6 +23,7 @@ import {
 import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { FadeIn } from "@/components/motion";
 import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
 import { MarkListItem } from "./mark-list-item";
@@ -242,7 +243,7 @@ export function TriageView() {
         </div>
       </AppHeader>
 
-      <ToolbarPanel className="motion-enter mb-6">
+      <FadeIn><ToolbarPanel className="mb-6">
         <div className="min-w-[170px] flex-1 sm:min-w-[220px] sm:flex-none">
           <FilterSelect
             value={filters.spaceId}
@@ -288,7 +289,7 @@ export function TriageView() {
             </Link>
           </Button>
         </div>
-      </ToolbarPanel>
+      </ToolbarPanel></FadeIn>
 
       <SavedViewsBar
         views={savedViews}

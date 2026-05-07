@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 export interface MarkDetailShortcutHandlers {
   onNext: () => void;
@@ -18,15 +18,6 @@ export interface MarkDetailShortcutHandlers {
 
 interface UseMarkDetailShortcutsOptions extends MarkDetailShortcutHandlers {
   enabled: boolean;
-}
-
-function isInputTarget(t: EventTarget | null): boolean {
-  if (!(t instanceof HTMLElement)) return false;
-  if (t.isContentEditable) return true;
-  const tag = t.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (t.getAttribute("role") === "combobox") return true;
-  return false;
 }
 
 export function clickByAria(label: string): boolean {
@@ -48,78 +39,31 @@ export function focusElementById(id: string): boolean {
   return false;
 }
 
-export function useMarkDetailShortcuts(options: UseMarkDetailShortcutsOptions) {
-  const { enabled, ...handlers } = options;
-  const handlersRef = useRef<MarkDetailShortcutHandlers>(handlers);
+export function useMarkDetailShortcuts({
+  enabled,
+  onNext,
+  onPrev,
+  onEdit,
+  onToggleStatus,
+  onTogglePinned,
+  onFocusComment,
+  onOpenAssignee,
+  onOpenPriority,
+  onOpenSpace,
+  onShowHelp,
+  onBack,
+}: UseMarkDetailShortcutsOptions) {
+  const opts = { enabled, enableOnFormTags: false as const, enableOnContentEditable: false };
 
-  useLayoutEffect(() => {
-    handlersRef.current = handlers;
-  });
-
-  useEffect(() => {
-    if (!enabled || typeof window === "undefined") return;
-
-    function handleKey(e: KeyboardEvent) {
-      if (isInputTarget(e.target)) return;
-      const isQuestionMark = e.key === "?" && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey;
-      if (!isQuestionMark && (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey)) return;
-
-      const h = handlersRef.current;
-
-      switch (e.key) {
-        case "j":
-        case "ArrowDown":
-          e.preventDefault();
-          h.onNext();
-          return;
-        case "k":
-        case "ArrowUp":
-          e.preventDefault();
-          h.onPrev();
-          return;
-        case "e":
-          e.preventDefault();
-          h.onEdit();
-          return;
-        case "x":
-          e.preventDefault();
-          h.onToggleStatus();
-          return;
-        case "b":
-          e.preventDefault();
-          h.onTogglePinned();
-          return;
-        case "c":
-          e.preventDefault();
-          h.onFocusComment();
-          return;
-        case "a":
-          e.preventDefault();
-          h.onOpenAssignee();
-          return;
-        case "p":
-          e.preventDefault();
-          h.onOpenPriority();
-          return;
-        case "s":
-          e.preventDefault();
-          h.onOpenSpace();
-          return;
-        case "Escape":
-          h.onBack();
-          return;
-        case "?":
-          if (isQuestionMark) {
-            e.preventDefault();
-            h.onShowHelp();
-          }
-          return;
-        default:
-          return;
-      }
-    }
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [enabled]);
+  useHotkeys("j, ArrowDown", onNext, { ...opts, preventDefault: true });
+  useHotkeys("k, ArrowUp", onPrev, { ...opts, preventDefault: true });
+  useHotkeys("e", onEdit, opts);
+  useHotkeys("x", onToggleStatus, opts);
+  useHotkeys("b", onTogglePinned, opts);
+  useHotkeys("c", onFocusComment, opts);
+  useHotkeys("a", onOpenAssignee, opts);
+  useHotkeys("p", onOpenPriority, opts);
+  useHotkeys("s", onOpenSpace, opts);
+  useHotkeys("Escape", onBack, opts);
+  useHotkeys("shift+?", onShowHelp, opts);
 }

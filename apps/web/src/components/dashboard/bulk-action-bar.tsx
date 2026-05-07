@@ -3,6 +3,7 @@
 import { CheckCircle2, CircleDashed, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
+import { FadeIn } from "@/components/motion";
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
@@ -48,10 +49,10 @@ export function BulkActionBar({
 
   return (
     <>
-      <div
+      <FadeIn
         role="region"
         aria-label={`${count} marks selected`}
-        className="motion-enter sticky bottom-4 z-20 mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-rule bg-paper px-3 py-1.5 shadow-[0_18px_48px_-22px_oklch(17%_0.012_50_/_0.5)] dark:shadow-[0_18px_48px_-22px_oklch(0%_0_0_/_0.7)]"
+        className="sticky bottom-4 z-20 mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-rule bg-paper px-3 py-1.5 shadow-[0_18px_48px_-22px_oklch(17%_0.012_50_/_0.5)] dark:shadow-[0_18px_48px_-22px_oklch(0%_0_0_/_0.7)]"
       >
         <span className="flex items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink">
           <span className="text-mark">{count}</span> selected
@@ -111,7 +112,7 @@ export function BulkActionBar({
         >
           <X className="size-3.5" />
         </Button>
-      </div>
+      </FadeIn>
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="sm:max-w-md">

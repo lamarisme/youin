@@ -135,29 +135,23 @@ export default function Home() {
       <main id="main" className="section-stack page-y-loose">
         {/* ── Hero ──────────────────────────────────────────── */}
         <section className="shell">
-          <div className="grid gap-10 md:items-start md:gap-14">
-            <div>
-              <h1 className="text-editorial text-ink">
-                Your to-do list lives on your&nbsp;app.
-              </h1>
-              <p className="mt-5 max-w-[52ch] text-[1.0625rem] leading-relaxed text-ink-2">
-                Click any element. Write what needs to change. Push it as a Linear, GitHub, or Jira ticket — all without leaving your live app. No spreadsheets. No Slack chains.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <ChromeCtaButton href="#install">Add to Chrome</ChromeCtaButton>
-                <SecondaryCtaButton href="#loop">See the loop</SecondaryCtaButton>
-              </div>
-              <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
-                Chrome extension &middot; npm dev dep &middot; Linear &middot; GitHub &middot; Jira
-              </p>
-            </div>
+          <h1 className="text-editorial text-ink">
+            Your to-do list lives on your&nbsp;app.
+          </h1>
+          <p className="mt-5 max-w-[52ch] text-[1.0625rem] leading-relaxed text-ink-2">
+            Click any element. Write what needs to change. Push it as a Linear, GitHub, or Jira ticket — all without leaving your live app. No spreadsheets. No Slack chains.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <ChromeCtaButton href="#install">Add to Chrome</ChromeCtaButton>
+            <SecondaryCtaButton href="#loop">See the loop</SecondaryCtaButton>
           </div>
+          <p className="mt-5 font-mono text-[0.6875rem] text-ink-3">
+            Chrome extension &middot; npm dev dep &middot; Linear &middot; GitHub &middot; Jira
+          </p>
         </section>
 
-        <div className="shell"><div className="h-px bg-rule" /></div>
-
         {/* ── Problem ──────────────────────────────────────── */}
-        <section id="problem" className="shell section-block scroll-mt-32 md:scroll-mt-20">
+        <section id="problem" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:gap-12">
             <div>
               <h2 className="text-editorial-md text-ink">
@@ -184,10 +178,8 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="shell"><div className="h-px bg-rule" /></div>
-
         {/* ── How it works ─────────────────────────────────── */}
-        <section id="loop" className="shell section-block scroll-mt-32 md:scroll-mt-20">
+        <section id="loop" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">How it works</p>
             <h2 className="text-editorial-md text-ink">Three moves. One loop.</h2>
@@ -206,10 +198,8 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="shell"><div className="h-px bg-rule" /></div>
-
         {/* ── Who it's for ─────────────────────────────────── */}
-        <section id="who" className="shell section-block scroll-mt-32 md:scroll-mt-20">
+        <section id="who" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Who it&rsquo;s for</p>
             <h2 className="text-editorial-md text-ink">Built for people who notice first.</h2>
@@ -229,14 +219,12 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="shell"><div className="h-px bg-rule" /></div>
-
         {/* ── Pricing ──────────────────────────────────────── */}
-        <section id="pricing" className="shell section-block scroll-mt-32 md:scroll-mt-20">
+        <section id="pricing" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Pricing</p>
             <h2 className="text-editorial-md text-ink">Paid from day&nbsp;one.</h2>
-            <p className="mt-3 max-w-[52ch] text-[0.9375rem] leading-relaxed text-ink-2">
+            <p className="mt-4 max-w-[52ch] text-[0.9375rem] leading-relaxed text-ink-2">
               No free tier. Either the product earns its keep on day one, or it doesn&rsquo;t.
             </p>
           </div>
@@ -245,23 +233,25 @@ export default function Home() {
             {tiers.map((tier) => (
               <div
                 key={tier.name}
-                className={`flex flex-col rounded-xl border p-6 ${tier.highlighted
+                className={`flex flex-col gap-5 rounded-xl border p-6 ${tier.highlighted
                     ? "border-mark bg-mark-soft"
                     : "border-rule bg-paper-2"
                   }`}
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-lg font-semibold text-ink">{tier.name}</h3>
-                  {tier.highlighted ? (
-                    <Badge className="bg-mark text-paper text-[0.625rem]">Popular</Badge>
-                  ) : null}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-lg font-semibold text-ink">{tier.name}</h3>
+                    {tier.highlighted ? (
+                      <Badge className="bg-mark text-paper text-[0.625rem]">Popular</Badge>
+                    ) : null}
+                  </div>
+                  <p className="mt-1.5 text-[0.8125rem] text-ink-2">{tier.blurb}</p>
                 </div>
-                <p className="mt-1 text-[0.8125rem] text-ink-2">{tier.blurb}</p>
-                <p className="mt-4 font-display text-3xl font-semibold tracking-tight text-ink">
+                <p className="font-display text-3xl font-semibold tracking-tight text-ink">
                   {tier.price}
                   <span className="ml-1.5 text-[0.8125rem] font-normal text-ink-3">{tier.period}</span>
                 </p>
-                <ul className="mt-5 flex-1 space-y-2 text-[0.8125rem] text-ink-2">
+                <ul className="flex-1 space-y-2 text-[0.8125rem] text-ink-2">
                   {tier.features.map((f) => (
                     <li key={f} className="flex items-start gap-2">
                       <span className="mt-1 size-1 shrink-0 rounded-full bg-mark" />
@@ -271,7 +261,7 @@ export default function Home() {
                 </ul>
                 <Button
                   variant={tier.highlighted ? "default" : "outline"}
-                  className="mt-6 w-full"
+                  className="w-full"
                   asChild
                 >
                   <a href={tier.href}>{tier.cta}</a>
@@ -288,10 +278,10 @@ export default function Home() {
               <h2 className="text-editorial-md text-ink">
                 Stop describing the thing you can point&nbsp;at.
               </h2>
-              <p className="mt-3 max-w-[48ch] text-[0.9375rem] leading-relaxed text-ink-2">
+              <p className="mt-4 max-w-[48ch] text-[0.9375rem] leading-relaxed text-ink-2">
                 The next time someone spots a live issue, leave a mark instead of a message thread.
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-7 flex flex-wrap gap-3">
                 <ChromeCtaButton href="#install">Add to Chrome</ChromeCtaButton>
                 <SecondaryCtaButton href="/contact">Talk to a human</SecondaryCtaButton>
               </div>

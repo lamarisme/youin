@@ -16,7 +16,8 @@ export function AuthShellLayout({ children }: { children: ReactNode }) {
         <div className="h-px bg-rule" />
 
         <main className="grid flex-1 items-center gap-12 py-8 md:grid-cols-[1.12fr_1fr] md:gap-16 md:py-12">
-          <section className="section-block">
+          {/* Marketing copy — second on mobile, first on desktop */}
+          <section className="section-block order-2 md:order-1">
             <div>
               <p className="text-eyebrow mb-2">youin auth</p>
               <h1 className="text-editorial-md text-ink">Review faster. Ship&nbsp;cleaner.</h1>
@@ -41,7 +42,10 @@ export function AuthShellLayout({ children }: { children: ReactNode }) {
             </ul>
           </section>
 
-          <section className="w-full md:justify-self-end md:max-w-[480px]">{children}</section>
+          {/* Auth form — first on mobile, second on desktop */}
+          <section className="order-1 md:order-2 w-full md:justify-self-end md:max-w-[480px]">
+            {children}
+          </section>
         </main>
       </div>
     </div>

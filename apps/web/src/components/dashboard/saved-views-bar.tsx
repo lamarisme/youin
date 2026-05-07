@@ -4,6 +4,7 @@ import { Bookmark, Check, Plus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FadeIn } from "@/components/motion";
 import { cn } from "@/lib/utils";
 
 import type { DashboardFilters } from "./use-dashboard-filters";
@@ -62,7 +63,7 @@ export function SavedViewsBar({
   }
 
   return (
-    <div className="motion-enter mb-4 flex flex-wrap items-center gap-1.5">
+    <FadeIn className="mb-4 flex flex-wrap items-center gap-1.5">
       <span className="inline-flex items-center gap-1.5 pr-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
         <Bookmark className="size-3" aria-hidden />
         Views
@@ -147,7 +148,7 @@ export function SavedViewsBar({
           Save view
         </Button>
       ) : null}
-    </div>
+    </FadeIn>
   );
 }
 

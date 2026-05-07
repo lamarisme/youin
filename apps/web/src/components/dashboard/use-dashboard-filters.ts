@@ -1,7 +1,12 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
+import {
+  parseAsInteger,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryState,
+} from "nuqs";
 
 import type { PinPriority, PinStatus } from "@/lib/collab-types";
 
@@ -12,66 +17,99 @@ export type SortMode = "recent" | "oldest" | "priority" | "status";
 export type AssigneeFilter = "all" | "me" | "unassigned";
 
 export interface DashboardFilters {
-  spaceId: string; // "all" or a UUID
-  /** Raw `mark` query param: stable UUID or friendly key (`CODE-123`). */
+  spaceId: string;
   markId: string | null;
   status: StatusFilter;
   priority: PriorityFilter;
   pinned: PinnedFilter;
-  label: string; // "all" or a label id
+  label: string;
   assignee: AssigneeFilter;
-  q: string; // free-text search query
+  q: string;
   sort: SortMode;
   page: number;
 }
 
-const STATUS_VALUES: StatusFilter[] = ["all", "open", "closed"];
-const PRIORITY_VALUES: PriorityFilter[] = ["all", "low", "medium", "high", "critical"];
-const PINNED_VALUES: PinnedFilter[] = ["all", "pinned", "unpinned"];
-const SORT_VALUES: SortMode[] = ["recent", "oldest", "priority", "status"];
-const ASSIGNEE_VALUES: AssigneeFilter[] = ["all", "me", "unassigned"];
+const statusParser = parseAsStringLiteral(["all", "open", "closed"] as const).withDefault("all").withOptions({ clearOnDefault: true });
+const priorityParser = parseAsStringLiteral(["all", "low", "medium", "high", "critical"] as const).withDefault("all").withOptions({ clearOnDefault: true });
+const pinnedParser = parseAsStringLiteral(["all", "pinned", "unpinned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
+const sortParser = parseAsStringLiteral(["recent", "oldest", "priority", "status"] as const).withDefault("recent").withOptions({ clearOnDefault: true });
+const assigneeParser = parseAsStringLiteral(["all", "me", "unassigned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
 
-function parseEnum<T extends string>(value: string | null, allowed: T[]): T {
-  return value && (allowed as string[]).includes(value) ? (value as T) : (allowed[0] as T);
-}
+const spaceParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
+const markParser = parseAsString;
+const labelParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
+const queryParser = parseAsString.withDefault("").withOptions({ clearOnDefault: true });
+const pageParser = parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true });
 
 export function useDashboardFilters() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [space, setSpace] = useQueryState("space", spaceParser);
+  const [mark, setMark] = useQueryState("mark", markParser);
+  const [status, setStatus] = useQueryState("status", statusParser);
+  const [priority, setPriority] = useQueryState("priority", priorityParser);
+  const [pinned, setPinned] = useQueryState("pinned", pinnedParser);
+  const [label, setLabel] = useQueryState("label", labelParser);
+  const [assignee, setAssignee] = useQueryState("assignee", assigneeParser);
+  const [q, setQ] = useQueryState("q", queryParser);
+  const [sort, setSort] = useQueryState("sort", sortParser);
+  const [page, setPage] = useQueryState("page", pageParser);
 
-  const filters: DashboardFilters = useMemo(() => {
-    const pageRaw = Number.parseInt(searchParams.get("page") ?? "1", 10);
-    return {
-      spaceId: searchParams.get("space") ?? "all",
-      markId: searchParams.get("mark"),
-      status: parseEnum(searchParams.get("status"), STATUS_VALUES),
-      priority: parseEnum(searchParams.get("priority"), PRIORITY_VALUES),
-      pinned: parseEnum(searchParams.get("pinned"), PINNED_VALUES),
-      label: searchParams.get("label") ?? "all",
-      assignee: parseEnum(searchParams.get("assignee"), ASSIGNEE_VALUES),
-      q: searchParams.get("q") ?? "",
-      sort: parseEnum(searchParams.get("sort"), SORT_VALUES),
-      page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
-    };
-  }, [searchParams]);
+  const filters: DashboardFilters = useMemo(
+    () => ({
+      spaceId: space,
+      markId: mark ?? null,
+      status,
+      priority,
+      pinned,
+      label,
+      assignee,
+      q,
+      sort,
+      page,
+    }),
+    [space, mark, status, priority, pinned, label, assignee, q, sort, page],
+  );
 
   const update = useCallback(
-    (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => {
-      const params = new URLSearchParams(searchParams.toString());
-      for (const [key, value] of Object.entries(patch)) {
-        const param = key === "spaceId" ? "space" : key === "markId" ? "mark" : key;
-        if (value === null || value === "" || value === "all") {
-          params.delete(param);
-        } else {
-          params.set(param, String(value));
-        }
+    (
+      patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
+      options?: { resetPage?: boolean },
+    ) => {
+      if (patch.spaceId !== undefined) {
+        const v = patch.spaceId;
+        void setSpace(typeof v === "string" && v !== "all" ? v : "all");
       }
-      if (options?.resetPage) params.delete("page");
-      const query = params.toString();
-      router.push(query ? `${pathname}?${query}` : pathname);
+      if (patch.markId !== undefined) {
+        void setMark(typeof patch.markId === "string" ? patch.markId : null);
+      }
+      if (patch.status !== undefined) {
+        void setStatus(patch.status as StatusFilter);
+      }
+      if (patch.priority !== undefined) {
+        void setPriority(patch.priority as PriorityFilter);
+      }
+      if (patch.pinned !== undefined) {
+        void setPinned(patch.pinned as PinnedFilter);
+      }
+      if (patch.label !== undefined) {
+        void setLabel(typeof patch.label === "string" && patch.label !== "all" ? patch.label : "all");
+      }
+      if (patch.assignee !== undefined) {
+        void setAssignee(patch.assignee as AssigneeFilter);
+      }
+      if (patch.q !== undefined) {
+        void setQ((patch.q as string) ?? "");
+      }
+      if (patch.sort !== undefined) {
+        void setSort(patch.sort as SortMode);
+      }
+      if (patch.page !== undefined) {
+        void setPage((patch.page as number) ?? 1);
+      }
+      if (options?.resetPage) {
+        void setPage(1);
+      }
     },
-    [pathname, router, searchParams],
+    [setSpace, setMark, setStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setPage],
   );
 
   return { filters, update };

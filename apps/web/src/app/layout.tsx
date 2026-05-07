@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
 
+import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,7 +43,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <ThemeProvider>
-          <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          <QueryProvider>
+            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+          </QueryProvider>
         </ThemeProvider>
         <Toaster position="bottom-right" />
       </body>

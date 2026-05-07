@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
+import { FadeIn } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -8,7 +11,7 @@ export default function NotFound() {
     <div className="flex min-h-screen flex-col bg-paper bg-paper-grain text-ink">
       <header className="border-b border-rule bg-paper/90 backdrop-blur">
         <div className="shell flex items-center justify-between py-[var(--space-md)]">
-          <Link href="/" className="motion-enter flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
+          <Link href="/" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
             <span className="pin-dot">Y</span>
             <span className="font-display text-[1rem] font-semibold tracking-tight md:text-[1.0625rem]">youin</span>
           </Link>
@@ -26,7 +29,7 @@ export default function NotFound() {
         </div>
       </header>
 
-      <main className="shell motion-enter-delayed grid flex-1 gap-[var(--space-3xl)] py-[var(--page-y-loose)] pb-[var(--space-4xl)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-center lg:gap-[var(--space-4xl)]">
+      <FadeIn as="main" delay={0.08} className="shell grid flex-1 gap-[var(--space-3xl)] py-[var(--page-y-loose)] pb-[var(--space-4xl)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-center lg:gap-[var(--space-4xl)]">
         {/* Left rail — status + mnemonic, no decorative icon stack */}
         <div className="section-block lg:justify-self-start">
           <p className="text-eyebrow">Routing</p>
@@ -93,7 +96,7 @@ export default function NotFound() {
             </div>
           </div>
         </div>
-      </main>
+      </FadeIn>
 
       <footer className="mt-auto border-t border-rule bg-paper-2/40">
         <div className="shell flex flex-wrap items-center justify-between gap-[var(--space-sm)] py-[var(--space-md)] font-mono text-[0.6875rem] text-ink-3">

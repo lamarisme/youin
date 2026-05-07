@@ -38,6 +38,7 @@ import { useCollabStore } from "@/lib/collab-store";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
+import { FadeIn } from "@/components/motion";
 import { CommentThread } from "./comment-thread";
 import { MarkHistory } from "./mark-history";
 import { MarkShortcutsHelp } from "./mark-shortcuts-help";
@@ -195,7 +196,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
 
   return (
     <>
-      <div className="motion-enter border-b border-rule pb-6 mb-8">
+      <FadeIn className="border-b border-rule pb-6 mb-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button
             type="button"
@@ -249,9 +250,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             </Button>
           </div>
         </div>
-      </div>
+      </FadeIn>
 
-      <div key={pin.id} className="motion-enter-delayed grid gap-8 lg:grid-cols-[1fr_320px]">
+      <FadeIn key={pin.id} delay={0.08} className="grid gap-8 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -465,9 +466,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             <MarkHistory events={events} membersById={membersById} dateTimeFormatter={dateTimeFormatter} />
           </div>
         </div>
-      </div>
-
-      <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
+      </FadeIn>
 
       <Dialog open={editing} onOpenChange={(open) => !savingEdit && setEditing(open)}>
         <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-lg">

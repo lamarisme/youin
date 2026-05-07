@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
 
+import { MailCheck } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,9 +24,12 @@ export default function ForgotPasswordPage() {
       const supabase = createClient();
       const redirectTo = new URL("/auth/callback", window.location.origin);
       redirectTo.searchParams.set("next", "/auth/reset-password");
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: redirectTo.toString(),
-      });
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        email.trim(),
+        {
+          redirectTo: redirectTo.toString(),
+        },
+      );
       if (resetError) {
         setError(resetError.message);
         return;
@@ -42,26 +47,44 @@ export default function ForgotPasswordPage() {
         <p className="mt-1 text-[0.8125rem] text-ink-2">
           {sent
             ? "Check your inbox for a link to set a new password. The link expires in one hour."
-            : "Enter the email tied to your workspace. We&rsquo;ll send a link to set a new password."}
+            : "Enter the email tied to your workspace. We'll send a link to set a new password."}
         </p>
       </div>
 
       {sent ? (
         <div className="space-y-4">
-          <div className="rounded-md border border-rule bg-paper px-3 py-2 text-[0.8125rem] text-ink-2">
-            Sent to <span className="font-medium text-ink">{email.trim()}</span>. Check spam if it&rsquo;s not in your inbox in a minute.
+          <div className="flex items-start gap-3 rounded-md border border-ok/25 bg-ok-soft px-3 py-2.5">
+            <MailCheck className="mt-0.5 size-4 shrink-0 text-ok" />
+            <div>
+              <p className="text-[0.8125rem] font-medium text-ok">Email sent</p>
+              <p className="mt-0.5 text-[0.75rem] text-ink-2">
+                Sent to <span className="font-medium text-ink">{email.trim()}</span>. Check spam if it doesn&apos;t arrive within a minute.
+              </p>
+            </div>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              setSent(false);
-              setEmail("");
-            }}
-          >
-            Send to a different email
-          </Button>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setSent(false);
+                setEmail("");
+              }}
+            >
+              Send to a different email
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleSubmit({ preventDefault: () => {} } as FormEvent<HTMLFormElement>)}
+              disabled={loading}
+            >
+              {loading ? "Resending..." : "Resend link"}
+            </Button>
+          </div>
         </div>
       ) : (
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -78,10 +101,15 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
+              autoComplete="email"
             />
           </div>
 
-          {error ? <p className="text-[0.75rem] text-mark">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="rounded-md border border-mark/25 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark">
+              {error}
+            </p>
+          ) : null}
 
           <Button
             type="submit"
