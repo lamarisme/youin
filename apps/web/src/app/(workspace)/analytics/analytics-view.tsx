@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { useCollabStore } from "@/lib/collab-store";
+import { PageContainer } from "@/components/page-container";
 
 import { ActivityHeatmap } from "./activity-heatmap";
 import { StatTile } from "./stat-tile";
@@ -24,7 +25,7 @@ export function AnalyticsView() {
   const showPeriodTiles = timeframe !== "all";
 
   return (
-    <div className="shell-full">
+    <PageContainer>
       <AppHeader
         title="Analytics"
         eyebrow={workspace.name}
@@ -102,7 +103,7 @@ export function AnalyticsView() {
           <ActivityHeatmap data={stats.heatmap} />
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

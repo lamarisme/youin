@@ -13,6 +13,7 @@ import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
+import { PageContainer } from "@/components/page-container";
 
 export function InboxView() {
   const { workspace, workspaceId, userId } = useCollabStore(
@@ -34,7 +35,7 @@ export function InboxView() {
   );
 
   return (
-    <div className="shell-full">
+    <PageContainer>
       <AppHeader
         title="Inbox"
         eyebrow={workspace.name}
@@ -100,7 +101,7 @@ export function InboxView() {
           ))}
         </ul>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

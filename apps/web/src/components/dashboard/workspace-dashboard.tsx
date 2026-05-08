@@ -8,6 +8,7 @@ import { useCollabStore } from "@/lib/collab-store";
 import { MarkDetailView } from "./mark-detail-view";
 import { TriageView } from "./triage-view";
 import { useDashboardFilters } from "./use-dashboard-filters";
+import { PageContainer } from "@/components/page-container";
 
 export function WorkspaceDashboard() {
   const pins = useCollabStore((s) => s.workspace.pins);
@@ -19,8 +20,8 @@ export function WorkspaceDashboard() {
   }, [filters.markId, pins]);
 
   return (
-    <div className="shell-full">
+    <PageContainer>
       {selectedPin ? <MarkDetailView pin={selectedPin} /> : <TriageView />}
-    </div>
+    </PageContainer>
   );
 }
