@@ -15,6 +15,7 @@ import * as ws from "@/lib/workspace/actions";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
+import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
 function emptyWorkspace(): Workspace {
@@ -60,7 +61,10 @@ interface CollabStoreState {
   profile: UserProfile;
   hydrate: (bundle: WorkspaceBootstrap) => void;
   createSpace: (name: string, notes: string) => Promise<WorkspaceSpace>;
-  updateSpace: (spaceId: string, updates: Pick<WorkspaceSpace, "name" | "notes">) => Promise<void>;
+  updateSpace: (
+    spaceId: string,
+    updates: Pick<WorkspaceSpace, "name" | "notes">,
+  ) => Promise<void>;
   toggleSpacePinned: (spaceId: string) => Promise<void>;
   updateSpacePriority: (spaceId: string, priority: SpacePriority) => Promise<void>;
   deleteSpace: (spaceId: string) => Promise<void>;
@@ -211,7 +215,7 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
       seq: created.seq,
       displayKey: formatPinDisplayKey(spaceCode, created.seq),
       title: input.title.trim(),
-      page: input.page.trim(),
+      page: normalizeMarkPageUrl(input.page),
       description: input.description.trim() || "",
       status: "open",
       priority: input.priority ?? "medium",

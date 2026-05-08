@@ -10,7 +10,7 @@ import type { PinItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
-import { MarkPageOpenButton, absoluteHrefForMarkPage } from "./mark-page-open";
+import { MarkPageOpenButton } from "./mark-page-open";
 
 interface MarkListItemProps {
   pin: PinItem;
@@ -67,7 +67,7 @@ export function MarkListItem({
           />
         )}
       </div>
-      {absoluteHrefForMarkPage(pin.page) ? (
+      {pin.page.trim() ? (
         <MarkPageOpenButton
           page={pin.page}
           appearance="icon"

@@ -31,6 +31,10 @@ import {
   useUpdatePinMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
+import {
+  isValidMarkPageUrl,
+  normalizeMarkPageUrl,
+} from "@/lib/workspace/mark-page-url";
 
 import { FadeIn } from "@/components/motion";
 import { KeyboardHint } from "@/components/ui/kbd";
@@ -106,8 +110,13 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     if (isSavingEdit) return;
     const title = editTitle.trim();
     const page = editPage.trim();
-    if (!title || !page) {
+    const normalizedPage = normalizeMarkPageUrl(page);
+    if (!title || !normalizedPage) {
       toast.error("Title and page can't be empty.");
+      return;
+    }
+    if (!isValidMarkPageUrl(normalizedPage)) {
+      toast.error("Page must be a full http or https URL.");
       return;
     }
     try {
@@ -116,8 +125,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
         updates: {
           title,
           description: editDescription.trim(),
-          page:
-            page.startsWith("/") || /^https?:\/\//i.test(page) ? page : `/${page}`,
+          page: normalizedPage,
         },
       });
       setEditing(false);
@@ -279,12 +287,26 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 autoFocus
               />
             </Field>
-            <Field id="mark-edit-page" label="Page path">
+            <Field
+              id="mark-edit-page"
+              label="Page URL"
+              hint={
+                <p className="text-[0.6875rem] leading-snug text-ink-3">
+                  Always save the live page as a full <code className="font-mono">https://</code> (or{" "}
+                  <code className="font-mono">http://</code>) URL. Spaces organise marks — they don&apos;t set a
+                  shared site root.
+                </p>
+              }
+            >
               <Input
                 id="mark-edit-page"
                 value={editPage}
                 onChange={(e) => setEditPage(e.target.value)}
-                placeholder="/pricing"
+                onBlur={(e) => {
+                  const n = normalizeMarkPageUrl(e.target.value);
+                  if (n && n !== e.target.value) setEditPage(n);
+                }}
+                placeholder="https://app.example.com/pricing"
                 maxLength={300}
                 className="h-9 bg-paper font-mono text-[0.8125rem]"
               />
@@ -313,7 +335,9 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 <SubmitButton
                   onClick={saveEdit}
                   loading={isSavingEdit}
-                  disabled={!editTitle.trim() || !editPage.trim()}
+                  disabled={
+                    !editTitle.trim() || !isValidMarkPageUrl(normalizeMarkPageUrl(editPage))
+                  }
                   loadingText="Saving…"
                   className="h-9"
                 >

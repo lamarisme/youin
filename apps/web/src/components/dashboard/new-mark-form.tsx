@@ -15,8 +15,13 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { KeyboardHint } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import {
+  isValidMarkPageUrl,
+  normalizeMarkPageUrl,
+} from "@/lib/workspace/mark-page-url";
 import { useCreateLabelMutation } from "@/lib/queries/use-workspace-mutations";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -105,7 +110,12 @@ export function NewMarkForm({
   useEffect(() => {
     if (open === false) dispatch({ type: "reset", assigneeDefault });
   }, [open, assigneeDefault]);
-  const canSubmit = state.title.trim() && state.page.trim();
+  const normalizedPage = useMemo(
+    () => normalizeMarkPageUrl(state.page),
+    [state.page],
+  );
+  const pageOk = isValidMarkPageUrl(normalizedPage);
+  const canSubmit = Boolean(state.title.trim() && pageOk);
 
   const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
@@ -124,12 +134,16 @@ export function NewMarkForm({
 
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
+    const pageNorm = normalizeMarkPageUrl(state.page);
+    if (!isValidMarkPageUrl(pageNorm)) {
+      toast.error("Enter a full page URL starting with https:// or http://.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const normalizedPage = normalizePagePath(state.page);
       await onSubmit({
         title: state.title,
-        page: normalizedPage,
+        page: pageNorm,
         description: state.description,
         labelIds: state.labelIds,
         priority: state.priority,
@@ -171,16 +185,35 @@ export function NewMarkForm({
           autoFocus
         />
       </Field>
-      <Field id="new-mark-page" label="Page path">
+      <Field
+        id="new-mark-page"
+        label="Page URL"
+        hint={
+          <p className="text-[0.6875rem] leading-snug text-ink-3">
+            Save the capture as a full <code className="font-mono">https://</code> URL (
+            <code className="font-mono">http://</code> is OK for local dev).
+            <br />
+            {targetSpaceLabel ? (
+              <>
+                The space (<span className="font-medium text-ink">{targetSpaceLabel}</span>) only groups marks
+                — it doesn&apos;t set a shared site URL.
+              </>
+            ) : (
+              <>Spaces organise marks across teams — each mark carries its own URL.</>
+            )}
+          </p>
+        }
+      >
         <Input
           id="new-mark-page"
           value={state.page}
           onChange={(e) => dispatch({ type: "set_page", value: e.target.value })}
           onBlur={(e) => {
-            const normalized = normalizePagePath(e.target.value);
-            if (normalized !== e.target.value) dispatch({ type: "set_page", value: normalized });
+            const normalized = normalizeMarkPageUrl(e.target.value);
+            if (normalized && normalized !== e.target.value)
+              dispatch({ type: "set_page", value: normalized });
           }}
-          placeholder="/pricing"
+          placeholder="https://app.example.com/pricing"
           maxLength={300}
           className="h-9 bg-paper text-[0.8125rem]"
         />
@@ -275,11 +308,4 @@ export function NewMarkForm({
       {grid}
     </Surface>
   );
-}
-
-function normalizePagePath(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
 }

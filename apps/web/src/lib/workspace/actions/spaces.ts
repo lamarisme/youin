@@ -84,7 +84,10 @@ export async function updateSpaceAction(
   const { supabase, workspaceId } = await requireSession();
   const { error } = await supabase
     .from("spaces")
-    .update({ name: updates.name.trim(), notes: updates.notes.trim() })
+    .update({
+      name: updates.name.trim(),
+      notes: updates.notes.trim(),
+    })
     .eq("id", spaceId)
     .eq("workspace_id", workspaceId);
   if (error) throw error;

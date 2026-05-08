@@ -77,6 +77,8 @@ export function TriageView() {
     return workspace.spaces.find((s) => s.id === filters.spaceId) ?? null;
   }, [filters.spaceId, workspace.spaces]);
 
+  const newMarkTargetSpace = selectedSpace ?? workspace.spaces[0];
+
   const visiblePins = useVisibleDashboardPins();
 
   const selectedPins = useMemo(
@@ -310,8 +312,8 @@ export function TriageView() {
           <DialogHeader>
             <DialogTitle>New mark</DialogTitle>
             <DialogDescription>
-              {(selectedSpace ?? workspace.spaces[0])
-                ? `Will be added to ${(selectedSpace ?? workspace.spaces[0])!.name}.`
+              {newMarkTargetSpace
+                ? `Will be added to ${newMarkTargetSpace.name}.`
                 : "Create a space first to add marks."}
             </DialogDescription>
           </DialogHeader>
@@ -321,7 +323,7 @@ export function TriageView() {
             defaultAssigneeId={userId ?? undefined}
             open={showNew}
             variant="plain"
-            targetSpaceLabel={(selectedSpace ?? workspace.spaces[0])?.name}
+            targetSpaceLabel={newMarkTargetSpace?.name}
             onSubmit={handleCreatePin}
             onCancel={() => setShowNew(false)}
           />

@@ -1,7 +1,11 @@
 "use server";
 
 import type { PinPriority } from "@/lib/collab-types";
+import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 import { requireSession, revalidateWorkspaceViews } from "./session";
+
+const BAD_PAGE =
+  "Page must be a full http or https URL (for example https://app.example.com/pricing).";
 
 export interface CreatedPin {
   id: string;
@@ -20,6 +24,10 @@ export async function createPinAction(input: {
   priority?: PinPriority;
 }): Promise<CreatedPin> {
   const { supabase, userId, workspaceId } = await requireSession();
+  const pageNormalized = normalizeMarkPageUrl(input.page);
+  if (!isValidMarkPageUrl(pageNormalized)) {
+    throw new Error(BAD_PAGE);
+  }
   const { data: mk, error } = await supabase
     .from("marks")
     .insert({
@@ -27,7 +35,7 @@ export async function createPinAction(input: {
       space_id: input.spaceId,
       title: input.title.trim(),
       description: input.description.trim() || "",
-      page: input.page.trim(),
+      page: pageNormalized,
       status: "open",
       priority: input.priority ?? "medium",
       pinned: false,
@@ -81,7 +89,13 @@ export async function updatePinFieldsAction(
   if (typeof updates.title === "string") patch.title = updates.title.trim();
   if (typeof updates.description === "string")
     patch.description = updates.description.trim();
-  if (typeof updates.page === "string") patch.page = updates.page.trim();
+  if (typeof updates.page === "string") {
+    const normalized = normalizeMarkPageUrl(updates.page);
+    if (!isValidMarkPageUrl(normalized)) {
+      throw new Error(BAD_PAGE);
+    }
+    patch.page = normalized;
+  }
   if (typeof updates.spaceId === "string") patch.space_id = updates.spaceId;
   if (!Object.keys(patch).length) return;
   const { error } = await supabase
