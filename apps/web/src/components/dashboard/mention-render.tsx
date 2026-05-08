@@ -2,17 +2,24 @@
 
 import { useMemo } from "react";
 
-import type { TeamMember } from "@/lib/collab-types";
+import type { DisplayNamePreference, TeamMember } from "@/lib/collab-types";
 
 import { parseMentions } from "./mention-utils";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 interface MentionRenderProps {
   body: string;
   members: TeamMember[];
+  displayNamePreference: DisplayNamePreference;
   className?: string;
 }
 
-export function MentionRender({ body, members, className }: MentionRenderProps) {
+export function MentionRender({
+  body,
+  members,
+  displayNamePreference,
+  className,
+}: MentionRenderProps) {
   const segments = useMemo(() => parseMentions(body, members), [body, members]);
 
   return (
@@ -21,18 +28,24 @@ export function MentionRender({ body, members, className }: MentionRenderProps) 
         seg.type === "text" ? (
           <span key={i}>{seg.value}</span>
         ) : (
-          <MentionChip key={i} member={seg.member} />
+          <MentionChip key={i} member={seg.member} displayNamePreference={displayNamePreference} />
         ),
       )}
     </p>
   );
 }
 
-function MentionChip({ member }: { member: TeamMember }) {
+function MentionChip({
+  member,
+  displayNamePreference,
+}: {
+  member: TeamMember;
+  displayNamePreference: DisplayNamePreference;
+}) {
   return (
     <span
       className="inline-flex items-baseline rounded bg-mark-soft px-1 align-baseline font-medium text-mark"
-      title={`${member.name}${member.email ? ` · ${member.email}` : ""}`}
+      title={memberPickerLabel(member, displayNamePreference)}
     >
       @{member.username}
     </span>

@@ -19,6 +19,7 @@ import type {
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
+import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
 
 export async function loadUserProfile(
   supabase: SupabaseClient,
@@ -26,9 +27,13 @@ export async function loadUserProfile(
 ): Promise<UserProfile> {
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, email, title, about, avatar_url, timezone")
+    .select(
+      "id, full_name, email, title, about, avatar_url, timezone, display_name_preference",
+    )
     .eq("id", userId)
     .maybeSingle();
+
+  const prefRaw = data?.display_name_preference as string | null | undefined;
 
   return {
     id: userId,
@@ -38,6 +43,7 @@ export async function loadUserProfile(
     about: (data?.about as string | null) ?? "",
     avatarUrl: (data?.avatar_url as string | null) ?? "",
     timezone: (data?.timezone as string | null) || "UTC",
+    displayNamePreference: normalizeDisplayNamePreference(prefRaw),
   };
 }
 

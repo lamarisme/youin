@@ -17,15 +17,18 @@ import {
   useUpdateMyWorkspaceUsernameMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
+import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function TeamTab() {
-  const { members, invites, userId, isOwner } = useCollabStore(
+  const { members, invites, userId, isOwner, displayNamePreference } = useCollabStore(
     useShallow((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
       userId: s.userId,
+      displayNamePreference: s.profile.displayNamePreference,
       isOwner:
         s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
     })),
@@ -240,7 +243,10 @@ export function TeamTab() {
           ) : null}
         </div>
         <ul className="divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
-          {members.map((member) => (
+          {members.map((member) => {
+            const parts = memberDisplayParts(member, displayNamePreference);
+            const handlePrimary = displayNamePreference === "username";
+            return (
             <li
               key={member.id}
               className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-paper-2"
@@ -253,9 +259,13 @@ export function TeamTab() {
                 </Avatar>
                 <div className="min-w-0">
                   <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-ink">
-                    <span className="truncate">{member.name}</span>
-                    <span className="font-mono text-[0.6875rem] font-normal text-mark">
-                      @{member.username}
+                    <span
+                      className={cn(
+                        "truncate",
+                        handlePrimary && "font-mono text-mark",
+                      )}
+                    >
+                      {parts.primary}
                     </span>
                     {member.id === userId ? (
                       <span className="text-[0.6875rem] font-normal text-ink-3">(you)</span>
@@ -271,8 +281,10 @@ export function TeamTab() {
                 {isOwner && member.id !== userId && member.role !== "owner" ? (
                   <button
                     type="button"
-                    onClick={() => handleRemove(member.id, member.name)}
-                    aria-label={`Remove ${member.name} from workspace`}
+                    onClick={() =>
+                      handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
+                    }
+                    aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
                     className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
                   >
                     <Trash2 className="size-3.5" />
@@ -280,7 +292,8 @@ export function TeamTab() {
                 ) : null}
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
 
         {/* Pending invites — visually subordinate, dashed border to read as "not yet". */}

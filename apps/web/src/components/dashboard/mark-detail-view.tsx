@@ -30,7 +30,7 @@ import {
   useTogglePinStatusMutation,
   useUpdatePinMutation,
 } from "@/lib/queries/use-workspace-mutations";
-import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
@@ -89,8 +89,10 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     () => new Map(workspace.members.map((m) => [m.id, m])),
     [workspace.members],
   );
+  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
 
   const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
+  const assigneeParts = assignee ? memberDisplayParts(assignee, namePref) : null;
 
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(pin.title);
@@ -196,6 +198,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               pin={pin}
               members={workspace.members}
               spaces={workspace.spaces}
+              displayNamePreference={namePref}
               onEdit={startEdit}
               onConfirmDelete={() => setConfirmDelete(true)}
             />
@@ -219,8 +222,10 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                     {assignee.initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="truncate" title={memberPickerLabel(assignee)}>
-                  {assignee.username} · {assignee.name}
+                <span className="truncate" title={memberPickerLabel(assignee, namePref)}>
+                  {assigneeParts ? (
+                    <span className="text-ink-2">{assigneeParts.primary}</span>
+                  ) : null}
                 </span>
               </span>
             ) : null}

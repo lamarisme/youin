@@ -26,7 +26,7 @@ import {
   useUpdateCommentMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 import { getMarkUploadUrlAction } from "@/lib/workspace/actions";
 
 import { MentionPopover } from "./mention-popover";
@@ -72,6 +72,7 @@ interface CommentThreadProps {
 export function CommentThread({ pin, comments, membersById }: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
   const members = useCollabStore((s) => s.workspace.members);
+  const displayNamePreference = useCollabStore((s) => s.profile.displayNamePreference);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const { text, image, submitting } = state;
@@ -182,6 +183,7 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
             <MentionPopover
               members={mention.filteredMembers}
               activeIndex={mention.activeIndex}
+              displayNamePreference={displayNamePreference}
               onSelect={mention.selectMember}
               onActiveIndexChange={mention.setActiveIndex}
             />
@@ -221,6 +223,7 @@ interface CommentItemProps {
 
 function CommentItem({ comment, author, isOwn }: CommentItemProps) {
   const members = useCollabStore((s) => s.workspace.members);
+  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
   const { mutateAsync: deleteComment, isPending: isDeleting } =
@@ -256,6 +259,8 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
     }
   }
 
+  const authorLine = author ? memberDisplayParts(author, namePref) : null;
+
   return (
     <>
       <div className="group rounded-lg border border-rule bg-paper-2 p-3 shadow-[0_8px_24px_-20px_oklch(17%_0.01_50_/_0.4)] dark:shadow-[0_8px_24px_-20px_oklch(0%_0_0_/_0.5)]">
@@ -268,9 +273,9 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
             </Avatar>
             <span
               className="text-[0.75rem] font-medium text-ink"
-              title={author ? memberPickerLabel(author) : undefined}
+              title={author ? memberPickerLabel(author, namePref) : undefined}
             >
-              {author ? `${author.username} · ${author.name}` : "Unknown"}
+              {authorLine ? <span className="text-ink">{authorLine.primary}</span> : "Unknown"}
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -343,6 +348,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 <MentionPopover
                   members={editMention.filteredMembers}
                   activeIndex={editMention.activeIndex}
+                  displayNamePreference={namePref}
                   onSelect={editMention.selectMember}
                   onActiveIndexChange={editMention.setActiveIndex}
                 />
@@ -381,6 +387,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           <MentionRender
             body={comment.body ?? ""}
             members={members}
+            displayNamePreference={namePref}
             className="break-words text-[0.8125rem] leading-relaxed text-ink"
           />
         ) : comment.imageUrl ? (

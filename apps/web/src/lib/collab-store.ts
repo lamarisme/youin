@@ -41,6 +41,7 @@ function emptyProfile(): UserProfile {
     about: "",
     avatarUrl: "",
     timezone: "UTC",
+    displayNamePreference: "full_name",
   };
 }
 
@@ -473,6 +474,14 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
           : {}),
         ...(updates.timezone !== undefined
           ? { timezone: updates.timezone.trim() || "UTC" }
+          : {}),
+        ...(updates.displayNamePreference !== undefined
+          ? {
+              displayNamePreference:
+                updates.displayNamePreference === "username"
+                  ? "username"
+                  : "full_name",
+            }
           : {}),
       },
     });

@@ -41,11 +41,12 @@ import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 const PAGE_SIZE = 6;
 
 export function TriageView() {
-  const { workspace, workspaceId, userId } = useCollabStore(
+  const { workspace, workspaceId, userId, displayNamePreference } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       workspaceId: s.workspaceId,
       userId: s.userId,
+      displayNamePreference: s.profile.displayNamePreference,
     })),
   );
   const { mutateAsync: createPin } = useCreatePinMutation();
@@ -363,6 +364,7 @@ export function TriageView() {
                 selectable={selectedPins.length > 0}
                 selected={selectedIds.has(pin.id)}
                 onToggleSelected={() => toggleSelected(pin.id)}
+                displayNamePreference={displayNamePreference}
               />
             ))}
           </div>

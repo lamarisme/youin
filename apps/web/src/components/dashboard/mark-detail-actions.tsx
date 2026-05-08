@@ -5,7 +5,13 @@ import { Bookmark, Pencil, Trash2 } from "lucide-react";
 import { FilterSelect } from "@/components/filter-select";
 import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
-import type { PinItem, PinPriority, TeamMember, WorkspaceSpace } from "@/lib/collab-types";
+import type {
+  DisplayNamePreference,
+  PinItem,
+  PinPriority,
+  TeamMember,
+  WorkspaceSpace,
+} from "@/lib/collab-types";
 import {
   useAssignMarkMutation,
   useTogglePinPinnedMutation,
@@ -22,6 +28,7 @@ interface MarkDetailActionsProps {
   pin: PinItem;
   members: TeamMember[];
   spaces: WorkspaceSpace[];
+  displayNamePreference: DisplayNamePreference;
   onEdit: () => void;
   onConfirmDelete: () => void;
 }
@@ -30,6 +37,7 @@ export function MarkDetailActions({
   pin,
   members,
   spaces,
+  displayNamePreference,
   onEdit,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
@@ -74,7 +82,10 @@ export function MarkDetailActions({
         }
         options={[
           { value: "__unassigned", label: "Unassigned" },
-          ...members.map((m) => ({ value: m.id, label: memberPickerLabel(m) })),
+          ...members.map((m) => ({
+            value: m.id,
+            label: memberPickerLabel(m, displayNamePreference),
+          })),
         ]}
         ariaLabel="Mark assignee"
         triggerClassName="h-11 w-[140px] sm:h-8"

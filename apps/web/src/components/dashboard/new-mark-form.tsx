@@ -23,7 +23,7 @@ import {
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
 import { useCreateLabelMutation } from "@/lib/queries/use-workspace-mutations";
-import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 
 const UNASSIGNED = "__unassigned";
 
@@ -101,6 +101,7 @@ export function NewMarkForm({
   targetSpaceLabel,
 }: NewMarkFormProps) {
   const { mutateAsync: createLabel } = useCreateLabelMutation();
+  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
     ? defaultAssigneeId
     : UNASSIGNED;
@@ -123,13 +124,16 @@ export function NewMarkForm({
     .map((id) => labelsById.get(id))
     .filter((l): l is WorkspaceLabel => Boolean(l));
   const previewAssignee = state.assigneeId !== UNASSIGNED ? membersById.get(state.assigneeId) : undefined;
+  const previewAssigneeParts = previewAssignee
+    ? memberDisplayParts(previewAssignee, namePref)
+    : null;
 
   const assigneeOptions = useMemo(
     () => [
       { value: UNASSIGNED, label: "Unassigned" },
-      ...members.map((m) => ({ value: m.id, label: memberPickerLabel(m) })),
+      ...members.map((m) => ({ value: m.id, label: memberPickerLabel(m, namePref) })),
     ],
-    [members],
+    [members, namePref],
   );
 
   async function handleSubmit() {
@@ -185,25 +189,7 @@ export function NewMarkForm({
           autoFocus
         />
       </Field>
-      <Field
-        id="new-mark-page"
-        label="Page URL"
-        hint={
-          <p className="text-[0.6875rem] leading-snug text-ink-3">
-            Save the capture as a full <code className="font-mono">https://</code> URL (
-            <code className="font-mono">http://</code> is OK for local dev).
-            <br />
-            {targetSpaceLabel ? (
-              <>
-                The space (<span className="font-medium text-ink">{targetSpaceLabel}</span>) only groups marks
-                — it doesn&apos;t set a shared site URL.
-              </>
-            ) : (
-              <>Spaces organise marks across teams — each mark carries its own URL.</>
-            )}
-          </p>
-        }
-      >
+      <Field id="new-mark-page" label="Page URL">
         <Input
           id="new-mark-page"
           value={state.page}
@@ -270,12 +256,12 @@ export function NewMarkForm({
         {selectedPreviewLabels.map((label) => (
           <Pill key={label.id} size="sm">{label.name}</Pill>
         ))}
-        {previewAssignee ? (
+        {previewAssignee && previewAssigneeParts ? (
           <span className="inline-flex items-center gap-1 text-[0.6875rem] text-ink-2">
             <span className="inline-flex size-4 items-center justify-center rounded-full bg-paper-3 text-[0.5625rem] font-medium text-ink-2">
               {previewAssignee.initials}
             </span>
-            {previewAssignee.name}
+            <span className="text-ink-2">{previewAssigneeParts.primary}</span>
           </span>
         ) : null}
         {targetSpaceLabel ? (

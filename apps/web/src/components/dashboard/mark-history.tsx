@@ -4,8 +4,9 @@ import { History } from "lucide-react";
 
 import { Surface } from "@/components/surface";
 import type { MarkEvent, TeamMember } from "@/lib/collab-types";
+import { useCollabStore } from "@/lib/collab-store";
 import { formatDateTime, formatRelative } from "@/lib/dates";
-import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { formatMarkEvent } from "./format-mark-event";
 
@@ -15,6 +16,7 @@ interface MarkHistoryProps {
 }
 
 export function MarkHistory({ events, membersById }: MarkHistoryProps) {
+  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   return (
     <div>
       <h2 className="mb-3 flex items-center gap-1.5 text-eyebrow">
@@ -33,14 +35,19 @@ export function MarkHistory({ events, membersById }: MarkHistoryProps) {
             event.toValue,
             event.metadata,
           );
+          const actorParts = actor ? memberDisplayParts(actor, namePref) : null;
           return (
             <Surface key={event.id} padding="sm">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span
                   className="text-[0.75rem] font-medium text-ink"
-                  title={actor ? memberPickerLabel(actor) : undefined}
+                  title={actor ? memberPickerLabel(actor, namePref) : undefined}
                 >
-                  {actor ? `${actor.username} · ${actor.name}` : "Unknown member"}
+                  {actorParts ? (
+                    <span className="text-ink">{actorParts.primary}</span>
+                  ) : (
+                    "Unknown member"
+                  )}
                 </span>
                 <time
                   dateTime={event.createdAt}

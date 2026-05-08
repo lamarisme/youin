@@ -13,6 +13,9 @@ export type MarkEventType =
 
 export type TeamRole = "owner" | "member";
 
+/** How this user sees teammate names: full name or @username only — never both. @mentions always use {@link TeamMember.username}. */
+export type DisplayNamePreference = "full_name" | "username";
+
 export type CommentType = "text" | "image";
 
 export interface TeamMember {
@@ -119,4 +122,5 @@ export interface UserProfile {
   about: string;
   avatarUrl: string;
   timezone: string;
+  displayNamePreference: DisplayNamePreference;
 }

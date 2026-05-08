@@ -1,5 +1,6 @@
 "use server";
 
+import type { DisplayNamePreference } from "@/lib/collab-types";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 import { requireSession, revalidateWorkspaceViews } from "./session";
 
@@ -9,6 +10,7 @@ export interface ProfileUpdates {
   about?: string;
   avatarUrl?: string;
   timezone?: string;
+  displayNamePreference?: DisplayNamePreference;
 }
 
 export async function updateProfileAction(
@@ -23,6 +25,9 @@ export async function updateProfileAction(
     patch.avatar_url = updates.avatarUrl.trim();
   if (updates.timezone !== undefined)
     patch.timezone = updates.timezone.trim() || "UTC";
+  if (updates.displayNamePreference !== undefined)
+    patch.display_name_preference =
+      updates.displayNamePreference === "username" ? "username" : "full_name";
   if (!Object.keys(patch).length) return;
   const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
   if (error) throw error;

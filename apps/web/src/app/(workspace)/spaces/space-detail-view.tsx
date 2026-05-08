@@ -46,7 +46,7 @@ import {
   useUpdateSpacePriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
-import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { useSpaceStats } from "./use-space-stats";
 
@@ -70,6 +70,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const stats = statsMap.get(space.id);
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
+  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   const spacePins = useMemo(
     () => workspace.pins.filter((p) => p.spaceId === space.id),
     [workspace.pins, space.id],
@@ -291,6 +292,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <div className="space-y-px">
                 {spacePins.map((pin) => {
                   const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
+                  const assigneeParts = assignee ? memberDisplayParts(assignee, namePref) : null;
                   return (
                     <Link
                       key={pin.id}
@@ -318,14 +320,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                             );
                           })}
                           {assignee ? (
-                            <span className="flex items-center gap-1.5 text-[0.6875rem] text-ink-2" title={memberPickerLabel(assignee)}>
+                            <span className="flex items-center gap-1.5 text-[0.6875rem] text-ink-2" title={memberPickerLabel(assignee, namePref)}>
                               <Avatar className="size-5">
                                 <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
                                   {assignee.initials}
                                 </AvatarFallback>
                               </Avatar>
                               <span className="max-w-[9rem] truncate">
-                                {assignee.username} · {assignee.name}
+                                {assigneeParts ? (
+                                  <span className="text-ink-2">{assigneeParts.primary}</span>
+                                ) : null}
                               </span>
                             </span>
                           ) : null}
@@ -385,7 +389,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <p className="text-eyebrow mb-2">Active members</p>
               <div className="flex -space-x-1.5">
                 {workspace.members.map((m) => (
-                  <Avatar key={m.id} className="size-7 border-2 border-paper" title={memberPickerLabel(m)}>
+                  <Avatar key={m.id} className="size-7 border-2 border-paper" title={memberPickerLabel(m, namePref)}>
                     <AvatarFallback className="bg-paper-3 text-[9px] font-medium text-ink-2">
                       {m.initials}
                     </AvatarFallback>

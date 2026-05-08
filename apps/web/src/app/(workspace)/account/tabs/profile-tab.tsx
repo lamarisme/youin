@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCollabStore } from "@/lib/collab-store";
 import { useUpdateProfileMutation } from "@/lib/queries/use-workspace-mutations";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
+import { cn } from "@/lib/utils";
 
 function isValidHttpUrl(value: string): boolean {
   if (!value) return true;
@@ -23,6 +24,8 @@ function isValidHttpUrl(value: string): boolean {
 
 export function ProfileTab() {
   const profile = useCollabStore((s) => s.profile);
+  const workspace = useCollabStore((s) => s.workspace);
+  const userId = useCollabStore((s) => s.userId);
   const { mutateAsync: updateProfile, isPending: isSaving } =
     useUpdateProfileMutation();
 
@@ -31,10 +34,11 @@ export function ProfileTab() {
     title: profile.title,
     about: profile.about,
     avatarUrl: profile.avatarUrl,
+    displayNamePreference: profile.displayNamePreference,
   });
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const profileSig = `${profile.name}${profile.title}${profile.about}${profile.avatarUrl}`;
+  const profileSig = `${profile.name}${profile.title}${profile.about}${profile.avatarUrl}${profile.displayNamePreference}`;
   const [lastProfileSig, setLastProfileSig] = useState(profileSig);
   if (profileSig !== lastProfileSig) {
     setLastProfileSig(profileSig);
@@ -43,6 +47,7 @@ export function ProfileTab() {
       title: profile.title,
       about: profile.about,
       avatarUrl: profile.avatarUrl,
+      displayNamePreference: profile.displayNamePreference,
     });
   }
 
@@ -64,6 +69,13 @@ export function ProfileTab() {
   }
 
   const initials = initialsFromFullName(draft.name || profile.email);
+  const myUsername = workspace.members.find((m) => m.id === userId)?.username?.trim() ?? "";
+  const previewPrimary =
+    draft.displayNamePreference === "username"
+      ? myUsername
+        ? `@${myUsername}`
+        : "Set @username in Team"
+      : draft.name || "Your name";
 
   return (
     <div className="space-y-8">
@@ -82,12 +94,15 @@ export function ProfileTab() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-[0.8125rem] font-medium text-ink">
-              {draft.name || "Your name"}
+            <p
+              className={cn(
+                "truncate text-[0.8125rem] font-medium text-ink",
+                draft.displayNamePreference === "username" && myUsername && "font-mono text-mark",
+              )}
+            >
+              {previewPrimary}
             </p>
-            <p className="truncate text-[0.6875rem] text-ink-3">
-              {draft.title || "No title"}
-            </p>
+            <p className="truncate text-[0.6875rem] text-ink-3">{draft.title || "No title"}</p>
           </div>
         </div>
       </div>
@@ -147,6 +162,38 @@ export function ProfileTab() {
           </Field>
         </fieldset>
 
+        <fieldset className="space-y-3">
+          <legend className="text-[0.75rem] font-medium text-ink-2">
+            Names in the workspace
+          </legend>
+          <p className="max-w-[52ch] text-[0.75rem] leading-relaxed text-ink-3">
+            Choose whether teammate labels use profile full names or workspace @usernames — one or the other, not both.{" "}
+            <span className="text-ink-2">
+              Typing <span className="font-mono text-ink">@</span> always inserts a username so mentions stay precise.
+            </span>
+          </p>
+          <div className="flex flex-col gap-2 rounded-lg border border-rule bg-paper-2 p-1">
+            <NamePrefOption
+              id="name-pref-full"
+              title="Full name"
+              description="Show profile names only (e.g. Alex Carter)."
+              checked={draft.displayNamePreference === "full_name"}
+              onSelect={() =>
+                setDraft((d) => ({ ...d, displayNamePreference: "full_name" }))
+              }
+            />
+            <NamePrefOption
+              id="name-pref-user"
+              title="@Username"
+              description="Show workspace handles only (e.g. @alex)."
+              checked={draft.displayNamePreference === "username"}
+              onSelect={() =>
+                setDraft((d) => ({ ...d, displayNamePreference: "username" }))
+              }
+            />
+          </div>
+        </fieldset>
+
         {/* Save row — divider above, right-aligned action. Reads as a footer, not a stray cell. */}
         <div className="space-y-3 border-t border-rule pt-4">
           {saveError ? (
@@ -171,5 +218,41 @@ export function ProfileTab() {
         </div>
       </div>
     </div>
+  );
+}
+
+function NamePrefOption({
+  id,
+  title,
+  description,
+  checked,
+  onSelect,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="flex cursor-pointer items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper"
+    >
+      <input
+        id={id}
+        type="radio"
+        name="display-name-preference"
+        checked={checked}
+        onChange={onSelect}
+        className="mt-1 size-3.5 shrink-0 accent-mark"
+      />
+      <span className="min-w-0">
+        <span className="block text-[0.8125rem] font-medium text-ink">{title}</span>
+        <span className="mt-0.5 block text-[0.75rem] leading-relaxed text-ink-2">
+          {description}
+        </span>
+      </span>
+    </label>
   );
 }

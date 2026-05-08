@@ -59,6 +59,10 @@ export const profiles = pgTable(
     about: text("about").notNull().default(""),
     avatarUrl: text("avatar_url").notNull().default(""),
     timezone: text("timezone").notNull().default("UTC"),
+    /** Viewer chooses either profile full names or workspace @usernames in UI — not both. @mentions always use usernames. */
+    displayNamePreference: text("display_name_preference")
+      .notNull()
+      .default("full_name"),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

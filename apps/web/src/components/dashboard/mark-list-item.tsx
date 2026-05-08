@@ -6,7 +6,7 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { PinItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
+import type { DisplayNamePreference, PinItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -21,6 +21,7 @@ interface MarkListItemProps {
   selectable?: boolean;
   selected?: boolean;
   onToggleSelected?: () => void;
+  displayNamePreference: DisplayNamePreference;
 }
 
 export function MarkListItem({
@@ -32,6 +33,7 @@ export function MarkListItem({
   selectable = false,
   selected = false,
   onToggleSelected,
+  displayNamePreference,
 }: MarkListItemProps) {
   return (
     <div
@@ -112,7 +114,7 @@ export function MarkListItem({
               );
             })}
             {assignee ? (
-              <span title={memberPickerLabel(assignee)}>
+              <span title={memberPickerLabel(assignee, displayNamePreference)}>
                 <Avatar className="size-5">
                   <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
                     {assignee.initials}

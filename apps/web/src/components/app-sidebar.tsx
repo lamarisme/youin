@@ -73,10 +73,11 @@ export function AppSidebar() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
 
-  const { profileName, profileEmail, workspaceName, workspace, workspaceId, userId } = useCollabStore(
+  const { profileName, profileEmail, displayNamePreference, workspaceName, workspace, workspaceId, userId } = useCollabStore(
     useShallow((s) => ({
       profileName: s.profile.name,
       profileEmail: s.profile.email,
+      displayNamePreference: s.profile.displayNamePreference,
       workspaceName: s.workspace.name,
       workspace: s.workspace,
       workspaceId: s.workspaceId,
@@ -87,7 +88,11 @@ export function AppSidebar() {
   const inbox = useInbox(workspace, workspaceId, userId);
   const openCommandPalette = useOpenCommandPalette();
 
-  const displayName = profileName.trim() || profileEmail.split("@")[0] || "Member";
+  const myUsername = workspace.members.find((m) => m.id === userId)?.username?.trim() ?? "";
+  const displayName =
+    displayNamePreference === "username" && myUsername
+      ? `@${myUsername}`
+      : profileName.trim() || profileEmail.split("@")[0] || "Member";
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
   const workspaceLabel = workspaceName || "Workspace";
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");

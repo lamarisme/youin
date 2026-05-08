@@ -3,13 +3,14 @@
 import { useEffect, useRef } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { TeamMember } from "@/lib/collab-types";
+import type { DisplayNamePreference, TeamMember } from "@/lib/collab-types";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
 interface MentionPopoverProps {
   members: TeamMember[];
   activeIndex: number;
+  displayNamePreference: DisplayNamePreference;
   onSelect: (member: TeamMember) => void;
   onActiveIndexChange: (index: number) => void;
 }
@@ -17,6 +18,7 @@ interface MentionPopoverProps {
 export function MentionPopover({
   members,
   activeIndex,
+  displayNamePreference,
   onSelect,
   onActiveIndexChange,
 }: MentionPopoverProps) {
@@ -73,10 +75,15 @@ export function MentionPopover({
                     {m.initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="min-w-0 flex-1 truncate font-medium" title={memberPickerLabel(m)}>
-                  @{m.username}
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate font-medium",
+                    displayNamePreference === "username" && "font-mono",
+                  )}
+                  title={memberPickerLabel(m, displayNamePreference)}
+                >
+                  {memberPickerLabel(m, displayNamePreference)}
                 </span>
-                <span className="min-w-0 shrink truncate text-[0.6875rem] text-ink-2">{m.name}</span>
                 {m.email ? (
                   <span className="ml-auto max-w-[40%] shrink-0 truncate text-[0.6875rem] text-ink-3">
                     {m.email}

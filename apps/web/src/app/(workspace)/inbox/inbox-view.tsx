@@ -10,17 +10,20 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { useCollabStore } from "@/lib/collab-store";
+import type { DisplayNamePreference } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import { PageContainer } from "@/components/page-container";
+import { rosterDisplayParts } from "@/lib/workspace/member-label";
 
 export function InboxView() {
-  const { workspace, workspaceId, userId } = useCollabStore(
+  const { workspace, workspaceId, userId, displayNamePreference } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       workspaceId: s.workspaceId,
       userId: s.userId,
+      displayNamePreference: s.profile.displayNamePreference,
     })),
   );
 
@@ -96,6 +99,7 @@ export function InboxView() {
               group={group}
               spaceName={spaceLookup.get(group.spaceId) ?? null}
               members={memberLookup}
+              displayNamePreference={displayNamePreference}
             />
           ))}
         </ul>
@@ -108,10 +112,12 @@ function InboxGroupRow({
   group,
   spaceName,
   members,
+  displayNamePreference,
 }: {
   group: InboxGroup;
   spaceName: string | null;
   members: Map<string, { name: string; username: string }>;
+  displayNamePreference: DisplayNamePreference;
 }) {
   const top = group.events[0];
   const extras = group.events.length - 1;
@@ -141,7 +147,8 @@ function InboxGroupRow({
           </div>
 
           <p className="truncate text-[0.8125rem] text-ink-2">
-            <ActorChip event={top} /> {describeEvent(top, members)}
+            <ActorChip event={top} preference={displayNamePreference} />{" "}
+            {describeEvent(top, members)}
             {extras > 0 ? (
               <span className="text-ink-3"> · +{extras} more update{extras === 1 ? "" : "s"}</span>
             ) : null}
@@ -165,22 +172,21 @@ function UnreadDot({ active }: { active: boolean }) {
   );
 }
 
-function ActorChip({ event }: { event: InboxEvent }) {
-  const handle = event.actorUsername.trim();
+function ActorChip({
+  event,
+  preference,
+}: {
+  event: InboxEvent;
+  preference: DisplayNamePreference;
+}) {
+  const parts = rosterDisplayParts(event.actorName, event.actorUsername, preference);
   return (
     <span className="inline-flex items-center gap-1.5 align-baseline">
       <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-[0.625rem] font-semibold text-ink-2">
         {event.actorInitials}
       </span>
-      <span className="min-w-0 truncate font-medium text-ink" title={handle ? `@${handle} · ${event.actorName}` : event.actorName}>
-        {handle ? (
-          <>
-            <span className="text-ink">@{handle}</span>
-            <span className="text-ink-3"> · {event.actorName}</span>
-          </>
-        ) : (
-          event.actorName
-        )}
+      <span className="min-w-0 truncate font-medium text-ink" title={parts.primary}>
+        <span className="text-ink">{parts.primary}</span>
       </span>
     </span>
   );

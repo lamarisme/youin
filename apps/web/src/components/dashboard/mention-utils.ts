@@ -67,6 +67,7 @@ function matchMemberAfterAt(
 
 /**
  * Split comment text into segments. Resolves @{username} first; then legacy @{full name}.
+ * New mentions from the composer always insert `@username` via {@link applyMention}.
  */
 export function parseMentions(body: string, members: TeamMember[]): MentionSegment[] {
   if (!body) return [];
