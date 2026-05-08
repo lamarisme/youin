@@ -54,7 +54,8 @@ export interface MarkTableProps {
   onSelectMark: (pin: PinItem) => void;
   /** If provided, enables row checkboxes. */
   selectedIds?: Set<string>;
-  onToggleSelected?: (id: string) => void;
+  /** Fires with the full next selection set (replaces per-id toggle). */
+  onSelectionChange?: (ids: Set<string>) => void;
   /** Enable / disable sorting. Defaults to true. */
   sortable?: boolean;
 }
@@ -305,10 +306,10 @@ export function MarkTable({
   displayNamePreference,
   onSelectMark,
   selectedIds,
-  onToggleSelected,
+  onSelectionChange,
   sortable = true,
 }: MarkTableProps) {
-  const selectable = !!selectedIds && !!onToggleSelected;
+  const selectable = !!selectedIds && !!onSelectionChange;
 
   const columns = useMemo(
     () =>
@@ -322,13 +323,13 @@ export function MarkTable({
     [membersById, labelsById, commentCountByPinId, displayNamePreference, selectable],
   );
 
-  // Map Set<string> → TanStack RowSelectionState
+  // Map Set<string> → TanStack RowSelectionState keyed by pin.id
   const rowSelection: RowSelectionState = useMemo(() => {
     if (!selectedIds) return {};
     const state: RowSelectionState = {};
-    pins.forEach((pin, i) => {
-      if (selectedIds.has(pin.id)) state[i] = true;
-    });
+    for (const pin of pins) {
+      if (selectedIds.has(pin.id)) state[pin.id] = true;
+    }
     return state;
   }, [selectedIds, pins]);
 
@@ -339,19 +340,17 @@ export function MarkTable({
     ...(sortable ? { getSortedRowModel: getSortedRowModel() } : {}),
     enableRowSelection: selectable,
     onRowSelectionChange: (updaterOrValue) => {
-      if (!onToggleSelected) return;
+      if (!onSelectionChange) return;
       const next =
         typeof updaterOrValue === "function"
           ? updaterOrValue(rowSelection)
           : updaterOrValue;
-      // Find which row toggled
-      for (let i = 0; i < pins.length; i++) {
-        const wasSelected = rowSelection[i] ?? false;
-        const isSelected = next[i] ?? false;
-        if (wasSelected !== isSelected) {
-          onToggleSelected(pins[i].id);
-        }
+      // Keys in `next` are pin IDs (from getRowId)
+      const nextIds = new Set<string>();
+      for (const [id, selected] of Object.entries(next)) {
+        if (selected) nextIds.add(id);
       }
+      onSelectionChange(nextIds);
     },
     state: {
       rowSelection,

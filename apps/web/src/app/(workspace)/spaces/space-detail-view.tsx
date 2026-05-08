@@ -15,7 +15,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import { BulkActionBar } from "@/components/dashboard/bulk-action-bar";
 import { MarkTable } from "@/components/dashboard/mark-table";
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { EmptyState } from "@/components/empty-state";
@@ -42,8 +44,11 @@ import { useCollabStore } from "@/lib/collab-store";
 import { formatDate, formatDateShort } from "@/lib/dates";
 import {
   useCreatePinMutation,
+  useDeletePinMutation,
   useDeleteSpaceMutation,
+  useTogglePinStatusMutation,
   useToggleSpacePinnedMutation,
+  useUpdatePinPriorityMutation,
   useUpdateSpaceMutation,
   useUpdateSpacePriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
@@ -67,6 +72,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const { mutateAsync: deleteSpace, isPending: isDeleting } =
     useDeleteSpaceMutation();
   const { mutateAsync: createPin } = useCreatePinMutation();
+  const { mutateAsync: togglePinStatus } = useTogglePinStatusMutation();
+  const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();
+  const { mutateAsync: deletePin } = useDeletePinMutation();
 
   const router = useRouter();
 
@@ -91,6 +99,14 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [editNotes, setEditNotes] = useState(space.notes);
   const [showNew, setShowNew] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+
+  const selectedPins = useMemo(
+    () => spacePins.filter((p) => selectedIds.has(p.id)),
+    [spacePins, selectedIds],
+  );
+  const allSelectedClosed =
+    selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
 
   function startEdit() {
     setEditName(space.name);
@@ -144,6 +160,61 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
       setShowNew(false);
     } catch {
       // toast handled by the mutation
+    }
+  }
+
+  // ── Bulk action handlers ────────────────────────────────────────────
+
+  function handleSelectionChange(ids: Set<string>) {
+    setSelectedIds(ids);
+  }
+
+  async function handleBulkSetStatus(target: "open" | "closed") {
+    const targets = selectedPins.filter((p) => p.status !== target);
+    if (targets.length === 0) {
+      setSelectedIds(new Set());
+      return;
+    }
+    const results = await Promise.allSettled(
+      targets.map((p) => togglePinStatus(p.id)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
+      toast.success(
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
+      );
+    }
+  }
+
+  async function handleBulkSetPriority(priority: PinPriority) {
+    const targets = selectedPins.filter((p) => p.priority !== priority);
+    if (targets.length === 0) {
+      toast.success("Already set.");
+      return;
+    }
+    const results = await Promise.allSettled(
+      targets.map((p) => updatePinPriority({ pinId: p.id, priority })),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
+      toast.success(
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} updated.`,
+      );
+    }
+  }
+
+  async function handleBulkDelete() {
+    const ids = selectedPins.map((p) => p.id);
+    if (ids.length === 0) return;
+    const results = await Promise.allSettled(ids.map((id) => deletePin(id)));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
+      toast.success(
+        `${ids.length} mark${ids.length === 1 ? "" : "s"} deleted.`,
+      );
     }
   }
 
@@ -308,6 +379,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   onSelectMark={(pin) => {
                     router.push(`/dashboard?space=${space.id}&mark=${encodeURIComponent(pin.displayKey)}`);
                   }}
+                  selectedIds={selectedIds}
+                  onSelectionChange={handleSelectionChange}
                 />
               </div>
             )}
@@ -493,6 +566,17 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {selectedPins.length > 0 ? (
+        <BulkActionBar
+          count={selectedPins.length}
+          allClosed={allSelectedClosed}
+          onSetStatus={handleBulkSetStatus}
+          onSetPriority={handleBulkSetPriority}
+          onDelete={handleBulkDelete}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      ) : null}
     </>
   );
 }

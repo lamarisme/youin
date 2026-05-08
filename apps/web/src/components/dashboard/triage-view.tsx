@@ -137,13 +137,9 @@ export function TriageView() {
     [workspace.spaces],
   );
 
-  function toggleSelected(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  /** Receives the full new selection set from MarkTable. */
+  function handleSelectionChange(ids: Set<string>) {
+    setSelectedIds(ids);
   }
 
   async function handleBulkSetStatus(target: "open" | "closed") {
@@ -361,7 +357,7 @@ export function TriageView() {
             displayNamePreference={displayNamePreference}
             onSelectMark={(pin) => update({ markId: pin.displayKey })}
             selectedIds={selectedIds}
-            onToggleSelected={toggleSelected}
+            onSelectionChange={handleSelectionChange}
           />
         )}
       </div>
