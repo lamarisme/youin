@@ -77,7 +77,6 @@ export interface PinItem {
   priority: PinPriority;
   pinned: boolean;
   labelIds: string[];
-  linearUrl?: string;
   assigneeId?: string;
   capture?: PinCapture;
   createdAt: string;

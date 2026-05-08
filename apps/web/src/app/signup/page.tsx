@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useMemo, Suspense } from "react";
 import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
 
+import { Field } from "@/components/field";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -57,11 +58,24 @@ function emailInitials(email: string): string {
 }
 
 export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpPageContent />
+    </Suspense>
+  );
+}
+
+function SignUpPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
 
+  const inviteToken = useMemo(() => searchParams.get("invite")?.trim() || null, [searchParams]);
+  const inviteEmail = useMemo(() => searchParams.get("email")?.trim() || null, [searchParams]);
+
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail ?? "");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
@@ -79,10 +93,21 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const canContinueStep1 = name.trim().length > 1 && email.includes("@") && password.length >= 8 && agreedToTerms;
+  const canContinueStep1 = name.trim().length > 1 && email.includes("@") && password.length >= 8 && agreedToTerms && username.trim().length >= 2;
   const canContinueStep2 = workspaceName.trim().length > 1 && firstSpaceName.trim().length > 1;
   const strength = passwordStrength(password);
   const canInvite = inviteInput.trim().includes("@") && inviteInput.trim().includes(".");
+  const isInvited = Boolean(inviteToken);
+
+  function generateUsernameFromEmail(emailStr: string): string {
+    const local = emailStr.split("@")[0] ?? "";
+    if (!local) return "";
+    return local
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 32) || "member";
+  }
 
   function addInvite() {
     const candidate = inviteInput.trim();
@@ -99,6 +124,11 @@ export default function SignUpPage() {
   function continueStep() {
     if (step === 0 && !canContinueStep1) return;
     if (step === 1 && !canContinueStep2) return;
+    // If invited, skip workspace creation and team steps
+    if (isInvited && step === 0) {
+      setStep(3); // Jump to Defaults
+      return;
+    }
     setStep((prev) => Math.min(TOTAL_STEPS - 1, prev + 1));
   }
 
@@ -121,10 +151,12 @@ export default function SignUpPage() {
           emailRedirectTo: redirectTo.toString(),
           data: {
             full_name: name.trim(),
-            workspace_name: workspaceName.trim(),
-            first_space_name: firstSpaceName.trim(),
-            workspace_goal: workspaceGoal.trim(),
-            teammate_invites: invites,
+            workspace_name: isInvited ? undefined : workspaceName.trim(),
+            workspace_username: username.trim().toLowerCase(),
+            invite_token: inviteToken,
+            first_space_name: isInvited ? undefined : firstSpaceName.trim(),
+            workspace_goal: isInvited ? undefined : workspaceGoal.trim(),
+            teammate_invites: isInvited ? [] : invites,
             defaults: {
               digest_enabled: digestEnabled,
               show_all_marks_by_default: showAllMarksByDefault,
@@ -151,11 +183,12 @@ export default function SignUpPage() {
   }
 
   const current = STEPS[step];
-  const isLastStep = step === TOTAL_STEPS - 1;
+  const isLastStep = step === TOTAL_STEPS - 1 || (isInvited && step === 0);
   const canAdvance =
     (step === 0 && canContinueStep1) ||
     (step === 1 && canContinueStep2) ||
-    step >= 2;
+    step >= 2 ||
+    (isInvited && step === 0);
 
   return (
     <div className="space-y-5">
@@ -230,6 +263,37 @@ export default function SignUpPage() {
                   autoComplete="new-password"
                   className="h-10 bg-paper text-[0.875rem]"
                 />
+              </Field>
+
+              <Field
+                id="username"
+                label="Workspace username"
+                hint={
+                  <p className="text-[0.6875rem] text-ink-3">
+                    Unique within your workspace. Lowercase letters, numbers, and underscores.
+                  </p>
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.875rem] text-ink-3">@</span>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                      setUsername(val);
+                    }}
+                    onBlur={() => {
+                      if (!username && email.includes("@")) {
+                        setUsername(generateUsernameFromEmail(email));
+                      }
+                    }}
+                    placeholder={email.includes("@") ? generateUsernameFromEmail(email) : "mira"}
+                    autoComplete="username"
+                    maxLength={32}
+                    className="h-10 bg-paper text-[0.875rem]"
+                  />
+                </div>
               </Field>
 
               <label
@@ -468,14 +532,15 @@ export default function SignUpPage() {
               </Link>
             )}
 
-            <Button
+            <SubmitButton
               type="submit"
-              disabled={!canAdvance || loading}
+              disabled={!canAdvance}
+              loading={loading}
               className="h-10 min-w-[148px] bg-mark text-paper hover:bg-mark-bright"
             >
               {isLastStep ? (loading ? "Creating account…" : "Finish setup") : "Continue"}
               <ArrowRight className="size-4" />
-            </Button>
+            </SubmitButton>
           </div>
         </form>
       </div>
@@ -536,38 +601,6 @@ function StepIndicator({
         );
       })}
     </ol>
-  );
-}
-
-function Field({
-  id,
-  label,
-  hero,
-  hint,
-  children,
-}: {
-  id: string;
-  label: string;
-  hero?: boolean;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={hero ? "space-y-2" : "space-y-1.5"}>
-      <Label
-        htmlFor={id}
-        className={cn(
-          "block",
-          hero
-            ? "font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-ink-3"
-            : "text-[0.75rem] font-medium text-ink-2",
-        )}
-      >
-        {label}
-      </Label>
-      {children}
-      {hint ? <div className="pt-1">{hint}</div> : null}
-    </div>
   );
 }
 

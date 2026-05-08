@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
 interface MarkShortcutsHelpProps {
@@ -96,22 +97,9 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
         </div>
 
         <p className="text-[0.6875rem] text-ink-3">
-          Press <Kbd inline>?</Kbd> any time on the mark page to see this list.
+          Press <Kbd className="min-w-[1.25rem]">?</Kbd> any time on the mark page to see this list.
         </p>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Kbd({ children, inline }: { children: React.ReactNode; inline?: boolean }) {
-  return (
-    <kbd
-      className={cn(
-        "inline-flex min-w-[1.5rem] items-center justify-center rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium text-ink-2",
-        inline && "min-w-[1.25rem]",
-      )}
-    >
-      {children}
-    </kbd>
   );
 }

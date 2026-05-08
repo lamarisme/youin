@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "workspace_members_workspace_username_lower" ON "workspace_members" USING btree ("workspace_id",lower("username"));

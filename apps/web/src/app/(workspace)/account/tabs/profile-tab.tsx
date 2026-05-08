@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
-import { useShallow } from "zustand/react/shallow";
 
 import { Field } from "@/components/field";
 import { Surface } from "@/components/surface";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCollabStore } from "@/lib/collab-store";
+import { useUpdateProfileMutation } from "@/lib/queries/use-workspace-mutations";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 export function ProfileTab() {
-  const { profile, updateProfile } = useCollabStore(
-    useShallow((s) => ({ profile: s.profile, updateProfile: s.updateProfile })),
-  );
+  const profile = useCollabStore((s) => s.profile);
+  const { mutateAsync: updateProfile, isPending: isSaving } =
+    useUpdateProfileMutation();
 
   const [draft, setDraft] = useState({
     name: profile.name,
@@ -26,7 +25,6 @@ export function ProfileTab() {
     avatarUrl: profile.avatarUrl,
     timezone: profile.timezone,
   });
-  const [saving, setSaving] = useState(false);
 
   const profileSig = `${profile.name}${profile.title}${profile.about}${profile.avatarUrl}${profile.timezone}`;
   const [lastProfileSig, setLastProfileSig] = useState(profileSig);
@@ -42,14 +40,10 @@ export function ProfileTab() {
   }
 
   async function save() {
-    setSaving(true);
     try {
       await updateProfile(draft);
-      toast.success("Profile saved.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't save profile.");
-    } finally {
-      setSaving(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -118,9 +112,9 @@ export function ProfileTab() {
             />
           </Field>
           <div className="flex items-end">
-            <Button onClick={save} disabled={saving} className="h-9">
-              {saving ? "Saving..." : "Save changes"}
-            </Button>
+            <SubmitButton onClick={save} loading={isSaving} loadingText="Saving..." className="h-9">
+              Save changes
+            </SubmitButton>
           </div>
         </div>
       </div>

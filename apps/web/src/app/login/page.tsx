@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { type FormEvent, Suspense, useMemo, useState } from "react";
 
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -109,7 +111,7 @@ function LoginPageContent() {
         onClick={handleGoogleSignIn}
         disabled={loading}
       >
-        <GoogleIcon />
+        {loading ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
         Continue with Google
       </Button>
 
@@ -166,13 +168,15 @@ function LoginPageContent() {
           </p>
         ) : null}
 
-        <Button
+        <SubmitButton
           type="submit"
           className="w-full bg-mark text-paper hover:bg-mark-bright"
-          disabled={loading || !email.trim() || !password}
+          loading={loading}
+          disabled={!email.trim() || !password}
+          loadingText="Signing in..."
         >
-          {loading ? "Signing in..." : "Sign in"}
-        </Button>
+          Sign in
+        </SubmitButton>
       </form>
 
       <p className="mt-7 text-center text-[0.8125rem] text-ink-2">

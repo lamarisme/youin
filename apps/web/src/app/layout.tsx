@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -44,7 +45,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <ThemeProvider>
           <QueryProvider>
-            <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+            <NuqsAdapter>
+              <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+            </NuqsAdapter>
           </QueryProvider>
         </ThemeProvider>
         <Toaster position="bottom-right" />

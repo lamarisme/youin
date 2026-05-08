@@ -1,20 +1,10 @@
 "use client";
 
-import { motion, type HTMLMotionProps, type Transition } from "framer-motion";
-import { forwardRef } from "react";
-
-import { cn } from "@/lib/utils";
+import { motion, type HTMLMotionProps } from "framer-motion";
 
 const fadeInVariants = {
   hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0 },
-};
-
-const springTransition: Transition = {
-  type: "spring",
-  stiffness: 400,
-  damping: 30,
-  mass: 1,
 };
 
 function FadeIn({
@@ -34,7 +24,13 @@ function FadeIn({
       initial="hidden"
       animate="visible"
       variants={fadeInVariants}
-      transition={{ ...springTransition, delay: delay ?? 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 400,
+        damping: 30,
+        mass: 1,
+        delay: delay ?? 0,
+      }}
       className={className}
       {...props}
     >
@@ -43,59 +39,4 @@ function FadeIn({
   );
 }
 
-function FadeInStagger({
-  children,
-  className,
-  staggerDelay = 0.08,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  staggerDelay?: number;
-}) {
-  return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        visible: { transition: { staggerChildren: staggerDelay } },
-      }}
-      className={className}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-function FadeInItem({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <motion.div variants={fadeInVariants} className={className}>
-      {children}
-    </motion.div>
-  );
-}
-
-const InteractiveLift = forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div">
->(function InteractiveLift({ children, className, ...props }, ref) {
-  return (
-    <motion.div
-      ref={ref}
-      whileHover={{ y: -1 }}
-      whileTap={{ y: 0, scale: 0.99 }}
-      transition={springTransition}
-      className={cn("transition-colors duration-200", className)}
-      {...(props as Record<string, unknown>)}
-    >
-      {children}
-    </motion.div>
-  );
-});
-
-export { FadeIn, FadeInItem, FadeInStagger, InteractiveLift, springTransition };
+export { FadeIn };

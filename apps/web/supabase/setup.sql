@@ -1,21 +1,63 @@
 /*
-  One-shot Supabase setup for youin.
+  Supabase setup — run AFTER Drizzle has applied every migration in apps/web/drizzle/.
 
-  Run this in the Supabase SQL editor AFTER applying all Drizzle migrations
-  (0000–0004). It bundles three idempotent steps in the correct order:
+    cd apps/web && DATABASE_URL="<your connection string>" pnpm db:migrate
 
-    1. extend mark_event_type with assignee_changed + label_changed (0004)
-    2. rls-and-auth.sql (profiles trigger, user_workspace_member fn, RLS policies)
-    3. storage.sql (mark-images bucket + storage RLS)
+  Public tables, enums, indexes, and foreign keys live in Drizzle (`src/db/schema.ts`)
+  as the single source of truth. This script adds:
+
+    • mark sequence trigger
+    • optional mark_event_type enum toppings (harmless no-ops when already present)
+    • profiles ↔ auth.users FK + signup trigger + RLS policies + storage
+    • (separate step) onboarding-rpcs.sql for bootstrap_workspace RPCs
 
   Safe to re-run.
 */
 
--- ── 1. Migration 0004 (idempotent) ─────────────────────────────────────────
+-- ── 1. Marks sequence trigger (needs `marks` / `spaces` from Drizzle) ────────
+CREATE OR REPLACE FUNCTION public.marks_assign_sequence()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  next_n integer;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    UPDATE spaces
+    SET next_mark_seq = next_mark_seq + 1
+    WHERE id = NEW.space_id
+    RETURNING next_mark_seq INTO next_n;
+    IF next_n IS NULL THEN
+      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
+    END IF;
+    NEW.seq := next_n;
+    RETURN NEW;
+  ELSIF TG_OP = 'UPDATE' AND OLD.space_id IS DISTINCT FROM NEW.space_id THEN
+    UPDATE spaces
+    SET next_mark_seq = next_mark_seq + 1
+    WHERE id = NEW.space_id
+    RETURNING next_mark_seq INTO next_n;
+    IF next_n IS NULL THEN
+      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
+    END IF;
+    NEW.seq := next_n;
+    RETURN NEW;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS marks_assign_sequence_trg ON marks;
+CREATE TRIGGER marks_assign_sequence_trg
+  BEFORE INSERT OR UPDATE OF space_id ON marks
+  FOR EACH ROW
+  EXECUTE FUNCTION public.marks_assign_sequence();
+
+-- ── 2. Migration 0004-style enum toppings (idempotent) ──────────────────────
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
 
--- ── 2. RLS + auth wiring ────────────────────────────────────────────────────
+-- ── 3. RLS + auth wiring + storage ───────────────────────────────────────────
 ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_user_id_fkey;
 
@@ -299,7 +341,7 @@ CREATE POLICY mark_events_insert ON public.mark_events
     AND public.user_workspace_member(workspace_id)
   );
 
--- ── 3. Storage bucket + policies ────────────────────────────────────────────
+-- ── 4. Storage bucket + policies ────────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('mark-images', 'mark-images', false)
 ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
@@ -342,3 +384,6 @@ CREATE POLICY mark_images_update_owner ON storage.objects
 CREATE POLICY mark_images_delete_owner ON storage.objects
   FOR DELETE TO authenticated
   USING (bucket_id = 'mark-images' AND owner = auth.uid());
+
+-- ── 5. Onboarding RPCs ──────────────────────────────────────────────────────
+-- Run apps/web/supabase/onboarding-rpcs.sql next (bootstrap_workspace, attach_user_via_invite).

@@ -1,6 +1,6 @@
 {
-  "id": "978e03a1-bd1e-4802-ba3f-ccdb30113a95",
-  "prevId": "133c0255-3c7b-4d59-8aac-be7a0aa41d94",
+  "id": "194ebbc0-9cff-417d-8969-3359918469d2",
+  "prevId": "293dab84-e669-4ca3-a556-f95687671149",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -29,7 +29,8 @@
         },
         "type": {
           "name": "type",
-          "type": "text",
+          "type": "mark_comment_type",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'text'"
@@ -75,6 +76,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "mark_comments_author_idx": {
+          "name": "mark_comments_author_idx",
+          "columns": [
+            {
+              "expression": "author_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -90,12 +106,30 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "mark_comments_author_user_id_profiles_id_fk": {
+          "name": "mark_comments_author_user_id_profiles_id_fk",
+          "tableFrom": "mark_comments",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "author_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "mark_comments_body_or_image": {
+          "name": "mark_comments_body_or_image",
+          "value": "(\"mark_comments\".\"type\" = 'text' AND \"mark_comments\".\"body\" IS NOT NULL)\n          OR (\"mark_comments\".\"type\" = 'image' AND \"mark_comments\".\"image_url\" IS NOT NULL)"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.mark_events": {
@@ -251,6 +285,19 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "mark_events_actor_user_id_profiles_id_fk": {
+          "name": "mark_events_actor_user_id_profiles_id_fk",
+          "tableFrom": "mark_events",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -259,8 +306,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.mark_tags": {
-      "name": "mark_tags",
+    "public.mark_labels": {
+      "name": "mark_labels",
       "schema": "",
       "columns": {
         "id": {
@@ -276,8 +323,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "label": {
-          "name": "label",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -291,8 +338,8 @@
         }
       },
       "indexes": {
-        "mark_tags_workspace_label_unique": {
-          "name": "mark_tags_workspace_label_unique",
+        "mark_labels_workspace_name_unique": {
+          "name": "mark_labels_workspace_name_unique",
           "columns": [
             {
               "expression": "workspace_id",
@@ -301,7 +348,7 @@
               "nulls": "last"
             },
             {
-              "expression": "label",
+              "expression": "name",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -314,9 +361,9 @@
         }
       },
       "foreignKeys": {
-        "mark_tags_workspace_id_workspaces_id_fk": {
-          "name": "mark_tags_workspace_id_workspaces_id_fk",
-          "tableFrom": "mark_tags",
+        "mark_labels_workspace_id_workspaces_id_fk": {
+          "name": "mark_labels_workspace_id_workspaces_id_fk",
+          "tableFrom": "mark_labels",
           "tableTo": "workspaces",
           "columnsFrom": [
             "workspace_id"
@@ -411,6 +458,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "seq": {
+          "name": "seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "selector": {
           "name": "selector",
           "type": "text",
@@ -469,6 +523,27 @@
         }
       },
       "indexes": {
+        "marks_space_seq_unique": {
+          "name": "marks_space_seq_unique",
+          "columns": [
+            {
+              "expression": "space_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "marks_space_status_priority_idx": {
           "name": "marks_space_status_priority_idx",
           "columns": [
@@ -537,6 +612,48 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "marks_workspace_status_idx": {
+          "name": "marks_workspace_status_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "marks_workspace_assignee_idx": {
+          "name": "marks_workspace_assignee_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "assignee_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -565,6 +682,32 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "marks_assignee_user_id_profiles_id_fk": {
+          "name": "marks_assignee_user_id_profiles_id_fk",
+          "tableFrom": "marks",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "assignee_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "marks_created_by_user_id_profiles_id_fk": {
+          "name": "marks_created_by_user_id_profiles_id_fk",
+          "tableFrom": "marks",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "created_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -573,8 +716,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.marks_to_tags": {
-      "name": "marks_to_tags",
+    "public.marks_to_labels": {
+      "name": "marks_to_labels",
       "schema": "",
       "columns": {
         "mark_id": {
@@ -583,18 +726,34 @@
           "primaryKey": false,
           "notNull": true
         },
-        "tag_id": {
-          "name": "tag_id",
+        "label_id": {
+          "name": "label_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "marks_to_labels_label_idx": {
+          "name": "marks_to_labels_label_idx",
+          "columns": [
+            {
+              "expression": "label_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
-        "marks_to_tags_mark_id_marks_id_fk": {
-          "name": "marks_to_tags_mark_id_marks_id_fk",
-          "tableFrom": "marks_to_tags",
+        "marks_to_labels_mark_id_marks_id_fk": {
+          "name": "marks_to_labels_mark_id_marks_id_fk",
+          "tableFrom": "marks_to_labels",
           "tableTo": "marks",
           "columnsFrom": [
             "mark_id"
@@ -605,12 +764,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "marks_to_tags_tag_id_mark_tags_id_fk": {
-          "name": "marks_to_tags_tag_id_mark_tags_id_fk",
-          "tableFrom": "marks_to_tags",
-          "tableTo": "mark_tags",
+        "marks_to_labels_label_id_mark_labels_id_fk": {
+          "name": "marks_to_labels_label_id_mark_labels_id_fk",
+          "tableFrom": "marks_to_labels",
+          "tableTo": "mark_labels",
           "columnsFrom": [
-            "tag_id"
+            "label_id"
           ],
           "columnsTo": [
             "id"
@@ -620,11 +779,11 @@
         }
       },
       "compositePrimaryKeys": {
-        "marks_to_tags_mark_id_tag_id_pk": {
-          "name": "marks_to_tags_mark_id_tag_id_pk",
+        "marks_to_labels_mark_id_label_id_pk": {
+          "name": "marks_to_labels_mark_id_label_id_pk",
           "columns": [
             "mark_id",
-            "tag_id"
+            "label_id"
           ]
         }
       },
@@ -643,6 +802,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "full_name": {
           "name": "full_name",
           "type": "text",
@@ -656,8 +821,8 @@
           "notNull": true,
           "default": "''"
         },
-        "bio": {
-          "name": "bio",
+        "about": {
+          "name": "about",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -726,6 +891,19 @@
           "primaryKey": false,
           "notNull": true
         },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_mark_seq": {
+          "name": "next_mark_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -770,6 +948,27 @@
         }
       },
       "indexes": {
+        "spaces_workspace_code_unique": {
+          "name": "spaces_workspace_code_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "spaces_workspace_name_unique": {
           "name": "spaces_workspace_name_unique",
           "columns": [
@@ -852,7 +1051,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "spaces_code_format": {
+          "name": "spaces_code_format",
+          "value": "\"spaces\".\"code\" ~ '^[A-Z0-9]{1,12}$'"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.workspace_invites": {
@@ -891,6 +1095,13 @@
           "notNull": true,
           "default": "now()"
         },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now() + interval '14 days'"
+        },
         "accepted_at": {
           "name": "accepted_at",
           "type": "timestamp with time zone",
@@ -899,17 +1110,25 @@
         },
         "status": {
           "name": "status",
-          "type": "text",
+          "type": "workspace_invite_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'pending'"
         },
         "source": {
           "name": "source",
-          "type": "text",
+          "type": "workspace_invite_source",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'signup'"
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "order_index": {
           "name": "order_index",
@@ -940,6 +1159,64 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "workspace_invites_workspace_status_idx": {
+          "name": "workspace_invites_workspace_status_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "workspace_invites_expires_at_idx": {
+          "name": "workspace_invites_expires_at_idx",
+          "columns": [
+            {
+              "expression": "expires_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "workspace_invites_pending_email_unique": {
+          "name": "workspace_invites_pending_email_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"workspace_invites\".\"status\" = 'pending'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -955,10 +1232,31 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "workspace_invites_invited_by_user_id_profiles_id_fk": {
+          "name": "workspace_invites_invited_by_user_id_profiles_id_fk",
+          "tableFrom": "workspace_invites",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "invited_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "workspace_invites_token_unique": {
+          "name": "workspace_invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -976,6 +1274,12 @@
         "user_id": {
           "name": "user_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -1016,6 +1320,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "workspace_members_workspace_username_lower": {
+          "name": "workspace_members_workspace_username_lower",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(\"username\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1025,6 +1350,19 @@
           "tableTo": "workspaces",
           "columnsFrom": [
             "workspace_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "workspace_members_user_id_profiles_id_fk": {
+          "name": "workspace_members_user_id_profiles_id_fk",
+          "tableFrom": "workspace_members",
+          "tableTo": "profiles",
+          "columnsFrom": [
+            "user_id"
           ],
           "columnsTo": [
             "id"
@@ -1105,6 +1443,14 @@
     }
   },
   "enums": {
+    "public.mark_comment_type": {
+      "name": "mark_comment_type",
+      "schema": "public",
+      "values": [
+        "text",
+        "image"
+      ]
+    },
     "public.mark_event_type": {
       "name": "mark_event_type",
       "schema": "public",
@@ -1114,7 +1460,9 @@
         "priority_changed",
         "pinned_changed",
         "linear_link_updated",
-        "comment_added"
+        "comment_added",
+        "assignee_changed",
+        "label_changed"
       ]
     },
     "public.mark_priority": {
@@ -1141,6 +1489,24 @@
       "values": [
         "owner",
         "member"
+      ]
+    },
+    "public.workspace_invite_source": {
+      "name": "workspace_invite_source",
+      "schema": "public",
+      "values": [
+        "signup",
+        "manual"
+      ]
+    },
+    "public.workspace_invite_status": {
+      "name": "workspace_invite_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "accepted",
+        "revoked",
+        "expired"
       ]
     }
   },

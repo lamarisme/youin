@@ -2,7 +2,6 @@
 
 import { Check, Edit3, X } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import { Surface } from "@/components/surface";
@@ -10,21 +9,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCollabStore } from "@/lib/collab-store";
+import { useUpdateWorkspaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 export function OverviewTab() {
-  const { workspaceName, membersCount, invitesCount, isOwner, updateWorkspace } = useCollabStore(
-    useShallow((s) => ({
-      workspaceName: s.workspace.name,
-      membersCount: s.workspace.members.length,
-      invitesCount: s.workspace.invites.length,
-      isOwner: s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
-      updateWorkspace: s.updateWorkspace,
-    })),
-  );
+  const { workspaceName, membersCount, invitesCount, isOwner } =
+    useCollabStore(
+      useShallow((s) => ({
+        workspaceName: s.workspace.name,
+        membersCount: s.workspace.members.length,
+        invitesCount: s.workspace.invites.length,
+        isOwner:
+          s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
+      })),
+    );
+  const { mutateAsync: updateWorkspace, isPending: isSaving } =
+    useUpdateWorkspaceMutation();
 
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(workspaceName);
-  const [saving, setSaving] = useState(false);
   const [lastWorkspaceName, setLastWorkspaceName] = useState(workspaceName);
 
   if (!renaming && workspaceName !== lastWorkspaceName) {
@@ -39,15 +41,11 @@ export function OverviewTab() {
       setDraft(workspaceName);
       return;
     }
-    setSaving(true);
     try {
       await updateWorkspace({ name: trimmed });
-      toast.success("Workspace renamed.");
       setRenaming(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't rename workspace.");
-    } finally {
-      setSaving(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -96,7 +94,7 @@ export function OverviewTab() {
                 type="button"
                 size="sm"
                 onClick={save}
-                disabled={saving || !draft.trim()}
+                disabled={isSaving || !draft.trim()}
                 className="h-8 px-2"
                 aria-label="Save workspace name"
               >

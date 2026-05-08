@@ -242,7 +242,6 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
       priority: (m.priority as PinPriority) ?? "medium",
       pinned: Boolean(m.pinned),
       labelIds: labelsByMark.get(m.id as string) ?? [],
-      linearUrl: (m.linear_url as string | null | undefined) ?? undefined,
       assigneeId: (m.assignee_user_id as string | null | undefined) ?? undefined,
       capture: cap,
       createdAt: m.created_at as string,

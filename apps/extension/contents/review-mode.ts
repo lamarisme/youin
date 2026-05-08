@@ -1,5 +1,14 @@
 import type { PlasmoCSConfig } from "plasmo"
 
+import {
+  EVENT_REVIEW_CAPTURE,
+  EVENT_REVIEW_EXIT,
+  EVENT_REVIEW_RESUME,
+  EVENT_REVIEW_START,
+  EVENT_REVIEW_STATE,
+  type ReviewCaptureDetail,
+  type ReviewStateDetail
+} from "../lib/events"
 import { generateSelector } from "../lib/selector"
 
 export const config: PlasmoCSConfig = {
@@ -12,7 +21,9 @@ const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
 const Z_TOP = 2147483647
 
-let active = false
+type Mode = "inactive" | "active" | "paused"
+
+let mode: Mode = "inactive"
 let host: HTMLDivElement | null = null
 let highlight: HTMLDivElement | null = null
 let cursorStyle: HTMLStyleElement | null = null
@@ -83,7 +94,7 @@ function ensureHost() {
   const banner = document.createElement("div")
   banner.className = "banner"
   banner.innerHTML =
-    'Review mode &middot; click an element to capture &middot; <kbd>Esc</kbd> to exit'
+    'Review mode &middot; click any element to capture &middot; <kbd>Esc</kbd> to exit'
   shadow.append(banner)
 
   document.body.append(host)
@@ -138,8 +149,7 @@ function onClick(e: MouseEvent) {
   const rect = target.getBoundingClientRect()
   const result = generateSelector(target)
 
-  // eslint-disable-next-line no-console
-  console.log("[youin] captured", {
+  const detail: ReviewCaptureDetail = {
     selector: result.selector,
     strategy: result.strategy,
     bbox: {
@@ -155,9 +165,13 @@ function onClick(e: MouseEvent) {
     },
     url: location.href,
     outerHTML: target.outerHTML.slice(0, 400)
-  })
+  }
 
-  deactivate()
+  // eslint-disable-next-line no-console
+  console.log("[youin] captured", detail)
+  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
+
+  pause()
 }
 
 function swallow(e: Event) {
@@ -174,11 +188,14 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-function activate() {
-  if (active) return
-  active = true
-  ensureHost()
-  applyCursorOverride()
+function emitState() {
+  // "active" in the public event means "in a review session" — true for both
+  // ACTIVE and PAUSED. The widget only cares whether to show its review banner.
+  const detail: ReviewStateDetail = { active: mode !== "inactive" }
+  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_STATE, { detail }))
+}
+
+function attachCaptureListeners() {
   document.addEventListener("mouseover", onMouseOver, true)
   document.addEventListener("mousedown", swallow, true)
   document.addEventListener("mouseup", swallow, true)
@@ -186,11 +203,7 @@ function activate() {
   document.addEventListener("keydown", onKeyDown, true)
 }
 
-function deactivate() {
-  if (!active) return
-  active = false
-  removeCursorOverride()
-  destroyHost()
+function detachCaptureListeners() {
   document.removeEventListener("mouseover", onMouseOver, true)
   document.removeEventListener("mousedown", swallow, true)
   document.removeEventListener("mouseup", swallow, true)
@@ -198,12 +211,59 @@ function deactivate() {
   document.removeEventListener("keydown", onKeyDown, true)
 }
 
+function activate() {
+  if (mode === "active") return
+  if (mode === "paused") {
+    resume()
+    return
+  }
+  mode = "active"
+  ensureHost()
+  applyCursorOverride()
+  attachCaptureListeners()
+  emitState()
+}
+
+function pause() {
+  if (mode !== "active") return
+  mode = "paused"
+  detachCaptureListeners()
+  removeCursorOverride()
+  // Hide the host's overlay + banner so the popover owns the screen,
+  // but keep the host element so resume is cheap.
+  if (host) host.style.display = "none"
+  if (highlight) highlight.style.display = "none"
+}
+
+function resume() {
+  if (mode !== "paused") return
+  mode = "active"
+  if (host) host.style.display = ""
+  applyCursorOverride()
+  attachCaptureListeners()
+}
+
+function deactivate() {
+  if (mode === "inactive") return
+  mode = "inactive"
+  detachCaptureListeners()
+  removeCursorOverride()
+  destroyHost()
+  emitState()
+}
+
+window.addEventListener(EVENT_REVIEW_START, () => activate())
+window.addEventListener(EVENT_REVIEW_EXIT, () => deactivate())
+window.addEventListener(EVENT_REVIEW_RESUME, () => resume())
+
 document.addEventListener(
   "keydown",
   (e) => {
     if (e.altKey && e.shiftKey && e.code === "KeyY") {
+      // Don't let the global toggle hijack typing inside the comment popover.
+      if (mode === "paused") return
       e.preventDefault()
-      active ? deactivate() : activate()
+      mode === "inactive" ? activate() : deactivate()
     }
   },
   true

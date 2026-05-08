@@ -8,6 +8,7 @@ import {
   Inbox as InboxIcon,
   Layers,
   LayoutGrid,
+  Loader2,
   LogOut,
   Moon,
   PanelLeftClose,
@@ -358,7 +359,11 @@ export function AppSidebar() {
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                   )}
                 >
-                  <LogOut className="size-[1.05rem]" />
+                  {isSigningOut ? (
+                    <Loader2 className="size-[1.05rem] animate-spin" />
+                  ) : (
+                    <LogOut className="size-[1.05rem]" />
+                  )}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">Sign out</TooltipContent>
@@ -411,7 +416,11 @@ export function AppSidebar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               )}
             >
-              <LogOut className="size-[1.05rem]" />
+              {isSigningOut ? (
+                <Loader2 className="size-[1.05rem] animate-spin" />
+              ) : (
+                <LogOut className="size-[1.05rem]" />
+              )}
               <span>{isSigningOut ? "Signing out…" : "Sign out"}</span>
             </button>
           </>
@@ -471,7 +480,11 @@ function MobileAccountMenu({
           onClick={onSignOut}
           disabled={isSigningOut}
         >
-          <LogOut className="size-4" />
+          {isSigningOut ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <LogOut className="size-4" />
+          )}
           {isSigningOut ? "Signing out..." : "Sign out"}
         </DropdownMenuItem>
       </DropdownMenuContent>

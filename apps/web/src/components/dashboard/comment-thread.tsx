@@ -5,6 +5,7 @@ import { useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,9 +19,14 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
 import { useCollabStore } from "@/lib/collab-store";
+import {
+  useAddCommentsMutation,
+  useDeleteCommentMutation,
+  useUpdateCommentMutation,
+} from "@/lib/queries/use-workspace-mutations";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
-import { getMarkUploadUrlAction } from "@/lib/workspace/workspace-actions";
+import { getMarkUploadUrlAction } from "@/lib/workspace/actions";
 
 import { MentionPopover } from "./mention-popover";
 import { MentionRender } from "./mention-render";
@@ -65,8 +71,8 @@ interface CommentThreadProps {
 
 export function CommentThread({ pin, comments, membersById, dateTimeFormatter }: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
-  const addCommentsInStore = useCollabStore((s) => s.addComments);
   const members = useCollabStore((s) => s.workspace.members);
+  const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const { text, image, submitting } = state;
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -99,7 +105,11 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
         const { error: uploadErr } = await supabase.storage
           .from("mark-images")
           .uploadToSignedUrl(path, token, image, { contentType: image.type || undefined });
-        if (uploadErr) throw uploadErr;
+        if (uploadErr) {
+          toast.error(actionErrorMessage(uploadErr, "Image upload failed."));
+          dispatch({ type: "stop_submit" });
+          return;
+        }
         next.push({
           id: `c_${Date.now()}_img`,
           pinId: pin.id,
@@ -109,10 +119,12 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
           imageUrl: path,
         });
       }
-      await addCommentsInStore(next);
-      dispatch({ type: "reset" });
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't post your comment."));
+      try {
+        await addComments(next);
+        dispatch({ type: "reset" });
+      } catch {
+        // toast handled by the mutation
+      }
     } finally {
       dispatch({ type: "stop_submit" });
     }
@@ -185,15 +197,17 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
             onChange={(e) => dispatch({ type: "set_image", value: e.target.files?.[0] ?? null })}
             className="h-11 max-w-[190px] text-[1rem] sm:h-8 sm:max-w-[160px] sm:text-[0.6875rem]"
           />
-          <Button
+          <SubmitButton
             size="sm"
             onClick={handleSubmit}
-            disabled={submitting || (!text.trim() && !image)}
+            loading={submitting}
+            disabled={!text.trim() && !image}
+            loadingText="Sending..."
             className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           >
             <MessageCircle className="size-3.5" />
-            {submitting ? "Sending..." : "Send"}
-          </Button>
+            Send
+          </SubmitButton>
         </div>
       </div>
     </div>
@@ -208,14 +222,14 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemProps) {
-  const updateComment = useCollabStore((s) => s.updateComment);
-  const deleteComment = useCollabStore((s) => s.deleteComment);
   const members = useCollabStore((s) => s.workspace.members);
+  const { mutateAsync: updateComment, isPending: isSaving } =
+    useUpdateCommentMutation();
+  const { mutateAsync: deleteComment, isPending: isDeleting } =
+    useDeleteCommentMutation();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body ?? "");
-  const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
   const editMention = useMentionPicker({
     setText: setDraft,
@@ -225,28 +239,22 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
 
   async function handleSave() {
     const trimmed = draft.trim();
-    if (!trimmed || trimmed === comment.body || saving) return;
-    setSaving(true);
+    if (!trimmed || trimmed === comment.body || isSaving) return;
     try {
-      await updateComment(comment.id, trimmed);
+      await updateComment({ commentId: comment.id, body: trimmed });
       setEditing(false);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't update comment."));
-    } finally {
-      setSaving(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
   async function handleDelete() {
-    if (deleting) return;
-    setDeleting(true);
+    if (isDeleting) return;
     try {
       await deleteComment(comment.id);
       setConfirmDelete(false);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't delete comment."));
-    } finally {
-      setDeleting(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -347,22 +355,24 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
                   setEditing(false);
                   setDraft(comment.body ?? "");
                 }}
-                disabled={saving}
+                disabled={isSaving}
                 className="h-7 px-2 text-[0.75rem]"
               >
                 <X className="size-3" aria-hidden />
                 Cancel
               </Button>
-              <Button
+              <SubmitButton
                 type="button"
                 size="sm"
                 onClick={handleSave}
-                disabled={saving || !draft.trim() || draft.trim() === comment.body}
+                loading={isSaving}
+                disabled={!draft.trim() || draft.trim() === comment.body}
+                loadingText="Saving…"
                 className="h-7 px-2 text-[0.75rem]"
               >
                 <Check className="size-3" aria-hidden />
-                {saving ? "Saving…" : "Save"}
-              </Button>
+                Save
+              </SubmitButton>
             </div>
           </div>
         ) : comment.type === "text" ? (
@@ -387,7 +397,7 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
         ) : null}
       </div>
 
-      <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
+      <Dialog open={confirmDelete} onOpenChange={(open) => !isDeleting && setConfirmDelete(open)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this comment?</DialogTitle>
@@ -397,18 +407,19 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
             <Button
               variant="ghost"
               onClick={() => setConfirmDelete(false)}
-              disabled={deleting}
+              disabled={isDeleting}
               className="h-9"
             >
               Cancel
             </Button>
-            <Button
+            <SubmitButton
               onClick={handleDelete}
-              disabled={deleting}
+              loading={isDeleting}
+              loadingText="Deleting…"
               className="h-9 bg-mark text-paper hover:bg-mark-bright"
             >
-              {deleting ? "Deleting…" : "Delete"}
-            </Button>
+              Delete
+            </SubmitButton>
           </div>
         </DialogContent>
       </Dialog>

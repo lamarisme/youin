@@ -2,10 +2,10 @@
 
 import { Tag, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
 import { EmptyState } from "@/components/empty-state";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,18 +16,19 @@ import {
 } from "@/components/ui/dialog";
 import type { WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { useDeleteLabelMutation } from "@/lib/queries/use-workspace-mutations";
 
 export function LabelsTab() {
-  const { labels, pins, deleteLabel } = useCollabStore(
+  const { labels, pins } = useCollabStore(
     useShallow((s) => ({
       labels: s.workspace.labels,
       pins: s.workspace.pins,
-      deleteLabel: s.deleteLabel,
     })),
   );
+  const { mutateAsync: deleteLabel, isPending: isDeleting } =
+    useDeleteLabelMutation();
 
   const [pending, setPending] = useState<WorkspaceLabel | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const usageById = useMemo(() => {
     const counts = new Map<string, number>();
@@ -38,15 +39,12 @@ export function LabelsTab() {
   }, [pins]);
 
   async function handleDelete() {
-    if (!pending) return;
-    setDeleting(true);
+    if (!pending || isDeleting) return;
     try {
-      await deleteLabel(pending.id);
+      await deleteLabel({ labelId: pending.id, name: pending.name });
       setPending(null);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't delete label.");
-    } finally {
-      setDeleting(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -96,7 +94,7 @@ export function LabelsTab() {
         </ul>
       )}
 
-      <Dialog open={Boolean(pending)} onOpenChange={(open) => !deleting && !open && setPending(null)}>
+      <Dialog open={Boolean(pending)} onOpenChange={(open) => !isDeleting && !open && setPending(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this label?</DialogTitle>
@@ -117,18 +115,19 @@ export function LabelsTab() {
             <Button
               variant="ghost"
               onClick={() => setPending(null)}
-              disabled={deleting}
+              disabled={isDeleting}
               className="h-9"
             >
               Cancel
             </Button>
-            <Button
+            <SubmitButton
               onClick={handleDelete}
-              disabled={deleting}
+              loading={isDeleting}
+              loadingText="Deleting…"
               className="h-9 bg-mark text-paper hover:bg-mark-bright"
             >
-              {deleting ? "Deleting…" : "Delete label"}
-            </Button>
+              Delete label
+            </SubmitButton>
           </div>
         </DialogContent>
       </Dialog>

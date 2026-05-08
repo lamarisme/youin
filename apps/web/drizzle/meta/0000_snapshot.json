@@ -1,5 +1,5 @@
 {
-  "id": "bc0babcb-fbc9-45d7-aac1-327aebe0a15a",
+  "id": "0958518d-16bd-4a52-8416-1171fcf681a3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -98,8 +98,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.mark_tags": {
-      "name": "mark_tags",
+    "public.mark_events": {
+      "name": "mark_events",
       "schema": "",
       "columns": {
         "id": {
@@ -115,8 +115,169 @@
           "primaryKey": false,
           "notNull": true
         },
-        "label": {
-          "name": "label",
+        "mark_id": {
+          "name": "mark_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "mark_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_value": {
+          "name": "from_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_value": {
+          "name": "to_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "mark_events_mark_created_at_idx": {
+          "name": "mark_events_mark_created_at_idx",
+          "columns": [
+            {
+              "expression": "mark_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "mark_events_workspace_created_at_idx": {
+          "name": "mark_events_workspace_created_at_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "mark_events_workspace_type_idx": {
+          "name": "mark_events_workspace_type_idx",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "mark_events_workspace_id_workspaces_id_fk": {
+          "name": "mark_events_workspace_id_workspaces_id_fk",
+          "tableFrom": "mark_events",
+          "tableTo": "workspaces",
+          "columnsFrom": [
+            "workspace_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "mark_events_mark_id_marks_id_fk": {
+          "name": "mark_events_mark_id_marks_id_fk",
+          "tableFrom": "mark_events",
+          "tableTo": "marks",
+          "columnsFrom": [
+            "mark_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.mark_labels": {
+      "name": "mark_labels",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "workspace_id": {
+          "name": "workspace_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -130,8 +291,8 @@
         }
       },
       "indexes": {
-        "mark_tags_workspace_label_unique": {
-          "name": "mark_tags_workspace_label_unique",
+        "mark_labels_workspace_name_unique": {
+          "name": "mark_labels_workspace_name_unique",
           "columns": [
             {
               "expression": "workspace_id",
@@ -140,7 +301,7 @@
               "nulls": "last"
             },
             {
-              "expression": "label",
+              "expression": "name",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -153,9 +314,9 @@
         }
       },
       "foreignKeys": {
-        "mark_tags_workspace_id_workspaces_id_fk": {
-          "name": "mark_tags_workspace_id_workspaces_id_fk",
-          "tableFrom": "mark_tags",
+        "mark_labels_workspace_id_workspaces_id_fk": {
+          "name": "mark_labels_workspace_id_workspaces_id_fk",
+          "tableFrom": "mark_labels",
           "tableTo": "workspaces",
           "columnsFrom": [
             "workspace_id"
@@ -250,6 +411,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "seq": {
+          "name": "seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "selector": {
           "name": "selector",
           "type": "text",
@@ -308,6 +476,27 @@
         }
       },
       "indexes": {
+        "marks_space_seq_unique": {
+          "name": "marks_space_seq_unique",
+          "columns": [
+            {
+              "expression": "space_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "marks_space_status_priority_idx": {
           "name": "marks_space_status_priority_idx",
           "columns": [
@@ -412,8 +601,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.marks_to_tags": {
-      "name": "marks_to_tags",
+    "public.marks_to_labels": {
+      "name": "marks_to_labels",
       "schema": "",
       "columns": {
         "mark_id": {
@@ -422,8 +611,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "tag_id": {
-          "name": "tag_id",
+        "label_id": {
+          "name": "label_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -431,9 +620,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "marks_to_tags_mark_id_marks_id_fk": {
-          "name": "marks_to_tags_mark_id_marks_id_fk",
-          "tableFrom": "marks_to_tags",
+        "marks_to_labels_mark_id_marks_id_fk": {
+          "name": "marks_to_labels_mark_id_marks_id_fk",
+          "tableFrom": "marks_to_labels",
           "tableTo": "marks",
           "columnsFrom": [
             "mark_id"
@@ -444,12 +633,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "marks_to_tags_tag_id_mark_tags_id_fk": {
-          "name": "marks_to_tags_tag_id_mark_tags_id_fk",
-          "tableFrom": "marks_to_tags",
-          "tableTo": "mark_tags",
+        "marks_to_labels_label_id_mark_labels_id_fk": {
+          "name": "marks_to_labels_label_id_mark_labels_id_fk",
+          "tableFrom": "marks_to_labels",
+          "tableTo": "mark_labels",
           "columnsFrom": [
-            "tag_id"
+            "label_id"
           ],
           "columnsTo": [
             "id"
@@ -459,14 +648,96 @@
         }
       },
       "compositePrimaryKeys": {
-        "marks_to_tags_mark_id_tag_id_pk": {
-          "name": "marks_to_tags_mark_id_tag_id_pk",
+        "marks_to_labels_mark_id_label_id_pk": {
+          "name": "marks_to_labels_mark_id_label_id_pk",
           "columns": [
             "mark_id",
-            "tag_id"
+            "label_id"
           ]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.profiles": {
+      "name": "profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "about": {
+          "name": "about",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'UTC'"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "profiles_updated_at_idx": {
+          "name": "profiles_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -488,6 +759,19 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_mark_seq": {
+          "name": "next_mark_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "name": {
           "name": "name",
@@ -533,6 +817,27 @@
         }
       },
       "indexes": {
+        "spaces_workspace_code_unique": {
+          "name": "spaces_workspace_code_unique",
+          "columns": [
+            {
+              "expression": "workspace_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "code",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "spaces_workspace_name_unique": {
           "name": "spaces_workspace_name_unique",
           "columns": [
@@ -674,6 +979,12 @@
           "notNull": true,
           "default": "'signup'"
         },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "order_index": {
           "name": "order_index",
           "type": "integer",
@@ -721,7 +1032,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "workspace_invites_token_unique": {
+          "name": "workspace_invites_token_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -739,6 +1058,12 @@
         "user_id": {
           "name": "user_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -868,6 +1193,20 @@
     }
   },
   "enums": {
+    "public.mark_event_type": {
+      "name": "mark_event_type",
+      "schema": "public",
+      "values": [
+        "created",
+        "status_changed",
+        "priority_changed",
+        "pinned_changed",
+        "linear_link_updated",
+        "comment_added",
+        "assignee_changed",
+        "label_changed"
+      ]
+    },
     "public.mark_priority": {
       "name": "mark_priority",
       "schema": "public",

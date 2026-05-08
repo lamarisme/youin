@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowDown, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -8,22 +10,13 @@ function isAnchorHref(href: string) {
 
 export function ChromeGlyph({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="10.5" fill="#ffffff" />
-      <path
-        d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.33 2.5L5.5 5.75A10 10 0 0 1 12 2z"
-        fill="#ea4335"
-      />
-      <path
-        d="M3.34 7A10 10 0 0 0 12 22l4.33-7.5A5 5 0 0 1 12 17H7.67L3.34 9.5V7z"
-        fill="#34a853"
-      />
-      <path
-        d="M20.66 7A10 10 0 0 1 12 22l4.33-7.5A5 5 0 0 0 12 7h8.66z"
-        fill="#fbbc05"
-      />
-      <circle cx="12" cy="12" r="4.1" fill="#4285f4" />
-    </svg>
+    <img
+      src="/chrome-logo.svg"
+      alt=""
+      className={className}
+      aria-hidden
+      draggable={false}
+    />
   );
 }
 

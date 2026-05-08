@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { WorkspaceDataProvider } from "@/components/providers/workspace-data-provider";
 import { createClient } from "@/lib/supabase/server";
-import { getWorkspaceBootstrap } from "@/lib/workspace/workspace-actions";
+import { getWorkspaceBootstrap } from "@/lib/workspace/actions";
 
 export const dynamic = "force-dynamic";
 

@@ -42,15 +42,14 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const pathWithSearch = `${request.nextUrl.pathname}${request.nextUrl.search}`;
   const isAuthRoute =
-    path.startsWith("/auth") ||
     path === "/login" ||
-    path === "/signup";
-  // Reset-password requires an active recovery session, so authed users must be
-  // allowed to reach it. Callback handles its own session exchange + redirects.
-  const isAuthRouteAllowedWhileSignedIn =
-    path.startsWith("/auth/reset-password") ||
+    path === "/signup" ||
+    path.startsWith("/auth");
+  const allowSignedInAuthFlow =
     path.startsWith("/auth/callback") ||
-    path.startsWith("/auth/error");
+    path.startsWith("/auth/reset-password") ||
+    path.startsWith("/auth/error") ||
+    path.startsWith("/auth/forgot-password");
   const isProtectedRoute =
     path.startsWith("/dashboard") ||
     path.startsWith("/spaces") ||
@@ -64,7 +63,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isAuthRoute && !isAuthRouteAllowedWhileSignedIn) {
+  if (user && isAuthRoute && !allowSignedInAuthFlow) {
     const redirectUrl = request.nextUrl.clone();
     const nextParam = request.nextUrl.searchParams.get("next");
     if (nextParam && nextParam.startsWith("/")) {

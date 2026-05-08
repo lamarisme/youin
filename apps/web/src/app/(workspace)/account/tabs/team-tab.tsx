@@ -7,26 +7,34 @@ import { useShallow } from "zustand/react/shallow";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCollabStore } from "@/lib/collab-store";
+import {
+  useCancelInviteMutation,
+  useInviteMemberMutation,
+  useRemoveMemberMutation,
+  useUpdateMyWorkspaceUsernameMutation,
+} from "@/lib/queries/use-workspace-mutations";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 
 export function TeamTab() {
-  const { members, invites, userId, isOwner, inviteMember, cancelInvite, removeMember, updateMyWorkspaceUsername } =
-    useCollabStore(
+  const { members, invites, userId, isOwner } = useCollabStore(
     useShallow((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
       userId: s.userId,
-      isOwner: s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
-      inviteMember: s.inviteMember,
-      cancelInvite: s.cancelInvite,
-      removeMember: s.removeMember,
-      updateMyWorkspaceUsername: s.updateMyWorkspaceUsername,
+      isOwner:
+        s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
     })),
   );
+  const { mutateAsync: updateMyWorkspaceUsername, isPending: isSavingUsername } =
+    useUpdateMyWorkspaceUsernameMutation();
+  const { mutateAsync: inviteMember, isPending: isInviting } =
+    useInviteMemberMutation();
+  const { mutate: cancelInvite } = useCancelInviteMutation();
+  const { mutate: removeMember } = useRemoveMemberMutation();
 
   const me = members.find((m) => m.id === userId);
   const [usernameDraft, setUsernameDraft] = useState(me?.username ?? "");
@@ -34,13 +42,14 @@ export function TeamTab() {
     setUsernameDraft(me?.username ?? "");
   }, [me?.username]);
 
-  const [usernameSaving, setUsernameSaving] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [isInviting, setIsInviting] = useState(false);
-  const canInvite = inviteEmail.trim().includes("@") && inviteEmail.trim().includes(".") && !isInviting;
+  const canInvite =
+    inviteEmail.trim().includes("@") &&
+    inviteEmail.trim().includes(".") &&
+    !isInviting;
 
   async function handleSaveUsername() {
-    if (!me || usernameSaving) return;
+    if (!me || isSavingUsername) return;
     try {
       assertValidWorkspaceUsername(usernameDraft);
     } catch (e) {
@@ -48,48 +57,31 @@ export function TeamTab() {
       return;
     }
     if (usernameDraft.trim().toLowerCase() === me.username) return;
-    setUsernameSaving(true);
     try {
       await updateMyWorkspaceUsername(usernameDraft);
-      toast.success("Workspace username updated.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't update username.");
-    } finally {
-      setUsernameSaving(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
   async function handleInvite() {
     if (!canInvite) return;
-    setIsInviting(true);
+    const email = inviteEmail.trim();
     try {
-      await inviteMember(inviteEmail.trim());
-      toast.success(`Invite sent to ${inviteEmail.trim()}.`);
+      await inviteMember(email);
       setInviteEmail("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't send invite.");
-    } finally {
-      setIsInviting(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
-  async function handleCancel(inviteId: string, email: string) {
-    try {
-      await cancelInvite(inviteId);
-      toast.success(`Cancelled invite for ${email}.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't cancel invite.");
-    }
+  function handleCancel(inviteId: string, email: string) {
+    cancelInvite({ inviteId, email });
   }
 
-  async function handleRemove(memberUserId: string, name: string) {
+  function handleRemove(memberUserId: string, name: string) {
     if (!isOwner || memberUserId === userId) return;
-    try {
-      await removeMember(memberUserId);
-      toast.success(`Removed ${name} from the workspace.`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't remove member.");
-    }
+    removeMember({ memberUserId, name });
   }
 
   return (
@@ -121,19 +113,20 @@ export function TeamTab() {
               maxLength={32}
               className="h-9 flex-1 bg-paper font-mono text-[0.8125rem]"
             />
-            <Button
+            <SubmitButton
               type="button"
               size="sm"
+              loading={isSavingUsername}
               disabled={
-                usernameSaving ||
                 usernameDraft.trim().toLowerCase() === me.username ||
                 usernameDraft.trim().length < 2
               }
               onClick={() => void handleSaveUsername()}
-              className="h-9 shrink-0"
+              loadingText="Saving…"
+              className="h-9"
             >
-              {usernameSaving ? "Saving…" : "Save"}
-            </Button>
+              Save
+            </SubmitButton>
           </div>
         </div>
       ) : null}
@@ -150,10 +143,10 @@ export function TeamTab() {
           className="h-9 bg-paper-2 text-[0.8125rem]"
           onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
         />
-        <Button onClick={handleInvite} disabled={!canInvite} className="h-9 shrink-0 sm:px-4">
+        <SubmitButton onClick={handleInvite} loading={isInviting} disabled={!canInvite} loadingText="Inviting..." className="h-9 shrink-0 sm:px-4">
           <UserPlus className="size-3.5" />
-          {isInviting ? "Inviting..." : "Invite"}
-        </Button>
+          Invite
+        </SubmitButton>
       </div>
 
       <div className="space-y-1">

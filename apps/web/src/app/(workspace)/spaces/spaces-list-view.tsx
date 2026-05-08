@@ -2,8 +2,6 @@
 
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
-import { useShallow } from "zustand/react/shallow";
 
 import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
@@ -23,9 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { actionErrorMessage } from "@/lib/action-error";
 import type { SpacePriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { useCreateSpaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 import { SpaceListItem } from "./space-list-item";
 import { useSpaceStats } from "./use-space-stats";
@@ -37,9 +35,9 @@ interface SpacesListViewProps {
 }
 
 export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
-  const { workspace, createSpace } = useCollabStore(
-    useShallow((s) => ({ workspace: s.workspace, createSpace: s.createSpace })),
-  );
+  const workspace = useCollabStore((s) => s.workspace);
+  const { mutateAsync: createSpace, isPending: isCreating } =
+    useCreateSpaceMutation();
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
@@ -72,15 +70,15 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
   const totalOpen = workspace.pins.filter((p) => p.status === "open").length;
 
   async function handleCreate() {
-    if (!newName.trim()) return;
+    if (!newName.trim() || isCreating) return;
     try {
-      const created = await createSpace(newName, newNotes);
+      const created = await createSpace({ name: newName, notes: newNotes });
       setNewName("");
       setNewNotes("");
       setShowCreate(false);
       onSelectSpace(created.id);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't create this space."));
+    } catch {
+      // toast handled by the mutation
     }
   }
 

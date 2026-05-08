@@ -50,6 +50,7 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
   const wsNameRaw = typeof meta.workspace_name === "string" ? meta.workspace_name.trim() : "";
   const fsNameRaw = typeof meta.first_space_name === "string" ? meta.first_space_name.trim() : "";
   const goalRaw = typeof meta.workspace_goal === "string" ? meta.workspace_goal.trim() : "";
+  const usernameRaw = typeof meta.workspace_username === "string" ? meta.workspace_username.trim() : undefined;
 
   const teammateInvites = Array.isArray(meta.teammate_invites)
     ? (meta.teammate_invites as unknown[]).filter((v): v is string => typeof v === "string")
@@ -62,7 +63,9 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
     p_space_name: fsNameRaw || "General",
     p_space_notes: goalRaw,
     p_invite_emails: teammateInvites,
+    p_username: usernameRaw && usernameRaw.length >= 2 ? usernameRaw : null,
   });
   if (bsErr || !wid) throw bsErr ?? new Error("Failed to bootstrap workspace.");
+
   return wid as string;
 }

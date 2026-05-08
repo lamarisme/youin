@@ -3,6 +3,7 @@
 import { CheckCircle2, CircleDashed, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
+import { SubmitButton } from "@/components/ui/submit-button";
 import { FadeIn } from "@/components/motion";
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
@@ -128,17 +129,18 @@ export function BulkActionBar({
                 Cancel
               </Button>
             </DialogClose>
-            <Button
+            <SubmitButton
               type="button"
-              disabled={busy}
+              loading={busy}
+              loadingText="Deleting…"
               onClick={async () => {
                 await run(onDelete);
                 setConfirmDelete(false);
               }}
               className="bg-mark text-paper hover:bg-mark-bright"
             >
-              {busy ? "Deleting…" : `Delete ${count === 1 ? "mark" : `${count} marks`}`}
-            </Button>
+              {`Delete ${count === 1 ? "mark" : `${count} marks`}`}
+            </SubmitButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

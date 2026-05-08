@@ -20,9 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import {
+  useCreatePinMutation,
+  useDeletePinMutation,
+  useTogglePinStatusMutation,
+  useUpdatePinPriorityMutation,
+} from "@/lib/queries/use-workspace-mutations";
 import { FadeIn } from "@/components/motion";
 import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
@@ -36,25 +41,17 @@ import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 const PAGE_SIZE = 6;
 
 export function TriageView() {
-  const {
-    workspace,
-    workspaceId,
-    createPin,
-    userId,
-    togglePinStatus,
-    updatePinPriority,
-    deletePin,
-  } = useCollabStore(
+  const { workspace, workspaceId, userId } = useCollabStore(
     useShallow((s) => ({
       workspace: s.workspace,
       workspaceId: s.workspaceId,
-      createPin: s.createPin,
       userId: s.userId,
-      togglePinStatus: s.togglePinStatus,
-      updatePinPriority: s.updatePinPriority,
-      deletePin: s.deletePin,
     })),
   );
+  const { mutateAsync: createPin } = useCreatePinMutation();
+  const { mutateAsync: togglePinStatus } = useTogglePinStatusMutation();
+  const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();
+  const { mutateAsync: deletePin } = useDeletePinMutation();
   const { filters, update } = useDashboardFilters();
   const { views: savedViews, saveView, deleteView } = useSavedViews(workspaceId);
 
@@ -152,14 +149,15 @@ export function TriageView() {
       setSelectedIds(new Set());
       return;
     }
-    try {
-      await Promise.all(targets.map((p) => togglePinStatus(p.id)));
+    const results = await Promise.allSettled(
+      targets.map((p) => togglePinStatus(p.id)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
       toast.success(
         `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
       );
-      setSelectedIds(new Set());
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't update those marks."));
     }
   }
 
@@ -169,24 +167,26 @@ export function TriageView() {
       toast.success("Already set.");
       return;
     }
-    try {
-      await Promise.all(targets.map((p) => updatePinPriority(p.id, priority)));
-      toast.success(`${targets.length} mark${targets.length === 1 ? "" : "s"} updated.`);
-      setSelectedIds(new Set());
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't update priority."));
+    const results = await Promise.allSettled(
+      targets.map((p) => updatePinPriority({ pinId: p.id, priority })),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
+      toast.success(
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} updated.`,
+      );
     }
   }
 
   async function handleBulkDelete() {
     const ids = selectedPins.map((p) => p.id);
     if (ids.length === 0) return;
-    try {
-      await Promise.all(ids.map((id) => deletePin(id)));
+    const results = await Promise.allSettled(ids.map((id) => deletePin(id)));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    if (failed === 0) {
       toast.success(`${ids.length} mark${ids.length === 1 ? "" : "s"} deleted.`);
-      setSelectedIds(new Set());
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't delete those marks."));
     }
   }
 
@@ -215,8 +215,8 @@ export function TriageView() {
       });
       update({ spaceId: targetSpace.id, markId: created.displayKey });
       setShowNew(false);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't create this mark."));
+    } catch {
+      // toast handled by the mutation
     }
   }
 

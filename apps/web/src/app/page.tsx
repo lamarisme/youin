@@ -8,6 +8,7 @@ import {
   LandingHeaderAuth,
   LandingMobileSignIn,
 } from "@/components/landing-header-auth";
+import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 
 const loopSteps = [
@@ -134,6 +135,7 @@ export default function Home() {
 
       <main id="main" className="section-stack page-y-loose">
         {/* ── Hero ──────────────────────────────────────────── */}
+        <FadeIn>
         <section className="shell">
           <h1 className="text-editorial text-ink">
             Your to-do list lives on your&nbsp;app.
@@ -149,8 +151,10 @@ export default function Home() {
             Chrome extension &middot; npm dev dep &middot; Linear &middot; GitHub &middot; Jira
           </p>
         </section>
+        </FadeIn>
 
         {/* ── Problem ──────────────────────────────────────── */}
+        <FadeIn>
         <section id="problem" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="grid gap-6 md:grid-cols-[1fr_1.4fr] md:gap-12">
             <div>
@@ -177,8 +181,10 @@ export default function Home() {
             </div>
           </div>
         </section>
+        </FadeIn>
 
         {/* ── How it works ─────────────────────────────────── */}
+        <FadeIn>
         <section id="loop" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">How it works</p>
@@ -197,8 +203,10 @@ export default function Home() {
             ))}
           </div>
         </section>
+        </FadeIn>
 
         {/* ── Who it's for ─────────────────────────────────── */}
+        <FadeIn>
         <section id="who" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Who it&rsquo;s for</p>
@@ -218,8 +226,10 @@ export default function Home() {
             ))}
           </div>
         </section>
+        </FadeIn>
 
         {/* ── Pricing ──────────────────────────────────────── */}
+        <FadeIn>
         <section id="pricing" className="shell scroll-mt-32 md:scroll-mt-20">
           <div className="mb-10">
             <p className="text-eyebrow mb-2">Pricing</p>
@@ -270,8 +280,10 @@ export default function Home() {
             ))}
           </div>
         </section>
+        </FadeIn>
 
         {/* ── CTA ──────────────────────────────────────────── */}
+        <FadeIn>
         <section id="install" className="border-t border-rule bg-paper-2 scroll-mt-32 md:scroll-mt-20">
           <div className="shell page-y-loose grid gap-8 md:grid-cols-[1.3fr_1fr] md:items-center">
             <div>
@@ -306,6 +318,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        </FadeIn>
       </main>
 
       {/* ── Footer ─────────────────────────────────────────── */}

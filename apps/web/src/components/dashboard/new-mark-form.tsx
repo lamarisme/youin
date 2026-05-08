@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer } from "react";
+import { useEffect, useMemo, useReducer, useState } from "react";
 
 import { Field } from "@/components/field";
 import { FilterSelect } from "@/components/filter-select";
@@ -11,10 +11,13 @@ import { Surface } from "@/components/surface";
 import { LabelPicker } from "@/components/label-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
+import { KeyboardHint } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { useCreateLabelMutation } from "@/lib/queries/use-workspace-mutations";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 const UNASSIGNED = "__unassigned";
@@ -92,11 +95,12 @@ export function NewMarkForm({
   variant = "surface",
   targetSpaceLabel,
 }: NewMarkFormProps) {
-  const createLabel = useCollabStore((s) => s.createLabel);
+  const { mutateAsync: createLabel } = useCreateLabelMutation();
   const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
     ? defaultAssigneeId
     : UNASSIGNED;
   const [state, dispatch] = useReducer(reducer, makeInitial(assigneeDefault));
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open === false) dispatch({ type: "reset", assigneeDefault });
@@ -119,17 +123,22 @@ export function NewMarkForm({
   );
 
   async function handleSubmit() {
-    if (!canSubmit) return;
-    const normalizedPage = normalizePagePath(state.page);
-    await onSubmit({
-      title: state.title,
-      page: normalizedPage,
-      description: state.description,
-      labelIds: state.labelIds,
-      priority: state.priority,
-      assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
-    });
-    dispatch({ type: "reset", assigneeDefault });
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const normalizedPage = normalizePagePath(state.page);
+      await onSubmit({
+        title: state.title,
+        page: normalizedPage,
+        description: state.description,
+        labelIds: state.labelIds,
+        priority: state.priority,
+        assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
+      });
+      dispatch({ type: "reset", assigneeDefault });
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -140,7 +149,11 @@ export function NewMarkForm({
   }
 
   async function handleCreateLabel(name: string): Promise<WorkspaceLabel | undefined> {
-    await createLabel(name);
+    try {
+      await createLabel(name);
+    } catch {
+      return undefined;
+    }
     const next = useCollabStore.getState().workspace.labels;
     return next.find((l) => l.name.trim().toLowerCase() === name.trim().toLowerCase());
   }
@@ -240,16 +253,16 @@ export function NewMarkForm({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-2">
-        <KeyboardHint />
+        <KeyboardHint keys={["⌘", "Enter"]} action="to create" />
         <div className="flex items-center gap-2">
           {onCancel ? (
             <Button variant="ghost" onClick={onCancel} className="h-9">
               Cancel
             </Button>
           ) : null}
-          <Button onClick={handleSubmit} disabled={!canSubmit} className="h-9">
+          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-9">
             Create mark
-          </Button>
+          </SubmitButton>
         </div>
       </div>
     </div>
@@ -269,22 +282,4 @@ function normalizePagePath(value: string): string {
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-}
-
-function KeyboardHint() {
-  return (
-    <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-      <Kbd>⌘</Kbd>
-      <Kbd>Enter</Kbd>
-      <span>to create</span>
-    </p>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-      {children}
-    </kbd>
-  );
 }

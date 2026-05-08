@@ -1,7 +1,7 @@
 /*
   youin onboarding RPCs (idempotent).
 
-  Run AFTER bootstrap.sql / rls-and-auth.sql. Safe to re-run.
+  Run AFTER `setup.sql` once Drizzle migrations have created the public tables.
 
   Provides two SECURITY DEFINER functions used during user creation:
 
@@ -19,7 +19,9 @@
 */
 
 DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[]);
+DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[], text);
 DROP FUNCTION IF EXISTS public.attach_user_via_invite();
+DROP FUNCTION IF EXISTS public.attach_user_via_invite(text);
 
 CREATE OR REPLACE FUNCTION public.member_username_from_email(p_workspace_id uuid, p_email text)
 RETURNS text
@@ -57,7 +59,7 @@ BEGIN
       EXIT;
     END IF;
   END LOOP;
-  RETURN lower(cand);
+  RETURN COALESCE(NULLIF(trim(lower(cand)), ''), 'member');
 END;
 $$;
 
@@ -67,7 +69,8 @@ CREATE OR REPLACE FUNCTION public.bootstrap_workspace(
   p_workspace_name text,
   p_space_name text DEFAULT 'General',
   p_space_notes text DEFAULT '',
-  p_invite_emails text[] DEFAULT ARRAY[]::text[]
+  p_invite_emails text[] DEFAULT ARRAY[]::text[],
+  p_username text DEFAULT NULL
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -79,24 +82,50 @@ DECLARE
   v_workspace_id uuid;
   v_invite_email text;
   v_space_code text;
+  v_resolved_username text;
+  v_user_email text;
 BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  SELECT COALESCE(email, '') INTO v_user_email
+    FROM auth.users WHERE id = v_user_id LIMIT 1;
+  IF NOT FOUND THEN
+    v_user_email := '';
   END IF;
 
   INSERT INTO public.workspaces (name)
   VALUES (COALESCE(NULLIF(TRIM(p_workspace_name), ''), 'My workspace'))
   RETURNING id INTO v_workspace_id;
 
+  -- Resolve username: try provided username first, fall back to auto-generation
+  IF p_username IS NOT NULL AND length(TRIM(p_username)) >= 2 THEN
+    v_resolved_username := lower(TRIM(p_username));
+    -- If taken, auto-generate from email instead
+    IF EXISTS (
+      SELECT 1 FROM workspace_members wm
+      WHERE wm.workspace_id = v_workspace_id
+        AND lower(wm.username) = v_resolved_username
+    ) THEN
+      v_resolved_username := public.member_username_from_email(v_workspace_id, v_user_email);
+    END IF;
+  ELSE
+    v_resolved_username := public.member_username_from_email(v_workspace_id, v_user_email);
+  END IF;
+
+  v_resolved_username := COALESCE(
+    NULLIF(trim(lower(v_resolved_username)), ''),
+    public.member_username_from_email(v_workspace_id, v_user_email),
+    'member'
+  );
+
   INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
   VALUES (
     v_workspace_id,
     v_user_id,
     'owner'::public.workspace_role,
-    public.member_username_from_email(
-      v_workspace_id,
-      (SELECT COALESCE(email, '') FROM auth.users WHERE id = v_user_id LIMIT 1)
-    )
+    left(v_resolved_username, 48)
   );
 
   v_space_code :=
@@ -144,7 +173,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.attach_user_via_invite()
+CREATE OR REPLACE FUNCTION public.attach_user_via_invite(p_token text DEFAULT NULL)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -169,13 +198,24 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  SELECT
-    array_agg(id ORDER BY invited_at DESC),
-    (array_agg(workspace_id ORDER BY invited_at DESC))[1]
-  INTO v_invite_ids, v_workspace_id
-  FROM public.workspace_invites
-  WHERE lower(email) = v_email
-    AND status = 'pending';
+  -- If a token is provided, match by token; otherwise match by email
+  IF p_token IS NOT NULL THEN
+    SELECT
+      array_agg(id ORDER BY invited_at DESC),
+      (array_agg(workspace_id ORDER BY invited_at DESC))[1]
+    INTO v_invite_ids, v_workspace_id
+    FROM public.workspace_invites
+    WHERE token = p_token
+      AND status = 'pending';
+  ELSE
+    SELECT
+      array_agg(id ORDER BY invited_at DESC),
+      (array_agg(workspace_id ORDER BY invited_at DESC))[1]
+    INTO v_invite_ids, v_workspace_id
+    FROM public.workspace_invites
+    WHERE lower(email) = v_email
+      AND status = 'pending';
+  END IF;
 
   IF v_workspace_id IS NULL THEN
     RETURN NULL;
@@ -186,7 +226,13 @@ BEGIN
     v_workspace_id,
     v_user_id,
     'member'::public.workspace_role,
-    public.member_username_from_email(v_workspace_id, v_email)
+    COALESCE(
+      NULLIF(
+        trim(lower(public.member_username_from_email(v_workspace_id, v_email))),
+        ''
+      ),
+      'member'
+    )
   )
   ON CONFLICT (workspace_id, user_id) DO NOTHING;
 
@@ -198,7 +244,7 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.bootstrap_workspace(text, text, text, text[]) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.attach_user_via_invite() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.bootstrap_workspace(text, text, text, text[]) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.attach_user_via_invite() TO authenticated;
+REVOKE ALL ON FUNCTION public.bootstrap_workspace(text, text, text, text[], text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.attach_user_via_invite(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.bootstrap_workspace(text, text, text, text[], text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.attach_user_via_invite(text) TO authenticated;

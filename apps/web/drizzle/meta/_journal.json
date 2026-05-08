@@ -5,64 +5,36 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1777653414998,
-      "tag": "0000_polite_wong",
+      "when": 1778169098507,
+      "tag": "0000_gray_hobgoblin",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1777653810327,
-      "tag": "0001_first_roxanne_simpson",
+      "when": 1778170250873,
+      "tag": "0001_workspace_username_unique",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1777835475911,
-      "tag": "0002_third_owl",
+      "when": 1778173547616,
+      "tag": "0002_schema_hardening",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1777835504293,
-      "tag": "0003_tranquil_bloodstorm",
+      "when": 1778179000000,
+      "tag": "0003_mark_event_triggers",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "7",
-      "when": 1777921904293,
-      "tag": "0004_extend_mark_event_type",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1778073023941,
-      "tag": "0005_space_codes_mark_seq",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1778074738070,
-      "tag": "0006_workspace_member_username",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1778075562805,
-      "tag": "0007_workspace_members_update_self",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1778170000000,
-      "tag": "0008_profiles_bio_to_about",
+      "when": 1778180000000,
+      "tag": "0004_drop_marks_linear_url",
       "breakpoints": true
     }
   ]

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
   ArrowLeft,
   ArrowRight,
@@ -15,7 +14,6 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
 
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { EmptyState } from "@/components/empty-state";
@@ -26,6 +24,7 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Surface } from "@/components/surface";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,9 +35,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { actionErrorMessage } from "@/lib/action-error";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import {
+  useCreatePinMutation,
+  useDeleteSpaceMutation,
+  useToggleSpacePinnedMutation,
+  useUpdateSpaceMutation,
+  useUpdateSpacePriorityMutation,
+} from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -50,17 +55,15 @@ interface SpaceDetailViewProps {
 }
 
 export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
-  const { workspace, updateSpace, toggleSpacePinned, updateSpacePriority, deleteSpace, createPin, userId } = useCollabStore(
-    useShallow((s) => ({
-      workspace: s.workspace,
-      updateSpace: s.updateSpace,
-      toggleSpacePinned: s.toggleSpacePinned,
-      updateSpacePriority: s.updateSpacePriority,
-      deleteSpace: s.deleteSpace,
-      createPin: s.createPin,
-      userId: s.userId,
-    })),
-  );
+  const workspace = useCollabStore((s) => s.workspace);
+  const userId = useCollabStore((s) => s.userId);
+  const { mutateAsync: updateSpace, isPending: isSavingEdit } =
+    useUpdateSpaceMutation();
+  const { mutate: toggleSpacePinned } = useToggleSpacePinnedMutation();
+  const { mutate: updateSpacePriority } = useUpdateSpacePriorityMutation();
+  const { mutateAsync: deleteSpace, isPending: isDeleting } =
+    useDeleteSpaceMutation();
+  const { mutateAsync: createPin } = useCreatePinMutation();
 
   const statsMap = useSpaceStats(workspace);
   const stats = statsMap.get(space.id);
@@ -75,10 +78,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(space.name);
   const [editNotes, setEditNotes] = useState(space.notes);
-  const [savingEdit, setSavingEdit] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   function startEdit() {
     setEditName(space.name);
@@ -87,29 +88,27 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   }
 
   async function saveEdit() {
-    if (savingEdit || !editName.trim()) return;
-    setSavingEdit(true);
+    if (isSavingEdit || !editName.trim()) return;
     try {
-      await updateSpace(space.id, { name: editName, notes: editNotes });
+      await updateSpace({
+        spaceId: space.id,
+        name: editName,
+        notes: editNotes,
+      });
       setEditing(false);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't save these details."));
-    } finally {
-      setSavingEdit(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
   async function handleDelete() {
-    if (deleting) return;
-    setDeleting(true);
+    if (isDeleting) return;
     try {
       await deleteSpace(space.id);
       setConfirmDelete(false);
       onBack();
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't delete this space."));
-    } finally {
-      setDeleting(false);
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -132,8 +131,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         priority: input.priority,
       });
       setShowNew(false);
-    } catch (e) {
-      toast.error(actionErrorMessage(e, "Couldn't create this mark."));
+    } catch {
+      // toast handled by the mutation
     }
   }
 
@@ -177,11 +176,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <Button
                 size="sm"
                 variant={space.pinned ? "default" : "outline"}
-                onClick={() =>
-                  toggleSpacePinned(space.id).catch((e) =>
-                    toast.error(actionErrorMessage(e, "Couldn't update pin status.")),
-                  )
-                }
+                onClick={() => toggleSpacePinned(space.id)}
                 className="h-8 px-2.5"
               >
                 <Bookmark className="size-3.5" />
@@ -190,9 +185,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <FilterSelect<SpacePriority>
                 value={space.priority}
                 onValueChange={(v) =>
-                  updateSpacePriority(space.id, v).catch((e) =>
-                    toast.error(actionErrorMessage(e, "Couldn't update priority.")),
-                  )
+                  updateSpacePriority({ spaceId: space.id, priority: v })
                 }
                 options={CANONICAL_PIN_PRIORITY_OPTIONS}
                 ariaLabel="Space priority"
@@ -410,7 +403,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         </aside>
       </div>
 
-      <Dialog open={editing} onOpenChange={(open) => !savingEdit && setEditing(open)}>
+      <Dialog open={editing} onOpenChange={(open) => !isSavingEdit && setEditing(open)}>
         <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit space</DialogTitle>
@@ -456,18 +449,20 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 <Button
                   variant="ghost"
                   onClick={() => setEditing(false)}
-                  disabled={savingEdit}
+                  disabled={isSavingEdit}
                   className="h-9"
                 >
                   Cancel
                 </Button>
-                <Button
+                <SubmitButton
                   onClick={saveEdit}
-                  disabled={savingEdit || !editName.trim()}
+                  loading={isSavingEdit}
+                  disabled={!editName.trim()}
+                  loadingText="Saving…"
                   className="h-9"
                 >
-                  {savingEdit ? "Saving…" : "Save changes"}
-                </Button>
+                  Save changes
+                </SubmitButton>
               </div>
             </div>
           </div>
@@ -495,7 +490,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirmDelete} onOpenChange={(open) => !deleting && setConfirmDelete(open)}>
+      <Dialog open={confirmDelete} onOpenChange={(open) => !isDeleting && setConfirmDelete(open)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this space?</DialogTitle>
@@ -513,18 +508,19 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             <Button
               variant="ghost"
               onClick={() => setConfirmDelete(false)}
-              disabled={deleting}
+              disabled={isDeleting}
               className="h-9"
             >
               Cancel
             </Button>
-            <Button
+            <SubmitButton
               onClick={handleDelete}
-              disabled={deleting}
+              loading={isDeleting}
+              loadingText="Deleting…"
               className="h-9 bg-mark text-paper hover:bg-mark-bright"
             >
-              {deleting ? "Deleting…" : "Delete space"}
-            </Button>
+              Delete space
+            </SubmitButton>
           </div>
         </DialogContent>
       </Dialog>
