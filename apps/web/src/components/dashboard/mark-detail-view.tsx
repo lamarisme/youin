@@ -85,16 +85,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     () => new Map(workspace.members.map((m) => [m.id, m])),
     [workspace.members],
   );
-  const dateTimeFormatter = useMemo(
-    () =>
-      new Intl.DateTimeFormat(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    [],
-  );
 
   const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
 
@@ -249,22 +239,13 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             />
           </div>
 
-          <MarkDetailCapture pin={pin} dateTimeFormatter={dateTimeFormatter} />
+          <MarkDetailCapture pin={pin} />
         </div>
 
         <div className="lg:border-l lg:border-rule lg:pl-6">
           <div className="lg:sticky lg:top-8 space-y-6">
-            <CommentThread
-              pin={pin}
-              comments={comments}
-              membersById={membersById}
-              dateTimeFormatter={dateTimeFormatter}
-            />
-            <MarkHistory
-              events={events}
-              membersById={membersById}
-              dateTimeFormatter={dateTimeFormatter}
-            />
+            <CommentThread pin={pin} comments={comments} membersById={membersById} />
+            <MarkHistory events={events} membersById={membersById} />
           </div>
         </div>
       </FadeIn>

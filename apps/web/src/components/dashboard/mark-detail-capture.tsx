@@ -3,6 +3,7 @@
 import { Globe, Monitor, Mouse } from "lucide-react";
 
 import type { PinItem } from "@/lib/collab-types";
+import { formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 import { shortMarkLabel } from "./format-mark-event";
@@ -10,10 +11,9 @@ import { MarkPageOpenButton } from "./mark-page-open";
 
 interface MarkDetailCaptureProps {
   pin: PinItem;
-  dateTimeFormatter: Intl.DateTimeFormat;
 }
 
-export function MarkDetailCapture({ pin, dateTimeFormatter }: MarkDetailCaptureProps) {
+export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
   const cap = pin.capture;
   return (
     <>
@@ -63,11 +63,7 @@ export function MarkDetailCapture({ pin, dateTimeFormatter }: MarkDetailCaptureP
           <MetaCell icon={Globe} label="Browser" value={cap.browser ?? "—"} />
           {cap.os ? <MetaCell icon={Monitor} label="OS" value={cap.os} /> : null}
           {cap.capturedAt ? (
-            <MetaCell
-              icon={Globe}
-              label="Captured"
-              value={dateTimeFormatter.format(new Date(cap.capturedAt))}
-            />
+            <MetaCell icon={Globe} label="Captured" value={formatDateTime(cap.capturedAt)} />
           ) : null}
         </div>
       ) : null}

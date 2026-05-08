@@ -93,10 +93,25 @@ function SignUpPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const canContinueStep1 = name.trim().length > 1 && email.includes("@") && password.length >= 8 && agreedToTerms && username.trim().length >= 2;
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailIsValid = EMAIL_RE.test(email.trim());
+  const emailFieldError =
+    email.length > 0 && !emailIsValid ? "Enter a complete email like name@company.com." : null;
+  const usernameFieldError =
+    username.length > 0 && username.trim().length < 2
+      ? "At least 2 characters."
+      : null;
+  const passwordFieldError =
+    password.length > 0 && password.length < 8 ? "Must be at least 8 characters." : null;
+  const canContinueStep1 =
+    name.trim().length > 1 &&
+    emailIsValid &&
+    password.length >= 8 &&
+    agreedToTerms &&
+    username.trim().length >= 2;
   const canContinueStep2 = workspaceName.trim().length > 1 && firstSpaceName.trim().length > 1;
   const strength = passwordStrength(password);
-  const canInvite = inviteInput.trim().includes("@") && inviteInput.trim().includes(".");
+  const canInvite = EMAIL_RE.test(inviteInput.trim());
   const isInvited = Boolean(inviteToken);
 
   function generateUsernameFromEmail(emailStr: string): string {
@@ -235,7 +250,7 @@ function SignUpPageContent() {
                     autoFocus
                   />
                 </Field>
-                <Field id="email" label="Work email">
+                <Field id="email" label="Work email" error={emailFieldError}>
                   <Input
                     id="email"
                     type="email"
@@ -243,6 +258,8 @@ function SignUpPageContent() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@agency.com"
                     autoComplete="email"
+                    aria-invalid={Boolean(emailFieldError) || undefined}
+                    aria-describedby={emailFieldError ? "email-error" : undefined}
                     className="h-10 bg-paper text-[0.875rem]"
                   />
                 </Field>
@@ -251,6 +268,7 @@ function SignUpPageContent() {
               <Field
                 id="password"
                 label="Password"
+                error={passwordFieldError}
                 hint={
                   <PasswordStrength score={strength} />
                 }
@@ -261,6 +279,8 @@ function SignUpPageContent() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
                   autoComplete="new-password"
+                  aria-invalid={Boolean(passwordFieldError) || undefined}
+                  aria-describedby={passwordFieldError ? "password-error" : undefined}
                   className="h-10 bg-paper text-[0.875rem]"
                 />
               </Field>
@@ -268,6 +288,7 @@ function SignUpPageContent() {
               <Field
                 id="username"
                 label="Workspace username"
+                error={usernameFieldError}
                 hint={
                   <p className="text-[0.6875rem] text-ink-3">
                     Unique within your workspace. Lowercase letters, numbers, and underscores.
@@ -284,13 +305,15 @@ function SignUpPageContent() {
                       setUsername(val);
                     }}
                     onBlur={() => {
-                      if (!username && email.includes("@")) {
+                      if (!username && emailIsValid) {
                         setUsername(generateUsernameFromEmail(email));
                       }
                     }}
-                    placeholder={email.includes("@") ? generateUsernameFromEmail(email) : "mira"}
+                    placeholder={emailIsValid ? generateUsernameFromEmail(email) : "mira"}
                     autoComplete="username"
                     maxLength={32}
+                    aria-invalid={Boolean(usernameFieldError) || undefined}
+                    aria-describedby={usernameFieldError ? "username-error" : undefined}
                     className="h-10 bg-paper text-[0.875rem]"
                   />
                 </div>

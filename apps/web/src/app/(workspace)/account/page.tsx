@@ -18,15 +18,15 @@ export default function AccountPage() {
   return (
     <PageContainer>
       <AppHeader
-        title="Settings"
-        eyebrow="Account"
-        subtitle="Manage workspace access, controls, and your reviewer identity."
+        title="Account"
+        eyebrow="Settings"
+        subtitle="Manage your workspace, team, and profile."
       />
 
       <Tabs defaultValue="overview" className="space-y-7">
         <TabsList className="rounded-xl border border-rule bg-paper-2 p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="team">Team access ({memberCount})</TabsTrigger>
+          <TabsTrigger value="team">Team ({memberCount})</TabsTrigger>
           <TabsTrigger value="labels">Labels ({labelCount})</TabsTrigger>
           <TabsTrigger value="profile">Profile</TabsTrigger>
         </TabsList>

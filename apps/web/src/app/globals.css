@@ -408,12 +408,20 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pin-dot::after {
-      animation: none;
+    /* Global short-circuit: neutralize transitions, animations, and smooth scroll
+       so Tailwind utility classes (transition-*, duration-*, animate-*) degrade
+       gracefully without each component having to opt in. WCAG 2.3.3. */
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
     }
 
-    .interactive-lift {
-      transition: none;
+    .pin-dot::after {
+      animation: none;
     }
 
     .interactive-lift:hover,

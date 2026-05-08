@@ -1,5 +1,6 @@
 "use client";
 
+import { format } from "date-fns";
 import { useMemo } from "react";
 
 import { cn } from "@/lib/utils";
@@ -116,9 +117,5 @@ function Legend({ max }: { max: number }) {
 
 function formatDate(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  return format(new Date(y, m - 1, d), "EEE, MMM d");
 }

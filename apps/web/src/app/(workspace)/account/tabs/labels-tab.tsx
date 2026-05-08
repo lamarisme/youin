@@ -1,6 +1,7 @@
 "use client";
 
-import { Tag, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
@@ -29,6 +30,7 @@ export function LabelsTab() {
     useDeleteLabelMutation();
 
   const [pending, setPending] = useState<WorkspaceLabel | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const usageById = useMemo(() => {
     const counts = new Map<string, number>();
@@ -40,11 +42,14 @@ export function LabelsTab() {
 
   async function handleDelete() {
     if (!pending || isDeleting) return;
+    setDeleteError(null);
     try {
       await deleteLabel({ labelId: pending.id, name: pending.name });
       setPending(null);
-    } catch {
-      // toast handled by the mutation
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "Couldn't delete the label. Try again.",
+      );
     }
   }
 
@@ -53,14 +58,23 @@ export function LabelsTab() {
       <div>
         <h2 className="font-display text-lg font-semibold text-ink">Labels</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">
-          Labels are created on the fly when you label a mark. Manage and clean up unused ones here.
+          Labels appear here when you tag a mark. Use this list to remove ones you no longer need.
         </p>
       </div>
 
       {labels.length === 0 ? (
         <EmptyState
+          icon={Tag}
           title="No labels yet."
-          description="Labels appear here once you create one from the mark detail or new-mark form."
+          description="Open a mark in the dashboard and add a label — it will show up here."
+          action={
+            <Button asChild size="sm" variant="outline" className="h-8">
+              <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
+                Open dashboard
+                <ArrowRight className="size-3.5" aria-hidden />
+              </Link>
+            </Button>
+          }
         />
       ) : (
         <ul className="divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
@@ -94,7 +108,15 @@ export function LabelsTab() {
         </ul>
       )}
 
-      <Dialog open={Boolean(pending)} onOpenChange={(open) => !isDeleting && !open && setPending(null)}>
+      <Dialog
+        open={Boolean(pending)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) {
+            setPending(null);
+            setDeleteError(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this label?</DialogTitle>
@@ -111,10 +133,21 @@ export function LabelsTab() {
               ) : null}
             </DialogDescription>
           </DialogHeader>
+          {deleteError ? (
+            <p
+              role="alert"
+              className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
+            >
+              {deleteError}
+            </p>
+          ) : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="ghost"
-              onClick={() => setPending(null)}
+              onClick={() => {
+                setPending(null);
+                setDeleteError(null);
+              }}
               disabled={isDeleting}
               className="h-9"
             >

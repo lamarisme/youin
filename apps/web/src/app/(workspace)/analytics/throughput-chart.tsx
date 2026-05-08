@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 
+import { formatDateShort } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 import type { ThroughputBucket } from "./use-analytics-stats";
@@ -140,6 +141,5 @@ function LegendDot({ color, label }: { color: "mark" | "ok"; label: string }) {
 
 function formatDayLabel(iso: string): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return formatDateShort(new Date(y, m - 1, d));
 }

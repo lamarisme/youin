@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
 import { useCollabStore } from "@/lib/collab-store";
+import { formatDateTime, formatRelative } from "@/lib/dates";
 import {
   useAddCommentsMutation,
   useDeleteCommentMutation,
@@ -66,10 +67,9 @@ interface CommentThreadProps {
   pin: PinItem;
   comments: PinComment[];
   membersById: Map<string, TeamMember>;
-  dateTimeFormatter: Intl.DateTimeFormat;
 }
 
-export function CommentThread({ pin, comments, membersById, dateTimeFormatter }: CommentThreadProps) {
+export function CommentThread({ pin, comments, membersById }: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
   const members = useCollabStore((s) => s.workspace.members);
   const { mutateAsync: addComments } = useAddCommentsMutation();
@@ -146,7 +146,6 @@ export function CommentThread({ pin, comments, membersById, dateTimeFormatter }:
             comment={comment}
             author={membersById.get(comment.authorId)}
             isOwn={comment.authorId === userId}
-            dateTimeFormatter={dateTimeFormatter}
           />
         ))}
       </div>
@@ -218,10 +217,9 @@ interface CommentItemProps {
   comment: PinComment;
   author?: TeamMember;
   isOwn: boolean;
-  dateTimeFormatter: Intl.DateTimeFormat;
 }
 
-function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemProps) {
+function CommentItem({ comment, author, isOwn }: CommentItemProps) {
   const members = useCollabStore((s) => s.workspace.members);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
@@ -276,9 +274,13 @@ function CommentItem({ comment, author, isOwn, dateTimeFormatter }: CommentItemP
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-[0.625rem] text-ink-3">
-              {dateTimeFormatter.format(new Date(comment.createdAt))}
-            </span>
+            <time
+              dateTime={comment.createdAt}
+              title={formatDateTime(comment.createdAt)}
+              className="text-[0.625rem] text-ink-3"
+            >
+              {formatRelative(comment.createdAt)}
+            </time>
             {isOwn && !editing ? (
               <span className="ml-1 hidden gap-0.5 group-hover:inline-flex group-focus-within:inline-flex">
                 {comment.type === "text" ? (

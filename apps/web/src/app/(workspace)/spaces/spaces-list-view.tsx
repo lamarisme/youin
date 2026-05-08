@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type { SpacePriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { formatDayKey } from "@/lib/dates";
 import { useCreateSpaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 import { SpaceListItem } from "./space-list-item";
@@ -42,11 +43,12 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newNotes, setNewNotes] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | SpacePriority>("all");
   const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
   const [page, setPage] = useState(1);
 
-  const todayName = `Release-${new Date().toISOString().slice(0, 10)}`;
+  const todayName = `Release-${formatDayKey()}`;
 
   const statsMap = useSpaceStats(workspace);
 
@@ -71,14 +73,17 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
 
   async function handleCreate() {
     if (!newName.trim() || isCreating) return;
+    setCreateError(null);
     try {
       const created = await createSpace({ name: newName, notes: newNotes });
       setNewName("");
       setNewNotes("");
       setShowCreate(false);
       onSelectSpace(created.id);
-    } catch {
-      // toast handled by the mutation
+    } catch (err) {
+      setCreateError(
+        err instanceof Error ? err.message : "Couldn't create the space. Try again.",
+      );
     }
   }
 
@@ -119,6 +124,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
             if (!open) {
               setNewName("");
               setNewNotes("");
+              setCreateError(null);
             }
           }}
         >
@@ -168,6 +174,14 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
                   className="h-9 bg-paper text-[0.8125rem]"
                 />
               </Field>
+              {createError ? (
+                <p
+                  role="alert"
+                  className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
+                >
+                  {createError}
+                </p>
+              ) : null}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                 <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
                   <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">

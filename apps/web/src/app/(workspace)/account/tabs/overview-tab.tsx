@@ -4,7 +4,6 @@ import { Check, Edit3, X } from "lucide-react";
 import { useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { Surface } from "@/components/surface";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,18 +49,55 @@ export function OverviewTab() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Surface padding="none" className="px-4 py-3">
-          <p className="text-eyebrow">Plan</p>
-          <p className="mt-1 font-display text-lg font-semibold text-ink">Team</p>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">Up to 10 members</p>
-        </Surface>
-
-        <Surface padding="none" className="px-4 py-3">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-eyebrow">Workspace</p>
-            {!renaming && isOwner ? (
+    <div className="space-y-10">
+      {/* Workspace identity — primary content. No card chrome; typography carries hierarchy. */}
+      <section className="border-b border-rule pb-8">
+        <p className="text-eyebrow">Workspace</p>
+        {renaming ? (
+          <div className="mt-2 flex items-center gap-1.5">
+            <Input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              autoFocus
+              className="h-10 max-w-md bg-paper text-[0.9375rem] font-display font-semibold"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void save();
+                if (e.key === "Escape") {
+                  setRenaming(false);
+                  setDraft(workspaceName);
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={save}
+              disabled={isSaving || !draft.trim()}
+              className="h-10 px-2.5"
+              aria-label="Save workspace name"
+            >
+              <Check className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setRenaming(false);
+                setDraft(workspaceName);
+              }}
+              className="h-10 px-2.5"
+              aria-label="Cancel rename"
+            >
+              <X className="size-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center gap-2">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
+              {workspaceName || "Workspace"}
+            </h2>
+            {isOwner ? (
               <button
                 type="button"
                 onClick={() => {
@@ -75,79 +111,76 @@ export function OverviewTab() {
               </button>
             ) : null}
           </div>
-          {renaming ? (
-            <div className="mt-1 flex items-center gap-1.5">
-              <Input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                autoFocus
-                className="h-8 bg-paper text-[0.8125rem]"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void save();
-                  if (e.key === "Escape") {
-                    setRenaming(false);
-                    setDraft(workspaceName);
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                size="sm"
-                onClick={save}
-                disabled={isSaving || !draft.trim()}
-                className="h-8 px-2"
-                aria-label="Save workspace name"
-              >
-                <Check className="size-3.5" />
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setRenaming(false);
-                  setDraft(workspaceName);
-                }}
-                className="h-8 px-2"
-                aria-label="Cancel rename"
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-          ) : (
-            <p className="mt-1 font-display text-lg font-semibold text-ink">{workspaceName || "Workspace"}</p>
-          )}
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">Default workspace</p>
-        </Surface>
+        )}
 
-        <Surface padding="none" className="px-4 py-3">
-          <p className="text-eyebrow">Members</p>
-          <p className="mt-1 font-display text-lg font-semibold text-ink">{membersCount}</p>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">
-            {invitesCount} pending invite{invitesCount !== 1 ? "s" : ""}
-          </p>
-        </Surface>
-      </div>
-
-      <div>
-        <h2 className="font-display text-lg font-semibold text-ink">Workspace controls</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">Security and notification settings.</p>
-
-        <div className="mt-5 space-y-2.5">
-          <div className="flex items-center justify-between rounded-md border border-rule px-3 py-2.5">
-            <p className="text-[0.8125rem] text-ink">Two-factor authentication</p>
-            <Badge variant="outline" className="text-[0.625rem]">
-              Coming soon
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-md border border-rule px-3 py-2.5">
-            <p className="text-[0.8125rem] text-ink">Comment digest</p>
-            <Badge variant="outline" className="text-[0.625rem] text-ok">
-              Enabled
-            </Badge>
-          </div>
+        {/* Inline meta chips — denser, less ceremony than separate cards. */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.8125rem] text-ink-2">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-ink-3">Role</span>
+            <span className="font-medium text-ink">{isOwner ? "Owner" : "Member"}</span>
+          </span>
+          <span aria-hidden className="text-rule">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-ink-3">Plan</span>
+            <span className="font-medium text-ink">Team</span>
+            <span className="text-ink-3">(up to 10)</span>
+          </span>
+          <span aria-hidden className="text-rule">·</span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="text-ink-3">Members</span>
+            <span className="font-medium text-ink">{membersCount}</span>
+            {invitesCount > 0 ? (
+              <span className="text-ink-3">
+                · {invitesCount} pending
+              </span>
+            ) : null}
+          </span>
         </div>
-      </div>
+      </section>
+
+      {/* Settings — grouped list, divider-separated rows. Linear-style. */}
+      <section>
+        <h2 className="font-display text-lg font-semibold text-ink">Security & notifications</h2>
+        <p className="mt-1 text-[0.8125rem] text-ink-2">
+          Sign-in protection and how the team hears about activity.
+        </p>
+
+        <ul className="mt-4 divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
+          <SettingRow
+            title="Two-factor authentication"
+            description="Require a code from your phone at sign-in."
+            badge={<Badge variant="outline" className="text-[0.625rem]">Coming soon</Badge>}
+            muted
+          />
+          <SettingRow
+            title="Daily comment summary"
+            description="One email per day with new comments on your marks."
+            badge={<Badge variant="outline" className="text-[0.625rem] text-ok">On</Badge>}
+          />
+        </ul>
+      </section>
     </div>
+  );
+}
+
+function SettingRow({
+  title,
+  description,
+  badge,
+  muted,
+}: {
+  title: string;
+  description: string;
+  badge: React.ReactNode;
+  muted?: boolean;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-4 px-4 py-3.5">
+      <div className={muted ? "opacity-70" : undefined}>
+        <p className="text-[0.8125rem] font-medium text-ink">{title}</p>
+        <p className="mt-0.5 text-[0.6875rem] text-ink-3">{description}</p>
+      </div>
+      <div className="shrink-0">{badge}</div>
+    </li>
   );
 }

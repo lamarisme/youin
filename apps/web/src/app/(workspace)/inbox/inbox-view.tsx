@@ -67,7 +67,24 @@ export function InboxView() {
           description={
             userId
               ? "When teammates act on marks you're assigned to or have commented on, those updates land here."
-              : undefined
+              : "Your inbox is tied to your account. Sign in to see updates on marks you've touched."
+          }
+          action={
+            userId ? (
+              <Button asChild size="sm" variant="outline" className="h-8">
+                <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
+                  Go to dashboard
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild size="sm" className="h-8 bg-mark text-paper hover:bg-mark-bright">
+                <Link href="/login?next=%2Finbox" className="inline-flex items-center gap-1.5">
+                  Sign in
+                  <ArrowRight className="size-3.5" aria-hidden />
+                </Link>
+              </Button>
+            )
           }
           className="mt-2"
         />

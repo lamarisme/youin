@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
+import { formatDate, formatDateShort } from "@/lib/dates";
 import {
   useCreatePinMutation,
   useDeleteSpaceMutation,
@@ -347,11 +348,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   <CalendarDays className="size-3.5 text-ink-3" />
                   <span className="text-ink-2">Created</span>
                   <span className="ml-auto font-medium text-ink">
-                    {new Date(space.createdAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {formatDate(space.createdAt)}
                   </span>
                 </div>
                 {stats?.lastActivity ? (
@@ -359,10 +356,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                     <MessageCircle className="size-3.5 text-ink-3" />
                     <span className="text-ink-2">Last activity</span>
                     <span className="ml-auto font-medium text-ink">
-                      {new Date(stats.lastActivity).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {formatDateShort(stats.lastActivity)}
                     </span>
                   </div>
                 ) : null}

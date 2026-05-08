@@ -5,6 +5,7 @@ import { ArrowRight, Bookmark, CheckCircle2, CircleDashed, MessageCircle } from 
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import type { WorkspaceSpace } from "@/lib/collab-types";
+import { formatDateShort } from "@/lib/dates";
 
 import type { SpaceStats } from "./use-space-stats";
 
@@ -48,7 +49,7 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
             {space.code}
           </span>
           <span className="text-[0.6875rem] text-ink-3">
-            {new Date(space.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            {formatDateShort(space.createdAt)}
           </span>
         </div>
         <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">{space.notes}</p>
