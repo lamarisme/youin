@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -15,6 +16,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { MarkTable } from "@/components/dashboard/mark-table";
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { EmptyState } from "@/components/empty-state";
 import { Field } from "@/components/field";
@@ -46,7 +48,7 @@ import {
   useUpdateSpacePriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
-import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { useSpaceStats } from "./use-space-stats";
 
@@ -66,6 +68,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     useDeleteSpaceMutation();
   const { mutateAsync: createPin } = useCreatePinMutation();
 
+  const router = useRouter();
+
   const statsMap = useSpaceStats(workspace);
   const stats = statsMap.get(space.id);
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
@@ -75,6 +79,11 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     () => workspace.pins.filter((p) => p.spaceId === space.id),
     [workspace.pins, space.id],
   );
+  const commentCountByPinId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of workspace.comments) counts.set(c.pinId, (counts.get(c.pinId) ?? 0) + 1);
+    return counts;
+  }, [workspace.comments]);
   const completionPct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
 
   const [editing, setEditing] = useState(false);
@@ -289,55 +298,17 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 }
               />
             ) : (
-              <div className="space-y-px">
-                {spacePins.map((pin) => {
-                  const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
-                  const assigneeParts = assignee ? memberDisplayParts(assignee, namePref) : null;
-                  return (
-                    <Link
-                      key={pin.id}
-                      href={`/dashboard?space=${space.id}&mark=${encodeURIComponent(pin.displayKey)}`}
-                      className="flex items-start gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-paper-2"
-                    >
-                      <span className={cn("mt-1 size-2 shrink-0 rounded-full", pin.status === "open" ? "bg-mark" : "bg-ok")} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <p className="truncate text-[0.8125rem] font-medium text-ink">{pin.title}</p>
-                          <span className="shrink-0 font-mono text-[0.625rem] text-ink-3">{pin.displayKey}</span>
-                        </div>
-                        <p className="mt-0.5 text-[0.75rem] text-ink-3">{pin.page}</p>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          {pin.labelIds.map((lid) => {
-                            const label = labelsById.get(lid);
-                            if (!label) return null;
-                            return (
-                              <span
-                                key={lid}
-                                className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2"
-                              >
-                                {label.name}
-                              </span>
-                            );
-                          })}
-                          {assignee ? (
-                            <span className="flex items-center gap-1.5 text-[0.6875rem] text-ink-2" title={memberPickerLabel(assignee, namePref)}>
-                              <Avatar className="size-5">
-                                <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
-                                  {assignee.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="max-w-[9rem] truncate">
-                                {assigneeParts ? (
-                                  <span className="text-ink-2">{assigneeParts.primary}</span>
-                                ) : null}
-                              </span>
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+              <div className="overflow-hidden rounded-xl border border-rule bg-paper">
+                <MarkTable
+                  pins={spacePins}
+                  membersById={membersById}
+                  labelsById={labelsById}
+                  commentCountByPinId={commentCountByPinId}
+                  displayNamePreference={namePref}
+                  onSelectMark={(pin) => {
+                    router.push(`/dashboard?space=${space.id}&mark=${encodeURIComponent(pin.displayKey)}`);
+                  }}
+                />
               </div>
             )}
           </div>

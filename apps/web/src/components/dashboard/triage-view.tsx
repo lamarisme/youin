@@ -31,7 +31,7 @@ import {
 import { FadeIn } from "@/components/motion";
 import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
-import { MarkListItem } from "./mark-list-item";
+import { MarkTable } from "./mark-table";
 import { NewMarkForm } from "./new-mark-form";
 import { SavedViewsBar } from "./saved-views-bar";
 import { useDashboardFilters } from "./use-dashboard-filters";
@@ -308,6 +308,12 @@ export function TriageView() {
         onChange={update}
       />
 
+      {visiblePins.length > 0 ? (
+        <p className="mb-3 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-3">
+          Each row is one mark. Select it to open the side panel for discussion, history, and actions.
+        </p>
+      ) : null}
+
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
@@ -337,11 +343,11 @@ export function TriageView() {
             variant="plain"
             className="rounded-none border-0 px-6 py-16"
             icon={CircleDashed}
-            title={filtersActive ? "Nothing matches these filters." : "No marks here yet."}
+            title={filtersActive ? "No marks match these filters." : "No marks yet."}
             description={
               filtersActive
-                ? "Clear filters to see every mark in this view."
-                : "Capture marks from the Chrome extension and they'll show up here."
+                ? "Broaden or clear filters to see more marks in this view."
+                : "Add a mark from New mark above, or capture feedback with the Chrome extension."
             }
             action={
               filtersActive ? (
@@ -352,22 +358,16 @@ export function TriageView() {
             }
           />
         ) : (
-          <div className="divide-y divide-rule">
-            {paginatedPins.map((pin) => (
-              <MarkListItem
-                key={pin.id}
-                pin={pin}
-                assignee={pin.assigneeId ? membersById.get(pin.assigneeId) : undefined}
-                labelsById={labelsById}
-                commentCount={commentCountByPinId.get(pin.id) ?? 0}
-                onSelect={() => update({ markId: pin.displayKey })}
-                selectable={selectedPins.length > 0}
-                selected={selectedIds.has(pin.id)}
-                onToggleSelected={() => toggleSelected(pin.id)}
-                displayNamePreference={displayNamePreference}
-              />
-            ))}
-          </div>
+          <MarkTable
+            pins={paginatedPins}
+            membersById={membersById}
+            labelsById={labelsById}
+            commentCountByPinId={commentCountByPinId}
+            displayNamePreference={displayNamePreference}
+            onSelectMark={(pin) => update({ markId: pin.displayKey })}
+            selectedIds={selectedIds}
+            onToggleSelected={toggleSelected}
+          />
         )}
       </div>
 
