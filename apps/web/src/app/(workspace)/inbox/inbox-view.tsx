@@ -38,7 +38,6 @@ export function InboxView() {
     <PageContainer>
       <AppHeader
         title="Inbox"
-        eyebrow={workspace.name}
         subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
       >
         {inbox.unreadCount > 0 ? (

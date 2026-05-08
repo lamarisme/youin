@@ -91,7 +91,6 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
     <div className="space-y-5">
       <AppHeader
         title="Spaces"
-        eyebrow={workspace.name}
         subtitle="Each space scopes marks to a release, a project, or a review session. See activity across all spaces at a glance."
       >
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">

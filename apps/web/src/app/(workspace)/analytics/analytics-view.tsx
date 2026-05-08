@@ -28,7 +28,6 @@ export function AnalyticsView() {
     <PageContainer>
       <AppHeader
         title="Analytics"
-        eyebrow={workspace.name}
         subtitle="Throughput and daily activity across every mark in the workspace."
       >
         <TimeframeFilter value={timeframe} onChange={setTimeframe} />

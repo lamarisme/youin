@@ -224,7 +224,6 @@ export function TriageView() {
     <>
       <AppHeader
         title="Triage"
-        eyebrow={workspace.name}
         subtitle={
           selectedSpace
             ? `${selectedSpace.code} · ${selectedSpace.name}`
