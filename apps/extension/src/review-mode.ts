@@ -1,6 +1,4 @@
-import type { PlasmoCSConfig } from "plasmo"
-
-import { color, easing, fontFamily, shadow as shadows } from "@youin/design-tokens"
+import { color, easing, fontFamily, shadow } from "@youin/design-tokens"
 
 import {
   EVENT_REVIEW_CAPTURE,
@@ -12,12 +10,6 @@ import {
   type ReviewStateDetail
 } from "../lib/events"
 import { generateSelector } from "../lib/selector"
-
-export const config: PlasmoCSConfig = {
-  matches: ["http://*/*", "https://*/*"],
-  run_at: "document_idle",
-  all_frames: false
-}
 
 const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
@@ -41,7 +33,7 @@ function ensureHost() {
     zIndex: String(Z_TOP)
   })
 
-  const shadow = host.attachShadow({ mode: "open" })
+  const root = host.attachShadow({ mode: "open" })
 
   const style = document.createElement("style")
   style.textContent = `
@@ -73,7 +65,7 @@ function ensureHost() {
       color: ${color.paper};
       font: 500 12px/1 ${fontFamily.sans};
       letter-spacing: 0.01em;
-      box-shadow: ${shadows.banner};
+      box-shadow: ${shadow.banner};
       white-space: nowrap;
     }
     .banner kbd {
@@ -87,17 +79,17 @@ function ensureHost() {
       letter-spacing: 0;
     }
   `
-  shadow.append(style)
+  root.append(style)
 
   highlight = document.createElement("div")
   highlight.className = "highlight"
-  shadow.append(highlight)
+  root.append(highlight)
 
   const banner = document.createElement("div")
   banner.className = "banner"
   banner.innerHTML =
     'Review mode &middot; click any element to capture &middot; <kbd>Esc</kbd> to exit'
-  shadow.append(banner)
+  root.append(banner)
 
   document.body.append(host)
 }
@@ -169,7 +161,6 @@ function onClick(e: MouseEvent) {
     outerHTML: target.outerHTML.slice(0, 400)
   }
 
-  // eslint-disable-next-line no-console
   console.log("[youin] captured", detail)
   window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
 

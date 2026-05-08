@@ -1,4 +1,11 @@
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
+
+import {
+  color,
+  easing,
+  fontFamily,
+  shadow
+} from "@youin/design-tokens"
 import { useEffect, useRef, useState } from "react"
 
 import {
@@ -13,7 +20,6 @@ import {
   getActiveSpaceId,
   getSpaces,
   makePinId,
-  subscribeStorage,
   type Pin,
   type Space
 } from "../lib/storage"
@@ -30,19 +36,18 @@ export const getStyle: PlasmoGetStyle = () => {
     :host { all: initial; }
     .pop-root, .pop-root * {
       box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
-        system-ui, sans-serif;
+      font-family: ${fontFamily.sans};
     }
     .pop-root {
-      --mark: oklch(63% 0.19 28);
-      --mark-soft: oklch(94% 0.04 30);
-      --paper: oklch(99% 0.003 80);
-      --paper-2: oklch(96% 0.005 80);
-      --paper-3: oklch(92% 0.007 80);
-      --ink: oklch(22% 0.005 60);
-      --ink-2: oklch(40% 0.005 60);
-      --ink-3: oklch(58% 0.005 60);
-      --rule: oklch(89% 0.005 60);
+      --mark: ${color.mark};
+      --mark-soft: ${color.markSoft};
+      --paper: ${color.paper};
+      --paper-2: ${color.paper2};
+      --paper-3: ${color.paper3};
+      --ink: ${color.ink};
+      --ink-2: ${color.ink2};
+      --ink-3: ${color.ink3};
+      --rule: ${color.rule};
       position: fixed;
       inset: 0;
       pointer-events: none;
@@ -53,7 +58,7 @@ export const getStyle: PlasmoGetStyle = () => {
       pointer-events: none;
       box-sizing: border-box;
       border: 2px solid var(--mark);
-      background: oklch(63% 0.19 28 / 0.06);
+      background: ${color.mark.replace(")", " / 0.06)")};
       border-radius: 4px;
       box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.4) inset;
     }
@@ -64,11 +69,9 @@ export const getStyle: PlasmoGetStyle = () => {
       color: var(--ink);
       border: 1px solid var(--rule);
       border-radius: 12px;
-      box-shadow:
-        0 1px 2px oklch(0% 0 0 / 0.04),
-        0 16px 40px -10px oklch(0% 0 0 / 0.22);
+      box-shadow: ${shadow.popover};
       pointer-events: auto;
-      animation: pop-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+      animation: pop-in 200ms ${easing.outExpo};
       transform-origin: top center;
     }
     @keyframes pop-in {
@@ -106,7 +109,7 @@ export const getStyle: PlasmoGetStyle = () => {
       text-overflow: ellipsis;
     }
     .header .selector {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-family: ${fontFamily.mono};
       font-size: 11px;
       color: var(--ink-3);
       white-space: nowrap;
@@ -142,13 +145,13 @@ export const getStyle: PlasmoGetStyle = () => {
       font-size: 13px;
       line-height: 1.5;
       outline: none;
-      transition: border-color 140ms cubic-bezier(0.16, 1, 0.3, 1),
-        background 140ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: border-color 140ms ${easing.outExpo},
+        background 140ms ${easing.outExpo};
     }
     textarea:focus {
       background: var(--paper);
-      border-color: oklch(63% 0.19 28 / 0.5);
-      box-shadow: 0 0 0 3px oklch(63% 0.19 28 / 0.12);
+      border-color: ${color.mark.replace(")", " / 0.5)")};
+      box-shadow: 0 0 0 3px ${color.mark.replace(")", " / 0.12)")};
     }
     textarea::placeholder { color: var(--ink-3); }
     .footer {
@@ -163,7 +166,7 @@ export const getStyle: PlasmoGetStyle = () => {
       color: var(--ink-3);
     }
     .hint kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-family: ${fontFamily.mono};
       font-size: 10.5px;
       padding: 1px 5px;
       border-radius: 3px;
@@ -182,7 +185,7 @@ export const getStyle: PlasmoGetStyle = () => {
       font-size: 12.5px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 140ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background 140ms ${easing.outExpo};
     }
     .save:hover:not(:disabled) { background: oklch(28% 0.005 60); }
     .save:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -248,8 +251,7 @@ const Popover = () => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   // Keep the active space cached so capture can render instantly without
-  // awaiting storage. Subscribes to storage changes so the popover stays in
-  // sync if the user switches space from the popup or widget.
+  // awaiting storage.
   useEffect(() => {
     let cancelled = false
     const refresh = async () => {
@@ -263,12 +265,8 @@ const Popover = () => {
       setActiveSpace(space)
     }
     refresh()
-    const unsub = subscribeStorage(() => {
-      refresh()
-    })
     return () => {
       cancelled = true
-      unsub()
     }
   }, [])
 

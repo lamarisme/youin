@@ -5,9 +5,11 @@
   "description": "A visual feedback layer for the live web. Click any element, leave a comment, ship a ticket — without leaving the browser.",
   "author": "opmarq@gmail.com",
   "scripts": {
-    "dev:extension": "pnpm --filter youin-extension dev",
-    "build:extension": "pnpm --filter youin-extension build",
-    "package:extension": "pnpm --filter youin-extension package",
+    "build:tokens": "pnpm --filter @youin/design-tokens build",
+    "dev:tokens": "pnpm --filter @youin/design-tokens dev",
+    "dev:extension": "pnpm --filter @youin/extension dev",
+    "build:extension": "pnpm --filter @youin/extension build",
+    "package:extension": "pnpm --filter @youin/extension package",
     "dev:web": "pnpm --filter web dev",
     "build:web": "pnpm --filter web build",
     "start:web": "pnpm --filter web start"

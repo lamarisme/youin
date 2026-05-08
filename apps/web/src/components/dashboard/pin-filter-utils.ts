@@ -1,4 +1,5 @@
 import type { PinItem } from "@/lib/collab-types";
+import { markDescriptionPlainText } from "@/lib/mark-description";
 
 import type { DashboardFilters, SortMode } from "./use-dashboard-filters";
 
@@ -36,7 +37,8 @@ export function filterPinsByDashboardFilters(
       if (pin.assigneeId) return false;
     }
     if (query) {
-      const haystack = `${pin.title} ${pin.description} ${pin.page} ${pin.id}`.toLowerCase();
+      const haystack =
+        `${pin.title} ${markDescriptionPlainText(pin.description)} ${pin.page} ${pin.id}`.toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     return true;

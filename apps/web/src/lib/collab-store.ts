@@ -217,7 +217,7 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
       displayKey: formatPinDisplayKey(spaceCode, created.seq),
       title: input.title.trim(),
       page: normalizeMarkPageUrl(input.page),
-      description: input.description.trim() || "",
+      description: input.description || "",
       status: "open",
       priority: input.priority ?? "medium",
       pinned: false,

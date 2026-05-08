@@ -130,32 +130,6 @@ export async function getRecentPins(limit = 5): Promise<Pin[]> {
     .slice(0, limit)
 }
 
-export async function clearAll(): Promise<void> {
-  try {
-    await chrome.storage.local.clear()
-  } catch {
-    // no-op
-  }
-}
-
-export function subscribeStorage(callback: () => void): () => void {
-  const handler = (
-    changes: { [key: string]: chrome.storage.StorageChange },
-    area: chrome.storage.AreaName
-  ) => {
-    if (area !== "local") return
-    if (
-      changes[KEY_SPACES] ||
-      changes[KEY_ACTIVE_SPACE] ||
-      changes[KEY_PINS]
-    ) {
-      callback()
-    }
-  }
-  chrome.storage.onChanged.addListener(handler)
-  return () => chrome.storage.onChanged.removeListener(handler)
-}
-
 export function makePinId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }

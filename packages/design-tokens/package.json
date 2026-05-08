@@ -1,0 +1,26 @@
+{
+  "name": "@youin/design-tokens",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared design tokens for the Youin web app and Chrome extension.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./css": "./tokens.css"
+  },
+  "files": ["dist", "tokens.css"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}

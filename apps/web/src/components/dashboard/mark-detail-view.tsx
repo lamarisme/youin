@@ -19,7 +19,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import type { PinItem, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import {
@@ -31,6 +30,7 @@ import {
   useUpdatePinMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
+import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
@@ -41,6 +41,8 @@ import { KeyboardHint } from "@/components/ui/kbd";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CommentThread } from "./comment-thread";
 import { MarkDetailActions } from "./mark-detail-actions";
+import { MarkDescriptionEditor } from "./mark-description-editor";
+import { MarkDescriptionRead } from "./mark-description-read";
 import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
@@ -98,6 +100,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   const [editTitle, setEditTitle] = useState(pin.title);
   const [editDescription, setEditDescription] = useState(pin.description);
   const [editPage, setEditPage] = useState(pin.page);
+  const [editSession, setEditSession] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -105,6 +108,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     setEditTitle(pin.title);
     setEditDescription(pin.description);
     setEditPage(pin.page);
+    setEditSession((s) => s + 1);
     setEditing(true);
   }
 
@@ -122,11 +126,18 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
       return;
     }
     try {
+      let descriptionNorm: string;
+      try {
+        descriptionNorm = normalizeDescriptionForStorage(editDescription);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Description is invalid.");
+        return;
+      }
       await updatePin({
         pinId: pin.id,
         updates: {
           title,
-          description: editDescription.trim(),
+          description: descriptionNorm,
           page: normalizedPage,
         },
       });
@@ -205,9 +216,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
 
           {pin.description ? (
-            <p className="mt-3 max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2">
-              {pin.description}
-            </p>
+            <MarkDescriptionRead html={pin.description} className="mt-3" />
           ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -317,13 +326,13 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               />
             </Field>
             <Field id="mark-edit-description" label="Description">
-              <Textarea
+              <MarkDescriptionEditor
+                key={`${pin.id}-${editSession}`}
                 id="mark-edit-description"
                 value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
+                onChange={setEditDescription}
                 placeholder="Describe what should change…"
-                maxLength={3000}
-                className="min-h-[120px] bg-paper text-[0.8125rem]"
+                disabled={isSavingEdit}
               />
             </Field>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

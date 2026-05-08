@@ -2,6 +2,13 @@ import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useEffect, useRef, useState } from "react"
 
 import {
+  color,
+  easing,
+  fontFamily,
+  shadow
+} from "@youin/design-tokens"
+
+import {
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
@@ -13,7 +20,6 @@ import {
   getPinCountsByPage,
   getSpaces,
   setActiveSpaceId,
-  subscribeStorage,
   type Space
 } from "../lib/storage"
 
@@ -29,20 +35,19 @@ export const getStyle: PlasmoGetStyle = () => {
     :host { all: initial; }
     .youin-root, .youin-root * {
       box-sizing: border-box;
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
-        system-ui, sans-serif;
+      font-family: ${fontFamily.sans};
       font-feature-settings: "ss01", "cv11";
     }
     .youin-root {
-      --mark: oklch(63% 0.19 28);
-      --mark-soft: oklch(94% 0.04 30);
-      --paper: oklch(99% 0.003 80);
-      --paper-2: oklch(96% 0.005 80);
-      --paper-3: oklch(92% 0.007 80);
-      --ink: oklch(22% 0.005 60);
-      --ink-2: oklch(40% 0.005 60);
-      --ink-3: oklch(58% 0.005 60);
-      --rule: oklch(89% 0.005 60);
+      --mark: ${color.mark};
+      --mark-soft: ${color.markSoft};
+      --paper: ${color.paper};
+      --paper-2: ${color.paper2};
+      --paper-3: ${color.paper3};
+      --ink: ${color.ink};
+      --ink-2: ${color.ink2};
+      --ink-3: ${color.ink3};
+      --rule: ${color.rule};
       position: fixed;
       bottom: 16px;
       right: 16px;
@@ -56,14 +61,11 @@ export const getStyle: PlasmoGetStyle = () => {
       border: none;
       background: var(--mark);
       color: white;
-      font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      font: 600 12px/1 ${fontFamily.mono};
       letter-spacing: 0.02em;
       cursor: pointer;
-      box-shadow:
-        0 2px 8px -2px oklch(0% 0 0 / 0.18),
-        0 8px 24px -8px oklch(52% 0.19 25 / 0.45),
-        inset 0 0 0 2px oklch(100% 0 0 / 0.4);
-      transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: ${shadow.fab};
+      transition: transform 220ms ${easing.outExpo};
     }
     .pin-dot:hover { transform: translateY(-1px) scale(1.04); }
     .pin-dot:active { transform: translateY(0) scale(0.98); }
@@ -71,7 +73,7 @@ export const getStyle: PlasmoGetStyle = () => {
       background: var(--paper);
       color: var(--ink-2);
       border: 1px solid var(--rule);
-      box-shadow: 0 4px 16px -4px oklch(0% 0 0 / 0.18);
+      box-shadow: ${shadow.reviewFab};
     }
     .panel {
       width: 288px;
@@ -79,11 +81,9 @@ export const getStyle: PlasmoGetStyle = () => {
       color: var(--ink);
       border: 1px solid var(--rule);
       border-radius: 12px;
-      box-shadow:
-        0 1px 2px oklch(0% 0 0 / 0.04),
-        0 12px 32px -8px oklch(0% 0 0 / 0.18);
+      box-shadow: ${shadow.panel};
       overflow: hidden;
-      animation: panel-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      animation: panel-enter 220ms ${easing.outExpo};
       transform-origin: bottom right;
     }
     @keyframes panel-enter {
@@ -98,7 +98,7 @@ export const getStyle: PlasmoGetStyle = () => {
       letter-spacing: 0.08em;
       text-transform: uppercase;
       color: var(--ink-3);
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-family: ${fontFamily.mono};
     }
     .row {
       display: flex;
@@ -165,11 +165,11 @@ export const getStyle: PlasmoGetStyle = () => {
       align-items: center;
       justify-content: center;
       gap: 8px;
-      transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background 160ms ${easing.outExpo};
     }
     .primary:hover { background: oklch(28% 0.005 60); }
     .primary kbd {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-family: ${fontFamily.mono};
       font-size: 10.5px;
       padding: 1px 5px;
       border-radius: 3px;
@@ -192,7 +192,7 @@ export const getStyle: PlasmoGetStyle = () => {
       border-radius: 999px;
       background: var(--paper-3);
       position: relative;
-      transition: background 160ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: background 160ms ${easing.outExpo};
     }
     .toggle-track.on { background: var(--mark); }
     .toggle-thumb {
@@ -203,7 +203,7 @@ export const getStyle: PlasmoGetStyle = () => {
       height: 12px;
       border-radius: 999px;
       background: white;
-      transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 180ms ${easing.outExpo};
       box-shadow: 0 1px 2px oklch(0% 0 0 / 0.16);
     }
     .toggle-track.on .toggle-thumb { transform: translateX(12px); }
@@ -252,20 +252,20 @@ export const getStyle: PlasmoGetStyle = () => {
       border: 1px solid var(--rule);
       font-size: 12px;
       color: var(--ink-2);
-      box-shadow: 0 4px 16px -4px oklch(0% 0 0 / 0.16);
+      box-shadow: ${shadow.reviewFab};
     }
     .reviewing-banner .pulse {
       width: 8px;
       height: 8px;
       border-radius: 999px;
       background: var(--mark);
-      box-shadow: 0 0 0 0 oklch(63% 0.19 28 / 0.5);
-      animation: pulse 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0.5)")};
+      animation: pulse 1.6s ${easing.outExpo} infinite;
     }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 oklch(63% 0.19 28 / 0.5); }
-      70% { box-shadow: 0 0 0 8px oklch(63% 0.19 28 / 0); }
-      100% { box-shadow: 0 0 0 0 oklch(63% 0.19 28 / 0); }
+      0% { box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0.5)")}; }
+      70% { box-shadow: 0 0 0 8px ${color.mark.replace(")", " / 0)")}; }
+      100% { box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0)")}; }
     }
     .reviewing-banner button {
       border: none;
@@ -317,12 +317,8 @@ const Widget = () => {
       setPinCounts(counts)
     }
     refresh()
-    const unsub = subscribeStorage(() => {
-      refresh()
-    })
     return () => {
       cancelled = true
-      unsub()
     }
   }, [])
 

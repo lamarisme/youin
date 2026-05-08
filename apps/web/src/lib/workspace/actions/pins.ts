@@ -1,6 +1,7 @@
 "use server";
 
 import type { PinPriority } from "@/lib/collab-types";
+import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 import { requireSession, revalidateWorkspaceViews } from "./session";
 
@@ -34,7 +35,7 @@ export async function createPinAction(input: {
       workspace_id: workspaceId,
       space_id: input.spaceId,
       title: input.title.trim(),
-      description: input.description.trim() || "",
+      description: normalizeDescriptionForStorage(input.description),
       page: pageNormalized,
       status: "open",
       priority: input.priority ?? "medium",
@@ -88,7 +89,7 @@ export async function updatePinFieldsAction(
   const patch: Record<string, string> = {};
   if (typeof updates.title === "string") patch.title = updates.title.trim();
   if (typeof updates.description === "string")
-    patch.description = updates.description.trim();
+    patch.description = normalizeDescriptionForStorage(updates.description);
   if (typeof updates.page === "string") {
     const normalized = normalizeMarkPageUrl(updates.page);
     if (!isValidMarkPageUrl(normalized)) {

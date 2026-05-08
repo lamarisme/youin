@@ -246,18 +246,13 @@ export function TriageView() {
       </AppHeader>
 
       <FadeIn><ToolbarPanel className="mb-6">
-        <div className="min-w-[170px] flex-1 sm:min-w-[220px] sm:flex-none">
-          <FilterSelect
-            value={filters.spaceId}
-            onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
-            options={spaceOptions}
-            ariaLabel="Select space"
-            triggerClassName="h-11 sm:h-9"
-          />
-        </div>
-        <span className="hidden text-[0.8125rem] text-ink-2 sm:inline">
-          {selectedSpace ? selectedSpace.notes : "All spaces"}
-        </span>
+        <FilterSelect
+          value={filters.spaceId}
+          onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
+          options={spaceOptions}
+          ariaLabel="Select space"
+          triggerClassName="h-11 sm:h-9"
+        />
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
           <Button
             size="sm"

@@ -14,8 +14,9 @@ import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { KeyboardHint } from "@/components/ui/kbd";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
+import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import {
@@ -34,6 +35,7 @@ interface NewMarkFormState {
   labelIds: string[];
   priority: PinPriority;
   assigneeId: string;
+  descriptionEditorKey: number;
 }
 
 type Action =
@@ -53,6 +55,7 @@ function makeInitial(assigneeDefault: string): NewMarkFormState {
     labelIds: [],
     priority: "medium",
     assigneeId: assigneeDefault,
+    descriptionEditorKey: 0,
   };
 }
 
@@ -71,7 +74,10 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
     case "set_assignee":
       return { ...state, assigneeId: action.value };
     case "reset":
-      return makeInitial(action.assigneeDefault);
+      return {
+        ...makeInitial(action.assigneeDefault),
+        descriptionEditorKey: state.descriptionEditorKey + 1,
+      };
   }
 }
 
@@ -145,10 +151,17 @@ export function NewMarkForm({
     }
     setSubmitting(true);
     try {
+      let descriptionNorm: string;
+      try {
+        descriptionNorm = normalizeDescriptionForStorage(state.description);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Description is invalid.");
+        return;
+      }
       await onSubmit({
         title: state.title,
         page: pageNorm,
-        description: state.description,
+        description: descriptionNorm,
         labelIds: state.labelIds,
         priority: state.priority,
         assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
@@ -206,13 +219,14 @@ export function NewMarkForm({
       </Field>
       <div className="sm:col-span-2">
         <Field id="new-mark-description" label="Description">
-          <Textarea
+          <MarkDescriptionEditor
+            key={state.descriptionEditorKey}
             id="new-mark-description"
             value={state.description}
-            onChange={(e) => dispatch({ type: "set_description", value: e.target.value })}
+            onChange={(html) => dispatch({ type: "set_description", value: html })}
             placeholder="What should change?"
-            maxLength={3000}
-            className="min-h-[60px] bg-paper text-[0.8125rem]"
+            disabled={submitting}
+            minHeightClassName="min-h-[72px]"
           />
         </Field>
       </div>

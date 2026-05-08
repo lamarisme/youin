@@ -1,0 +1,79 @@
+/*
+ * Youin Design Tokens — CSS custom properties
+ *
+ * This file is the CSS export of @youin/design-tokens.
+ * It is imported by the web app's globals.css via:
+ *   @import "@youin/design-tokens/css";
+ *
+ * And can be used by the extension via the JS helper `cssVars()`.
+ *
+ * ⚠️  Edit the canonical values in src/index.ts, then run
+ *     `node scripts/sync-css.mjs` to regenerate this file — or
+ *     keep them in sync manually.
+ */
+
+:root {
+  /* ── Paper (backgrounds) ── */
+  --yi-paper:      oklch(97.5% 0.007 65);
+  --yi-paper-2:    oklch(94.8% 0.009 65);
+  --yi-paper-3:    oklch(91% 0.011 65);
+
+  /* ── Ink (foreground) ── */
+  --yi-ink:        oklch(17% 0.01 50);
+  --yi-ink-2:      oklch(40% 0.009 50);
+  --yi-ink-3:      oklch(50% 0.008 50);
+
+  /* ── Rule (borders / dividers) ── */
+  --yi-rule:       oklch(86% 0.009 65);
+
+  /* ── Mark (brand accent) ── */
+  --yi-mark:       oklch(52% 0.19 25);
+  --yi-mark-bright: oklch(58% 0.21 25);
+  --yi-mark-soft:  oklch(95% 0.03 25);
+
+  /* ── Semantic ── */
+  --yi-ok:         oklch(52% 0.14 155);
+  --yi-ok-soft:    oklch(95% 0.025 155);
+
+  /* ── Spacing ── */
+  --yi-space-2xs:  0.25rem;
+  --yi-space-xs:   0.5rem;
+  --yi-space-sm:   0.75rem;
+  --yi-space-md:   1rem;
+  --yi-space-lg:   1.5rem;
+  --yi-space-xl:   2rem;
+  --yi-space-2xl:  3rem;
+  --yi-space-3xl:  4rem;
+  --yi-space-4xl:  6rem;
+
+  /* ── Radius ── */
+  --yi-radius-sm:  0.3rem;
+  --yi-radius-md:  0.4rem;
+  --yi-radius-lg:  0.5rem;
+  --yi-radius-xl:  0.7rem;
+  --yi-radius-2xl: 0.9rem;
+  --yi-radius-pill: 999px;
+
+  /* ── Easing ── */
+  --yi-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --yi-ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark {
+  --yi-paper:      oklch(15% 0.012 50);
+  --yi-paper-2:    oklch(19% 0.014 50);
+  --yi-paper-3:    oklch(24% 0.014 50);
+
+  --yi-ink:        oklch(93% 0.008 65);
+  --yi-ink-2:      oklch(75% 0.008 65);
+  --yi-ink-3:      oklch(58% 0.008 65);
+
+  --yi-rule:       oklch(30% 0.012 50);
+
+  --yi-mark:       oklch(62% 0.2 25);
+  --yi-mark-bright: oklch(68% 0.22 25);
+  --yi-mark-soft:  oklch(25% 0.06 25);
+
+  --yi-ok:         oklch(62% 0.14 155);
+  --yi-ok-soft:    oklch(25% 0.04 155);
+}
