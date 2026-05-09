@@ -1,0 +1,39 @@
+/** @type {import("tailwindcss").Config} */
+module.exports = {
+  content: ["./popup.tsx", "./contents/**/*.tsx"],
+  theme: {
+    extend: {
+      colors: {
+        paper: "var(--yi-paper)",
+        "paper-2": "var(--yi-paper-2)",
+        "paper-3": "var(--yi-paper-3)",
+        ink: "var(--yi-ink)",
+        "ink-2": "var(--yi-ink-2)",
+        "ink-3": "var(--yi-ink-3)",
+        rule: "var(--yi-rule)",
+        mark: "var(--yi-mark)",
+        "mark-soft": "var(--yi-mark-soft)"
+      },
+      fontFamily: {
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Inter",
+          "Segoe UI",
+          "system-ui",
+          "sans-serif"
+        ],
+        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
+      },
+      boxShadow: {
+        "widget-fab":
+          "0 2px 8px -2px oklch(0% 0 0 / 0.18), 0 8px 24px -8px oklch(52% 0.19 25 / 0.45), inset 0 0 0 2px oklch(100% 0 0 / 0.4)",
+        "widget-panel":
+          "0 1px 2px oklch(0% 0 0 / 0.04), 0 12px 32px -8px oklch(0% 0 0 / 0.18)",
+        "widget-review":
+          "0 4px 16px -4px oklch(0% 0 0 / 0.18)"
+      }
+    }
+  },
+  plugins: []
+}

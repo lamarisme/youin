@@ -1,0 +1,53 @@
+@import "@youin/design-tokens/css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens use :root above; Shadow DOM CSUI hosts never match document :root, so expose
+ * the same custom properties on :host when this stylesheet runs inside Plasmo's shadow subtree.
+ */
+:host {
+  --yi-paper: oklch(97.5% 0.007 65);
+  --yi-paper-2: oklch(94.8% 0.009 65);
+  --yi-paper-3: oklch(91% 0.011 65);
+  --yi-ink: oklch(17% 0.01 50);
+  --yi-ink-2: oklch(40% 0.009 50);
+  --yi-ink-3: oklch(50% 0.008 50);
+  --yi-rule: oklch(86% 0.009 65);
+  --yi-mark: oklch(52% 0.19 25);
+  --yi-mark-bright: oklch(58% 0.21 25);
+  --yi-mark-soft: oklch(95% 0.03 25);
+  --yi-ok: oklch(52% 0.14 155);
+  --yi-ok-soft: oklch(95% 0.025 155);
+  --yi-space-2xs: 0.25rem;
+  --yi-space-xs: 0.5rem;
+  --yi-space-sm: 0.75rem;
+  --yi-space-md: 1rem;
+  --yi-space-lg: 1.5rem;
+  --yi-space-xl: 2rem;
+  --yi-space-2xl: 3rem;
+  --yi-space-3xl: 4rem;
+  --yi-space-4xl: 6rem;
+  --yi-radius-sm: 0.3rem;
+  --yi-radius-md: 0.4rem;
+  --yi-radius-lg: 0.5rem;
+  --yi-radius-xl: 0.7rem;
+  --yi-radius-2xl: 0.9rem;
+  --yi-radius-pill: 999px;
+  --yi-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --yi-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes youin-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
