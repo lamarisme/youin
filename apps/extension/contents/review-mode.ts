@@ -29,6 +29,13 @@ let mode: Mode = "inactive"
 let host: HTMLDivElement | null = null
 let highlight: HTMLDivElement | null = null
 let cursorStyle: HTMLStyleElement | null = null
+let hoverRaf: number | null = null
+let pendingHoverRect: {
+  left: number
+  top: number
+  width: number
+  height: number
+} | null = null
 
 function ensureHost() {
   if (host) return
@@ -58,8 +65,12 @@ function ensureHost() {
         transform 90ms ${easing.outExpo},
         width 90ms ${easing.outExpo},
         height 90ms ${easing.outExpo};
-      will-change: transform, width, height;
       display: none;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .highlight {
+        transition: none;
+      }
     }
     .banner {
       position: fixed;
@@ -67,6 +78,7 @@ function ensureHost() {
       left: 50%;
       transform: translateX(-50%);
       pointer-events: none;
+      max-width: min(calc(100vw - 32px), 420px);
       padding: 7px 14px;
       border-radius: 999px;
       background: ${color.ink};
@@ -74,7 +86,9 @@ function ensureHost() {
       font: 500 12px/1 ${fontFamily.sans};
       letter-spacing: 0.01em;
       box-shadow: ${shadows.banner};
-      white-space: nowrap;
+      white-space: normal;
+      text-align: center;
+      text-wrap: balance;
     }
     .banner kbd {
       display: inline-block;
@@ -95,7 +109,7 @@ function ensureHost() {
 
   const banner = document.createElement("div")
   banner.className = "banner"
-  banner.innerHTML = 'Click to capture · <kbd>Esc</kbd> to exit'
+  banner.innerHTML = 'Click to select · <kbd>Esc</kbd> exits'
   shadow.append(banner)
 
   document.body.append(host)
@@ -124,20 +138,43 @@ function isOwnElement(node: Node | null): boolean {
   return !!node && !!host && (node === host || host.contains(node))
 }
 
+function cancelHoverRaf() {
+  if (hoverRaf != null) {
+    cancelAnimationFrame(hoverRaf)
+    hoverRaf = null
+  }
+  pendingHoverRect = null
+}
+
+function flushHoverRect() {
+  hoverRaf = null
+  if (!highlight || !pendingHoverRect) return
+  const { left, top, width, height } = pendingHoverRect
+  pendingHoverRect = null
+  if (width === 0 && height === 0) {
+    highlight.style.display = "none"
+    return
+  }
+  highlight.style.display = "block"
+  highlight.style.transform = `translate(${left}px, ${top}px)`
+  highlight.style.width = `${width}px`
+  highlight.style.height = `${height}px`
+}
+
 function onMouseOver(e: MouseEvent) {
   const target = e.target as Element | null
   if (!target || isOwnElement(target) || !highlight) return
 
   const rect = target.getBoundingClientRect()
-  if (rect.width === 0 && rect.height === 0) {
-    highlight.style.display = "none"
-    return
+  pendingHoverRect = {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height
   }
-
-  highlight.style.display = "block"
-  highlight.style.transform = `translate(${rect.left}px, ${rect.top}px)`
-  highlight.style.width = `${rect.width}px`
-  highlight.style.height = `${rect.height}px`
+  if (hoverRaf == null) {
+    hoverRaf = requestAnimationFrame(flushHoverRect)
+  }
 }
 
 function onClick(e: MouseEvent) {
@@ -168,8 +205,6 @@ function onClick(e: MouseEvent) {
     outerHTML: target.outerHTML.slice(0, 400)
   }
 
-  // eslint-disable-next-line no-console
-  console.log("[youin] captured", detail)
   window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
 
   pause()
@@ -205,6 +240,7 @@ function attachCaptureListeners() {
 }
 
 function detachCaptureListeners() {
+  cancelHoverRaf()
   document.removeEventListener("mouseover", onMouseOver, true)
   document.removeEventListener("mousedown", swallow, true)
   document.removeEventListener("mouseup", swallow, true)

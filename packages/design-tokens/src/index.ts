@@ -17,6 +17,8 @@ export const color = {
 
   /* Ink — foreground text */
   ink:     "oklch(17% 0.01 50)",
+  /** Filled control hover (primary buttons on paper) */
+  inkHover: "oklch(28% 0.005 60)",
   ink2:    "oklch(40% 0.009 50)",
   ink3:    "oklch(50% 0.008 50)",
 
@@ -39,6 +41,7 @@ export const colorDark = {
   paper3:  "oklch(24% 0.014 50)",
 
   ink:     "oklch(93% 0.008 65)",
+  inkHover: "oklch(82% 0.008 65)",
   ink2:    "oklch(75% 0.008 65)",
   ink3:    "oklch(58% 0.008 65)",
 
@@ -114,6 +117,7 @@ const tokenToVar: Record<string, string> = {
   paper2:     "--yi-paper-2",
   paper3:     "--yi-paper-3",
   ink:        "--yi-ink",
+  inkHover:   "--yi-ink-hover",
   ink2:       "--yi-ink-2",
   ink3:       "--yi-ink-3",
   rule:       "--yi-rule",

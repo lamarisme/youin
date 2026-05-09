@@ -13,6 +13,8 @@
   --yi-paper-2: oklch(94.8% 0.009 65);
   --yi-paper-3: oklch(91% 0.011 65);
   --yi-ink: oklch(17% 0.01 50);
+  /** Primary filled control hover (slightly lifted from --yi-ink) */
+  --yi-ink-hover: oklch(28% 0.005 60);
   --yi-ink-2: oklch(40% 0.009 50);
   --yi-ink-3: oklch(50% 0.008 50);
   --yi-rule: oklch(86% 0.009 65);
@@ -61,5 +63,44 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Right-docked capture sheet — transform-only entrance, respects motion-reduce in component */
+@keyframes youin-capture-dock-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes youin-panel-in {
+    from,
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes youin-panel-in-up {
+    from,
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes youin-capture-dock-in {
+    from,
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }

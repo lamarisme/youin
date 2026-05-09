@@ -70,6 +70,26 @@ const DEFAULT_SPACES: Space[] = [
   { id: "design-qa", name: "Design QA", createdAt: 0 }
 ]
 
+/** Client-side caps; enforced again on persist in {@link addPin}. */
+export const STORAGE_LIMITS = {
+  pinTitle: 280,
+  pinComment: 4000,
+  threadBody: 4000,
+  spaceName: 120,
+  outerHTMLPreview: 400
+} as const
+
+const WIDGET_CORNERS: WidgetCorner[] = [
+  "bottom-right",
+  "bottom-left",
+  "top-right",
+  "top-left"
+]
+
+function isWidgetCorner(v: unknown): v is WidgetCorner {
+  return typeof v === "string" && WIDGET_CORNERS.includes(v as WidgetCorner)
+}
+
 function makeThreadMessageId(): string {
   return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
@@ -95,20 +115,26 @@ function migrateRawPin(raw: unknown): Pin {
   const createdAt = typeof p.createdAt === "number" ? p.createdAt : Date.now()
   const legacyComment = typeof p.comment === "string" ? p.comment : ""
   let thread: LocalThreadMessage[] = Array.isArray(p.thread)
-    ? (p.thread as LocalThreadMessage[]).filter(
-        (m) =>
-          m &&
-          typeof m.id === "string" &&
-          typeof m.body === "string" &&
-          typeof m.createdAt === "number" &&
-          typeof m.authorLabel === "string"
-      )
+    ? (p.thread as LocalThreadMessage[])
+        .filter(
+          (m) =>
+            m &&
+            typeof m.id === "string" &&
+            typeof m.body === "string" &&
+            typeof m.createdAt === "number" &&
+            typeof m.authorLabel === "string"
+        )
+        .map((m) => ({
+          ...m,
+          body: m.body.slice(0, STORAGE_LIMITS.threadBody),
+          authorLabel: m.authorLabel.slice(0, 80)
+        }))
     : []
   if (!thread.length && legacyComment.trim()) {
     thread = [
       {
         id: makeThreadMessageId(),
-        body: legacyComment.trim(),
+        body: legacyComment.trim().slice(0, STORAGE_LIMITS.threadBody),
         createdAt,
         authorLabel: "You"
       }
@@ -116,7 +142,7 @@ function migrateRawPin(raw: unknown): Pin {
   }
   const title =
     typeof p.title === "string" && p.title.trim()
-      ? p.title.trim()
+      ? p.title.trim().slice(0, STORAGE_LIMITS.pinTitle)
       : legacyComment.trim()
         ? legacyComment.trim().slice(0, 120)
         : "Untitled mark"
@@ -146,7 +172,10 @@ function migrateRawPin(raw: unknown): Pin {
     thread,
     createdAt,
     updatedAt: typeof p.updatedAt === "number" ? p.updatedAt : createdAt,
-    outerHTMLPreview: String(p.outerHTMLPreview ?? "")
+    outerHTMLPreview: String(p.outerHTMLPreview ?? "").slice(
+      0,
+      STORAGE_LIMITS.outerHTMLPreview
+    )
   }
 }
 
@@ -160,11 +189,12 @@ async function read<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-async function write(key: string, value: unknown): Promise<void> {
+async function write(key: string, value: unknown): Promise<boolean> {
   try {
     await chrome.storage.local.set({ [key]: value })
+    return true
   } catch {
-    // best-effort; quota or extension-lifecycle errors are non-fatal here
+    return false
   }
 }
 
@@ -178,15 +208,14 @@ export async function getSpaces(): Promise<Space[]> {
   return stored
 }
 
-export async function setSpaces(spaces: Space[]): Promise<void> {
-  await write(KEY_SPACES, spaces)
+export async function setSpaces(spaces: Space[]): Promise<boolean> {
+  return write(KEY_SPACES, spaces)
 }
 
-export async function addSpace(space: Space): Promise<Space[]> {
+export async function addSpace(space: Space): Promise<boolean> {
   const spaces = await getSpaces()
   const next = [...spaces, space]
-  await write(KEY_SPACES, next)
-  return next
+  return write(KEY_SPACES, next)
 }
 
 export async function getActiveSpaceId(): Promise<string> {
@@ -195,8 +224,8 @@ export async function getActiveSpaceId(): Promise<string> {
   return DEFAULT_SPACES[0].id
 }
 
-export async function setActiveSpaceId(id: string): Promise<void> {
-  await write(KEY_ACTIVE_SPACE, id)
+export async function setActiveSpaceId(id: string): Promise<boolean> {
+  return write(KEY_ACTIVE_SPACE, id)
 }
 
 export async function getWidgetSettings(): Promise<WidgetSettings> {
@@ -204,15 +233,27 @@ export async function getWidgetSettings(): Promise<WidgetSettings> {
     KEY_WIDGET_SETTINGS,
     null
   )
-  return { ...DEFAULT_WIDGET_SETTINGS, ...stored }
+  const corner = isWidgetCorner(stored?.corner)
+    ? stored.corner
+    : DEFAULT_WIDGET_SETTINGS.corner
+  const fabVisible =
+    typeof stored?.fabVisible === "boolean"
+      ? stored.fabVisible
+      : DEFAULT_WIDGET_SETTINGS.fabVisible
+  return { corner, fabVisible }
 }
 
 export async function setWidgetSettings(
   patch: Partial<WidgetSettings>
-): Promise<WidgetSettings> {
-  const next = { ...(await getWidgetSettings()), ...patch }
-  await write(KEY_WIDGET_SETTINGS, next)
-  return next
+): Promise<{ settings: WidgetSettings; saved: boolean }> {
+  const prev = await getWidgetSettings()
+  const merged: WidgetSettings = {
+    corner: isWidgetCorner(patch.corner) ? patch.corner : prev.corner,
+    fabVisible:
+      typeof patch.fabVisible === "boolean" ? patch.fabVisible : prev.fabVisible
+  }
+  const saved = await write(KEY_WIDGET_SETTINGS, merged)
+  return { settings: merged, saved }
 }
 
 export async function getPins(): Promise<Pin[]> {
@@ -228,15 +269,21 @@ export async function getPins(): Promise<Pin[]> {
   return out
 }
 
-export async function addPin(pin: Pin): Promise<Pin[]> {
+export async function addPin(pin: Pin): Promise<boolean> {
   const pins = await getPins()
   const sanitized: Pin = {
     ...pin,
-    url: normalizePageUrlForMatch(pin.url) || pin.url
+    url: normalizePageUrlForMatch(pin.url) || pin.url,
+    title: pin.title.slice(0, STORAGE_LIMITS.pinTitle),
+    thread: pin.thread.map((m) => ({
+      ...m,
+      body: m.body.slice(0, STORAGE_LIMITS.threadBody),
+      authorLabel: m.authorLabel.slice(0, 80)
+    })),
+    outerHTMLPreview: pin.outerHTMLPreview.slice(0, STORAGE_LIMITS.outerHTMLPreview)
   }
   const next = [...pins, sanitized]
-  await write(KEY_PINS, serializePinsForStorage(next))
-  return next
+  return write(KEY_PINS, serializePinsForStorage(next))
 }
 
 /** Strip deprecated field on write */
@@ -252,17 +299,18 @@ export async function appendThreadComment(
   body: string,
   authorLabel: string
 ): Promise<Pin[] | undefined> {
-  const trimmed = body.trim()
+  const trimmed = body.trim().slice(0, STORAGE_LIMITS.threadBody)
   if (!trimmed) return undefined
   const pins = await getPins()
   const idx = pins.findIndex((x) => x.id === pinId)
   if (idx < 0) return undefined
   const pin = pins[idx]
+  const label = (authorLabel || "You").slice(0, 80)
   const msg: LocalThreadMessage = {
     id: makeThreadMessageId(),
     body: trimmed,
     createdAt: Date.now(),
-    authorLabel: authorLabel || "You"
+    authorLabel: label
   }
   const updated: Pin = {
     ...pin,
@@ -270,8 +318,8 @@ export async function appendThreadComment(
     updatedAt: Date.now()
   }
   const next = [...pins.slice(0, idx), updated, ...pins.slice(idx + 1)]
-  await write(KEY_PINS, serializePinsForStorage(next))
-  return next
+  const ok = await write(KEY_PINS, serializePinsForStorage(next))
+  return ok ? next : undefined
 }
 
 export async function getPinsForPage(
@@ -279,32 +327,53 @@ export async function getPinsForPage(
   url: string
 ): Promise<Pin[]> {
   const n = normalizePageUrlForMatch(url)
-  const pins = await getPins()
-  return pins
-    .filter(
-      (p) => p.spaceId === spaceId && normalizePageUrlForMatch(p.url) === n
-    )
-    .sort((a, b) => b.updatedAt - a.updatedAt)
+  const stored = await read<unknown[]>(KEY_PINS, [])
+  const matching: unknown[] = []
+  for (const row of stored) {
+    if (!row || typeof row !== "object") continue
+    const p = row as Record<string, unknown>
+    const urlRaw = typeof p.url === "string" ? p.url : ""
+    if (normalizePageUrlForMatch(urlRaw) !== n) continue
+    if (String(p.spaceId ?? "") !== spaceId) continue
+    matching.push(row)
+  }
+  const out: Pin[] = []
+  for (const row of matching) {
+    try {
+      out.push(migrateRawPin(row))
+    } catch {
+      continue
+    }
+  }
+  return out.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
+/** Counts pins per space for the current page without migrating the full pin list. */
 export async function getPinCountsByPage(
   url: string
 ): Promise<Map<string, number>> {
   const n = normalizePageUrlForMatch(url)
-  const pins = await getPins()
+  const stored = await read<unknown[]>(KEY_PINS, [])
   const counts = new Map<string, number>()
-  for (const p of pins) {
-    if (normalizePageUrlForMatch(p.url) !== n) continue
-    counts.set(p.spaceId, (counts.get(p.spaceId) ?? 0) + 1)
+  for (const row of stored) {
+    if (!row || typeof row !== "object") continue
+    const p = row as Record<string, unknown>
+    const urlRaw = typeof p.url === "string" ? p.url : ""
+    if (normalizePageUrlForMatch(urlRaw) !== n) continue
+    const sid = String(p.spaceId ?? "")
+    counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts
 }
 
 export async function getPinCountsBySpace(): Promise<Map<string, number>> {
-  const pins = await getPins()
+  const stored = await read<unknown[]>(KEY_PINS, [])
   const counts = new Map<string, number>()
-  for (const p of pins) {
-    counts.set(p.spaceId, (counts.get(p.spaceId) ?? 0) + 1)
+  for (const row of stored) {
+    if (!row || typeof row !== "object") continue
+    const p = row as Record<string, unknown>
+    const sid = String(p.spaceId ?? "")
+    counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts
 }
