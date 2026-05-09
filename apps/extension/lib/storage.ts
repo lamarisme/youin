@@ -5,6 +5,25 @@
 const KEY_SPACES = "youin:spaces"
 const KEY_ACTIVE_SPACE = "youin:active-space-id"
 const KEY_PINS = "youin:pins"
+const KEY_WIDGET_SETTINGS = "youin:widget-settings"
+
+export type WidgetCorner =
+  | "bottom-right"
+  | "bottom-left"
+  | "top-right"
+  | "top-left"
+
+export interface WidgetSettings {
+  /** Which corner anchors the floating control. */
+  corner: WidgetCorner
+  /** When false, the FAB is hidden; review still works via ⌥⇧Y / Esc. */
+  fabVisible: boolean
+}
+
+const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
+  corner: "bottom-right",
+  fabVisible: true
+}
 
 export interface Space {
   id: string
@@ -80,6 +99,22 @@ export async function getActiveSpaceId(): Promise<string> {
 
 export async function setActiveSpaceId(id: string): Promise<void> {
   await write(KEY_ACTIVE_SPACE, id)
+}
+
+export async function getWidgetSettings(): Promise<WidgetSettings> {
+  const stored = await read<Partial<WidgetSettings> | null>(
+    KEY_WIDGET_SETTINGS,
+    null
+  )
+  return { ...DEFAULT_WIDGET_SETTINGS, ...stored }
+}
+
+export async function setWidgetSettings(
+  patch: Partial<WidgetSettings>
+): Promise<WidgetSettings> {
+  const next = { ...(await getWidgetSettings()), ...patch }
+  await write(KEY_WIDGET_SETTINGS, next)
+  return next
 }
 
 export async function getPins(): Promise<Pin[]> {

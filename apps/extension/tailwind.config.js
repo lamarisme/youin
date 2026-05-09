@@ -16,14 +16,21 @@ module.exports = {
       },
       fontFamily: {
         sans: [
+          "ui-sans-serif",
+          "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
-          "Inter",
           "Segoe UI",
-          "system-ui",
+          "Helvetica Neue",
           "sans-serif"
         ],
-        mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"]
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Consolas",
+          "monospace"
+        ]
       },
       boxShadow: {
         "widget-fab":
