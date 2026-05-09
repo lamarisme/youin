@@ -14,13 +14,13 @@ import {
   getPinCountsByPage,
   getSpaces,
   getWidgetSettings,
+  KEY_PINS,
   setActiveSpaceId,
   type Space,
   type WidgetCorner,
   type WidgetSettings
 } from "../lib/storage"
 
-const WIDGET_SETTINGS_AREA = "local"
 
 function cornerPositionClass(corner: WidgetCorner): string {
   switch (corner) {
@@ -115,7 +115,12 @@ const Widget = () => {
       changes,
       area
     ) => {
-      if (area !== WIDGET_SETTINGS_AREA) return
+      if (area !== "local") return
+      if (changes[KEY_PINS]) {
+        void getPinCountsByPage(window.location.href).then((counts) => {
+          if (!cancelled) setPinCounts(counts)
+        })
+      }
       if (!changes["youin:widget-settings"]?.newValue) return
       const v = changes["youin:widget-settings"].newValue as Partial<WidgetSettings>
       setWidgetSettingsState((prev) => ({ ...prev, ...v }))
