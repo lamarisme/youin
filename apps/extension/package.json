@@ -10,6 +10,7 @@
     "package": "plasmo package --src-path=."
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.105.3",
     "@youin/design-tokens": "workspace:*",
     "plasmo": "0.90.5",
     "react": "18.2.0",
@@ -34,6 +35,11 @@
     "host_permissions": [
       "https://*/*",
       "http://*/*"
-    ]
+    ],
+    "externally_connectable": {
+      "matches": [
+        "http://localhost:3000/*"
+      ]
+    }
   }
 }

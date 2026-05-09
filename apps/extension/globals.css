@@ -42,6 +42,95 @@
   --yi-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Popup-only surface: gentle entrance + crisp baseline */
+.youin-popup {
+  animation: youin-popup-in 240ms var(--yi-ease-out-expo) both;
+  font-feature-settings: "ss01", "cv11", "tnum";
+}
+
+@keyframes youin-popup-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .youin-popup {
+    animation: none;
+  }
+}
+
+/*
+ * Tailwind opacity modifiers (e.g. border-mark/25) don't emit utilities when colors are
+ * raw var() references — use explicit color-mix on design tokens instead.
+ */
+@layer utilities {
+  .border-yi-mark-25 {
+    border-color: color-mix(in oklch, var(--yi-mark) 25%, transparent);
+  }
+  .border-yi-mark-60 {
+    border-color: color-mix(in oklch, var(--yi-mark) 60%, transparent);
+  }
+  .bg-yi-mark-soft-50 {
+    background-color: color-mix(in oklch, var(--yi-mark-soft) 50%, transparent);
+  }
+  .outline-yi-mark-35 {
+    outline-color: color-mix(in oklch, var(--yi-mark) 35%, transparent);
+  }
+  .decoration-yi-mark-30 {
+    text-decoration-color: color-mix(in oklch, var(--yi-mark) 30%, transparent);
+  }
+  .decoration-yi-mark-40 {
+    text-decoration-color: color-mix(in oklch, var(--yi-mark) 40%, transparent);
+  }
+  .decoration-yi-ink-40 {
+    text-decoration-color: color-mix(in oklch, var(--yi-ink) 40%, transparent);
+  }
+}
+
+/* Plasmo action popup: fill viewport, stable width, matched paper background */
+html:has(#__plasmo) {
+  color-scheme: light;
+}
+
+html:has(#__plasmo),
+html:has(#__plasmo) body {
+  margin: 0;
+  background-color: var(--yi-paper);
+  color: var(--yi-ink-2);
+  min-height: fit-content;
+}
+
+#__plasmo {
+  box-sizing: border-box;
+  min-width: 320px;
+  max-width: 320px;
+}
+
+/* Refined input: borderless, focuses with mark ring */
+.youin-input {
+  background: transparent;
+  border: 1px solid var(--yi-rule);
+  transition:
+    border-color 160ms var(--yi-ease-out-expo),
+    box-shadow 160ms var(--yi-ease-out-expo),
+    background-color 160ms var(--yi-ease-out-expo);
+}
+.youin-input:hover {
+  background: oklch(from var(--yi-paper-2) l c h / 0.55);
+}
+.youin-input:focus {
+  outline: none;
+  border-color: var(--yi-mark);
+  background: var(--yi-paper);
+  box-shadow: 0 0 0 3px oklch(from var(--yi-mark) l c h / 0.18);
+}
+
 @keyframes youin-panel-in {
   from {
     opacity: 0;

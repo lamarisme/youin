@@ -8,11 +8,15 @@ module.exports = {
         "paper-2": "var(--yi-paper-2)",
         "paper-3": "var(--yi-paper-3)",
         ink: "var(--yi-ink)",
+        "ink-hover": "var(--yi-ink-hover)",
         "ink-2": "var(--yi-ink-2)",
         "ink-3": "var(--yi-ink-3)",
         rule: "var(--yi-rule)",
         mark: "var(--yi-mark)",
-        "mark-soft": "var(--yi-mark-soft)"
+        "mark-bright": "var(--yi-mark-bright)",
+        "mark-soft": "var(--yi-mark-soft)",
+        ok: "var(--yi-ok)",
+        "ok-soft": "var(--yi-ok-soft)"
       },
       fontFamily: {
         sans: [
