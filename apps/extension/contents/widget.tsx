@@ -90,8 +90,8 @@ export const getStyle: PlasmoGetStyle = () => {
       from { opacity: 0; transform: translateY(6px) scale(0.98); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-    .section { padding: 12px 14px; }
-    .section + .section { border-top: 1px solid var(--rule); }
+    .section { padding: 12px 14px; display: flex; flex-direction: column; }
+    .section .primary { margin-top: 12px; }
     .label {
       font-size: 10px;
       font-weight: 600;
@@ -116,8 +116,7 @@ export const getStyle: PlasmoGetStyle = () => {
       text-align: left;
     }
     .row:hover { background: var(--paper-2); color: var(--ink); }
-    .row.active { background: var(--mark-soft); color: var(--ink); font-weight: 500; }
-    .row .check { color: var(--mark); }
+    .row.active { background: var(--mark-soft); color: var(--ink); font-weight: 600; }
     .space-list {
       margin: 8px -6px 0;
       display: flex;
@@ -176,59 +175,6 @@ export const getStyle: PlasmoGetStyle = () => {
       background: oklch(100% 0 0 / 0.14);
       color: oklch(100% 0 0 / 0.7);
     }
-    .toggle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--ink-2);
-      cursor: pointer;
-      user-select: none;
-    }
-    .toggle-track {
-      width: 28px;
-      height: 16px;
-      border-radius: 999px;
-      background: var(--paper-3);
-      position: relative;
-      transition: background 160ms ${easing.outExpo};
-    }
-    .toggle-track.on { background: var(--mark); }
-    .toggle-thumb {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      background: white;
-      transition: transform 180ms ${easing.outExpo};
-      box-shadow: 0 1px 2px oklch(0% 0 0 / 0.16);
-    }
-    .toggle-track.on .toggle-thumb { transform: translateX(12px); }
-    .meta {
-      font-size: 11.5px;
-      color: var(--ink-3);
-      margin-top: 6px;
-    }
-    .footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--paper-2);
-      font-size: 12px;
-      color: var(--ink-3);
-    }
-    .footer .ws { display: flex; align-items: center; gap: 6px; }
-    .footer .ws .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: var(--mark);
-    }
     .icon-button {
       width: 22px;
       height: 22px;
@@ -242,42 +188,24 @@ export const getStyle: PlasmoGetStyle = () => {
       justify-content: center;
     }
     .icon-button:hover { background: var(--paper-3); color: var(--ink); }
-    .reviewing-banner {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: var(--paper);
+    .end-review {
+      padding: 8px 12px;
       border: 1px solid var(--rule);
-      font-size: 12px;
-      color: var(--ink-2);
-      box-shadow: ${shadow.reviewFab};
-    }
-    .reviewing-banner .pulse {
-      width: 8px;
-      height: 8px;
       border-radius: 999px;
-      background: var(--mark);
-      box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0.5)")};
-      animation: pulse 1.6s ${easing.outExpo} infinite;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0.5)")}; }
-      70% { box-shadow: 0 0 0 8px ${color.mark.replace(")", " / 0)")}; }
-      100% { box-shadow: 0 0 0 0 ${color.mark.replace(")", " / 0)")}; }
-    }
-    .reviewing-banner button {
-      border: none;
-      background: transparent;
-      color: var(--ink-3);
-      font-size: 11px;
+      background: var(--paper);
+      color: var(--ink);
+      font: 600 12px/1 ${fontFamily.sans};
+      letter-spacing: 0.01em;
       cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-weight: 600;
+      box-shadow: ${shadow.reviewFab};
+      transition: background 160ms ${easing.outExpo}, transform 220ms ${easing.outExpo};
     }
-    .reviewing-banner button:hover { color: var(--ink); }
+    .end-review:hover { background: var(--paper-2); }
+    .end-review:active { transform: scale(0.98); }
+    @media (prefers-reduced-motion: reduce) {
+      .panel { animation: none; }
+      .pin-dot, .end-review { transition: none; }
+    }
   `
   return style
 }
@@ -288,7 +216,6 @@ const Widget = () => {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [activeSpaceId, setActiveSpaceIdState] = useState<string>("")
   const [pinCounts, setPinCounts] = useState<Map<string, number>>(new Map())
-  const [showPins, setShowPins] = useState(true)
   const [creatingSpace, setCreatingSpace] = useState(false)
   const [newSpaceName, setNewSpaceName] = useState("")
   const newSpaceInputRef = useRef<HTMLInputElement | null>(null)
@@ -327,9 +254,6 @@ const Widget = () => {
       newSpaceInputRef.current?.focus()
     }
   }, [creatingSpace])
-
-  const activeSpace = spaces.find((s) => s.id === activeSpaceId)
-  const activePinCount = pinCounts.get(activeSpaceId) ?? 0
 
   const selectSpace = (id: string) => {
     setActiveSpaceIdState(id)
@@ -372,13 +296,12 @@ const Widget = () => {
   if (reviewing) {
     return (
       <div className="youin-root">
-        <div className="reviewing-banner">
-          <span className="pulse" aria-hidden />
-          <span>Review mode</span>
-          <button type="button" onClick={exitReview}>
-            Exit
-          </button>
-        </div>
+        <button
+          type="button"
+          className="end-review"
+          onClick={exitReview}>
+          End review
+        </button>
       </div>
     )
   }
@@ -433,19 +356,7 @@ const Widget = () => {
                   type="button"
                   className={`row ${isActive ? "active" : ""}`}
                   onClick={() => selectSpace(s.id)}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 999,
-                        background: isActive
-                          ? "var(--mark)"
-                          : "var(--paper-3)"
-                      }}
-                    />
-                    {s.name}
-                  </span>
+                  <span>{s.name}</span>
                   <span
                     style={{
                       fontSize: 11,
@@ -495,36 +406,11 @@ const Widget = () => {
                 type="button"
                 className="row add-row"
                 onClick={() => setCreatingSpace(true)}>
-                <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span
-                    style={{
-                      width: 14,
-                      height: 14,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center"
-                    }}>
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 10 10"
-                      fill="none">
-                      <path
-                        d="M5 1.5v7M1.5 5h7"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </span>
-                  New space
-                </span>
+                New space
               </button>
             )}
           </div>
-        </div>
 
-        <div className="section" style={{ display: "grid", gap: 10 }}>
           <button type="button" className="primary" onClick={startReview}>
             Start review
             <span style={{ display: "flex", gap: 2 }}>
@@ -532,45 +418,6 @@ const Widget = () => {
               <kbd>⇧</kbd>
               <kbd>Y</kbd>
             </span>
-          </button>
-
-          <button
-            type="button"
-            className="toggle"
-            onClick={() => setShowPins((v) => !v)}>
-            <span style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span>Show pins on page</span>
-              <span className="meta">
-                {activeSpace
-                  ? `${activePinCount} pin${activePinCount === 1 ? "" : "s"} on this page`
-                  : "Select a space first"}
-              </span>
-            </span>
-            <span className={`toggle-track ${showPins ? "on" : ""}`}>
-              <span className="toggle-thumb" />
-            </span>
-          </button>
-        </div>
-
-        <div className="footer">
-          <span className="ws">
-            <span className="dot" />
-            youin · workspace
-          </span>
-          <button type="button" className="icon-button" aria-label="Settings">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 9.2a2.2 2.2 0 100-4.4 2.2 2.2 0 000 4.4z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
-              <path
-                d="M11.4 7c0-.3 0-.6-.07-.88l1.2-.93-1.2-2.07-1.4.55a4.4 4.4 0 00-1.5-.87L8.2 1.2H5.8L5.57 2.8a4.4 4.4 0 00-1.5.87l-1.4-.55-1.2 2.07 1.2.93C2.6 6.4 2.6 6.7 2.6 7s0 .6.07.88l-1.2.93 1.2 2.07 1.4-.55a4.4 4.4 0 001.5.87l.23 1.6h2.4l.23-1.6a4.4 4.4 0 001.5-.87l1.4.55 1.2-2.07-1.2-.93c.07-.28.07-.58.07-.88z"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinejoin="round"
-              />
-            </svg>
           </button>
         </div>
       </div>

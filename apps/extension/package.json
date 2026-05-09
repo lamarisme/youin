@@ -5,9 +5,9 @@
   "description": "A visual feedback layer for the live web. Click any element, leave a comment, ship a ticket — without leaving the browser.",
   "author": "opmarq@gmail.com",
   "scripts": {
-    "dev": "plasmo dev",
-    "build": "plasmo build",
-    "package": "plasmo package"
+    "dev": "plasmo dev --src-path=.",
+    "build": "plasmo build --src-path=.",
+    "package": "plasmo package --src-path=."
   },
   "dependencies": {
     "@youin/design-tokens": "workspace:*",
@@ -25,8 +25,7 @@
     "typescript": "5.3.3"
   },
   "manifest": {
-    "host_permissions": [
-      "https://*/*"
-    ]
+    "permissions": ["storage"],
+    "host_permissions": ["https://*/*", "http://*/*"]
   }
 }

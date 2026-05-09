@@ -95,8 +95,7 @@ function ensureHost() {
 
   const banner = document.createElement("div")
   banner.className = "banner"
-  banner.innerHTML =
-    'Review mode &middot; click any element to capture &middot; <kbd>Esc</kbd> to exit'
+  banner.innerHTML = 'Click to capture · <kbd>Esc</kbd> to exit'
   shadow.append(banner)
 
   document.body.append(host)
