@@ -50,7 +50,7 @@ function ensureHost() {
       position: absolute;
       box-sizing: border-box;
       pointer-events: none;
-      border: 2px solid ${color.mark};
+      border: 1px dashed ${color.mark};
       background: ${color.mark.replace(")", " / 0.08)")};
       border-radius: 4px;
       box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.4) inset;
