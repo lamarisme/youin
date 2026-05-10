@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
 import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
+import { routing } from "@/i18n/routing";
 import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -26,20 +27,17 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "youin — visual feedback, on the live web",
-  description:
-    "Click any element on any live site. Mark a comment. Ship a ticket. Without leaving the browser.",
-};
-
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value ?? routing.defaultLocale;
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${bricolage.variable} ${figtree.variable} ${geistMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">

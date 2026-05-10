@@ -1,6 +1,7 @@
 import "./globals.css"
 
 import type { Session } from "@supabase/supabase-js"
+import { t } from "@youin/i18n/t"
 import { type FormEvent, useEffect, useState } from "react"
 
 import {
@@ -91,7 +92,7 @@ function SignInBlock() {
     setLoading(true)
     const r = await signInWithPassword(email, password)
     setLoading(false)
-    if (!r.ok) setError(r.error ?? "Sign-in failed.")
+    if (!r.ok) setError(r.error ?? t("extension.popup.signInFailed"))
   }
 
   function handleGoogle() {
@@ -113,7 +114,7 @@ function SignInBlock() {
         type="button"
         onClick={handleGoogle}
         className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-rule bg-paper-2 px-3 py-2 text-[12px] font-medium text-ink outline-none transition-colors hover:bg-paper-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yi-mark-35"
-        aria-label="Continue with Google in a new tab">
+        aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         Continue with Google
       </button>
@@ -165,7 +166,7 @@ function SignInBlock() {
           type="submit"
           disabled={loading || !email.trim() || !password}
           className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-mark px-3 py-1.5 text-[12px] font-semibold text-paper transition-colors hover:bg-mark-bright disabled:cursor-not-allowed disabled:opacity-50">
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? t("extension.popup.signingIn") : t("extension.popup.signIn")}
         </button>
       </form>
     </section>
@@ -174,7 +175,7 @@ function SignInBlock() {
 
 function SignedInBlock({ session }: { session: Session | null }) {
   const userId = session?.user?.id
-  const email = session?.user?.email ?? "Signed in"
+  const email = session?.user?.email ?? t("extension.popup.signedInFallback")
   const [syncingDb, setSyncingDb] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migrationStatus, setMigrationStatus] = useState<
@@ -201,7 +202,7 @@ function SignedInBlock({ session }: { session: Session | null }) {
       } catch (e) {
         if (!cancelled)
           setMigrationStatus({
-            error: e instanceof Error ? e.message : "Migration failed."
+            error: e instanceof Error ? e.message : t("extension.popup.migrationFailed")
           })
       } finally {
         if (!cancelled) setMigrating(false)
@@ -328,7 +329,7 @@ function FabToggle() {
         Floating button off.{" "}
         <button
           type="button"
-          aria-label="Show floating button on pages"
+          aria-label={t("extension.popup.floatingToggleAria")}
           className="rounded-sm border-0 bg-transparent p-0 font-medium text-mark underline decoration-yi-mark-30 underline-offset-2 outline-none transition-colors hover:decoration-mark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yi-mark-35"
           onClick={() => {
             void (async () => {
@@ -337,7 +338,7 @@ function FabToggle() {
                 setFabHidden(false)
                 setSettingsError(null)
               } else {
-                setSettingsError("Could not save. Try again.")
+                setSettingsError(t("extension.popup.settingsSaveError"))
               }
             })()
           }}>

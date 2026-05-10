@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   createContext,
   useCallback,
@@ -10,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { Command } from "cmdk";
 import {
   BarChart3,
@@ -26,7 +27,7 @@ import {
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { useInbox } from "@/app/[locale]/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ interface PaletteCommand {
   id: string;
   title: string;
   subtitle?: string;
-  group: string;
+  group: "navigate" | "spaces" | "theme";
   keywords?: string[];
   shortcut?: string;
   icon?: LucideIcon;
@@ -140,6 +141,7 @@ function CommandPaletteDialog({
   open: boolean;
   onOpenChange: (next: boolean) => void;
 }) {
+  const t = useTranslations("commandPalette");
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -180,53 +182,56 @@ function CommandPaletteDialog({
     const base: PaletteCommand[] = [
       {
         id: "nav-dashboard",
-        title: "Triage",
-        subtitle: "Review marks across your spaces",
-        group: "Navigate",
+        title: t("nav.triage"),
+        subtitle: t("nav.triageSub"),
+        group: "navigate",
         shortcut: "G D",
         icon: LayoutGrid,
         run: () => router.push("/dashboard"),
       },
       {
         id: "nav-inbox",
-        title: inbox.unreadCount > 0 ? `Inbox · ${inbox.unreadCount} unread` : "Inbox",
-        subtitle: "Activity on marks you follow",
-        group: "Navigate",
+        title:
+          inbox.unreadCount > 0
+            ? t("nav.inboxUnread", { count: inbox.unreadCount })
+            : t("nav.inbox"),
+        subtitle: t("nav.inboxSub"),
+        group: "navigate",
         shortcut: "G I",
         icon: Inbox,
         run: () => router.push("/inbox"),
       },
       {
         id: "nav-analytics",
-        title: "Analytics",
-        subtitle: "Throughput and workspace activity",
-        group: "Navigate",
+        title: t("nav.analytics"),
+        subtitle: t("nav.analyticsSub"),
+        group: "navigate",
         shortcut: "G A",
         icon: BarChart3,
         run: () => router.push("/analytics"),
       },
       {
         id: "nav-spaces",
-        title: "Manage spaces",
-        subtitle: "All spaces in this workspace",
-        group: "Navigate",
+        title: t("nav.spaces"),
+        subtitle: t("nav.spacesSub"),
+        group: "navigate",
         shortcut: "G S",
         icon: Layers,
         run: () => router.push("/spaces"),
       },
       {
         id: "nav-account",
-        title: "Account settings",
-        subtitle: "Profile, team, and labels",
-        group: "Navigate",
+        title: t("nav.account"),
+        subtitle: t("nav.accountSub"),
+        group: "navigate",
         shortcut: "G C",
         icon: User,
         run: () => router.push("/account"),
       },
       {
         id: "theme-toggle",
-        title: theme === "dark" ? "Switch to light mode" : "Switch to dark mode",
-        group: "Theme",
+        title: theme === "dark" ? t("nav.themeLight") : t("nav.themeDark"),
+        group: "theme",
         keywords: ["theme", "dark", "light", "mode", "appearance"],
         icon: theme === "dark" ? Sun : Moon,
         run: () => toggleTheme(),
@@ -235,20 +240,20 @@ function CommandPaletteDialog({
     const spaceCommands: PaletteCommand[] = spaces.map((s) => ({
       id: `space-${s.id}`,
       title: s.name,
-      subtitle: "Filter triage to this space",
-      group: "Spaces",
+      subtitle: t("spaceSub"),
+      group: "spaces" as const,
       keywords: ["space", "jump"],
       icon: Hash,
       run: () => router.push(`/dashboard?space=${s.id}`),
     }));
     return [...base, ...spaceCommands];
-  }, [router, theme, toggleTheme, spaces, inbox.unreadCount]);
+  }, [router, theme, toggleTheme, spaces, inbox.unreadCount, t]);
 
   return (
     <Command.Dialog
       open={open}
       onOpenChange={onOpenChange}
-      label="Command palette"
+      label={t("label")}
       className={cn(
         "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-24px_oklch(17%_0.012_50_/_0.45)]",
         "dark:shadow-[0_24px_60px_-24px_oklch(0%_0_0_/_0.6)]",
@@ -259,7 +264,7 @@ function CommandPaletteDialog({
         <Command.Input
           ref={inputRef}
           autoFocus
-          placeholder="Type a command or search…"
+          placeholder={t("placeholder")}
           className="flex-1 bg-transparent text-[0.9375rem] text-ink outline-none placeholder:text-ink-3"
         />
         <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
@@ -269,16 +274,16 @@ function CommandPaletteDialog({
 
       <Command.List className="max-h-[60vh] overflow-y-auto py-1.5">
         <Command.Empty className="px-4 py-6 text-center text-[0.8125rem] text-ink-3">
-          No commands match your search.
+          {t("empty")}
         </Command.Empty>
 
-        {["Navigate", "Spaces", "Theme"].map((group) => {
-          const items = allCommands.filter((c) => c.group === group);
+        {(["navigate", "spaces", "theme"] as const).map((groupId) => {
+          const items = allCommands.filter((c) => c.group === groupId);
           if (items.length === 0) return null;
           return (
             <Command.Group
-              key={group}
-              heading={group}
+              key={groupId}
+              heading={t(`groups.${groupId}`)}
               className="py-1 [&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1.5 [&_[cmdk-group-heading]]:text-[0.625rem] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-ink-3"
             >
               {items.map((cmd) => {
@@ -321,14 +326,14 @@ function CommandPaletteDialog({
       <div className="flex items-center justify-between border-t border-rule px-3.5 py-2 text-[0.6875rem] text-ink-3">
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">↑↓</kbd>
-          navigate
+          {t("footerNavigate")}
           <span className="px-1">·</span>
           <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">↵</kbd>
-          run
+          {t("footerRun")}
         </span>
         <span className="flex items-center gap-1.5">
           <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">⌘K</kbd>
-          toggle
+          {t("footerToggle")}
         </span>
       </div>
     </Command.Dialog>

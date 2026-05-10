@@ -1,14 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+
+import { pathnameWithoutLocale, routing } from "@/i18n/routing";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-export async function updateSession(request: NextRequest) {
+export async function updateSession(
+  request: NextRequest,
+  intlResponse?: NextResponse,
+) {
   const { url, key } = getSupabaseEnv();
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  let response =
+    intlResponse ??
+    NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
 
   const supabase = createServerClient(
     url,
@@ -22,10 +29,11 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value);
           });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+          const prev = response;
+          response = new NextResponse(prev.body, {
+            status: prev.status,
+            statusText: prev.statusText,
+            headers: new Headers(prev.headers),
           });
           cookiesToSet.forEach(({ name, value, options }) => {
             response.cookies.set(name, value, options);
@@ -39,8 +47,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
-  const pathWithSearch = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  const path = pathnameWithoutLocale(
+    request.nextUrl.pathname,
+    routing.locales,
+  );
+  const pathWithSearch = `${path}${request.nextUrl.search}`;
   const isAuthRoute =
     path === "/login" ||
     path === "/signup" ||

@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.105.3",
     "@youin/design-tokens": "workspace:*",
+    "@youin/i18n": "workspace:*",
     "plasmo": "0.90.5",
     "react": "18.2.0",
     "react-dom": "18.2.0"

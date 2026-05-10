@@ -1,0 +1,316 @@
+{
+  "metadata": {
+    "title": "youin — visual feedback, on the live web",
+    "description": "Click any element on any live site. Mark a comment. Ship a ticket. Without leaving the browser."
+  },
+  "brand": {
+    "name": "youin",
+    "tagline": "feedback on the live web"
+  },
+  "common": {
+    "member": "Member",
+    "workspaceFallback": "Workspace",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "triage": "Triage",
+    "inbox": "Inbox",
+    "spaces": "Spaces",
+    "analytics": "Analytics"
+  },
+  "sidebar": {
+    "homeAria": "youin home",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "openCommandPalette": "Open command palette",
+    "searchShortcut": "Search",
+    "searchOrJump": "Search or jump…",
+    "unreadBadge": "{count} unread",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "accountAria": "Account — {name}",
+    "signOutAria": "Sign out",
+    "signOut": "Sign out",
+    "signingOut": "Signing out…",
+    "openAccountMenu": "Open account menu",
+    "accountSettings": "Account settings",
+    "accountSettingsSigningOut": "Signing out..."
+  },
+  "notFound": {
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "sectionRouting": "Routing",
+    "status404": "STATUS 404",
+    "asideNote": "* Request matched no live route or document. Assets and deep links drift when URLs change between releases — return to dashboard or homepage to continue.",
+    "eyebrow": "Not found",
+    "title": "This route has no landing yet.",
+    "body": "The URL might be mistyped, the page may have moved, or the link could be stale. Pick up from a known workspace surface and keep reviewing where your team actually ships work.",
+    "backHome": "Back to home",
+    "openTriage": "Open triage dashboard",
+    "shortcutsTitle": "Operational shortcuts",
+    "productOverview": "Product overview",
+    "dashboardLink": "Dashboard",
+    "spacesLink": "Spaces",
+    "accountSettingsLink": "Account settings",
+    "footer": "youin — feedback on the live web",
+    "signInInstead": "Sign in instead"
+  },
+  "authShell": {
+    "workspaceAccess": "Workspace access",
+    "eyebrow": "youin auth",
+    "headline": "Review faster. Ship cleaner.",
+    "lead": "Sign in to route live feedback into tickets with context attached. Your reviewer stays on the page, your developer opens a complete brief.",
+    "statTeams": "Teams",
+    "statMarksPerDay": "Marks / day",
+    "statMedianTriage": "Median triage",
+    "bullet1": "Built for agencies and product teams working on live pages.",
+    "bullet2": "One accent color, one source of truth, one workflow.",
+    "bullet3": "Less QA theater. More resolved decisions."
+  },
+  "landingHeader": {
+    "openDashboard": "Open dashboard",
+    "signIn": "Sign in"
+  },
+  "commandPalette": {
+    "label": "Command palette",
+    "placeholder": "Type a command or search…",
+    "empty": "No commands match your search.",
+    "footerNavigate": "navigate",
+    "footerRun": "run",
+    "footerToggle": "toggle",
+    "groups": {
+      "navigate": "Navigate",
+      "spaces": "Spaces",
+      "theme": "Theme"
+    },
+    "nav": {
+      "triage": "Triage",
+      "triageSub": "Review marks across your spaces",
+      "inbox": "Inbox",
+      "inboxUnread": "Inbox · {count} unread",
+      "inboxSub": "Activity on marks you follow",
+      "analytics": "Analytics",
+      "analyticsSub": "Throughput and workspace activity",
+      "spaces": "Manage spaces",
+      "spacesSub": "All spaces in this workspace",
+      "account": "Account settings",
+      "accountSub": "Profile, team, and labels",
+      "themeLight": "Switch to light mode",
+      "themeDark": "Switch to dark mode"
+    },
+    "spaceSub": "Filter triage to this space"
+  },
+  "landing": {
+    "skipLink": "Skip to main content",
+    "nav": [
+      {
+        "href": "#problem",
+        "label": "Problem"
+      },
+      {
+        "href": "#loop",
+        "label": "How it works"
+      },
+      {
+        "href": "#who",
+        "label": "Who it's for"
+      },
+      {
+        "href": "#pricing",
+        "label": "Pricing"
+      }
+    ],
+    "hero": {
+      "title": "Your to-do list lives on your app.",
+      "subtitle": "Click any element. Write what needs to change. Push it as a Linear, GitHub, or Jira ticket — all without leaving your live app. No spreadsheets. No Slack chains.",
+      "chromeCta": "Add to Chrome",
+      "secondaryCta": "See the loop",
+      "metaLine": "Chrome extension · npm dev dep · Linear · GitHub · Jira"
+    },
+    "problem": {
+      "title": "Five steps for a five-second observation.",
+      "p1": "Designers and PMs lose context while moving across tools. Developers receive summaries instead of the moment that triggered the feedback.",
+      "oldLoopLabel": "The old loop",
+      "oldLoopBody": "Screenshot → annotate → paste in chat → explain context → wait for questions → repeat.",
+      "withLabel": "With youin",
+      "withBody": "Click → comment → done. Context is captured, the ticket writes itself."
+    },
+    "loop": {
+      "eyebrow": "How it works",
+      "title": "Three moves. One loop.",
+      "steps": [
+        {
+          "num": "01",
+          "title": "Mark an element",
+          "body": "Click anything on your app from the Chrome extension or the npm dev dep. Selector, viewport, browser, and screenshot are captured automatically."
+        },
+        {
+          "num": "02",
+          "title": "Comment with context",
+          "body": "Write only the intent. URL, device details, and element reference are already attached for whoever picks it up."
+        },
+        {
+          "num": "03",
+          "title": "Ship a ready ticket",
+          "body": "Push to Linear, GitHub, or Jira. The issue arrives with repro details, screenshot, and discussion thread pre-filled."
+        }
+      ]
+    },
+    "who": {
+      "eyebrow": "Who it's for",
+      "title": "Built for people who notice first.",
+      "personas": [
+        {
+          "role": "Product teams",
+          "detail": "3-15 people",
+          "body": "Designers, PMs, and devs annotating the same live surface. Replaces scattered Slack threads and Linear backlogs you keep meaning to clean up."
+        },
+        {
+          "role": "Solo devs",
+          "detail": "Indie + small teams",
+          "body": "Install youin as an npm dev dep. Treat your own app as a spatial to-do list — the fix lives where the bug lives."
+        },
+        {
+          "role": "Web agencies",
+          "detail": "5-50 people",
+          "body": "Multi-client review at scale. Guest links keep clients in your app, not in their inbox."
+        }
+      ]
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "Paid from day one.",
+      "subtitle": "No free tier. Either the product earns its keep on day one, or it doesn't.",
+      "popular": "Popular",
+      "tiers": [
+        {
+          "name": "Solo",
+          "price": "€29",
+          "period": "/ month",
+          "blurb": "For indie devs who think in pages.",
+          "cta": "Start 14-day trial",
+          "href": "#install",
+          "features": [
+            "1 seat",
+            "Chrome extension + npm dev dep",
+            "Unlimited spaces & marks",
+            "50 AI tickets / mo",
+            "GitHub, Linear, Jira"
+          ]
+        },
+        {
+          "name": "Team",
+          "price": "€79",
+          "period": "/ month",
+          "blurb": "For product teams shipping weekly.",
+          "cta": "Start 14-day trial",
+          "href": "#install",
+          "highlighted": true,
+          "features": [
+            "Up to 10 seats",
+            "Everything in Solo",
+            "Unlimited AI tickets",
+            "Space archiving",
+            "Team invites"
+          ]
+        },
+        {
+          "name": "Agency",
+          "price": "€149",
+          "period": "/ month",
+          "blurb": "For client-facing teams.",
+          "cta": "Talk to us",
+          "href": "/contact",
+          "features": [
+            "Unlimited seats",
+            "Everything in Team",
+            "Client guest links",
+            "White-label widget",
+            "Priority support"
+          ]
+        }
+      ]
+    },
+    "install": {
+      "title": "Stop describing the thing you can point at.",
+      "subtitle": "The next time someone spots a live issue, leave a mark instead of a message thread.",
+      "chromeCta": "Add to Chrome",
+      "contactCta": "Talk to a human",
+      "glanceTitle": "At a glance",
+      "onboardingLabel": "Onboarding",
+      "onboardingValue": "~60 seconds",
+      "tabsLabel": "Tabs to switch",
+      "tabsValue": "0",
+      "connectorsLabel": "Connectors",
+      "connectorsValue": "GitHub, Linear, Jira"
+    },
+    "footer": {
+      "copyright": "© 2026 youin",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    }
+  },
+  "extension": {
+    "popup": {
+      "signInFailed": "Sign-in failed.",
+      "continueGoogleAria": "Continue with Google in a new tab",
+      "signingIn": "Signing in…",
+      "signIn": "Sign in",
+      "signedInFallback": "Signed in",
+      "migrationFailed": "Migration failed.",
+      "floatingToggleAria": "Show floating button on pages",
+      "settingsSaveError": "Could not save. Try again."
+    },
+    "capture": {
+      "saveError": "Couldn't save. Try again.",
+      "genericError": "Something went wrong. Try again.",
+      "optionalPlaceholder": "Optional",
+      "saving": "Saving…",
+      "save": "Save",
+      "marksOnPageAria": "Marks on this page",
+      "previewAlt": "Captured element preview"
+    },
+    "widget": {
+      "chooseSpace": "Choose a space",
+      "spaceSaveError": "Couldn't save. Try again.",
+      "spaceCreated": "Created. Select it in the list.",
+      "createSpaceError": "Could not create in your workspace—try signing in via the popup first.",
+      "openYouinAria": "Open Youin",
+      "closeMenuAria": "Close menu",
+      "marksTitle": "Marks on this page",
+      "spaceNamePlaceholder": "Space name",
+      "newSpaceNameAria": "New space name",
+      "saveSpaceAria": "Save new space",
+      "addSpaceAria": "Add a space"
+    },
+    "sync": {
+      "noWorkspace": "No workspace found for this user. Use the web app once to finish setup.",
+      "noSpaces": "No spaces in your workspace yet. Create one in the web app, then reopen the popup.",
+      "imported": "Imported",
+      "markNeedsTitle": "Mark needs a title before sync.",
+      "spaceLocal": "Space is still local-only. Reload the popup after signing in to sync workspaces.",
+      "noWorkspaceAccount": "No workspace for this account. Open youin once in the browser.",
+      "syncFailed": "Could not sync mark.",
+      "nameRequired": "Name is required.",
+      "createSpaceFailed": "Could not create space (name may already exist)."
+    },
+    "migrate": {
+      "noWorkspace": "No workspace found for this user. Open the web app once to set one up.",
+      "createSpaceFailed": "Failed to create space.",
+      "untitledMark": "Untitled mark",
+      "importMarkFailed": "Failed to import a pin."
+    },
+    "background": {
+      "unrecognizedMessage": "Unrecognized message."
+    },
+    "auth": {
+      "missingTokens": "Missing tokens from bridge."
+    },
+    "storage": {
+      "defaultSpaceName": "Default",
+      "designQaSpaceName": "Design QA",
+      "untitledMark": "Untitled mark"
+    }
+  }
+}

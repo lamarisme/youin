@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
@@ -35,13 +36,14 @@ function useIsSignedIn() {
 }
 
 export function LandingHeaderAuth() {
+  const t = useTranslations("landingHeader");
   const isSignedIn = useIsSignedIn();
 
   if (isSignedIn) {
     return (
       <Button asChild size="sm" className="h-9 px-3.5 text-[0.8125rem]">
         <Link href="/dashboard?space=all" className="inline-flex items-center gap-2">
-          Open dashboard
+          {t("openDashboard")}
           <ArrowRight className="size-3.5" />
         </Link>
       </Button>
@@ -54,7 +56,7 @@ export function LandingHeaderAuth() {
         href="/login"
         className="-mx-1 -my-1.5 hidden px-1 py-1.5 text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:inline-flex sm:items-center"
       >
-        Sign in
+        {t("signIn")}
       </Link>
       <ChromeCtaButton href="#install" compact />
     </>
@@ -62,6 +64,7 @@ export function LandingHeaderAuth() {
 }
 
 export function LandingMobileSignIn() {
+  const t = useTranslations("landingHeader");
   const isSignedIn = useIsSignedIn();
   if (isSignedIn) return null;
 
@@ -70,7 +73,7 @@ export function LandingMobileSignIn() {
       href="/login"
       className="inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-[0.8125rem] font-medium text-ink"
     >
-      Sign in
+      {t("signIn")}
     </Link>
   );
 }

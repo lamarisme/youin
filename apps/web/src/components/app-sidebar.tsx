@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
   BarChart3,
   ChevronRight,
@@ -20,7 +20,7 @@ import {
 import { useCallback, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { useInbox } from "@/app/[locale]/(workspace)/inbox/use-inbox";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,10 +43,10 @@ import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Triage", icon: LayoutGrid, shortcut: "D", exactOnly: false },
-  { href: "/inbox", label: "Inbox", icon: InboxIcon, shortcut: "I", exactOnly: false },
-  { href: "/spaces", label: "Spaces", icon: Layers, shortcut: "S", exactOnly: false },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, shortcut: "A", exactOnly: false },
+  { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
+  { href: "/inbox", labelKey: "inbox" as const, icon: InboxIcon, shortcut: "I", exactOnly: false },
+  { href: "/spaces", labelKey: "spaces" as const, icon: Layers, shortcut: "S", exactOnly: false },
+  { href: "/analytics", labelKey: "analytics" as const, icon: BarChart3, shortcut: "A", exactOnly: false },
 ] as const;
 
 function useSidebarCollapsed() {
@@ -67,6 +67,9 @@ function useSidebarCollapsed() {
 }
 
 export function AppSidebar() {
+  const tNav = useTranslations("nav");
+  const tSide = useTranslations("sidebar");
+  const tCommon = useTranslations("common");
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
@@ -92,9 +95,9 @@ export function AppSidebar() {
   const displayName =
     displayNamePreference === "username" && myUsername
       ? `@${myUsername}`
-      : profileName.trim() || profileEmail.split("@")[0] || "Member";
+      : profileName.trim() || profileEmail.split("@")[0] || tCommon("member");
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
-  const workspaceLabel = workspaceName || "Workspace";
+  const workspaceLabel = workspaceName || tCommon("workspaceFallback");
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
 
   async function handleSignOut() {
@@ -126,7 +129,7 @@ export function AppSidebar() {
               "flex items-center gap-2.5 px-1 shrink-0",
               collapsed && "lg:hidden",
             )}
-            aria-label="youin home"
+            aria-label={tSide("homeAria")}
           >
             <span className="pin-dot shrink-0">Y</span>
             {!collapsed && (
@@ -140,7 +143,7 @@ export function AppSidebar() {
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? tSide("expandSidebar") : tSide("collapseSidebar")}
             className={cn(
               "hidden lg:flex items-center justify-center size-8 rounded-md text-ink-3 transition-colors",
               "hover:bg-paper-3 hover:text-ink",
@@ -175,7 +178,7 @@ export function AppSidebar() {
               <button
                 type="button"
                 onClick={openCommandPalette}
-                aria-label="Open command palette"
+                aria-label={tSide("openCommandPalette")}
                 className={cn(
                   "hidden lg:flex items-center justify-center size-9 w-full rounded-md border border-rule bg-paper text-ink-3 transition-colors",
                   "hover:border-ink/12 hover:bg-paper-3 hover:text-ink",
@@ -186,7 +189,7 @@ export function AppSidebar() {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right">
-              Search
+              {tSide("searchShortcut")}
               <kbd className="ml-1.5 rounded border border-rule/50 bg-paper-2 px-1 py-0.5 font-mono text-[0.625rem]">
                 ⌘K
               </kbd>
@@ -196,7 +199,7 @@ export function AppSidebar() {
           <button
             type="button"
             onClick={openCommandPalette}
-            aria-label="Open command palette"
+            aria-label={tSide("openCommandPalette")}
             className={cn(
               "flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-rule bg-paper px-2.5 text-left shadow-[inset_0_1px_0_0_oklch(100%_0_0/_0.04)] outline-none transition-colors",
               "hover:border-ink/12 hover:bg-paper-3",
@@ -204,7 +207,7 @@ export function AppSidebar() {
             )}
           >
             <Search className="size-[1rem] shrink-0 text-ink-3" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">Search or jump…</span>
+            <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
               <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3 dark:bg-paper">
                 ⌘
@@ -239,7 +242,7 @@ export function AppSidebar() {
                   <Link
                     href={item.href}
                     aria-current={isActive ? "page" : undefined}
-                    aria-label={item.label}
+                    aria-label={tNav(item.labelKey)}
                     className={cn(
                       "relative hidden lg:flex items-center justify-center size-9 rounded-md transition-colors",
                       isActive
@@ -251,7 +254,7 @@ export function AppSidebar() {
                     <Icon className="size-[1.1rem]" />
                     {showInboxBadge && (
                       <span
-                        aria-label={`${inbox.unreadCount} unread`}
+                        aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
                         className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1rem] h-4 items-center justify-center rounded-full bg-mark px-1 text-[0.5625rem] font-semibold tabular-nums text-paper leading-none"
                       >
                         {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
@@ -260,7 +263,7 @@ export function AppSidebar() {
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="flex items-center gap-1.5">
-                  {item.label}
+                  {tNav(item.labelKey)}
                   <kbd className="rounded border border-rule/50 bg-paper-2 px-1 py-0.5 font-mono text-[0.625rem] text-ink-3">
                     G {item.shortcut}
                   </kbd>
@@ -284,10 +287,10 @@ export function AppSidebar() {
               )}
             >
               <Icon className="size-[1.1rem] shrink-0" />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{tNav(item.labelKey)}</span>
               {showInboxBadge ? (
                 <span
-                  aria-label={`${inbox.unreadCount} unread`}
+                  aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
                   className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark px-1.5 text-[0.625rem] font-semibold tabular-nums text-paper"
                 >
                   {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
@@ -312,7 +315,7 @@ export function AppSidebar() {
                   <ThemeToggleButton theme={theme} onToggle={toggleTheme} compact />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  {theme === "dark" ? "Light mode" : "Dark mode"}
+                  {theme === "dark" ? tSide("lightMode") : tSide("darkMode")}
                 </TooltipContent>
               </Tooltip>
 
@@ -320,7 +323,7 @@ export function AppSidebar() {
                 <TooltipTrigger asChild>
                   <Link
                     href="/account"
-                    aria-label={`Account — ${displayName}`}
+                    aria-label={tSide("accountAria", { name: displayName })}
                     aria-current={accountActive ? "page" : undefined}
                     className={cn(
                       "flex items-center justify-center size-9 rounded-md transition-colors",
@@ -357,7 +360,7 @@ export function AppSidebar() {
                   type="button"
                   onClick={handleSignOut}
                   disabled={isSigningOut}
-                  aria-label="Sign out"
+                  aria-label={tSide("signOutAria")}
                   className={cn(
                     "mx-auto mt-3 flex items-center justify-center size-9 rounded-md text-ink-3 transition-colors",
                     "hover:bg-paper-3 hover:text-ink disabled:opacity-60",
@@ -371,7 +374,7 @@ export function AppSidebar() {
                   )}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">Sign out</TooltipContent>
+              <TooltipContent side="right">{tSide("signOut")}</TooltipContent>
             </Tooltip>
           </>
         ) : (
@@ -426,7 +429,7 @@ export function AppSidebar() {
               ) : (
                 <LogOut className="size-[1.05rem]" />
               )}
-              <span>{isSigningOut ? "Signing out…" : "Sign out"}</span>
+              <span>{isSigningOut ? tSide("signingOut") : tSide("signOut")}</span>
             </button>
           </>
         )}
@@ -448,11 +451,12 @@ function MobileAccountMenu({
   isSigningOut: boolean;
   onSignOut: () => void;
 }) {
+  const t = useTranslations("sidebar");
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          aria-label="Open account menu"
+          aria-label={t("openAccountMenu")}
           className={cn(
             "rounded-full ring-2 ring-transparent transition-shadow",
             "hover:ring-mark/30",
@@ -477,7 +481,7 @@ function MobileAccountMenu({
         <DropdownMenuItem asChild>
           <Link href="/account">
             <User className="size-4" />
-            Account settings
+            {t("accountSettings")}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -490,7 +494,7 @@ function MobileAccountMenu({
           ) : (
             <LogOut className="size-4" />
           )}
-          {isSigningOut ? "Signing out..." : "Sign out"}
+          {isSigningOut ? t("accountSettingsSigningOut") : t("signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -506,8 +510,9 @@ function ThemeToggleButton({
   onToggle: () => void;
   compact?: boolean;
 }) {
+  const t = useTranslations("sidebar");
   const Icon = theme === "dark" ? Sun : Moon;
-  const label = theme === "dark" ? "Light mode" : "Dark mode";
+  const label = theme === "dark" ? t("lightMode") : t("darkMode");
   if (compact) {
     return (
       <button
