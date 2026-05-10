@@ -2,10 +2,12 @@
 // workspace after they sign in for the first time. Runs from the popup so
 // errors surface to the user; idempotent via the local migration flag.
 
+import { buildMarkDescription } from "./mark-description"
 import { getSupabase } from "./supabase"
 import {
   getPins,
   getSpaces,
+  savePins,
   type LocalThreadMessage,
   type Pin,
   type Space
@@ -28,7 +30,7 @@ function proposeSpaceCode(name: string): string {
   return trimmed.length >= 2 ? trimmed : "SP"
 }
 
-async function allocateSpaceCode(
+export async function allocateSpaceCode(
   workspaceId: string,
   name: string,
   existingCodes: Set<string>
@@ -200,11 +202,15 @@ export async function migrateLocalDataToWorkspace(
   let pinsImported = 0
   let commentsImported = 0
 
+  /** Local chrome pin id → row written to Postgres */
+  const linked: Array<{ pinId: string; spaceId: string; remoteMarkId: string }> =
+    []
+
   for (const pin of localPins) {
     const remoteSpaceId = localToRemoteSpaceId.get(pin.spaceId)
     if (!remoteSpaceId) continue
 
-    const description = buildDescription(pin)
+    const description = buildMarkDescription(pin)
     const { data: mark, error: markErr } = await supabase
       .from("marks")
       .insert({
@@ -234,6 +240,11 @@ export async function migrateLocalDataToWorkspace(
       }
     }
     pinsImported++
+    linked.push({
+      pinId: pin.id,
+      spaceId: remoteSpaceId,
+      remoteMarkId: mark.id as string
+    })
 
     const messages: LocalThreadMessage[] = pin.thread ?? []
     if (messages.length) {
@@ -258,6 +269,21 @@ export async function migrateLocalDataToWorkspace(
     }
   }
 
+  if (linked.length) {
+    const current = await getPins()
+    const byId = new Map(linked.map((l) => [l.pinId, l]))
+    const next = current.map((p) => {
+      const upd = byId.get(p.id)
+      if (!upd) return p
+      return {
+        ...p,
+        spaceId: upd.spaceId,
+        remoteMarkId: upd.remoteMarkId
+      }
+    })
+    await savePins(next)
+  }
+
   await markMigrationDone(userId)
   return {
     ok: true,
@@ -268,9 +294,3 @@ export async function migrateLocalDataToWorkspace(
   }
 }
 
-function buildDescription(pin: Pin): string {
-  const lines: string[] = []
-  if (pin.outerHTMLPreview) lines.push("```html\n" + pin.outerHTMLPreview + "\n```")
-  if (pin.selector) lines.push(`Selector: \`${pin.selector}\` (${pin.strategy})`)
-  return lines.join("\n\n")
-}

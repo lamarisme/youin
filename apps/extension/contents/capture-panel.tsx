@@ -8,6 +8,7 @@ import {
   type ReviewCaptureDetail
 } from "../lib/events"
 import { normalizePageUrlForMatch } from "../lib/page-url"
+import { pushPinToWorkspace } from "../lib/sync"
 import {
   addPin,
   getActiveSpaceId,
@@ -202,6 +203,18 @@ const CapturePanel = () => {
         setSaveError("Couldn't save. Try again.")
         return
       }
+      const push = await pushPinToWorkspace(pin, {
+        screenshotDataUrl: capture.elementScreenshotDataUrl
+      })
+      if (!push.skipped && !push.ok && push.error) {
+        setSaveError(
+          `Saved locally — ${
+            push.error.endsWith(".") ? push.error.slice(0, -1) : push.error
+          }. Open the popup to reconnect, then try again.`
+        )
+        scheduleRefreshPagePins(capture.url)
+        return
+      }
       resume()
     } catch (e) {
       setSaveError(
@@ -244,6 +257,15 @@ const CapturePanel = () => {
 
       <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
         <div className="flex flex-col gap-5 px-4 pb-4 pt-5">
+          {capture.elementScreenshotDataUrl ? (
+            <div className="overflow-hidden rounded-[var(--yi-radius-lg)] border border-rule bg-paper-2 shadow-[0_8px_24px_-16px_rgba(24,22,18,0.2)]">
+              <img
+                src={capture.elementScreenshotDataUrl}
+                alt="Captured element preview"
+                className="max-h-48 w-full object-contain object-top"
+              />
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3">
             <label className="block" htmlFor="capture-mark-title">
               <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">

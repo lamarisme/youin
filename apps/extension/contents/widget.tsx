@@ -8,13 +8,20 @@ import {
   EVENT_REVIEW_STATE,
   type ReviewStateDetail
 } from "../lib/events"
+import { getSession } from "../lib/auth"
+import {
+  createRemoteWorkspaceSpace,
+  syncWorkspaceFromRemote
+} from "../lib/sync"
 import {
   addSpace,
   getActiveSpaceId,
   getPinCountsByPage,
   getSpaces,
   getWidgetSettings,
+  KEY_ACTIVE_SPACE,
   KEY_PINS,
+  KEY_SPACES,
   setActiveSpaceId,
   STORAGE_LIMITS,
   type Space,
@@ -118,6 +125,10 @@ const Widget = () => {
       area
     ) => {
       if (area !== "local") return
+      if (changes[KEY_SPACES] || changes[KEY_ACTIVE_SPACE]) {
+        void refresh()
+        return
+      }
       if (changes[KEY_PINS]) {
         void getPinCountsByPage(window.location.href).then((counts) => {
           if (!cancelled) setPinCounts(counts)
@@ -179,30 +190,52 @@ const Widget = () => {
       setSpaceSaveError(null)
       return
     }
-    const slug =
-      name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "") || "space"
-    const id = `${slug}-${Date.now().toString(36)}`
-    const next: Space = { id, name, createdAt: Date.now() }
     void (async () => {
-      const added = await addSpace(next)
-      if (!added) {
-        setSpaceSaveError("Couldn't save. Try again.")
-        return
-      }
-      const activated = await setActiveSpaceId(id)
-      if (!activated) {
-        setSpaceSaveError("Created. Select it in the list.")
+      const sess = await getSession()
+      if (!sess?.user?.id) {
+        const slug =
+          name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "") || "space"
+        const id = `${slug}-${Date.now().toString(36)}`
+        const next: Space = { id, name, createdAt: Date.now() }
+        const added = await addSpace(next)
+        if (!added) {
+          setSpaceSaveError("Couldn't save. Try again.")
+          return
+        }
+        const activated = await setActiveSpaceId(id)
+        if (!activated) {
+          setSpaceSaveError("Created. Select it in the list.")
+          setSpaces((prev) => [...prev, next])
+          setNewSpaceName("")
+          setCreatingSpace(false)
+          return
+        }
+        setSpaceSaveError(null)
         setSpaces((prev) => [...prev, next])
+        setActiveSpaceIdState(id)
         setNewSpaceName("")
         setCreatingSpace(false)
         return
       }
+
+      const created = await createRemoteWorkspaceSpace(sess.user.id, name)
+      if (!created.ok || !created.spaceId) {
+        setSpaceSaveError(
+          created.error ??
+            "Could not create in your workspace—try signing in via the popup first."
+        )
+        return
+      }
+      await syncWorkspaceFromRemote(sess.user.id)
+      const synced = await getSpaces()
+      setSpaces(synced)
+      await setActiveSpaceId(created.spaceId)
+      setActiveSpaceIdState(created.spaceId)
+      await getPinCountsByPage(window.location.href).then(setPinCounts)
       setSpaceSaveError(null)
-      setSpaces((prev) => [...prev, next])
-      setActiveSpaceIdState(id)
       setNewSpaceName("")
       setCreatingSpace(false)
     })()

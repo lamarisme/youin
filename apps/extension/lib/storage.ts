@@ -4,8 +4,8 @@
 
 import { normalizePageUrlForMatch } from "./page-url"
 
-const KEY_SPACES = "youin:spaces"
-const KEY_ACTIVE_SPACE = "youin:active-space-id"
+export const KEY_SPACES = "youin:spaces"
+export const KEY_ACTIVE_SPACE = "youin:active-space-id"
 export const KEY_PINS = "youin:pins"
 const KEY_WIDGET_SETTINGS = "youin:widget-settings"
 
@@ -43,6 +43,8 @@ export interface LocalThreadMessage {
 export interface Pin {
   id: string
   spaceId: string
+  /** Set after a successful insert into `marks`; avoids duplicate uploads. */
+  remoteMarkId?: string
   /** Canonical normalized page URL for matching. */
   url: string
   origin: string
@@ -149,7 +151,14 @@ function migrateRawPin(raw: unknown): Pin {
   const urlRaw = typeof p.url === "string" ? p.url : ""
   const url = normalizePageUrlForMatch(urlRaw) || urlRaw
 
-  return {
+  const remoteMarkId =
+    typeof p.remoteMarkId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      p.remoteMarkId
+    )
+      ? p.remoteMarkId
+      : undefined
+  const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
       typeof p.id === "string" && p.id.length > 0
         ? p.id
@@ -177,6 +186,7 @@ function migrateRawPin(raw: unknown): Pin {
       STORAGE_LIMITS.outerHTMLPreview
     )
   }
+  return remoteMarkId ? { ...base, remoteMarkId } : base
 }
 
 async function read<T>(key: string, fallback: T): Promise<T> {
@@ -290,8 +300,23 @@ export async function addPin(pin: Pin): Promise<boolean> {
 function serializePinsForStorage(pins: Pin[]): unknown[] {
   return pins.map((p) => {
     const { comment: _c, ...rest } = p as Pin & { comment?: string }
+    if (!rest.remoteMarkId) delete (rest as { remoteMarkId?: string }).remoteMarkId
     return rest
   })
+}
+
+export async function savePins(pins: Pin[]): Promise<boolean> {
+  return write(KEY_PINS, serializePinsForStorage(pins))
+}
+
+/** Apply fields to one pin by id; no-op when missing */
+export async function patchPin(pinId: string, patch: Partial<Pin>): Promise<boolean> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return false
+  const merged = { ...pins[ix], ...patch }
+  pins[ix] = merged
+  return savePins(pins)
 }
 
 export async function appendThreadComment(

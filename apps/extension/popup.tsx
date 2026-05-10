@@ -15,6 +15,7 @@ import {
   migrateLocalDataToWorkspace,
   type MigrationResult
 } from "./lib/migrate"
+import { syncWorkspaceFromRemote } from "./lib/sync"
 import { getWidgetSettings, setWidgetSettings } from "./lib/storage"
 import { WEB_APP_URL } from "./lib/supabase"
 
@@ -174,6 +175,7 @@ function SignInBlock() {
 function SignedInBlock({ session }: { session: Session | null }) {
   const userId = session?.user?.id
   const email = session?.user?.email ?? "Signed in"
+  const [syncingDb, setSyncingDb] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migrationStatus, setMigrationStatus] = useState<
     MigrationResult | { error: string } | null
@@ -184,6 +186,12 @@ function SignedInBlock({ session }: { session: Session | null }) {
     if (!userId) return
     let cancelled = false
     void (async () => {
+      setSyncingDb(true)
+      try {
+        await syncWorkspaceFromRemote(userId)
+      } finally {
+        if (!cancelled) setSyncingDb(false)
+      }
       const done = await isMigrationDoneForUser(userId)
       if (cancelled || done) return
       setMigrating(true)
@@ -219,11 +227,15 @@ function SignedInBlock({ session }: { session: Session | null }) {
         </button>
       </div>
 
+      {syncingDb ? (
+        <p className="mt-3 text-[11px] text-ink-3">Syncing spaces from your workspace…</p>
+      ) : null}
+
       {migrating ? (
         <p className="mt-3 text-[11px] text-ink-3">Importing your local pins…</p>
       ) : null}
 
-      {!migrating && migrationStatus && !migrationDismissed ? (
+      {!syncingDb && !migrating && migrationStatus && !migrationDismissed ? (
         <MigrationBanner
           status={migrationStatus}
           onDismiss={() => setMigrationDismissed(true)}
