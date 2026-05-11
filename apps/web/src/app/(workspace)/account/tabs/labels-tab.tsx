@@ -54,10 +54,10 @@ export function LabelsTab() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div>
-        <h2 className="font-display text-lg font-semibold text-ink">Labels</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
+        <h2 className="font-display text-base font-semibold leading-tight text-ink">Labels</h2>
+        <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
           Labels appear here when you tag a mark. Use this list to remove ones you no longer need.
         </p>
       </div>
@@ -77,13 +77,13 @@ export function LabelsTab() {
           }
         />
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
+        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
           {labels.map((label) => {
             const count = usageById.get(label.id) ?? 0;
             return (
               <li
                 key={label.id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
+                className="flex items-center justify-between gap-3 px-3 py-2.5"
               >
                 <span className="inline-flex items-center gap-2">
                   <Tag className="size-3.5 text-ink-3" aria-hidden />

@@ -27,6 +27,7 @@ import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Surface } from "@/components/surface";
+import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
@@ -242,7 +243,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   {space.name}
                 </h1>
                 {space.notes ? (
-                  <p className="mt-1 max-w-[50ch] break-words text-[0.8125rem] text-ink-2">
+                  <p className="mt-1 max-w-[58ch] break-words text-[0.8125rem] leading-snug text-ink-2">
                     {space.notes}
                   </p>
                 ) : null}
@@ -259,7 +260,10 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 size="sm"
                 variant={space.pinned ? "default" : "outline"}
                 onClick={() => toggleSpacePinned(space.id)}
-                className="h-8 px-2.5"
+                className={cn(
+                  "h-8 px-2.5",
+                  !space.pinned && "border-rule bg-paper text-ink hover:bg-paper-2",
+                )}
               >
                 <Bookmark className="size-3.5" />
                 {space.pinned ? "Pinned" : "Pin"}
@@ -294,7 +298,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             </div>
           </div>
 
-          <Surface className="mt-5">
+          <Surface variant="subtle" padding="sm" className="mt-5 rounded-xl">
             <div className="flex items-center justify-between text-[0.8125rem]">
               <span className="font-medium text-ink">{completionPct}% resolved</span>
               <span className="text-ink-3">{stats?.total ?? 0} marks total</span>
@@ -326,14 +330,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </Surface>
 
           <div className="mt-5">
-            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-eyebrow">Marks in this space</p>
-              <div className="flex items-center gap-2">
+            <ToolbarPanel className="mb-3 py-2.5">
+              <p className="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
+                Marks in this space
+              </p>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setShowNew(true)}
-                  className="h-11 px-3 text-[0.875rem] sm:h-8 sm:px-2.5 sm:text-[0.75rem]"
+                  className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-8 sm:text-[0.75rem]"
                 >
                   <Plus className="size-3.5" />
                   New mark
@@ -350,7 +356,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   </Link>
                 </Button>
               </div>
-            </div>
+            </ToolbarPanel>
 
             {spacePins.length === 0 ? (
               <EmptyState

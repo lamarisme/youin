@@ -92,7 +92,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
     <>
       <AppHeader
         title="Spaces"
-        subtitle="Each space scopes marks to a release, a project, or a review session. See activity across all spaces at a glance."
+        subtitle="Organise work by release, client, or review cycle. Spaces isolate marks so triage stays focused."
       >
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
           <span className="font-mono text-ink">{workspace.spaces.length}</span>
@@ -116,6 +116,10 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
           <Plus className="size-3.5" />
           New space
         </Button>
+        <span
+          aria-hidden
+          className="hidden h-6 w-px shrink-0 bg-rule sm:inline-block"
+        />
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
           <FilterSelect<"all" | SpacePriority>
             value={priorityFilter}
@@ -141,7 +145,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
         </div>
       </ToolbarPanel>
 
-      <div className="overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.38)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)]">
+      <div className="overflow-hidden rounded-xl border border-rule bg-paper">
         {filteredSpaces.length === 0 ? (
           <EmptyState
             variant="plain"

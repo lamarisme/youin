@@ -78,12 +78,11 @@ export function ProfileTab() {
       : draft.name || "Your name";
 
   return (
-    <div className="space-y-8">
-      {/* Heading + inline preview chip — replaces the oversized 220px sidebar. */}
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="font-display text-lg font-semibold text-ink">Your profile</h2>
-          <p className="mt-1 text-[0.8125rem] text-ink-2">
+          <h2 className="font-display text-base font-semibold leading-tight text-ink">Your profile</h2>
+          <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-snug text-ink-2">
             How teammates see you in comments and the member list.
           </p>
         </div>
@@ -108,7 +107,7 @@ export function ProfileTab() {
       </div>
 
       {/* Field groups — semantic chunks: identity / bio / prefs. */}
-      <div className="space-y-7 max-w-2xl">
+      <div className="max-w-2xl space-y-6">
         <fieldset className="grid gap-4 sm:grid-cols-2">
           <Field id="profile-name" label="Full name" error={nameError}>
             <Input
@@ -163,16 +162,16 @@ export function ProfileTab() {
         </fieldset>
 
         <fieldset className="space-y-3">
-          <legend className="text-[0.75rem] font-medium text-ink-2">
+          <legend className="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
             Names in the workspace
           </legend>
-          <p className="max-w-[52ch] text-[0.75rem] leading-relaxed text-ink-3">
+          <p className="max-w-[52ch] text-[0.75rem] leading-snug text-ink-3">
             Choose whether teammate labels use profile full names or workspace @usernames — one or the other, not both.{" "}
             <span className="text-ink-2">
               Typing <span className="font-mono text-ink">@</span> always inserts a username so mentions stay precise.
             </span>
           </p>
-          <div className="flex flex-col gap-2 rounded-lg border border-rule bg-paper-2 p-1">
+          <div className="flex flex-col gap-0.5 rounded-xl border border-rule bg-paper-2 p-1">
             <NamePrefOption
               id="name-pref-full"
               title="Full name"
@@ -237,7 +236,7 @@ function NamePrefOption({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper"
+      className="flex cursor-pointer items-start gap-3 rounded-md px-3 py-2 transition-colors hover:bg-paper"
     >
       <input
         id={id}

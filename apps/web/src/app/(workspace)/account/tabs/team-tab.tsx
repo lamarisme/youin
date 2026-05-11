@@ -112,12 +112,11 @@ export function TeamTab() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Section 1 — heading + your-controls (tight: heading→form, form→form). */}
-      <section className="space-y-6">
+    <div className="space-y-8">
+      <section className="space-y-5">
         <div>
-          <h2 className="font-display text-lg font-semibold text-ink">Team</h2>
-          <p className="mt-1 text-[0.8125rem] text-ink-2">
+          <h2 className="font-display text-base font-semibold leading-tight text-ink">Team</h2>
+          <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
             Add teammates and decide who can see this workspace.
           </p>
         </div>
@@ -232,7 +231,7 @@ export function TeamTab() {
 
       {/* Section 2 — roster. Bordered list so it visually anchors as "the team". */}
       <section>
-        <div className="mb-3 flex items-baseline justify-between gap-2">
+        <div className="mb-2.5 flex items-baseline justify-between gap-2">
           <p className="text-eyebrow">
             Members <span className="text-ink-3">({members.length})</span>
           </p>
@@ -242,7 +241,7 @@ export function TeamTab() {
             </p>
           ) : null}
         </div>
-        <ul className="divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
+        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
           {members.map((member) => {
             const parts = memberDisplayParts(member, displayNamePreference);
             const handlePrimary = displayNamePreference === "username";
@@ -298,7 +297,7 @@ export function TeamTab() {
 
         {/* Pending invites — visually subordinate, dashed border to read as "not yet". */}
         {invites.length > 0 ? (
-          <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-lg border border-dashed border-rule bg-paper-2/40">
+          <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-xl border border-dashed border-rule bg-paper-2/40">
             {invites.map((inv) => (
               <li
                 key={inv.id}

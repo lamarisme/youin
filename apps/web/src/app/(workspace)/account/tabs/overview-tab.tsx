@@ -49,9 +49,8 @@ export function OverviewTab() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Workspace identity — primary content. No card chrome; typography carries hierarchy. */}
-      <section className="border-b border-rule pb-8">
+    <div className="space-y-8">
+      <section className="border-b border-rule pb-6">
         <p className="text-eyebrow">Workspace</p>
         {renaming ? (
           <div className="mt-2 flex items-center gap-1.5">
@@ -94,7 +93,7 @@ export function OverviewTab() {
           </div>
         ) : (
           <div className="mt-1 flex items-center gap-2">
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">
+            <h2 className="font-display text-xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.375rem]">
               {workspaceName || "Workspace"}
             </h2>
             {isOwner ? (
@@ -140,12 +139,14 @@ export function OverviewTab() {
 
       {/* Settings — grouped list, divider-separated rows. Linear-style. */}
       <section>
-        <h2 className="font-display text-lg font-semibold text-ink">Security & notifications</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
+        <h2 className="font-display text-base font-semibold leading-tight text-ink">
+          Security & notifications
+        </h2>
+        <p className="mt-1 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-2">
           Sign-in protection and how the team hears about activity.
         </p>
 
-        <ul className="mt-4 divide-y divide-rule overflow-hidden rounded-lg border border-rule bg-paper">
+        <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
           <SettingRow
             title="Two-factor authentication"
             description="Require a code from your phone at sign-in."
@@ -175,7 +176,7 @@ function SettingRow({
   muted?: boolean;
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-3.5">
+    <li className="flex items-center justify-between gap-4 px-4 py-3">
       <div className={muted ? "opacity-70" : undefined}>
         <p className="text-[0.8125rem] font-medium text-ink">{title}</p>
         <p className="mt-0.5 text-[0.6875rem] text-ink-3">{description}</p>
