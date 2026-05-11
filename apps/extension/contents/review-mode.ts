@@ -13,6 +13,7 @@ import {
   type ReviewCaptureDetail,
   type ReviewStateDetail
 } from "../lib/events"
+import { TAB_CAPTURE_CROP, type TabCaptureCropResponse } from "../lib/tab-capture"
 import { generateSelector } from "../lib/selector"
 import {
   getActiveSpaceId,
@@ -242,6 +243,55 @@ function cancelHoverRaf() {
   pendingHoverRect = null
 }
 
+function intersectViewportRect(
+  rect: DOMRectReadOnly
+): { left: number; top: number; width: number; height: number } | null {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const left = Math.max(0, rect.left)
+  const top = Math.max(0, rect.top)
+  const right = Math.min(vw, rect.right)
+  const bottom = Math.min(vh, rect.bottom)
+  const width = right - left
+  const height = bottom - top
+  if (width < 1 || height < 1) return null
+  return { left, top, width, height }
+}
+
+function waitNext2Frames(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve())
+    })
+  })
+}
+
+/**
+ * Snapshot via `captureVisibleTab` in the background, cropped to the element’s
+ * on-screen rect. Hides the review overlay so it is not included in the image.
+ */
+async function captureElementViaTab(rect: DOMRectReadOnly): Promise<string | undefined> {
+  const crop = intersectViewportRect(rect)
+  if (!crop) return undefined
+
+  const prevVisibility = host?.style.visibility
+  try {
+    if (host) host.style.visibility = "hidden"
+    await waitNext2Frames()
+
+    const res = (await chrome.runtime.sendMessage({
+      type: TAB_CAPTURE_CROP,
+      rect: crop,
+      viewport: { width: window.innerWidth, height: window.innerHeight }
+    })) as TabCaptureCropResponse | undefined
+
+    if (res?.ok === true && typeof res.dataUrl === "string") return res.dataUrl
+    return undefined
+  } finally {
+    if (host) host.style.visibility = prevVisibility ?? ""
+  }
+}
+
 function flushHoverRect() {
   hoverRaf = null
   if (!highlight || !pendingHoverRect) return
@@ -278,14 +328,19 @@ async function captureAndDispatch(target: Element) {
   const result = generateSelector(target)
 
   let elementScreenshotDataUrl: string | undefined
-  if (target instanceof HTMLElement) {
+  try {
+    elementScreenshotDataUrl = await captureElementViaTab(rect)
+  } catch {
+    /* captureVisibleTab / message channel failures */
+  }
+  if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
     try {
       elementScreenshotDataUrl = await toPng(target, {
-        pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        pixelRatio: Math.min(3, window.devicePixelRatio || 1),
         cacheBust: true
       })
     } catch {
-      /* ignore — subresources / CORS */
+      /* DOM / CORS snapshot fallback not possible */
     }
   }
 

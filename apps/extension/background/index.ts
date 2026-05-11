@@ -1,9 +1,12 @@
-// Background service worker. Its only auth job today is to receive a
-// Supabase session from the web app's extension-bridge page and persist it
-// via the supabase client. The popup picks up the change through
-// chrome.storage.onChanged.
+// Background service worker: auth bridge from the web app, plus tab
+// screenshot capture for review mode (Chrome-rendered crop).
 
 import { setSessionFromBridge } from "../lib/auth"
+import {
+  type TabCaptureCropMessage,
+  TAB_CAPTURE_CROP,
+  type TabCaptureCropResponse
+} from "../lib/tab-capture"
 
 interface BridgeSessionMessage {
   type: "youin:set-session"
@@ -22,6 +25,111 @@ function isBridgeMessage(msg: unknown): msg is ExternalMessage {
   const t = (msg as { type?: unknown }).type
   return t === "youin:set-session" || t === "youin:ping"
 }
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(fr.result as string)
+    fr.onerror = () => reject(fr.error ?? new Error("read failed"))
+    fr.readAsDataURL(blob)
+  })
+}
+
+/** Avoid `fetch(data:...)` in the service worker — support is inconsistent; decode locally. */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",")
+  if (comma < 0) throw new Error("Invalid data URL.")
+  const meta = dataUrl.slice(0, comma)
+  const payload = dataUrl.slice(comma + 1)
+  const mime = /^data:([^;,]+)/.exec(meta)?.[1] ?? "image/png"
+  if (/;base64/i.test(meta)) {
+    const binary = atob(payload)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new Blob([bytes], { type: mime })
+  }
+  return new Blob([decodeURIComponent(payload)], { type: mime })
+}
+
+chrome.runtime.onMessage.addListener(
+  (
+    message: unknown,
+    sender,
+    sendResponse: (r: TabCaptureCropResponse) => void
+  ) => {
+    if (
+      !message ||
+      typeof message !== "object" ||
+      (message as { type?: unknown }).type !== TAB_CAPTURE_CROP
+    ) {
+      return false
+    }
+
+    const tabId = sender.tab?.id
+    if (tabId == null) {
+      sendResponse({ ok: false, error: "No sender tab." })
+      return false
+    }
+
+    const m = message as TabCaptureCropMessage
+    void (async () => {
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        const fullDataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+          format: "png"
+        })
+        const blob = dataUrlToBlob(fullDataUrl)
+        const img = await createImageBitmap(blob)
+
+        const vw = m.viewport.width
+        const vh = m.viewport.height
+        if (vw <= 0 || vh <= 0) {
+          img.close()
+          sendResponse({ ok: false, error: "Invalid viewport size." })
+          return
+        }
+
+        const scaleX = img.width / vw
+        const scaleY = img.height / vh
+
+        const sx = Math.max(0, Math.floor(m.rect.left * scaleX))
+        const sy = Math.max(0, Math.floor(m.rect.top * scaleY))
+        let sw = Math.ceil(m.rect.width * scaleX)
+        let sh = Math.ceil(m.rect.height * scaleY)
+        sw = Math.min(sw, img.width - sx)
+        sh = Math.min(sh, img.height - sy)
+
+        if (sw < 1 || sh < 1) {
+          img.close()
+          sendResponse({ ok: false, error: "Nothing visible to crop." })
+          return
+        }
+
+        const canvas = new OffscreenCanvas(sw, sh)
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          img.close()
+          sendResponse({ ok: false, error: "Could not create canvas." })
+          return
+        }
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh)
+        img.close()
+
+        const outBlob = await canvas.convertToBlob({ type: "image/png" })
+        const dataUrl = await blobToDataUrl(outBlob)
+        sendResponse({ ok: true, dataUrl })
+      } catch (e) {
+        sendResponse({
+          ok: false,
+          error: e instanceof Error ? e.message : "Capture failed."
+        })
+      }
+    })()
+
+    return true
+  }
+)
 
 chrome.runtime.onMessageExternal.addListener(
   (message, _sender, sendResponse) => {
