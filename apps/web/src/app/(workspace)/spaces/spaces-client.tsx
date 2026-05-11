@@ -36,7 +36,7 @@ function SpacesClientContent() {
   );
 
   return (
-    <PageContainer className="space-y-6">
+    <PageContainer className="space-y-5">
       {selectedSpace ? (
         <SpaceDetailView space={selectedSpace} onBack={() => updateSpacesUrl(null)} />
       ) : (

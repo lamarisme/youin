@@ -69,7 +69,37 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
 
   const openPalette = useCallback(() => setOpen(true), []);
 
-  // G + key navigation shortcuts
+  return (
+    <OpenCommandPaletteContext.Provider value={openPalette}>
+      {children}
+      <CommandPaletteDialog open={open} onOpenChange={setOpen} />
+    </OpenCommandPaletteContext.Provider>
+  );
+}
+
+function CommandPaletteDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+}) {
+  const t = useTranslations("commandPalette");
+  const router = useRouter();
+  const { theme, toggleTheme } = useTheme();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { spaces, workspace, workspaceId, userId } = useCollabStore(
+    useShallow((s) => ({
+      spaces: s.workspace.spaces,
+      workspace: s.workspace,
+      workspaceId: s.workspaceId,
+      userId: s.userId,
+    })),
+  );
+  const inbox = useInbox(workspace, workspaceId, userId);
+
+  // G + letter — same destinations as sidebar / palette; lives here to use `router` directly.
   useEffect(() => {
     if (open) return;
     let pendingG = false;
@@ -111,10 +141,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
       const target = navMap[key];
       if (target) {
         e.preventDefault();
-        const win = window as unknown as { __next_router_push?: (url: string) => void };
-        if (win.__next_router_push) {
-          win.__next_router_push(target);
-        }
+        router.push(target);
       }
       reset();
     }
@@ -124,45 +151,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("keydown", handler);
       reset();
     };
-  }, [open]);
-
-  return (
-    <OpenCommandPaletteContext.Provider value={openPalette}>
-      {children}
-      <CommandPaletteDialog open={open} onOpenChange={setOpen} />
-    </OpenCommandPaletteContext.Provider>
-  );
-}
-
-function CommandPaletteDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (next: boolean) => void;
-}) {
-  const t = useTranslations("commandPalette");
-  const router = useRouter();
-  const { theme, toggleTheme } = useTheme();
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const { spaces, workspace, workspaceId, userId } = useCollabStore(
-    useShallow((s) => ({
-      spaces: s.workspace.spaces,
-      workspace: s.workspace,
-      workspaceId: s.workspaceId,
-      userId: s.userId,
-    })),
-  );
-  const inbox = useInbox(workspace, workspaceId, userId);
-
-  // Store router for access in the G+key handler
-  useEffect(() => {
-    (window as unknown as { __next_router_push?: typeof router.push }).__next_router_push = router.push;
-    return () => {
-      delete (window as unknown as { __next_router_push?: typeof router.push }).__next_router_push;
-    };
-  }, [router]);
+  }, [open, router]);
 
   useEffect(() => {
     if (open && inputRef.current) {

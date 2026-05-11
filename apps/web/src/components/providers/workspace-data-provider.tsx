@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
 import { useCollabStore } from "@/lib/collab-store";
 import { useWorkspaceQuery } from "@/lib/queries/use-workspace";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
@@ -14,8 +17,14 @@ export function WorkspaceDataProvider({
   bootstrap: WorkspaceBootstrap;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("workspace.bootstrap");
   const hydrate = useCollabStore((s) => s.hydrate);
-  const { data, isLoading, isError, error } = useWorkspaceQuery(bootstrap);
+  const { data, isPending, isError, error, refetch, isFetching } = useWorkspaceQuery(bootstrap);
+
+  /** Prime the client store from SSR bootstrap before paint so the shell isn’t empty for a frame. */
+  useLayoutEffect(() => {
+    hydrate(bootstrap);
+  }, [bootstrap, hydrate]);
 
   useEffect(() => {
     if (data) {
@@ -23,24 +32,38 @@ export function WorkspaceDataProvider({
     }
   }, [data, hydrate]);
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-paper">
-        <Loader2 className="size-6 animate-spin text-ink-3" />
-      </div>
-    );
+  if (isPending) {
+    return <WorkspaceMainSkeleton id={t("loadingAria")} />;
   }
 
   if (isError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper">
+      <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center gap-5 px-4 py-[var(--page-y)]">
         <div className="max-w-sm text-center">
-          <p className="font-display text-lg font-semibold text-ink">
-            Failed to load workspace
-          </p>
+          <p className="font-display text-lg font-semibold text-ink">{t("title")}</p>
           <p className="mt-2 text-[0.8125rem] text-ink-2">
-            {error instanceof Error ? error.message : "Please try refreshing the page."}
+            {error instanceof Error ? error.message : t("bodyFallback")}
           </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button
+            type="button"
+            className="h-9 gap-2 bg-mark text-paper hover:bg-mark-bright"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                {t("retrying")}
+              </>
+            ) : (
+              t("tryAgain")
+            )}
+          </Button>
+          <Button type="button" variant="outline" className="h-9" onClick={() => window.location.reload()}>
+            {t("reloadPage")}
+          </Button>
         </div>
       </div>
     );

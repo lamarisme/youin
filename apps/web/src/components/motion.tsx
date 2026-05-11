@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, type HTMLMotionProps } from "framer-motion";
+import { createElement } from "react";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 
 const fadeInVariants = {
   hidden: { opacity: 0, y: 8 },
@@ -18,6 +19,12 @@ function FadeIn({
   delay?: number;
   as?: keyof typeof motion;
 }) {
+  const reduceMotion = useReducedMotion();
+  if (reduceMotion) {
+    const tag = Component as keyof React.JSX.IntrinsicElements;
+    return createElement(tag, { className, ...props }, children);
+  }
+
   const MotionComponent = motion[Component] as typeof motion.div;
   return (
     <MotionComponent

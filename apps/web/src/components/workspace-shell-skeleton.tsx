@@ -7,15 +7,9 @@ function ShimmerBar({ className }: { className?: string }) {
   );
 }
 
-/** Main shell placeholder for route transitions (main column only). */
+/** Route-level loading placeholder (renders inside `AppShell`’s single `<main>` — no nested landmark). */
 export function WorkspaceShellSkeleton({ id }: { id?: string }) {
-  return (
-    <div className="min-h-screen bg-paper" aria-busy="true" aria-label={id ?? "Loading workspace"}>
-      <main className="page-y min-h-screen">
-        <WorkspaceMainSkeleton />
-      </main>
-    </div>
-  );
+  return <WorkspaceMainSkeleton id={id ?? "Loading workspace"} />;
 }
 
 /** Main column placeholders when the shell is already visible (e.g. useSearchParams Suspense). */

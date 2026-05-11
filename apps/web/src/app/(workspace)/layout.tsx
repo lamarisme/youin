@@ -25,8 +25,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   }
 
   return (
-    <WorkspaceDataProvider bootstrap={bootstrap}>
-      <AppShell>{children}</AppShell>
-    </WorkspaceDataProvider>
+    <AppShell>
+      <WorkspaceDataProvider bootstrap={bootstrap}>{children}</WorkspaceDataProvider>
+    </AppShell>
   );
 }

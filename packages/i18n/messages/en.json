@@ -72,6 +72,24 @@
     "openDashboard": "Open dashboard",
     "signIn": "Sign in"
   },
+  "workspace": {
+    "routeError": {
+      "eyebrow": "Something interrupted this view",
+      "title": "We couldn't finish loading this page.",
+      "body": "The error has been logged. Try again — most failures here are transient (network blips, a slow query). If it keeps happening, head back to the dashboard and reopen the page.",
+      "referenceLabel": "Reference:",
+      "tryAgain": "Try again",
+      "backToDashboard": "Back to dashboard"
+    },
+    "bootstrap": {
+      "loadingAria": "Loading workspace",
+      "title": "Failed to load workspace",
+      "bodyFallback": "Please try again or reload the page.",
+      "tryAgain": "Try again",
+      "retrying": "Retrying…",
+      "reloadPage": "Reload page"
+    }
+  },
   "commandPalette": {
     "label": "Command palette",
     "placeholder": "Type a command or search…",
