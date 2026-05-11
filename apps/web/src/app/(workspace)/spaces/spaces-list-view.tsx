@@ -12,6 +12,7 @@ import {
 } from "@/components/select-options";
 import { Field } from "@/components/field";
 import { Pagination } from "@/components/pagination";
+import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -88,7 +89,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <>
       <AppHeader
         title="Spaces"
         subtitle="Each space scopes marks to a release, a project, or a review session. See activity across all spaces at a glance."
@@ -105,129 +106,40 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
         </div>
       </AppHeader>
 
-      <div>
+      <ToolbarPanel>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setShowCreate(true)}
-          className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+          className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
         >
           <Plus className="size-3.5" />
           New space
         </Button>
-
-        <Dialog
-          open={showCreate}
-          onOpenChange={(open) => {
-            setShowCreate(open);
-            if (!open) {
-              setNewName("");
-              setNewNotes("");
-              setCreateError(null);
-            }
-          }}
-        >
-          <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>New space</DialogTitle>
-              <DialogDescription>
-                Scope marks to a release, project, or review session.
-              </DialogDescription>
-            </DialogHeader>
-            <div
-              className="grid gap-4"
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  void handleCreate();
-                }
-              }}
-            >
-              <Field id="new-space-name" label="Name">
-                <Input
-                  id="new-space-name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder={todayName}
-                  className="h-9 bg-paper text-[0.8125rem]"
-                  autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && handleCreate()}
-                />
-                {!newName.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => setNewName(todayName)}
-                    className="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] text-ink-3 transition-colors hover:text-mark"
-                  >
-                    Use today&apos;s date{" "}
-                    <span className="font-mono text-[0.625rem] text-ink-2">{todayName}</span>
-                  </button>
-                ) : null}
-              </Field>
-              <Field id="new-space-notes" label="Description">
-                <Input
-                  id="new-space-notes"
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                  placeholder="What this space covers"
-                  className="h-9 bg-paper text-[0.8125rem]"
-                />
-              </Field>
-              {createError ? (
-                <p
-                  role="alert"
-                  className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
-                >
-                  {createError}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-                    ⌘
-                  </kbd>
-                  <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
-                    Enter
-                  </kbd>
-                  <span>to create</span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" onClick={() => setShowCreate(false)} className="h-9">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreate} disabled={!newName.trim()} className="h-9">
-                    Create
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterSelect<"all" | SpacePriority>
-          value={priorityFilter}
-          onValueChange={(v) => {
-            setPriorityFilter(v);
-            setPage(1);
-          }}
-          options={SPACE_PRIORITY_FILTER_OPTIONS}
-          ariaLabel="Filter spaces by priority"
-          triggerClassName="w-[150px]"
-        />
-        <FilterSelect<"all" | "pinned" | "unpinned">
-          value={pinnedFilter}
-          onValueChange={(v) => {
-            setPinnedFilter(v);
-            setPage(1);
-          }}
-          options={SPACE_PINNED_FILTER_OPTIONS}
-          ariaLabel="Filter spaces by pinned state"
-          triggerClassName="w-[150px]"
-        />
-        <span className="text-[0.75rem] text-ink-3">{filteredSpaces.length} spaces</span>
-      </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          <FilterSelect<"all" | SpacePriority>
+            value={priorityFilter}
+            onValueChange={(v) => {
+              setPriorityFilter(v);
+              setPage(1);
+            }}
+            options={SPACE_PRIORITY_FILTER_OPTIONS}
+            ariaLabel="Filter spaces by priority"
+            triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px] h-11 sm:h-9"
+          />
+          <FilterSelect<"all" | "pinned" | "unpinned">
+            value={pinnedFilter}
+            onValueChange={(v) => {
+              setPinnedFilter(v);
+              setPage(1);
+            }}
+            options={SPACE_PINNED_FILTER_OPTIONS}
+            ariaLabel="Filter spaces by pinned state"
+            triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px] h-11 sm:h-9"
+          />
+          <span className="text-[0.75rem] tabular-nums text-ink-3">{filteredSpaces.length} spaces</span>
+        </div>
+      </ToolbarPanel>
 
       <div className="overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.38)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)]">
         {filteredSpaces.length === 0 ? (
@@ -257,9 +169,96 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
           totalPages={totalPages}
           onPageChange={setPage}
           alwaysShow
-          className="pt-4"
         />
       ) : null}
-    </div>
+
+      <Dialog
+        open={showCreate}
+        onOpenChange={(open) => {
+          setShowCreate(open);
+          if (!open) {
+            setNewName("");
+            setNewNotes("");
+            setCreateError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New space</DialogTitle>
+            <DialogDescription>
+              Scope marks to a release, project, or review session.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="grid gap-4"
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                void handleCreate();
+              }
+            }}
+          >
+            <Field id="new-space-name" label="Name">
+              <Input
+                id="new-space-name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder={todayName}
+                className="h-9 bg-paper text-[0.8125rem]"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && handleCreate()}
+              />
+              {!newName.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => setNewName(todayName)}
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] text-ink-3 transition-colors hover:text-mark"
+                >
+                  Use today&apos;s date{" "}
+                  <span className="font-mono text-[0.625rem] text-ink-2">{todayName}</span>
+                </button>
+              ) : null}
+            </Field>
+            <Field id="new-space-notes" label="Description">
+              <Input
+                id="new-space-notes"
+                value={newNotes}
+                onChange={(e) => setNewNotes(e.target.value)}
+                placeholder="What this space covers"
+                className="h-9 bg-paper text-[0.8125rem]"
+              />
+            </Field>
+            {createError ? (
+              <p
+                role="alert"
+                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
+              >
+                {createError}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                  ⌘
+                </kbd>
+                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                  Enter
+                </kbd>
+                <span>to create</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setShowCreate(false)} className="h-9">
+                  Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                  Create
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

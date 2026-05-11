@@ -191,7 +191,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
         onShowHelp={() => setShowHelp(true)}
       />
 
-      <FadeIn key={pin.id} delay={0.08} className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <FadeIn key={pin.id} delay={0.08} className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -201,7 +201,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 </span>
                 <StatusPill status={pin.status} />
               </div>
-              <h1 className="mt-2 break-words font-display text-3xl font-semibold tracking-tight text-ink">
+              <h1 className="mt-1.5 break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
                 {pin.title}
               </h1>
             </div>
@@ -219,7 +219,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             <MarkDescriptionRead html={pin.description} className="mt-3" />
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
             {pin.pinned ? (
               <Pill icon={<Bookmark className="size-3" aria-hidden />}>Pinned</Pill>

@@ -63,7 +63,7 @@ export function SavedViewsBar({
   }
 
   return (
-    <FadeIn className="mb-4 flex flex-wrap items-center gap-1.5">
+    <FadeIn className="mb-3 flex flex-wrap items-center gap-1.5">
       <span className="inline-flex items-center gap-1.5 pr-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
         <Bookmark className="size-3" aria-hidden />
         Views

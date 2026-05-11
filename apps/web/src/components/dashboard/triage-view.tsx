@@ -241,48 +241,50 @@ export function TriageView() {
         </div>
       </AppHeader>
 
-      <FadeIn><ToolbarPanel className="mb-6">
-        <FilterSelect
-          value={filters.spaceId}
-          onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
-          options={spaceOptions}
-          ariaLabel="Select space"
-          triggerClassName="h-11 sm:h-9"
-        />
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowNew(true)}
-            className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
-          >
-            <Plus className="size-3.5 shrink-0 opacity-80" />
-            New mark
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            asChild
-            className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
-          >
-            <Link href="/analytics">
-              <BarChart3 className="size-3" />
-              Analytics
-            </Link>
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            asChild
-            className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
-          >
-            <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
-              <Layers className="size-3" />
-              {selectedSpace ? "Open space" : "All spaces"}
-            </Link>
-          </Button>
-        </div>
-      </ToolbarPanel></FadeIn>
+      <FadeIn>
+        <ToolbarPanel className="mb-5">
+          <FilterSelect
+            value={filters.spaceId}
+            onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
+            options={spaceOptions}
+            ariaLabel="Select space"
+            triggerClassName="h-11 sm:h-9"
+          />
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowNew(true)}
+              className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
+            >
+              <Plus className="size-3.5 shrink-0 opacity-80" />
+              New mark
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              asChild
+              className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+            >
+              <Link href="/analytics">
+                <BarChart3 className="size-3" />
+                Analytics
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              asChild
+              className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+            >
+              <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
+                <Layers className="size-3" />
+                {selectedSpace ? "Open space" : "All spaces"}
+              </Link>
+            </Button>
+          </div>
+        </ToolbarPanel>
+      </FadeIn>
 
       <SavedViewsBar
         views={savedViews}
@@ -300,7 +302,7 @@ export function TriageView() {
       />
 
       {visiblePins.length > 0 ? (
-        <p className="mb-3 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-3">
+        <p className="mb-2.5 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-3">
           Each row is one mark. Select it to open the side panel for discussion, history, and actions.
         </p>
       ) : null}
@@ -367,7 +369,7 @@ export function TriageView() {
           page={displayPage}
           totalPages={totalPages}
           onPageChange={(p) => update({ page: p })}
-          className="mt-6"
+          className="mt-5"
         />
       ) : null}
 

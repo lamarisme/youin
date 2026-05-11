@@ -168,7 +168,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     "border-transparent bg-transparent text-ink-2 hover:border-rule hover:bg-paper/90 hover:text-ink dark:hover:bg-paper/50";
 
   return (
-    <FadeIn className="mb-6 w-full space-y-3">
+    <FadeIn className="mb-5 w-full space-y-3">
       <div className="flex w-full min-w-0 flex-col gap-2.5 rounded-xl border border-rule bg-paper-2 p-2.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
             <div className="relative flex min-w-[min(100%,12rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[260px]">

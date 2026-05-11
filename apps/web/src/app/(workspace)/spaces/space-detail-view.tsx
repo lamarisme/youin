@@ -220,25 +220,25 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
   return (
     <>
-      <div className="mb-6">
+      <div className="mb-5 border-b border-rule pb-4">
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="h-9 gap-1.5 px-2 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
+          className="interactive-lift min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
         >
           <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
           All spaces
         </Button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="min-w-0">
-                <h1 className="break-words font-display text-2xl font-semibold tracking-tight text-ink">
+                <h1 className="break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
                   {space.name}
                 </h1>
                 {space.notes ? (
@@ -246,7 +246,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                     {space.notes}
                   </p>
                 ) : null}
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <PriorityBadge priority={space.priority} />
                   {space.pinned ? (
                     <Pill icon={<Bookmark className="size-3" />}>Pinned</Pill>
@@ -294,7 +294,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             </div>
           </div>
 
-          <Surface className="mt-6">
+          <Surface className="mt-5">
             <div className="flex items-center justify-between text-[0.8125rem]">
               <span className="font-medium text-ink">{completionPct}% resolved</span>
               <span className="text-ink-3">{stats?.total ?? 0} marks total</span>
@@ -325,8 +325,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             </div>
           </Surface>
 
-          <div className="mt-6">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-5">
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
               <p className="text-eyebrow">Marks in this space</p>
               <div className="flex items-center gap-2">
                 <Button
@@ -388,7 +388,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         </div>
 
         <aside className="lg:border-l lg:border-rule lg:pl-6">
-          <div className="space-y-5 lg:sticky lg:top-8">
+          <div className="space-y-4 lg:sticky lg:top-6">
             <div>
               <p className="text-eyebrow mb-2">Details</p>
               <div className="space-y-2">
