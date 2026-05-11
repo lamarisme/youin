@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
-import { Link } from "@/i18n/navigation";
+import Link from "next/link";
 
 export async function AuthShellLayout({ children }: { children: ReactNode }) {
   const t = await getTranslations("authShell");

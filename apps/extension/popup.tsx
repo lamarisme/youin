@@ -301,7 +301,7 @@ function IndexPopup() {
               )}
               <a
                 role="menuitem"
-                href={`${WEB_APP_URL}/en/dashboard?space=all`}
+                href={`${WEB_APP_URL}/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
                 className="block px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-hover)]"
@@ -426,7 +426,7 @@ function IndexPopup() {
 
       <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <a
-          href={`${WEB_APP_URL}/en/dashboard?space=all`}
+          href={`${WEB_APP_URL}/dashboard?space=all`}
           target="_blank"
           rel="noreferrer"
           className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent text-[12px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-stat)]">

@@ -603,7 +603,7 @@ const CapturePanel = () => {
 
             <div className="mt-5 flex flex-col gap-2">
               <a
-                href={`${WEB_APP_URL}/en/dashboard?space=all`}
+                href={`${WEB_APP_URL}/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">

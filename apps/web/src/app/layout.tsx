@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
-import { cookies } from "next/headers";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
-import { routing } from "@/i18n/routing";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+
 import { QueryProvider } from "@/lib/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -27,28 +29,39 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+export async function generateMetadata(): Promise<Metadata> {
+  setRequestLocale("en");
+  const t = await getTranslations({ locale: "en", namespace: "metadata" });
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("NEXT_LOCALE")?.value ?? routing.defaultLocale;
+  setRequestLocale("en");
+  const messages = await getMessages();
 
   return (
     <html
-      lang={locale}
+      lang="en"
       className={`${bricolage.variable} ${figtree.variable} ${geistMono.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
-        <ThemeProvider>
-          <QueryProvider>
-            <NuqsAdapter>
-              <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
-            </NuqsAdapter>
-          </QueryProvider>
-          <Toaster position="bottom-right" />
-        </ThemeProvider>
+        <NextIntlClientProvider messages={messages}>
+          <ThemeProvider>
+            <QueryProvider>
+              <NuqsAdapter>
+                <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+              </NuqsAdapter>
+            </QueryProvider>
+            <Toaster position="bottom-right" />
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

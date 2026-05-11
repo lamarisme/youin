@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   BarChart3,
@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/[locale]/(workspace)/inbox/use-inbox";
+import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";

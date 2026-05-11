@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   ChevronRight,
@@ -20,7 +21,7 @@ import {
 import { useCallback, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { useInbox } from "@/app/[locale]/(workspace)/inbox/use-inbox";
+import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

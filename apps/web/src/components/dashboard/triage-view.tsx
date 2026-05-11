@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "@/i18n/navigation";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BarChart3, CircleDashed, Layers, Plus } from "lucide-react";
 import { toast } from "sonner";
