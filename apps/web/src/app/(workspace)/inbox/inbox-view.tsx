@@ -39,10 +39,7 @@ export function InboxView() {
 
   return (
     <PageContainer>
-      <AppHeader
-        title="Inbox"
-        subtitle="Activity on marks you're assigned to or have commented on, ordered by most recent."
-      >
+      <AppHeader title="Inbox">
         {inbox.unreadCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
             {inbox.unreadCount} new

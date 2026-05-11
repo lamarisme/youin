@@ -6,5 +6,5 @@ interface PageContainerProps {
 }
 
 export function PageContainer({ children, className }: PageContainerProps) {
-  return <div className={cn("shell-full space-y-8", className)}>{children}</div>;
+  return <div className={cn("shell-full space-y-5", className)}>{children}</div>;
 }

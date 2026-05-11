@@ -22,7 +22,7 @@ export function WorkspaceShellSkeleton({ id }: { id?: string }) {
 export function WorkspaceMainSkeleton({ id }: { id?: string }) {
   return (
     <div
-      className="shell-full space-y-6"
+      className="shell-full space-y-5"
       aria-busy="true"
       aria-label={id ?? "Loading content"}
       aria-live="polite"

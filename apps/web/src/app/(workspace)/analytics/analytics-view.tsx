@@ -26,10 +26,7 @@ export function AnalyticsView() {
 
   return (
     <PageContainer>
-      <AppHeader
-        title="Analytics"
-        subtitle="Throughput and daily activity across every mark in the workspace."
-      >
+      <AppHeader title="Analytics">
         <TimeframeFilter value={timeframe} onChange={setTimeframe} />
       </AppHeader>
 

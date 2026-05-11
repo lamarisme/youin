@@ -8,8 +8,8 @@ interface AppHeaderProps {
 export function AppHeader({ title, eyebrow, subtitle, children }: AppHeaderProps) {
   return (
     <header>
-      <div className="flex flex-wrap items-end justify-between gap-4 sm:gap-5">
-        <div className="space-y-1">
+      <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
+        <div className="space-y-0.5">
           {eyebrow ? (
             <p className="text-[0.6875rem] font-medium uppercase tracking-[0.12em] text-ink-3">
               {eyebrow}
@@ -19,12 +19,12 @@ export function AppHeader({ title, eyebrow, subtitle, children }: AppHeaderProps
             {title}
           </h1>
           {subtitle ? (
-            <p className="max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">{subtitle}</p>
+            <p className="mt-0.5 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">{subtitle}</p>
           ) : null}
         </div>
         {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
       </div>
-      <div className="mt-3 h-px bg-rule sm:mt-3.5" />
+      <div className="mt-2 h-px bg-rule sm:mt-2.5" />
     </header>
   );
 }

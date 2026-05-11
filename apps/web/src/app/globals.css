@@ -41,7 +41,7 @@
   --container-pad: clamp(1rem, 2.4vw, 2rem);
 
   /* Section vertical rhythm — paired with .shell for page padding */
-  --page-y: clamp(1.5rem, 1rem + 1.5vw, 2rem);    /* app pages — ~24–32px, caps at 2rem */
+  --page-y: clamp(1.25rem, 0.875rem + 1.25vw, 1.75rem);    /* app pages — slightly tighter top/bottom */
   --page-y-loose: clamp(2.5rem, 5vw, 4.5rem);    /* landing, marketing surfaces */
   --section-gap: clamp(2.5rem, 5vw, 4.5rem);     /* between landing sections */
   --block-gap: clamp(1.25rem, 2.4vw, 2rem);      /* within a section */

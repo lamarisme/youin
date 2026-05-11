@@ -221,14 +221,7 @@ export function TriageView() {
 
   return (
     <>
-      <AppHeader
-        title="Triage"
-        subtitle={
-          selectedSpace
-            ? `${selectedSpace.code} · ${selectedSpace.name}`
-            : "All marks across every space."
-        }
-      >
+      <AppHeader title="Triage">
         <div className="flex items-center gap-2 text-[0.75rem] tabular-nums">
           <Pill variant="outline" className="gap-1.5 text-ink-3">
             <span className="font-mono text-[0.6875rem] text-mark">{spaceStats.open}</span>
@@ -242,7 +235,7 @@ export function TriageView() {
       </AppHeader>
 
       <FadeIn>
-        <ToolbarPanel className="mb-5">
+        <ToolbarPanel className="mb-4">
           <FilterSelect
             value={filters.spaceId}
             onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}

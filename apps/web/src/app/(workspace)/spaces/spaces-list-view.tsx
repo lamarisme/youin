@@ -90,10 +90,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
 
   return (
     <>
-      <AppHeader
-        title="Spaces"
-        subtitle="Organise work by release, client, or review cycle. Spaces isolate marks so triage stays focused."
-      >
+      <AppHeader title="Spaces">
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
           <span className="font-mono text-ink">{workspace.spaces.length}</span>
           <span>spaces</span>

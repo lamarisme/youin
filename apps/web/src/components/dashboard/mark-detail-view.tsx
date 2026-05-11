@@ -191,17 +191,17 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
         onShowHelp={() => setShowHelp(true)}
       />
 
-      <FadeIn key={pin.id} delay={0.08} className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <FadeIn key={pin.id} delay={0.08} className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-2.5 sm:gap-3">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <span className="font-mono text-[0.75rem] font-semibold text-mark">
                   {pin.displayKey}
                 </span>
                 <StatusPill status={pin.status} />
               </div>
-              <h1 className="mt-1.5 break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
+              <h1 className="mt-1 break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
                 {pin.title}
               </h1>
             </div>

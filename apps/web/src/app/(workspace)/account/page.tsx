@@ -21,11 +21,7 @@ export default function AccountPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <AppHeader
-        title="Account"
-        eyebrow="Settings"
-        subtitle="Manage your workspace, team, and profile."
-      />
+      <AppHeader title="Account" eyebrow="Settings" />
 
       <Tabs defaultValue="overview" className="gap-0 space-y-6">
         <TabsList
