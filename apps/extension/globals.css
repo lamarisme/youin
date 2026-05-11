@@ -4,41 +4,123 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Action popup is light-DOM; match shadow :host dark tokens */
+/*
+ * Popup + CSUI: same dark palette as web (`tokens.css` `.dark`). `--yi-ext-*` derives from `--yi-*`
+ * so accents stay in sync if design-tokens change (edit `packages/design-tokens/src/index.ts`).
+ */
 html:has(#__plasmo) {
-  --yi-paper: oklch(18% 0.02 260);
-  --yi-paper-2: oklch(22% 0.02 260);
-  --yi-paper-3: oklch(26% 0.022 260);
-  --yi-ink: oklch(95% 0.01 260);
-  --yi-ink-hover: oklch(88% 0.02 260);
-  --yi-ink-2: oklch(78% 0.015 260);
-  --yi-ink-3: oklch(58% 0.02 260);
-  --yi-rule: oklch(100% 0 0 / 0.12);
-  --yi-mark: oklch(62% 0.12 250);
-  --yi-mark-bright: oklch(68% 0.14 250);
-  --yi-mark-soft: oklch(30% 0.06 250);
-  --yi-ok: oklch(52% 0.14 155);
-  --yi-ok-soft: oklch(95% 0.025 155);
+  color-scheme: dark;
+
+  --yi-paper: oklch(15% 0.012 50);
+  --yi-paper-2: oklch(19% 0.014 50);
+  --yi-paper-3: oklch(24% 0.014 50);
+  --yi-ink: oklch(93% 0.008 65);
+  --yi-ink-hover: oklch(82% 0.008 65);
+  --yi-ink-2: oklch(75% 0.008 65);
+  --yi-ink-3: oklch(58% 0.008 65);
+  --yi-rule: oklch(30% 0.012 50);
+  --yi-mark: oklch(62% 0.2 25);
+  --yi-mark-bright: oklch(68% 0.22 25);
+  --yi-mark-soft: oklch(25% 0.06 25);
+  --yi-ok: oklch(62% 0.14 155);
+  --yi-ok-soft: oklch(25% 0.04 155);
+
+  --yi-ext-border-hairline: color-mix(in oklch, var(--yi-rule) 72%, transparent);
+  --yi-ext-border: var(--yi-rule);
+  --yi-ext-border-strong: color-mix(in oklch, var(--yi-rule) 88%, var(--yi-ink));
+  --yi-ext-accent: var(--yi-mark);
+  --yi-ext-accent-muted: var(--yi-ink-3);
+  --yi-ext-accent-ring: color-mix(in oklch, var(--yi-mark) 45%, transparent);
+  --yi-ext-accent-ring-soft: color-mix(in oklch, var(--yi-mark) 12%, transparent);
+  --yi-ext-surface-panel: var(--yi-paper);
+  --yi-ext-surface-shade: var(--yi-paper-2);
+  --yi-ext-surface-input: var(--yi-paper-3);
+  --yi-ext-surface-quote: var(--yi-paper-2);
+  --yi-ext-surface-hover: color-mix(in oklch, var(--yi-ink) 8%, transparent);
+  --yi-ext-badge-bg: var(--yi-paper-2);
+  --yi-ext-menu-bg: var(--yi-paper-2);
+  --yi-ext-text: var(--yi-ink);
+  --yi-ext-text-title: var(--yi-ink);
+  --yi-ext-text-soft: var(--yi-ink-2);
+  --yi-ext-text-muted: var(--yi-ink-3);
+  --yi-ext-text-label: var(--yi-ink-3);
+  --yi-ext-text-dim: color-mix(in oklch, var(--yi-ink-3) 82%, var(--yi-paper));
+  --yi-ext-text-placeholder: color-mix(in oklch, var(--yi-ink-3) 55%, var(--yi-paper));
+  --yi-ext-open-emphasis: var(--yi-mark-bright);
+  --yi-ext-danger-border: color-mix(in oklch, var(--yi-mark) 38%, transparent);
+  --yi-ext-danger-bg: color-mix(in oklch, var(--yi-mark) 12%, var(--yi-paper));
+  --yi-ext-danger-text: var(--yi-ink);
+  /* Matches web `.dark` primary filled buttons */
+  --yi-ext-btn-primary-bg: var(--yi-ink);
+  --yi-ext-btn-primary-text: var(--yi-paper);
+  --yi-ext-btn-primary-hover: var(--yi-ink-hover);
+  --yi-ext-link: var(--yi-mark-bright);
+  --yi-ext-shadow-panel:
+    0 1px 2px oklch(0% 0 0 / 0.06), 0 20px 48px -12px oklch(0% 0 0 / 0.42);
+  --yi-ext-surface-low: var(--yi-paper);
+  --yi-ext-surface-mid: var(--yi-paper-2);
+  --yi-ext-kbd-bg: var(--yi-paper-2);
+  --yi-ext-border-faint: color-mix(in oklch, var(--yi-rule) 45%, transparent);
+  --yi-ext-surface-stat: color-mix(in oklch, var(--yi-ink) 5%, var(--yi-paper));
+  --yi-ext-hit-target: 44px;
 }
 
 /*
- * Tokens use :root above; Shadow DOM CSUI hosts never match document :root, so expose
- * the same custom properties on :host when this stylesheet runs inside Plasmo's shadow subtree.
+ * Shadow DOM CSUI: same `--yi-*` / `--yi-ext-*` as popup (document `:root` stays light from the import).
  */
 :host {
-  --yi-paper: oklch(18% 0.02 260);
-  --yi-paper-2: oklch(22% 0.02 260);
-  --yi-paper-3: oklch(26% 0.022 260);
-  --yi-ink: oklch(95% 0.01 260);
-  --yi-ink-hover: oklch(88% 0.02 260);
-  --yi-ink-2: oklch(78% 0.015 260);
-  --yi-ink-3: oklch(58% 0.02 260);
-  --yi-rule: oklch(100% 0 0 / 0.12);
-  --yi-mark: oklch(62% 0.12 250);
-  --yi-mark-bright: oklch(68% 0.14 250);
-  --yi-mark-soft: oklch(30% 0.06 250);
-  --yi-ok: oklch(52% 0.14 155);
-  --yi-ok-soft: oklch(95% 0.025 155);
+  --yi-paper: oklch(15% 0.012 50);
+  --yi-paper-2: oklch(19% 0.014 50);
+  --yi-paper-3: oklch(24% 0.014 50);
+  --yi-ink: oklch(93% 0.008 65);
+  --yi-ink-hover: oklch(82% 0.008 65);
+  --yi-ink-2: oklch(75% 0.008 65);
+  --yi-ink-3: oklch(58% 0.008 65);
+  --yi-rule: oklch(30% 0.012 50);
+  --yi-mark: oklch(62% 0.2 25);
+  --yi-mark-bright: oklch(68% 0.22 25);
+  --yi-mark-soft: oklch(25% 0.06 25);
+  --yi-ok: oklch(62% 0.14 155);
+  --yi-ok-soft: oklch(25% 0.04 155);
+
+  --yi-ext-border-hairline: color-mix(in oklch, var(--yi-rule) 72%, transparent);
+  --yi-ext-border: var(--yi-rule);
+  --yi-ext-border-strong: color-mix(in oklch, var(--yi-rule) 88%, var(--yi-ink));
+  --yi-ext-accent: var(--yi-mark);
+  --yi-ext-accent-muted: var(--yi-ink-3);
+  --yi-ext-accent-ring: color-mix(in oklch, var(--yi-mark) 45%, transparent);
+  --yi-ext-accent-ring-soft: color-mix(in oklch, var(--yi-mark) 12%, transparent);
+  --yi-ext-surface-panel: var(--yi-paper);
+  --yi-ext-surface-shade: var(--yi-paper-2);
+  --yi-ext-surface-input: var(--yi-paper-3);
+  --yi-ext-surface-quote: var(--yi-paper-2);
+  --yi-ext-surface-hover: color-mix(in oklch, var(--yi-ink) 8%, transparent);
+  --yi-ext-badge-bg: var(--yi-paper-2);
+  --yi-ext-menu-bg: var(--yi-paper-2);
+  --yi-ext-text: var(--yi-ink);
+  --yi-ext-text-title: var(--yi-ink);
+  --yi-ext-text-soft: var(--yi-ink-2);
+  --yi-ext-text-muted: var(--yi-ink-3);
+  --yi-ext-text-label: var(--yi-ink-3);
+  --yi-ext-text-dim: color-mix(in oklch, var(--yi-ink-3) 82%, var(--yi-paper));
+  --yi-ext-text-placeholder: color-mix(in oklch, var(--yi-ink-3) 55%, var(--yi-paper));
+  --yi-ext-open-emphasis: var(--yi-mark-bright);
+  --yi-ext-danger-border: color-mix(in oklch, var(--yi-mark) 38%, transparent);
+  --yi-ext-danger-bg: color-mix(in oklch, var(--yi-mark) 12%, var(--yi-paper));
+  --yi-ext-danger-text: var(--yi-ink);
+  --yi-ext-btn-primary-bg: var(--yi-ink);
+  --yi-ext-btn-primary-text: var(--yi-paper);
+  --yi-ext-btn-primary-hover: var(--yi-ink-hover);
+  --yi-ext-link: var(--yi-mark-bright);
+  --yi-ext-shadow-panel:
+    0 1px 2px oklch(0% 0 0 / 0.06), 0 20px 48px -12px oklch(0% 0 0 / 0.42);
+  --yi-ext-surface-low: var(--yi-paper);
+  --yi-ext-surface-mid: var(--yi-paper-2);
+  --yi-ext-kbd-bg: var(--yi-paper-2);
+  --yi-ext-border-faint: color-mix(in oklch, var(--yi-rule) 45%, transparent);
+  --yi-ext-surface-stat: color-mix(in oklch, var(--yi-ink) 5%, var(--yi-paper));
+  --yi-ext-hit-target: 44px;
+
   --yi-space-2xs: 0.25rem;
   --yi-space-xs: 0.5rem;
   --yi-space-sm: 0.75rem;
@@ -109,16 +191,11 @@ html:has(#__plasmo) {
   }
 }
 
-/* Plasmo action popup + content UI: dark dev-tool baseline */
-html:has(#__plasmo) {
-  color-scheme: dark;
-}
-
 html:has(#__plasmo),
 html:has(#__plasmo) body {
   margin: 0;
-  background-color: oklch(16% 0.02 260);
-  color: oklch(78% 0.015 260);
+  background-color: var(--yi-paper);
+  color: var(--yi-ink-2);
   min-height: fit-content;
 }
 

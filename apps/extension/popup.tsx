@@ -2,7 +2,7 @@ import "./globals.css"
 
 import type { Session } from "@supabase/supabase-js"
 import { t } from "@youin/i18n/t"
-import { type FormEvent, useCallback, useEffect, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 
 import {
   getSession,
@@ -85,6 +85,8 @@ function IndexPopup() {
   const [newSpaceName, setNewSpaceName] = useState("")
   const [spaceErr, setSpaceErr] = useState<string | null>(null)
   const [showAuth, setShowAuth] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const gearRef = useRef<HTMLButtonElement>(null)
 
   const refreshCounts = useCallback(async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -142,6 +144,28 @@ function IndexPopup() {
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
   }, [refreshSpaces, refreshCounts])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      e.preventDefault()
+      setMenuOpen(false)
+      gearRef.current?.focus()
+    }
+    const onMouseDown = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (menuRef.current?.contains(t)) return
+      if (gearRef.current?.contains(t)) return
+      setMenuOpen(false)
+    }
+    document.addEventListener("keydown", onKey, true)
+    document.addEventListener("mousedown", onMouseDown, true)
+    return () => {
+      document.removeEventListener("keydown", onKey, true)
+      document.removeEventListener("mousedown", onMouseDown, true)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
     if (view !== "signedIn") {
@@ -211,7 +235,7 @@ function IndexPopup() {
 
   if (view === "checking") {
     return (
-      <main className="youin-popup flex min-w-0 w-full max-w-[300px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[oklch(52%_0.02_260)] antialiased">
+      <main className="youin-popup flex min-w-0 w-full max-w-[300px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
         Loading…
       </main>
     )
@@ -219,10 +243,10 @@ function IndexPopup() {
 
   return (
     <main className="youin-popup relative flex min-w-0 w-full max-w-[300px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
-      <header className="flex items-center justify-between gap-2 border-b border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+      <header className="flex items-center justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
           <span
-            className="size-2 shrink-0 rounded-full bg-[oklch(62%_0.12_250)] ring-2 ring-[oklch(62%_0.12_250/0.25)]"
+            className="size-2 shrink-0 rounded-full bg-[color:var(--yi-ext-accent)] ring-2 ring-[color:var(--yi-ext-accent-ring-soft)]"
             aria-hidden
           />
           <h1 className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[var(--yi-ink)]">
@@ -231,8 +255,10 @@ function IndexPopup() {
         </div>
         <div className="relative shrink-0">
           <button
+            ref={gearRef}
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+            className="flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            aria-controls="youin-popup-account-menu"
             aria-expanded={menuOpen}
             aria-label="Account and settings"
             onClick={() => setMenuOpen((v) => !v)}>
@@ -240,15 +266,20 @@ function IndexPopup() {
           </button>
           {menuOpen ? (
             <div
-              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[oklch(100%_0_0_/0.1)] bg-[oklch(20%_0.02_260)] py-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)]">
+              ref={menuRef}
+              id="youin-popup-account-menu"
+              role="menu"
+              aria-label="Account"
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)]">
               {view === "signedIn" ? (
                 <>
-                  <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[oklch(72%_0.01_260)]">
+                  <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
                     {session?.user?.email ?? ""}
                   </p>
                   <button
                     type="button"
-                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[oklch(88%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.06)]"
+                    role="menuitem"
+                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] hover:bg-[color:var(--yi-ext-surface-hover)]"
                     onClick={() => {
                       setMenuOpen(false)
                       void signOut()
@@ -259,7 +290,8 @@ function IndexPopup() {
               ) : (
                 <button
                   type="button"
-                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[oklch(88%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.06)]"
+                  role="menuitem"
+                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] hover:bg-[color:var(--yi-ext-surface-hover)]"
                   onClick={() => {
                     setMenuOpen(false)
                     setShowAuth(true)
@@ -268,10 +300,11 @@ function IndexPopup() {
                 </button>
               )}
               <a
+                role="menuitem"
                 href={`${WEB_APP_URL}/en/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
-                className="block px-3 py-2 text-[12px] text-[oklch(72%_0.12_250)] no-underline hover:bg-[oklch(100%_0_0_/0.06)]"
+                className="block px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-hover)]"
                 onClick={() => setMenuOpen(false)}>
                 Web app ↗
               </a>
@@ -282,21 +315,21 @@ function IndexPopup() {
 
       <div className="flex flex-col gap-3 px-4 py-3">
         <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[oklch(52%_0.02_260)]">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
             Project
           </span>
-          <div className="min-h-9 rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-2 text-[13px] text-[oklch(88%_0.01_260)]">
+          <div className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text-soft)]">
             {projectLabel}
           </div>
         </label>
 
         <div>
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[oklch(52%_0.02_260)]">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
             Namespace
           </span>
           <div className="flex gap-1">
             <select
-              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2 py-2 text-[12px] text-[oklch(88%_0.01_260)] outline-none focus-visible:border-[oklch(62%_0.12_250/0.45)]"
+              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
               value={spaceId}
               onChange={(e) => selectSpace(e.target.value)}>
               {spaces.map((s) => (
@@ -308,7 +341,7 @@ function IndexPopup() {
             <button
               type="button"
               title="New namespace"
-              className="shrink-0 rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(18%_0.02_260)] px-2.5 text-[14px] text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)]"
+              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
                 setSpaceErr(null)
@@ -319,7 +352,7 @@ function IndexPopup() {
           {creatingSpace ? (
             <div className="mt-2 flex flex-col gap-1">
               {spaceErr ? (
-                <p className="text-[11px] text-[oklch(72%_0.08_25)]">{spaceErr}</p>
+                <p className="text-[11px] text-[color:var(--yi-ext-danger-text)]">{spaceErr}</p>
               ) : null}
               <input
                 value={newSpaceName}
@@ -329,11 +362,11 @@ function IndexPopup() {
                   if (e.key === "Enter") submitNewSpace()
                 }}
                 placeholder="Name"
-                className="rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none"
+                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none"
               />
               <button
                 type="button"
-                className="rounded-md bg-[oklch(88%_0.02_260)] py-1.5 text-[12px] font-semibold text-[oklch(16%_0.02_260)]"
+                className="rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
                 onClick={() => submitNewSpace()}>
                 Add
               </button>
@@ -342,13 +375,13 @@ function IndexPopup() {
         </div>
       </div>
 
-      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         {inspectMsg ? (
-          <p className="mb-2 text-[11px] text-[oklch(72%_0.08_25)]">{inspectMsg}</p>
+          <p className="mb-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">{inspectMsg}</p>
         ) : null}
         <button
           type="button"
-          className="flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-[oklch(88%_0.02_260)] px-3 py-2.5 text-[13px] font-semibold text-[oklch(16%_0.02_260)] outline-none transition-[background,transform] hover:bg-[oklch(92%_0.02_260)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)] active:scale-[0.99]"
+          className="flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background,transform] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99]"
           onClick={() => {
             setInspectMsg(null)
             void (async () => {
@@ -359,50 +392,50 @@ function IndexPopup() {
           }}>
           Enable Inspect Mode
         </button>
-        <p className="mt-2 text-center text-[10px] text-[oklch(48%_0.02_260)]">
-          <kbd className="rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+        <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+          <kbd className="rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
             ⌥
           </kbd>
-          <kbd className="ms-0.5 rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+          <kbd className="ms-0.5 rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
             ⇧
           </kbd>
-          <kbd className="ms-0.5 rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+          <kbd className="ms-0.5 rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
             Y
           </kbd>
           <span className="ms-1">toggles on page</span>
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+      <div className="grid grid-cols-2 gap-2 border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <button
           type="button"
-          className="rounded-lg border border-[oklch(100%_0_0_/0.08)] bg-transparent py-2.5 text-left text-[11px] leading-snug text-[oklch(72%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.04)]"
+          className="rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-transparent py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-stat)]"
           onClick={() => void startInspectOnActiveTab()}>
-          <span className="block text-[oklch(88%_0.01_260)]">Open annotations</span>
-          <span className="font-mono text-[12px] text-[oklch(62%_0.12_250)]">
+          <span className="block text-[color:var(--yi-ext-text-soft)]">Open annotations</span>
+          <span className="font-mono text-[12px] text-[color:var(--yi-ext-accent)]">
             ({openCount})
           </span>
         </button>
-        <div className="rounded-lg border border-[oklch(100%_0_0_/0.06)] bg-[oklch(100%_0_0_/0.02)] py-2.5 text-left text-[11px] leading-snug text-[oklch(52%_0.02_260)]">
-          <span className="block text-[oklch(72%_0.01_260)]">Resolved</span>
-          <span className="font-mono text-[12px] text-[oklch(52%_0.02_260)]">
+        <div className="rounded-lg border border-[color:var(--yi-ext-border-faint)] bg-[color:var(--yi-ext-surface-stat)] py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-dim)]">
+          <span className="block text-[color:var(--yi-ext-text-muted)]">Resolved</span>
+          <span className="font-mono text-[12px] text-[color:var(--yi-ext-text-dim)]">
             ({resolvedCount})
           </span>
         </div>
       </div>
 
-      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <a
           href={`${WEB_APP_URL}/en/dashboard?space=all`}
           target="_blank"
           rel="noreferrer"
-          className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-[oklch(100%_0_0_/0.1)] bg-transparent text-[12px] font-semibold text-[oklch(78%_0.12_250)] no-underline hover:bg-[oklch(100%_0_0_/0.04)]">
+          className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent text-[12px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-stat)]">
           Open Dashboard ↗
         </a>
       </div>
 
       {view === "signedOut" && showAuth ? (
-        <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
           <SignInBlock onClose={() => setShowAuth(false)} />
         </div>
       ) : null}
@@ -444,7 +477,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         <h2 className="text-[12px] font-semibold text-[var(--yi-ink)]">Sign in</h2>
         <button
           type="button"
-          className="border-0 bg-transparent p-0 text-[11px] text-[oklch(62%_0.12_250)] underline"
+          className="border-0 bg-transparent p-0 text-[11px] text-[color:var(--yi-ext-accent)] underline"
           onClick={onClose}>
           Close
         </button>
@@ -453,21 +486,21 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
       <button
         type="button"
         onClick={handleGoogle}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(16%_0.02_260)] px-3 py-2 text-[12px] font-medium text-[oklch(88%_0.01_260)] outline-none transition-colors hover:bg-[oklch(20%_0.02_260)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-mid)] px-3 py-2 text-[12px] font-medium text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-menu-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
         aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         Continue with Google
       </button>
 
-      <div className="my-3 flex items-center gap-2 text-[10px] text-[oklch(48%_0.02_260)]">
-        <span className="h-px flex-1 bg-[oklch(100%_0_0_/0.1)]" aria-hidden />
+      <div className="my-3 flex items-center gap-2 text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+        <span className="h-px flex-1 bg-[color:var(--yi-ext-border)]" aria-hidden />
         or
-        <span className="h-px flex-1 bg-[oklch(100%_0_0_/0.1)]" aria-hidden />
+        <span className="h-px flex-1 bg-[color:var(--yi-ext-border)]" aria-hidden />
       </div>
 
       <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[oklch(48%_0.02_260)]">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--yi-ext-text-placeholder)]">
             Email
           </span>
           <input
@@ -477,11 +510,11 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@agency.com"
-            className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none focus:border-[oklch(62%_0.12_250/0.45)]"
+            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus:border-[color:var(--yi-ext-accent-ring)]"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[oklch(48%_0.02_260)]">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--yi-ext-text-placeholder)]">
             Password
           </span>
           <input
@@ -490,14 +523,14 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none focus:border-[oklch(62%_0.12_250/0.45)]"
+            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus:border-[color:var(--yi-ext-accent-ring)]"
           />
         </label>
 
         {error ? (
           <p
             role="alert"
-            className="rounded-[var(--yi-radius-md)] border border-[oklch(58%_0.14_25/0.35)] bg-[oklch(24%_0.05_25/0.4)] px-2.5 py-1.5 text-[11px] text-[oklch(88%_0.02_25)]">
+            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)]">
             {error}
           </p>
         ) : null}
@@ -505,7 +538,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         <button
           type="submit"
           disabled={loading || !email.trim() || !password}
-          className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-[oklch(62%_0.12_250)] px-3 py-1.5 text-[12px] font-semibold text-[oklch(16%_0.02_260)] transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
+          className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-accent)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
           {loading ? t("extension.popup.signingIn") : t("extension.popup.signIn")}
         </button>
       </form>
@@ -554,7 +587,7 @@ function SignedInBlock({ session }: { session: Session | null }) {
 
   if (syncingDb || migrating) {
     return (
-      <p className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-2 text-[10px] text-[oklch(52%_0.02_260)]">
+      <p className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2 text-[10px] text-[color:var(--yi-ext-text-dim)]">
         Syncing workspace…
       </p>
     )
@@ -562,7 +595,7 @@ function SignedInBlock({ session }: { session: Session | null }) {
 
   if (migrationStatus && !migrationDismissed) {
     return (
-      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-2">
+      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2">
         <MigrationBanner
           status={migrationStatus}
           onDismiss={() => setMigrationDismissed(true)}
@@ -585,7 +618,7 @@ function MigrationBanner({
     return (
       <div
         role="alert"
-        className="rounded-[var(--yi-radius-md)] border border-[oklch(58%_0.14_25/0.35)] bg-[oklch(24%_0.05_25/0.4)] px-2.5 py-2 text-[10px] leading-snug text-[oklch(88%_0.02_25)]">
+        className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-danger-text)]">
         Import failed: {status.error}
         <button
           type="button"
@@ -601,7 +634,7 @@ function MigrationBanner({
     return null
   }
   return (
-    <div className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-2 text-[10px] leading-snug text-[oklch(72%_0.01_260)]">
+    <div className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
       Imported {r.pinsImported} pin{r.pinsImported === 1 ? "" : "s"}
       {r.spacesCreated > 0
         ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
@@ -613,7 +646,7 @@ function MigrationBanner({
       <button
         type="button"
         onClick={onDismiss}
-        className="ms-2 font-medium text-[oklch(62%_0.12_250)] underline underline-offset-2">
+        className="ms-2 font-medium text-[color:var(--yi-ext-accent)] underline underline-offset-2">
         Dismiss
       </button>
     </div>

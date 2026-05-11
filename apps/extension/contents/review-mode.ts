@@ -1,7 +1,7 @@
 import type { PlasmoCSConfig } from "plasmo"
 import { toPng } from "html-to-image"
 
-import { easing, fontFamily, shadow as shadows } from "@youin/design-tokens"
+import { colorDark, cssVars, fontFamily, shadow as shadows } from "@youin/design-tokens"
 
 import {
   EVENT_REVIEW_CAPTURE,
@@ -32,10 +32,6 @@ export const config: PlasmoCSConfig = {
 const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
 const Z_TOP = 2147483647
-
-/** Subtle dev-tool blue for hover outline */
-const INSPECT_BLUE = "oklch(62% 0.12 250)"
-const INSPECT_BLUE_FILL = "oklch(62% 0.12 250 / 0.14)"
 
 type Mode = "inactive" | "active" | "paused"
 
@@ -99,24 +95,18 @@ function ensureHost() {
 
   const style = document.createElement("style")
   style.textContent = `
-    :host { all: initial; }
+    :host {
+      all: initial;
+      ${cssVars(colorDark)}
+    }
     .highlight {
       position: absolute;
       box-sizing: border-box;
       pointer-events: none;
-      border: 2px solid ${INSPECT_BLUE};
-      background: ${INSPECT_BLUE_FILL};
+      border: 2px solid var(--yi-mark);
+      background: color-mix(in oklch, var(--yi-mark) 14%, transparent);
       border-radius: 4px;
-      transition:
-        transform 90ms ${easing.outExpo},
-        width 90ms ${easing.outExpo},
-        height 90ms ${easing.outExpo};
       display: none;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .highlight {
-        transition: none;
-      }
     }
     .toolbar {
       position: fixed;
@@ -130,19 +120,19 @@ function ensureHost() {
       padding: 8px 12px 8px 14px;
       border-radius: 999px;
       pointer-events: auto;
-      background: oklch(22% 0.02 260);
-      color: oklch(92% 0.01 260);
+      background: var(--yi-paper-2);
+      color: var(--yi-ink-2);
       font: 500 12px/1.2 ${fontFamily.sans};
       letter-spacing: 0.01em;
-      border: 1px solid oklch(100% 0 0 / 0.08);
+      border: 1px solid color-mix(in oklch, var(--yi-rule) 75%, transparent);
       box-shadow: ${shadows.banner};
     }
     .toolbar .dot {
       width: 7px;
       height: 7px;
       border-radius: 999px;
-      background: ${INSPECT_BLUE};
-      box-shadow: 0 0 0 3px ${INSPECT_BLUE_FILL};
+      background: var(--yi-mark);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--yi-mark) 14%, transparent);
       flex-shrink: 0;
     }
     .toolbar .sep {
@@ -150,7 +140,7 @@ function ensureHost() {
       user-select: none;
     }
     .toolbar .muted {
-      color: oklch(72% 0.02 260);
+      color: var(--yi-ink-3);
       max-width: 28vw;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -158,27 +148,29 @@ function ensureHost() {
     }
     .toolbar .counts {
       font-variant-numeric: tabular-nums;
-      color: oklch(78% 0.04 25);
+      color: var(--yi-mark-bright);
     }
     .toolbar button.close {
       margin-left: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      min-width: 44px;
+      min-height: 44px;
+      width: 44px;
+      height: 44px;
       padding: 0;
       border: 0;
       border-radius: 999px;
       background: transparent;
-      color: oklch(78% 0.01 260);
+      color: var(--yi-ink-3);
       cursor: pointer;
       font-size: 14px;
       line-height: 1;
     }
     .toolbar button.close:hover {
-      background: oklch(100% 0 0 / 0.08);
-      color: oklch(96% 0.01 260);
+      background: color-mix(in oklch, var(--yi-ink) 10%, transparent);
+      color: var(--yi-ink);
     }
   `
   shadow.append(style)

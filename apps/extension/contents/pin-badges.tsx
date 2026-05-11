@@ -1,6 +1,6 @@
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import tailwindCss from "data-text:~/globals.css"
-import { useCallback, useEffect, useLayoutEffect, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 
 import { EVENT_REVIEW_OPEN_PIN, EVENT_REVIEW_PAUSE } from "../lib/events"
 import {
@@ -25,6 +25,8 @@ export const getStyle: PlasmoGetStyle = () => {
 }
 
 const Z_BADGES = 2147483645
+/** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
+const HIT = 44
 
 type BadgeItem = {
   pin: Pin
@@ -44,6 +46,12 @@ function pinNumberMap(pins: Pin[]): Map<string, number> {
   return m
 }
 
+function annotationLabel(pin: Pin, n: number): string {
+  const t = pin.title.trim() || "Annotation"
+  const short = t.length > 72 ? `${t.slice(0, 69)}…` : t
+  return `Open annotation ${n}: ${short}`
+}
+
 function computeLayout(
   pins: Pin[],
   nums: Map<string, number>
@@ -60,8 +68,8 @@ function computeLayout(
       out.push({
         pin,
         n,
-        left: Math.round(r.right - 6),
-        top: Math.round(r.top - 6)
+        left: Math.round(r.right - HIT),
+        top: Math.round(Math.max(4, r.top - 8))
       })
     } catch {
       continue
@@ -72,6 +80,7 @@ function computeLayout(
 
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
+  const rafRef = useRef<number | null>(null)
 
   const refresh = useCallback(async () => {
     const spaceId = await getActiveSpaceId()
@@ -80,6 +89,14 @@ const PinBadges = () => {
     const nums = pinNumberMap(openPins)
     setItems(computeLayout(openPins, nums))
   }, [])
+
+  const scheduleViewportRefresh = useCallback(() => {
+    if (rafRef.current != null) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null
+      void refresh()
+    })
+  }, [refresh])
 
   useEffect(() => {
     void refresh()
@@ -97,14 +114,18 @@ const PinBadges = () => {
   }, [refresh])
 
   useLayoutEffect(() => {
-    const onViewport = () => void refresh()
+    const onViewport = () => scheduleViewportRefresh()
     window.addEventListener("scroll", onViewport, true)
     window.addEventListener("resize", onViewport)
     return () => {
       window.removeEventListener("scroll", onViewport, true)
       window.removeEventListener("resize", onViewport)
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
-  }, [refresh])
+  }, [scheduleViewportRefresh])
 
   if (items.length === 0) return null
 
@@ -116,9 +137,16 @@ const PinBadges = () => {
         <button
           key={pin.id}
           type="button"
-          title={`Annotation #${n}: ${pin.title}`}
-          className="pointer-events-auto absolute flex h-5 min-w-5 cursor-pointer select-none items-center justify-center rounded-full border border-[oklch(100%_0_0_/0.12)] bg-[oklch(22%_0.02_260)] px-1 font-mono text-[10px] font-semibold leading-none text-[oklch(78%_0.04_25)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] outline-none transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250)] motion-reduce:transition-none"
-          style={{ left, top, zIndex: Z_BADGES + n }}
+          aria-label={annotationLabel(pin, n)}
+          title={annotationLabel(pin, n)}
+          className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+          style={{
+            left,
+            top,
+            width: HIT,
+            height: HIT,
+            zIndex: Z_BADGES + n
+          }}
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -129,7 +157,11 @@ const PinBadges = () => {
               })
             )
           }}>
-          ●{n}
+          <span
+            className="flex h-5 min-w-5 select-none items-center justify-center rounded-full border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-badge-bg)] px-1 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-ext-open-emphasis)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
+            aria-hidden>
+            ●{n}
+          </span>
         </button>
       ))}
     </div>

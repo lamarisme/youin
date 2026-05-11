@@ -116,16 +116,19 @@ function buildPinFromCapture(
 }
 
 const btnPrimary =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[oklch(88%_0.02_260)] px-3 py-2.5 text-[13px] font-semibold tracking-[0.005em] text-[oklch(16%_0.02_260)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[oklch(92%_0.02_260)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(62%_0.12_250)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
+  "flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold tracking-[0.005em] text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
 
 const btnGhost =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border border-[oklch(100%_0_0_/0.12)] bg-transparent px-3 py-2 text-[12.5px] font-semibold text-[oklch(78%_0.01_260)] outline-none transition-colors motion-reduce:transition-none hover:bg-[oklch(100%_0_0_/0.06)] active:bg-[oklch(100%_0_0_/0.1)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+  "flex w-full cursor-pointer items-center justify-center rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors motion-reduce:transition-none hover:bg-[color:var(--yi-ext-surface-hover)] active:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
 const fieldLabel =
-  "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.07em] text-[oklch(58%_0.02_260)]"
+  "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-label)]"
 
 const selectCls =
-  "box-border min-h-[2.5rem] w-full cursor-pointer rounded-[var(--yi-radius-lg)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(18%_0.02_260)] px-2.5 py-2 text-[13px] text-[oklch(92%_0.01_260)] outline-none focus-visible:border-[oklch(62%_0.12_250/0.45)] focus-visible:ring-2 focus-visible:ring-[oklch(62%_0.12_250/0.12)]"
+  "box-border min-h-[2.5rem] w-full cursor-pointer rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+
+const headerCloseBtn =
+  "flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
 const CapturePanel = () => {
   const [open, setOpen] = useState(false)
@@ -280,6 +283,15 @@ const CapturePanel = () => {
     return () => window.removeEventListener("keydown", onKey, true)
   }, [open, capture, viewingPin, mode, saving, resume])
 
+  useEffect(() => {
+    if (!open) return
+    const id = mode === "create" ? "capture-body" : "thread-reply"
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(id)?.focus()
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [open, mode])
+
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
     setSaving(true)
@@ -355,7 +367,7 @@ const CapturePanel = () => {
   if (!open) return null
 
   const panelSurface =
-    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[oklch(100%_0_0_/0.1)] bg-[oklch(16%_0.02_260)] font-sans text-[oklch(92%_0.01_260)] shadow-[-16px_0_48px_-12px_rgba(0,0,0,0.55)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
+    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] [box-shadow:var(--yi-ext-shadow-panel)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "create" && capture) {
     const selectorPreview = truncateMiddle(capture.selector, 56)
@@ -371,23 +383,23 @@ const CapturePanel = () => {
         }
         style={{ zIndex: Z_PANEL }}
         className={panelSurface}>
-        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[oklch(100%_0_0_/0.08)] px-4 pb-4 pt-5">
+        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 pb-4 pt-5">
           <div className="min-w-0">
             <h2
               id="capture-panel-title"
-              className="text-[14px] font-semibold leading-tight tracking-tight text-[oklch(95%_0.01_260)]">
+              className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
               New Annotation
             </h2>
             <p
               id="capture-panel-desc"
               title={capture.selector}
-              className="mt-2 font-mono text-[11px] leading-snug text-[oklch(62%_0.02_260)] [overflow-wrap:anywhere]">
+              className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
               Element: {selectorPreview}
             </p>
           </div>
           <button
             type="button"
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+            className={headerCloseBtn}
             aria-label="Close"
             onClick={resume}>
             ✕
@@ -397,16 +409,16 @@ const CapturePanel = () => {
         <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
           <div className="flex flex-col gap-5 px-4 pb-6 pt-5">
             {capture.elementScreenshotDataUrl ? (
-              <div className="overflow-hidden rounded-[var(--yi-radius-lg)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(12%_0.02_260)]">
+              <div className="overflow-hidden rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-shade)]">
                 <img
                   src={capture.elementScreenshotDataUrl}
-                  alt="Screenshot"
+                  alt="Captured element screenshot"
                   className="max-h-44 w-full object-contain object-top"
                 />
               </div>
             ) : (
-              <p className="text-center text-[11px] text-[oklch(52%_0.02_260)]">
-                📸 Screenshot unavailable for this element
+              <p className="text-center text-[11px] text-[color:var(--yi-ext-text-dim)]">
+                No screenshot available for this element.
               </p>
             )}
 
@@ -419,9 +431,8 @@ const CapturePanel = () => {
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Describe the change…"
                 rows={5}
-                autoFocus
                 aria-invalid={saveError ? true : undefined}
-                className="box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(18%_0.02_260)] px-3 py-2.5 text-[13px] leading-snug text-[oklch(92%_0.01_260)] outline-none placeholder:text-[oklch(48%_0.02_260)] focus-visible:border-[oklch(62%_0.12_250/0.45)] focus-visible:ring-2 focus-visible:ring-[oklch(62%_0.12_250/0.12)]"
+                className="box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
               />
             </label>
 
@@ -460,7 +471,7 @@ const CapturePanel = () => {
                 id="capture-panel-error"
                 role="alert"
                 aria-live="polite"
-                className="rounded-[var(--yi-radius-lg)] border border-[oklch(58%_0.14_25/0.35)] bg-[oklch(28%_0.06_25/0.35)] px-3 py-2.5 text-[12px] leading-snug text-[oklch(92%_0.02_25)]">
+                className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5 text-[12px] leading-snug text-[color:var(--yi-ext-danger-text)]">
                 {saveError}
               </p>
             ) : null}
@@ -478,7 +489,7 @@ const CapturePanel = () => {
                 {saving ? "Saving…" : "Add →"}
               </button>
             </div>
-            <p className="text-center text-[10px] text-[oklch(48%_0.02_260)]">
+            <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
               Esc closes without saving.
             </p>
           </div>
@@ -501,20 +512,20 @@ const CapturePanel = () => {
         aria-labelledby="thread-panel-title"
         style={{ zIndex: Z_PANEL }}
         className={panelSurface}>
-        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[oklch(100%_0_0_/0.08)] px-4 pb-4 pt-5">
+        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 pb-4 pt-5">
           <div className="min-w-0">
             <h2
               id="thread-panel-title"
-              className="text-[14px] font-semibold leading-tight tracking-tight text-[oklch(95%_0.01_260)]">
+              className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
               Annotation {n > 0 ? `#${n}` : ""}
             </h2>
-            <p className="mt-2 font-mono text-[11px] leading-snug text-[oklch(62%_0.02_260)] [overflow-wrap:anywhere]">
+            <p className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
               {truncateMiddle(viewingPin.selector, 48)}
             </p>
           </div>
           <button
             type="button"
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+            className={headerCloseBtn}
             aria-label="Close"
             onClick={resume}>
             ✕
@@ -523,30 +534,30 @@ const CapturePanel = () => {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-6 pt-4 [scrollbar-gutter:stable]">
           <div className="px-3">
-            <blockquote className="border-s-2 border-[oklch(62%_0.12_250/0.5)] ps-3 text-[13px] leading-relaxed text-[oklch(88%_0.01_260)]">
+            <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)]">
               {viewingPin.title}
-            </blockquote>
+            </div>
             {opener ? (
-              <p className="mt-2 text-[11px] text-[oklch(52%_0.02_260)]">
+              <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
                 {opener.authorLabel} · {formatShortDate(opener.createdAt)}
               </p>
             ) : (
-              <p className="mt-2 text-[11px] text-[oklch(52%_0.02_260)]">
+              <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
                 {formatShortDate(viewingPin.createdAt)}
               </p>
             )}
 
             {threads.length > 1 ? (
-              <ul className="mt-6 flex flex-col gap-4 border-t border-[oklch(100%_0_0_/0.08)] pt-4">
+              <ul className="mt-6 flex flex-col gap-4 border-t border-[color:var(--yi-ext-border-hairline)] pt-4">
                 {threads.slice(1).map((m) => (
                   <li
                     key={m.id}
                     className="text-[12px] leading-snug [overflow-wrap:anywhere]">
-                    <span className="font-semibold text-[oklch(78%_0.02_260)]">
+                    <span className="font-semibold text-[color:var(--yi-ext-text-soft)]">
                       {m.authorLabel}:
                     </span>{" "}
-                    <span className="text-[oklch(90%_0.01_260)]">{m.body}</span>
-                    <div className="mt-1 text-[10px] text-[oklch(48%_0.02_260)]">
+                    <span className="text-[color:var(--yi-ext-text)]">{m.body}</span>
+                    <div className="mt-1 text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
                       {formatShortDate(m.createdAt)}
                     </div>
                   </li>
@@ -563,7 +574,7 @@ const CapturePanel = () => {
                 maxLength={STORAGE_LIMITS.threadBody}
                 onChange={(e) => setReplyDraft(e.target.value)}
                 placeholder="Reply…"
-                className="box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(18%_0.02_260)] px-3 py-2 text-[13px] text-[oklch(92%_0.01_260)] outline-none placeholder:text-[oklch(48%_0.02_260)] focus-visible:border-[oklch(62%_0.12_250/0.45)] focus-visible:ring-2 focus-visible:ring-[oklch(62%_0.12_250/0.12)]"
+                className="box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
               />
             </label>
 
@@ -571,7 +582,7 @@ const CapturePanel = () => {
               <button
                 type="button"
                 disabled={saving || !replyDraft.trim()}
-                className="rounded-lg bg-[oklch(62%_0.12_250)] px-4 py-2 text-[12px] font-semibold text-[oklch(16%_0.02_260)] outline-none hover:opacity-95 disabled:opacity-40"
+                className="rounded-lg bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none hover:opacity-95 disabled:opacity-40"
                 onClick={() => void sendReply()}>
                 Send reply
               </button>
@@ -595,8 +606,8 @@ const CapturePanel = () => {
                 href={`${WEB_APP_URL}/en/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[oklch(100%_0_0_/0.12)] bg-transparent px-3 text-[12.5px] font-semibold text-[oklch(78%_0.12_250)] no-underline outline-none hover:bg-[oklch(100%_0_0_/0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]">
-                Push to Linear ↗
+                className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
+                Open dashboard ↗
               </a>
               <button
                 type="button"
@@ -611,7 +622,7 @@ const CapturePanel = () => {
             </div>
 
             {saveError ? (
-              <p role="alert" className="mt-3 text-[12px] text-[oklch(72%_0.08_25)]">
+              <p role="alert" className="mt-3 text-[12px] text-[color:var(--yi-ext-danger-text)]">
                 {saveError}
               </p>
             ) : null}
