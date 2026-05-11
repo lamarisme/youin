@@ -40,6 +40,9 @@ export interface LocalThreadMessage {
   authorLabel: string
 }
 
+export type PinStatus = "open" | "resolved"
+export type PinPriority = "low" | "medium" | "high"
+
 export interface Pin {
   id: string
   spaceId: string
@@ -55,6 +58,8 @@ export interface Pin {
   viewport: { width: number; height: number; dpr: number }
   title: string
   thread: LocalThreadMessage[]
+  status: PinStatus
+  priority: PinPriority
   createdAt: number
   updatedAt: number
   outerHTMLPreview: string
@@ -64,6 +69,14 @@ export interface Pin {
 
 function isStrategy(v: unknown): v is Pin["strategy"] {
   return v === "test-id" || v === "id" || v === "aria" || v === "path"
+}
+
+function isPinStatus(v: unknown): v is PinStatus {
+  return v === "open" || v === "resolved"
+}
+
+function isPinPriority(v: unknown): v is PinPriority {
+  return v === "low" || v === "medium" || v === "high"
 }
 
 const DEFAULT_SPACES: Space[] = [
@@ -158,6 +171,13 @@ function migrateRawPin(raw: unknown): Pin {
     )
       ? p.remoteMarkId
       : undefined
+  const statusRaw = (p as { status?: unknown }).status
+  const priorityRaw = (p as { priority?: unknown }).priority
+  const status: PinStatus = isPinStatus(statusRaw) ? statusRaw : "open"
+  const priority: PinPriority = isPinPriority(priorityRaw)
+    ? priorityRaw
+    : "medium"
+
   const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
       typeof p.id === "string" && p.id.length > 0
@@ -179,6 +199,8 @@ function migrateRawPin(raw: unknown): Pin {
         : { width: 0, height: 0, dpr: 1 },
     title,
     thread,
+    status,
+    priority,
     createdAt,
     updatedAt: typeof p.updatedAt === "number" ? p.updatedAt : createdAt,
     outerHTMLPreview: String(p.outerHTMLPreview ?? "").slice(
@@ -285,6 +307,8 @@ export async function addPin(pin: Pin): Promise<boolean> {
     ...pin,
     url: normalizePageUrlForMatch(pin.url) || pin.url,
     title: pin.title.slice(0, STORAGE_LIMITS.pinTitle),
+    status: pin.status ?? "open",
+    priority: pin.priority ?? "medium",
     thread: pin.thread.map((m) => ({
       ...m,
       body: m.body.slice(0, STORAGE_LIMITS.threadBody),

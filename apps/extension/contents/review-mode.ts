@@ -1,10 +1,12 @@
 import type { PlasmoCSConfig } from "plasmo"
+import { toPng } from "html-to-image"
 
-import { color, easing, fontFamily, shadow as shadows } from "@youin/design-tokens"
+import { easing, fontFamily, shadow as shadows } from "@youin/design-tokens"
 
 import {
   EVENT_REVIEW_CAPTURE,
   EVENT_REVIEW_EXIT,
+  EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
@@ -12,6 +14,14 @@ import {
   type ReviewStateDetail
 } from "../lib/events"
 import { generateSelector } from "../lib/selector"
+import {
+  getActiveSpaceId,
+  getPinsForPage,
+  getSpaces,
+  KEY_ACTIVE_SPACE,
+  KEY_PINS,
+  KEY_SPACES
+} from "../lib/storage"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -23,19 +33,56 @@ const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
 const Z_TOP = 2147483647
 
+/** Subtle dev-tool blue for hover outline */
+const INSPECT_BLUE = "oklch(62% 0.12 250)"
+const INSPECT_BLUE_FILL = "oklch(62% 0.12 250 / 0.14)"
+
 type Mode = "inactive" | "active" | "paused"
 
 let mode: Mode = "inactive"
 let host: HTMLDivElement | null = null
 let highlight: HTMLDivElement | null = null
+let toolbarNsEl: HTMLElement | null = null
+let toolbarCountEl: HTMLElement | null = null
 let cursorStyle: HTMLStyleElement | null = null
 let hoverRaf: number | null = null
+let toolbarCleanup: (() => void) | null = null
 let pendingHoverRect: {
   left: number
   top: number
   width: number
   height: number
 } | null = null
+
+async function refreshToolbarLabels() {
+  if (!toolbarNsEl || !toolbarCountEl) return
+  try {
+    const spaceId = await getActiveSpaceId()
+    const spaces = await getSpaces()
+    const ns = spaces.find((s) => s.id === spaceId)?.name ?? "—"
+    toolbarNsEl.textContent = ns
+    const pins = await getPinsForPage(spaceId, location.href)
+    const open = pins.filter((p) => p.status !== "resolved").length
+    toolbarCountEl.textContent = `${open} open`
+  } catch {
+    toolbarNsEl.textContent = "—"
+    toolbarCountEl.textContent = "—"
+  }
+}
+
+function subscribeToolbarRefresh() {
+  const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
+    changes,
+    area
+  ) => {
+    if (area !== "local") return
+    if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE] || changes[KEY_SPACES]) {
+      if (mode === "active") void refreshToolbarLabels()
+    }
+  }
+  chrome.storage.onChanged.addListener(onStorage)
+  return () => chrome.storage.onChanged.removeListener(onStorage)
+}
 
 function ensureHost() {
   if (host) return
@@ -57,10 +104,9 @@ function ensureHost() {
       position: absolute;
       box-sizing: border-box;
       pointer-events: none;
-      border: 1px dashed ${color.mark};
-      background: ${color.mark.replace(")", " / 0.08)")};
+      border: 2px solid ${INSPECT_BLUE};
+      background: ${INSPECT_BLUE_FILL};
       border-radius: 4px;
-      box-shadow: 0 0 0 1px oklch(100% 0 0 / 0.4) inset;
       transition:
         transform 90ms ${easing.outExpo},
         width 90ms ${easing.outExpo},
@@ -72,33 +118,67 @@ function ensureHost() {
         transition: none;
       }
     }
-    .banner {
+    .toolbar {
       position: fixed;
-      bottom: 16px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      pointer-events: none;
-      max-width: min(calc(100vw - 32px), 420px);
-      padding: 7px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: min(calc(100vw - 24px), 520px);
+      padding: 8px 12px 8px 14px;
       border-radius: 999px;
-      background: ${color.ink};
-      color: ${color.paper};
-      font: 500 12px/1 ${fontFamily.sans};
+      pointer-events: auto;
+      background: oklch(22% 0.02 260);
+      color: oklch(92% 0.01 260);
+      font: 500 12px/1.2 ${fontFamily.sans};
       letter-spacing: 0.01em;
+      border: 1px solid oklch(100% 0 0 / 0.08);
       box-shadow: ${shadows.banner};
-      white-space: normal;
-      text-align: center;
-      text-wrap: balance;
     }
-    .banner kbd {
-      display: inline-block;
-      padding: 1px 5px;
-      margin: 0 2px;
-      border-radius: 3px;
-      background: oklch(100% 0 0 / 0.12);
-      font-family: ${fontFamily.mono};
-      font-size: 10.5px;
-      letter-spacing: 0;
+    .toolbar .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: ${INSPECT_BLUE};
+      box-shadow: 0 0 0 3px ${INSPECT_BLUE_FILL};
+      flex-shrink: 0;
+    }
+    .toolbar .sep {
+      opacity: 0.35;
+      user-select: none;
+    }
+    .toolbar .muted {
+      color: oklch(72% 0.02 260);
+      max-width: 28vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .toolbar .counts {
+      font-variant-numeric: tabular-nums;
+      color: oklch(78% 0.04 25);
+    }
+    .toolbar button.close {
+      margin-left: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: oklch(78% 0.01 260);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .toolbar button.close:hover {
+      background: oklch(100% 0 0 / 0.08);
+      color: oklch(96% 0.01 260);
     }
   `
   shadow.append(style)
@@ -107,15 +187,35 @@ function ensureHost() {
   highlight.className = "highlight"
   shadow.append(highlight)
 
-  const banner = document.createElement("div")
-  banner.className = "banner"
-  banner.innerHTML = 'Click to select · <kbd>Esc</kbd> exits'
-  shadow.append(banner)
+  const toolbar = document.createElement("div")
+  toolbar.className = "toolbar"
+  toolbar.setAttribute("role", "status")
+  toolbar.innerHTML = `
+    <span class="dot" aria-hidden="true"></span>
+    <span>Inspect ON</span>
+    <span class="sep" aria-hidden="true">|</span>
+    <span class="muted" data-field="ns"></span>
+    <span class="sep" aria-hidden="true">|</span>
+    <span class="counts" data-field="counts"></span>
+    <button type="button" class="close" aria-label="Exit inspect mode">✕</button>
+  `
+  toolbarNsEl = toolbar.querySelector('[data-field="ns"]')
+  toolbarCountEl = toolbar.querySelector('[data-field="counts"]')
+  toolbar.querySelector("button.close")?.addEventListener("click", (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    deactivate()
+  })
+  shadow.append(toolbar)
 
   document.body.append(host)
 }
 
 function destroyHost() {
+  toolbarCleanup?.()
+  toolbarCleanup = null
+  toolbarNsEl = null
+  toolbarCountEl = null
   host?.remove()
   host = null
   highlight = null
@@ -135,7 +235,11 @@ function removeCursorOverride() {
 }
 
 function isOwnElement(node: Node | null): boolean {
-  return !!node && !!host && (node === host || host.contains(node))
+  if (!node || !host) return false
+  if (node === host) return true
+  const root = node.getRootNode()
+  if (root === host.shadowRoot) return true
+  return host.contains(node)
 }
 
 function cancelHoverRaf() {
@@ -177,15 +281,21 @@ function onMouseOver(e: MouseEvent) {
   }
 }
 
-function onClick(e: MouseEvent) {
-  const target = e.target as Element | null
-  if (!target || isOwnElement(target)) return
-
-  e.preventDefault()
-  e.stopImmediatePropagation()
-
+async function captureAndDispatch(target: Element) {
   const rect = target.getBoundingClientRect()
   const result = generateSelector(target)
+
+  let elementScreenshotDataUrl: string | undefined
+  if (target instanceof HTMLElement) {
+    try {
+      elementScreenshotDataUrl = await toPng(target, {
+        pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        cacheBust: true
+      })
+    } catch {
+      /* ignore — subresources / CORS */
+    }
+  }
 
   const detail: ReviewCaptureDetail = {
     selector: result.selector,
@@ -202,12 +312,21 @@ function onClick(e: MouseEvent) {
       dpr: window.devicePixelRatio
     },
     url: location.href,
-    outerHTML: target.outerHTML.slice(0, 400)
+    outerHTML: target.outerHTML.slice(0, 400),
+    elementScreenshotDataUrl
   }
 
   window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
-
   pause()
+}
+
+function onClick(e: MouseEvent) {
+  const target = e.target as Element | null
+  if (!target || isOwnElement(target)) return
+
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  void captureAndDispatch(target)
 }
 
 function swallow(e: Event) {
@@ -225,8 +344,6 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function emitState() {
-  // "active" in the public event means "in a review session" — true for both
-  // ACTIVE and PAUSED. The widget only cares whether to show its review banner.
   const detail: ReviewStateDetail = { active: mode !== "inactive" }
   window.dispatchEvent(new CustomEvent(EVENT_REVIEW_STATE, { detail }))
 }
@@ -256,6 +373,9 @@ function activate() {
   }
   mode = "active"
   ensureHost()
+  toolbarCleanup?.()
+  toolbarCleanup = subscribeToolbarRefresh()
+  void refreshToolbarLabels()
   applyCursorOverride()
   attachCaptureListeners()
   emitState()
@@ -266,8 +386,6 @@ function pause() {
   mode = "paused"
   detachCaptureListeners()
   removeCursorOverride()
-  // Hide the host's overlay + banner so the popover owns the screen,
-  // but keep the host element so resume is cheap.
   if (host) host.style.display = "none"
   if (highlight) highlight.style.display = "none"
 }
@@ -276,6 +394,7 @@ function resume() {
   if (mode !== "paused") return
   mode = "active"
   if (host) host.style.display = ""
+  void refreshToolbarLabels()
   applyCursorOverride()
   attachCaptureListeners()
 }
@@ -292,12 +411,12 @@ function deactivate() {
 window.addEventListener(EVENT_REVIEW_START, () => activate())
 window.addEventListener(EVENT_REVIEW_EXIT, () => deactivate())
 window.addEventListener(EVENT_REVIEW_RESUME, () => resume())
+window.addEventListener(EVENT_REVIEW_PAUSE, () => pause())
 
 document.addEventListener(
   "keydown",
   (e) => {
     if (e.altKey && e.shiftKey && e.code === "KeyY") {
-      // Don't let the global toggle hijack typing inside the comment popover.
       if (mode === "paused") return
       e.preventDefault()
       mode === "inactive" ? activate() : deactivate()
@@ -305,3 +424,18 @@ document.addEventListener(
   },
   true
 )
+
+chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
+  if (!msg || typeof msg !== "object") return
+  const t = (msg as { type?: string }).type
+  if (t === "youin:start-inspect") {
+    activate()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:ping-content") {
+    sendResponse({ ok: true })
+    return true
+  }
+  return false
+})

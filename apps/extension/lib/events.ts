@@ -3,9 +3,15 @@ export const EVENT_REVIEW_EXIT = "youin:review:exit"
 export const EVENT_REVIEW_STATE = "youin:review:state"
 export const EVENT_REVIEW_CAPTURE = "youin:review:capture"
 export const EVENT_REVIEW_RESUME = "youin:review:resume"
+export const EVENT_REVIEW_PAUSE = "youin:review:pause"
+export const EVENT_REVIEW_OPEN_PIN = "youin:review:open-pin"
 
 export interface ReviewStateDetail {
   active: boolean
+}
+
+export interface OpenPinDetail {
+  pinId: string
 }
 
 export interface ReviewCaptureDetail {
@@ -15,4 +21,6 @@ export interface ReviewCaptureDetail {
   viewport: { width: number; height: number; dpr: number }
   url: string
   outerHTML: string
+  /** Element screenshot (PNG data URL), when capture succeeds. */
+  elementScreenshotDataUrl?: string
 }

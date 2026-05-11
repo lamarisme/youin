@@ -2,7 +2,7 @@ import "./globals.css"
 
 import type { Session } from "@supabase/supabase-js"
 import { t } from "@youin/i18n/t"
-import { type FormEvent, useEffect, useState } from "react"
+import { type FormEvent, useCallback, useEffect, useState } from "react"
 
 import {
   getSession,
@@ -16,15 +16,99 @@ import {
   migrateLocalDataToWorkspace,
   type MigrationResult
 } from "./lib/migrate"
-import { syncWorkspaceFromRemote } from "./lib/sync"
-import { getWidgetSettings, setWidgetSettings } from "./lib/storage"
-import { WEB_APP_URL } from "./lib/supabase"
+import { syncWorkspaceFromRemote, createRemoteWorkspaceSpace } from "./lib/sync"
+import {
+  addSpace,
+  getActiveSpaceId,
+  getPinsForPage,
+  getSpaces,
+  KEY_ACTIVE_SPACE,
+  KEY_PINS,
+  KEY_SPACES,
+  setActiveSpaceId,
+  STORAGE_LIMITS,
+  type Space
+} from "./lib/storage"
+import { getSupabase, WEB_APP_URL } from "./lib/supabase"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
+
+async function fetchWorkspaceLabel(): Promise<string | null> {
+  const session = await getSession()
+  if (!session?.user?.id) return null
+  const supabase = getSupabase()
+  const { data: mem, error: mErr } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", session.user.id)
+    .limit(1)
+    .maybeSingle()
+  if (mErr || !mem?.workspace_id) return null
+  const { data: ws, error: wErr } = await supabase
+    .from("workspaces")
+    .select("name")
+    .eq("id", mem.workspace_id as string)
+    .single()
+  if (wErr || !ws?.name) return null
+  return String(ws.name)
+}
+
+async function startInspectOnActiveTab(): Promise<{ ok: boolean; error?: string }> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id) return { ok: false, error: "No active tab." }
+  const url = tab.url ?? ""
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return { ok: false, error: "Open a web page to inspect." }
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "youin:start-inspect" })
+    return { ok: true }
+  } catch {
+    return {
+      ok: false,
+      error: "Reload the page, then try again."
+    }
+  }
+}
 
 function IndexPopup() {
   const [view, setView] = useState<AuthView>("checking")
   const [session, setSession] = useState<Session | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [spaces, setSpaces] = useState<Space[]>([])
+  const [spaceId, setSpaceId] = useState<string>("")
+  const [projectLabel, setProjectLabel] = useState<string>("Local")
+  const [openCount, setOpenCount] = useState(0)
+  const [resolvedCount, setResolvedCount] = useState(0)
+  const [inspectMsg, setInspectMsg] = useState<string | null>(null)
+  const [creatingSpace, setCreatingSpace] = useState(false)
+  const [newSpaceName, setNewSpaceName] = useState("")
+  const [spaceErr, setSpaceErr] = useState<string | null>(null)
+  const [showAuth, setShowAuth] = useState(false)
+
+  const refreshCounts = useCallback(async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const url = tab?.url
+    if (!url?.startsWith("http")) {
+      setOpenCount(0)
+      setResolvedCount(0)
+      return
+    }
+    const sid = await getActiveSpaceId()
+    const pins = await getPinsForPage(sid, url)
+    setOpenCount(pins.filter((p) => p.status !== "resolved").length)
+    setResolvedCount(pins.filter((p) => p.status === "resolved").length)
+  }, [])
+
+  const refreshSpaces = useCallback(async () => {
+    const [s, active] = await Promise.all([getSpaces(), getActiveSpaceId()])
+    setSpaces(s)
+    setSpaceId((prev) => {
+      if (prev && s.some((x) => x.id === prev)) return prev
+      if (s.some((x) => x.id === active)) return active
+      return s[0]?.id ?? ""
+    })
+  }, [])
 
   useEffect(() => {
     const offAuth = onAuthChange((s) => {
@@ -44,43 +128,293 @@ function IndexPopup() {
     }
   }, [])
 
+  useEffect(() => {
+    void refreshSpaces()
+    void refreshCounts()
+    const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
+      changes,
+      area
+    ) => {
+      if (area !== "local") return
+      if (changes[KEY_SPACES] || changes[KEY_ACTIVE_SPACE]) void refreshSpaces()
+      if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE]) void refreshCounts()
+    }
+    chrome.storage.onChanged.addListener(onStorage)
+    return () => chrome.storage.onChanged.removeListener(onStorage)
+  }, [refreshSpaces, refreshCounts])
+
+  useEffect(() => {
+    if (view !== "signedIn") {
+      setProjectLabel("Local")
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const label = await fetchWorkspaceLabel()
+      if (!cancelled) setProjectLabel(label?.trim() || "Workspace")
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [view, session?.user?.id])
+
+  const selectSpace = (id: string) => {
+    setSpaceId(id)
+    void setActiveSpaceId(id)
+  }
+
+  const submitNewSpace = () => {
+    const name = newSpaceName.trim().slice(0, STORAGE_LIMITS.spaceName)
+    if (!name) {
+      setCreatingSpace(false)
+      setSpaceErr(null)
+      return
+    }
+    void (async () => {
+      const sess = await getSession()
+      if (sess?.user?.id) {
+        const created = await createRemoteWorkspaceSpace(sess.user.id, name)
+        if (!created.ok || !created.spaceId) {
+          setSpaceErr(
+            created.error ?? "Could not create namespace. Try the web app."
+          )
+          return
+        }
+        await syncWorkspaceFromRemote(sess.user.id)
+        await refreshSpaces()
+        await setActiveSpaceId(created.spaceId)
+        setNewSpaceName("")
+        setCreatingSpace(false)
+        setSpaceErr(null)
+        return
+      }
+
+      const slug =
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") || "space"
+      const id = `${slug}-${Date.now().toString(36)}`
+      const next: Space = { id, name, createdAt: Date.now() }
+      const added = await addSpace(next)
+      if (!added) {
+        setSpaceErr("Couldn't save space.")
+        return
+      }
+      await setActiveSpaceId(id)
+      await refreshSpaces()
+      setNewSpaceName("")
+      setCreatingSpace(false)
+      setSpaceErr(null)
+    })()
+  }
+
+  if (view === "checking") {
+    return (
+      <main className="youin-popup flex min-w-0 w-full max-w-[300px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[oklch(52%_0.02_260)] antialiased">
+        Loading…
+      </main>
+    )
+  }
+
   return (
-    <main className="youin-popup flex min-w-0 w-full max-w-[320px] flex-col gap-4 bg-paper px-4 py-4 font-sans text-[12px] font-medium leading-[1.45] text-ink-2 antialiased [overflow-wrap:anywhere]">
-      <header>
-        <h1 className="text-[15px] font-semibold tracking-[-0.02em] text-ink">
-          Youin
-        </h1>
-        <p className="mt-2 text-ink-2">
-          Press{" "}
-          <kbd className="me-px inline-flex rounded-[3px] border border-rule bg-paper-3 px-[5px] py-px font-mono text-[10px] font-semibold leading-none text-ink">
-            ⌥
-          </kbd>
-          <kbd className="me-px inline-flex rounded-[3px] border border-rule bg-paper-3 px-[5px] py-px font-mono text-[10px] font-semibold leading-none text-ink">
-            ⇧
-          </kbd>
-          <kbd className="inline-flex rounded-[3px] border border-rule bg-paper-3 px-[5px] py-px font-mono text-[10px] font-semibold leading-none text-ink">
-            Y
-          </kbd>{" "}
-          to capture.
-        </p>
+    <main className="youin-popup relative flex min-w-0 w-full max-w-[300px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
+      <header className="flex items-center justify-between gap-2 border-b border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className="size-2 shrink-0 rounded-full bg-[oklch(62%_0.12_250)] ring-2 ring-[oklch(62%_0.12_250/0.25)]"
+            aria-hidden
+          />
+          <h1 className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[var(--yi-ink)]">
+            YouIn
+          </h1>
+        </div>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
+            aria-expanded={menuOpen}
+            aria-label="Account and settings"
+            onClick={() => setMenuOpen((v) => !v)}>
+            ⚙
+          </button>
+          {menuOpen ? (
+            <div
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[oklch(100%_0_0_/0.1)] bg-[oklch(20%_0.02_260)] py-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)]">
+              {view === "signedIn" ? (
+                <>
+                  <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[oklch(72%_0.01_260)]">
+                    {session?.user?.email ?? ""}
+                  </p>
+                  <button
+                    type="button"
+                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[oklch(88%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.06)]"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      void signOut()
+                    }}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[oklch(88%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.06)]"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setShowAuth(true)
+                  }}>
+                  Sign in…
+                </button>
+              )}
+              <a
+                href={`${WEB_APP_URL}/en/dashboard?space=all`}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-3 py-2 text-[12px] text-[oklch(72%_0.12_250)] no-underline hover:bg-[oklch(100%_0_0_/0.06)]"
+                onClick={() => setMenuOpen(false)}>
+                Web app ↗
+              </a>
+            </div>
+          ) : null}
+        </div>
       </header>
 
-      {view === "checking" ? (
-        <div className="border-t border-rule pt-4 text-[11px] text-ink-3">
-          Loading…
-        </div>
-      ) : view === "signedOut" ? (
-        <SignInBlock />
-      ) : (
-        <SignedInBlock session={session} />
-      )}
+      <div className="flex flex-col gap-3 px-4 py-3">
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[oklch(52%_0.02_260)]">
+            Project
+          </span>
+          <div className="min-h-9 rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-2 text-[13px] text-[oklch(88%_0.01_260)]">
+            {projectLabel}
+          </div>
+        </label>
 
-      <FabToggle />
+        <div>
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[oklch(52%_0.02_260)]">
+            Namespace
+          </span>
+          <div className="flex gap-1">
+            <select
+              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2 py-2 text-[12px] text-[oklch(88%_0.01_260)] outline-none focus-visible:border-[oklch(62%_0.12_250/0.45)]"
+              value={spaceId}
+              onChange={(e) => selectSpace(e.target.value)}>
+              {spaces.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              title="New namespace"
+              className="shrink-0 rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(18%_0.02_260)] px-2.5 text-[14px] text-[oklch(72%_0.01_260)] outline-none hover:bg-[oklch(100%_0_0_/0.06)]"
+              onClick={() => {
+                setCreatingSpace((c) => !c)
+                setSpaceErr(null)
+              }}>
+              +
+            </button>
+          </div>
+          {creatingSpace ? (
+            <div className="mt-2 flex flex-col gap-1">
+              {spaceErr ? (
+                <p className="text-[11px] text-[oklch(72%_0.08_25)]">{spaceErr}</p>
+              ) : null}
+              <input
+                value={newSpaceName}
+                maxLength={STORAGE_LIMITS.spaceName}
+                onChange={(e) => setNewSpaceName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitNewSpace()
+                }}
+                placeholder="Name"
+                className="rounded-md border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none"
+              />
+              <button
+                type="button"
+                className="rounded-md bg-[oklch(88%_0.02_260)] py-1.5 text-[12px] font-semibold text-[oklch(16%_0.02_260)]"
+                onClick={() => submitNewSpace()}>
+                Add
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+        {inspectMsg ? (
+          <p className="mb-2 text-[11px] text-[oklch(72%_0.08_25)]">{inspectMsg}</p>
+        ) : null}
+        <button
+          type="button"
+          className="flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-[oklch(88%_0.02_260)] px-3 py-2.5 text-[13px] font-semibold text-[oklch(16%_0.02_260)] outline-none transition-[background,transform] hover:bg-[oklch(92%_0.02_260)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)] active:scale-[0.99]"
+          onClick={() => {
+            setInspectMsg(null)
+            void (async () => {
+              const r = await startInspectOnActiveTab()
+              if (!r.ok) setInspectMsg(r.error ?? "Could not start inspect mode.")
+              else window.close()
+            })()
+          }}>
+          Enable Inspect Mode
+        </button>
+        <p className="mt-2 text-center text-[10px] text-[oklch(48%_0.02_260)]">
+          <kbd className="rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+            ⌥
+          </kbd>
+          <kbd className="ms-0.5 rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+            ⇧
+          </kbd>
+          <kbd className="ms-0.5 rounded border border-[oklch(100%_0_0_/0.12)] bg-[oklch(12%_0.02_260)] px-1 font-mono text-[9px]">
+            Y
+          </kbd>
+          <span className="ms-1">toggles on page</span>
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+        <button
+          type="button"
+          className="rounded-lg border border-[oklch(100%_0_0_/0.08)] bg-transparent py-2.5 text-left text-[11px] leading-snug text-[oklch(72%_0.01_260)] hover:bg-[oklch(100%_0_0_/0.04)]"
+          onClick={() => void startInspectOnActiveTab()}>
+          <span className="block text-[oklch(88%_0.01_260)]">Open annotations</span>
+          <span className="font-mono text-[12px] text-[oklch(62%_0.12_250)]">
+            ({openCount})
+          </span>
+        </button>
+        <div className="rounded-lg border border-[oklch(100%_0_0_/0.06)] bg-[oklch(100%_0_0_/0.02)] py-2.5 text-left text-[11px] leading-snug text-[oklch(52%_0.02_260)]">
+          <span className="block text-[oklch(72%_0.01_260)]">Resolved</span>
+          <span className="font-mono text-[12px] text-[oklch(52%_0.02_260)]">
+            ({resolvedCount})
+          </span>
+        </div>
+      </div>
+
+      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+        <a
+          href={`${WEB_APP_URL}/en/dashboard?space=all`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-[oklch(100%_0_0_/0.1)] bg-transparent text-[12px] font-semibold text-[oklch(78%_0.12_250)] no-underline hover:bg-[oklch(100%_0_0_/0.04)]">
+          Open Dashboard ↗
+        </a>
+      </div>
+
+      {view === "signedOut" && showAuth ? (
+        <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-3">
+          <SignInBlock onClose={() => setShowAuth(false)} />
+        </div>
+      ) : null}
+
+      {view === "signedIn" ? (
+        <SignedInBlock session={session} />
+      ) : null}
     </main>
   )
 }
 
-function SignInBlock() {
+function SignInBlock({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -93,6 +427,7 @@ function SignInBlock() {
     const r = await signInWithPassword(email, password)
     setLoading(false)
     if (!r.ok) setError(r.error ?? t("extension.popup.signInFailed"))
+    else onClose()
   }
 
   function handleGoogle() {
@@ -104,30 +439,35 @@ function SignInBlock() {
   }
 
   return (
-    <section className="border-t border-rule pt-4">
-      <h2 className="text-[12px] font-semibold text-ink">Sign in</h2>
-      <p className="mt-1 text-[11px] text-ink-3">
-        Connect your youin account to sync pins.
-      </p>
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[12px] font-semibold text-[var(--yi-ink)]">Sign in</h2>
+        <button
+          type="button"
+          className="border-0 bg-transparent p-0 text-[11px] text-[oklch(62%_0.12_250)] underline"
+          onClick={onClose}>
+          Close
+        </button>
+      </div>
 
       <button
         type="button"
         onClick={handleGoogle}
-        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-rule bg-paper-2 px-3 py-2 text-[12px] font-medium text-ink outline-none transition-colors hover:bg-paper-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yi-mark-35"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(16%_0.02_260)] px-3 py-2 text-[12px] font-medium text-[oklch(88%_0.01_260)] outline-none transition-colors hover:bg-[oklch(20%_0.02_260)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[oklch(62%_0.12_250/0.45)]"
         aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         Continue with Google
       </button>
 
-      <div className="my-3 flex items-center gap-2 text-[10px] text-ink-3">
-        <span className="h-px flex-1 bg-rule" aria-hidden />
+      <div className="my-3 flex items-center gap-2 text-[10px] text-[oklch(48%_0.02_260)]">
+        <span className="h-px flex-1 bg-[oklch(100%_0_0_/0.1)]" aria-hidden />
         or
-        <span className="h-px flex-1 bg-rule" aria-hidden />
+        <span className="h-px flex-1 bg-[oklch(100%_0_0_/0.1)]" aria-hidden />
       </div>
 
       <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[oklch(48%_0.02_260)]">
             Email
           </span>
           <input
@@ -137,11 +477,11 @@ function SignInBlock() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@agency.com"
-            className="rounded-[var(--yi-radius-md)] border border-rule bg-paper-2 px-2.5 py-1.5 text-[12px] text-ink outline-none transition-colors focus:border-yi-mark-60 focus:bg-paper"
+            className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none focus:border-[oklch(62%_0.12_250/0.45)]"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-3">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-[oklch(48%_0.02_260)]">
             Password
           </span>
           <input
@@ -150,14 +490,14 @@ function SignInBlock() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-[var(--yi-radius-md)] border border-rule bg-paper-2 px-2.5 py-1.5 text-[12px] text-ink outline-none transition-colors focus:border-yi-mark-60 focus:bg-paper"
+            className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-1.5 text-[12px] text-[oklch(90%_0.01_260)] outline-none focus:border-[oklch(62%_0.12_250/0.45)]"
           />
         </label>
 
         {error ? (
           <p
             role="alert"
-            className="rounded-[var(--yi-radius-md)] border border-yi-mark-25 bg-yi-mark-soft-50 px-2.5 py-1.5 text-[11px] text-ink">
+            className="rounded-[var(--yi-radius-md)] border border-[oklch(58%_0.14_25/0.35)] bg-[oklch(24%_0.05_25/0.4)] px-2.5 py-1.5 text-[11px] text-[oklch(88%_0.02_25)]">
             {error}
           </p>
         ) : null}
@@ -165,7 +505,7 @@ function SignInBlock() {
         <button
           type="submit"
           disabled={loading || !email.trim() || !password}
-          className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-mark px-3 py-1.5 text-[12px] font-semibold text-paper transition-colors hover:bg-mark-bright disabled:cursor-not-allowed disabled:opacity-50">
+          className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-[oklch(62%_0.12_250)] px-3 py-1.5 text-[12px] font-semibold text-[oklch(16%_0.02_260)] transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
           {loading ? t("extension.popup.signingIn") : t("extension.popup.signIn")}
         </button>
       </form>
@@ -175,7 +515,6 @@ function SignInBlock() {
 
 function SignedInBlock({ session }: { session: Session | null }) {
   const userId = session?.user?.id
-  const email = session?.user?.email ?? t("extension.popup.signedInFallback")
   const [syncingDb, setSyncingDb] = useState(false)
   const [migrating, setMigrating] = useState(false)
   const [migrationStatus, setMigrationStatus] = useState<
@@ -213,37 +552,26 @@ function SignedInBlock({ session }: { session: Session | null }) {
     }
   }, [userId])
 
-  return (
-    <section className="border-t border-rule pt-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[12px] font-medium text-ink">{email}</p>
-          <p className="text-[11px] text-ink-3">Connected to youin.</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="rounded-sm border-0 bg-transparent p-0 text-[11px] font-medium text-ink-2 underline decoration-rule underline-offset-2 outline-none transition-colors hover:text-ink hover:decoration-yi-ink-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yi-mark-35">
-          Sign out
-        </button>
-      </div>
+  if (syncingDb || migrating) {
+    return (
+      <p className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-2 text-[10px] text-[oklch(52%_0.02_260)]">
+        Syncing workspace…
+      </p>
+    )
+  }
 
-      {syncingDb ? (
-        <p className="mt-3 text-[11px] text-ink-3">Syncing spaces from your workspace…</p>
-      ) : null}
-
-      {migrating ? (
-        <p className="mt-3 text-[11px] text-ink-3">Importing your local pins…</p>
-      ) : null}
-
-      {!syncingDb && !migrating && migrationStatus && !migrationDismissed ? (
+  if (migrationStatus && !migrationDismissed) {
+    return (
+      <div className="border-t border-[oklch(100%_0_0_/0.08)] px-4 py-2">
         <MigrationBanner
           status={migrationStatus}
           onDismiss={() => setMigrationDismissed(true)}
         />
-      ) : null}
-    </section>
-  )
+      </div>
+    )
+  }
+
+  return null
 }
 
 function MigrationBanner({
@@ -257,12 +585,12 @@ function MigrationBanner({
     return (
       <div
         role="alert"
-        className="mt-3 rounded-[var(--yi-radius-md)] border border-yi-mark-25 bg-yi-mark-soft-50 px-2.5 py-2 text-[11px] leading-snug text-ink">
+        className="rounded-[var(--yi-radius-md)] border border-[oklch(58%_0.14_25/0.35)] bg-[oklch(24%_0.05_25/0.4)] px-2.5 py-2 text-[10px] leading-snug text-[oklch(88%_0.02_25)]">
         Import failed: {status.error}
         <button
           type="button"
           onClick={onDismiss}
-          className="ms-2 underline decoration-yi-mark-40 underline-offset-2 hover:decoration-mark">
+          className="ms-2 underline underline-offset-2">
           Dismiss
         </button>
       </div>
@@ -273,7 +601,7 @@ function MigrationBanner({
     return null
   }
   return (
-    <div className="mt-3 rounded-[var(--yi-radius-md)] border border-rule bg-paper-2 px-2.5 py-2 text-[11px] leading-snug text-ink-2">
+    <div className="rounded-[var(--yi-radius-md)] border border-[oklch(100%_0_0_/0.1)] bg-[oklch(14%_0.02_260)] px-2.5 py-2 text-[10px] leading-snug text-[oklch(72%_0.01_260)]">
       Imported {r.pinsImported} pin{r.pinsImported === 1 ? "" : "s"}
       {r.spacesCreated > 0
         ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
@@ -285,74 +613,9 @@ function MigrationBanner({
       <button
         type="button"
         onClick={onDismiss}
-        className="ms-2 font-medium text-ink underline decoration-rule underline-offset-2 hover:decoration-yi-ink-40">
+        className="ms-2 font-medium text-[oklch(62%_0.12_250)] underline underline-offset-2">
         Dismiss
       </button>
-    </div>
-  )
-}
-
-function FabToggle() {
-  const [fabHidden, setFabHidden] = useState(false)
-  const [settingsError, setSettingsError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    void getWidgetSettings().then((s) => {
-      if (!cancelled) setFabHidden(!s.fabVisible)
-    })
-    const onStorage: Parameters<
-      typeof chrome.storage.onChanged.addListener
-    >[0] = (changes, area) => {
-      if (area !== "local" || !changes["youin:widget-settings"]?.newValue) {
-        return
-      }
-      const v = changes["youin:widget-settings"].newValue as {
-        fabVisible?: boolean
-      }
-      if (typeof v.fabVisible === "boolean") {
-        setFabHidden(!v.fabVisible)
-        if (v.fabVisible) setSettingsError(null)
-      }
-    }
-    chrome.storage.onChanged.addListener(onStorage)
-    return () => {
-      cancelled = true
-      chrome.storage.onChanged.removeListener(onStorage)
-    }
-  }, [])
-
-  if (!fabHidden) return null
-  return (
-    <div className="border-t border-rule pt-4">
-      <p className="text-[11px] leading-snug text-ink-3">
-        Floating button off.{" "}
-        <button
-          type="button"
-          aria-label={t("extension.popup.floatingToggleAria")}
-          className="rounded-sm border-0 bg-transparent p-0 font-medium text-mark underline decoration-yi-mark-30 underline-offset-2 outline-none transition-colors hover:decoration-mark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yi-mark-35"
-          onClick={() => {
-            void (async () => {
-              const { saved } = await setWidgetSettings({ fabVisible: true })
-              if (saved) {
-                setFabHidden(false)
-                setSettingsError(null)
-              } else {
-                setSettingsError(t("extension.popup.settingsSaveError"))
-              }
-            })()
-          }}>
-          Show
-        </button>
-      </p>
-      {settingsError ? (
-        <p
-          role="alert"
-          aria-live="polite"
-          className="mt-3 rounded-[var(--yi-radius-md)] border border-yi-mark-25 bg-yi-mark-soft-50 px-2.5 py-2 text-[11px] leading-snug text-ink">
-          {settingsError}
-        </p>
-      ) : null}
     </div>
   )
 }

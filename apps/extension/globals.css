@@ -4,23 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Action popup is light-DOM; match shadow :host dark tokens */
+html:has(#__plasmo) {
+  --yi-paper: oklch(18% 0.02 260);
+  --yi-paper-2: oklch(22% 0.02 260);
+  --yi-paper-3: oklch(26% 0.022 260);
+  --yi-ink: oklch(95% 0.01 260);
+  --yi-ink-hover: oklch(88% 0.02 260);
+  --yi-ink-2: oklch(78% 0.015 260);
+  --yi-ink-3: oklch(58% 0.02 260);
+  --yi-rule: oklch(100% 0 0 / 0.12);
+  --yi-mark: oklch(62% 0.12 250);
+  --yi-mark-bright: oklch(68% 0.14 250);
+  --yi-mark-soft: oklch(30% 0.06 250);
+  --yi-ok: oklch(52% 0.14 155);
+  --yi-ok-soft: oklch(95% 0.025 155);
+}
+
 /*
  * Tokens use :root above; Shadow DOM CSUI hosts never match document :root, so expose
  * the same custom properties on :host when this stylesheet runs inside Plasmo's shadow subtree.
  */
 :host {
-  --yi-paper: oklch(97.5% 0.007 65);
-  --yi-paper-2: oklch(94.8% 0.009 65);
-  --yi-paper-3: oklch(91% 0.011 65);
-  --yi-ink: oklch(17% 0.01 50);
-  /** Primary filled control hover (slightly lifted from --yi-ink) */
-  --yi-ink-hover: oklch(28% 0.005 60);
-  --yi-ink-2: oklch(40% 0.009 50);
-  --yi-ink-3: oklch(50% 0.008 50);
-  --yi-rule: oklch(86% 0.009 65);
-  --yi-mark: oklch(52% 0.19 25);
-  --yi-mark-bright: oklch(58% 0.21 25);
-  --yi-mark-soft: oklch(95% 0.03 25);
+  --yi-paper: oklch(18% 0.02 260);
+  --yi-paper-2: oklch(22% 0.02 260);
+  --yi-paper-3: oklch(26% 0.022 260);
+  --yi-ink: oklch(95% 0.01 260);
+  --yi-ink-hover: oklch(88% 0.02 260);
+  --yi-ink-2: oklch(78% 0.015 260);
+  --yi-ink-3: oklch(58% 0.02 260);
+  --yi-rule: oklch(100% 0 0 / 0.12);
+  --yi-mark: oklch(62% 0.12 250);
+  --yi-mark-bright: oklch(68% 0.14 250);
+  --yi-mark-soft: oklch(30% 0.06 250);
   --yi-ok: oklch(52% 0.14 155);
   --yi-ok-soft: oklch(95% 0.025 155);
   --yi-space-2xs: 0.25rem;
@@ -93,23 +109,23 @@
   }
 }
 
-/* Plasmo action popup: fill viewport, stable width, matched paper background */
+/* Plasmo action popup + content UI: dark dev-tool baseline */
 html:has(#__plasmo) {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html:has(#__plasmo),
 html:has(#__plasmo) body {
   margin: 0;
-  background-color: var(--yi-paper);
-  color: var(--yi-ink-2);
+  background-color: oklch(16% 0.02 260);
+  color: oklch(78% 0.015 260);
   min-height: fit-content;
 }
 
 #__plasmo {
   box-sizing: border-box;
-  min-width: 320px;
-  max-width: 320px;
+  min-width: 300px;
+  max-width: 300px;
 }
 
 /* Refined input: borderless, focuses with mark ring */
