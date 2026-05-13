@@ -191,17 +191,17 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
         onShowHelp={() => setShowHelp(true)}
       />
 
-      <FadeIn key={pin.id} delay={0.08} className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <FadeIn key={pin.id} delay={0.08} className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-start justify-between gap-2.5 sm:gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                <span className="font-mono text-[0.75rem] font-semibold text-mark">
+          <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-2.5">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[0.6875rem] font-semibold text-mark">
                   {pin.displayKey}
                 </span>
                 <StatusPill status={pin.status} />
               </div>
-              <h1 className="mt-1 break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
+              <h1 className="mt-0.5 break-words font-display text-lg font-semibold leading-[1.15] tracking-[-0.01em] text-ink sm:text-xl">
                 {pin.title}
               </h1>
             </div>
@@ -216,10 +216,10 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
 
           {pin.description ? (
-            <MarkDescriptionRead html={pin.description} className="mt-3" />
+            <MarkDescriptionRead html={pin.description} className="mt-2.5" />
           ) : null}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
             {pin.pinned ? (
               <Pill icon={<Bookmark className="size-3" aria-hidden />}>Pinned</Pill>
@@ -240,7 +240,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             ) : null}
           </div>
 
-          <div className="mt-4 grid gap-1.5">
+          <div className="mt-3 grid gap-1.5">
             <p className="text-eyebrow">Labels</p>
             <LabelPicker
               labels={workspace.labels}

@@ -25,7 +25,7 @@ export function MarkDetailNav({
   onShowHelp,
 }: MarkDetailNavProps) {
   return (
-    <FadeIn className="border-b border-rule pb-3">
+    <FadeIn className="border-b border-rule pb-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           type="button"
