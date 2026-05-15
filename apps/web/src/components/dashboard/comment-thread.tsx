@@ -174,7 +174,7 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
               }
               mention.refresh();
             }}
-            placeholder="Leave a comment — type @ to mention a teammate"
+            placeholder="Leave a comment, type @ to mention a teammate"
             maxLength={2000}
             disabled={submitting}
             className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[56px] sm:text-[0.8125rem]"
@@ -263,7 +263,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
 
   return (
     <>
-      <div className="group rounded-lg border border-rule bg-paper-2 p-3 shadow-[0_8px_24px_-20px_oklch(17%_0.01_50_/_0.4)] dark:shadow-[0_8px_24px_-20px_oklch(0%_0_0_/_0.5)]">
+      <div className="group rounded-md border border-rule bg-paper p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Avatar className="size-5">

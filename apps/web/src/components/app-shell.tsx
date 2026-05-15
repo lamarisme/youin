@@ -11,7 +11,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="min-h-screen bg-paper">
         <div className="grid w-full gap-0 lg:grid-cols-[auto_1fr]">
           <AppSidebar />
-          <main className="page-y min-h-screen">{children}</main>
+          <main className="min-h-screen py-4 sm:py-5">{children}</main>
         </div>
       </div>
     </CommandPaletteProvider>

@@ -1,5 +1,5 @@
-import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import tailwindCss from "data-text:~/globals.css"
+import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -9,7 +9,6 @@ import {
   type ReviewCaptureDetail
 } from "../lib/events"
 import { normalizePageUrlForMatch } from "../lib/page-url"
-import { pushPinToWorkspace } from "../lib/sync"
 import {
   addPin,
   appendThreadComment,
@@ -28,6 +27,11 @@ import {
   type Space
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
+import {
+  pushPinCommentToWorkspace,
+  pushPinStatusToWorkspace,
+  pushPinToWorkspace
+} from "../lib/sync"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -66,6 +70,16 @@ function formatShortDate(ts: number): string {
   }
 }
 
+function makeThreadMessageId(): string {
+  return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function titleFromBody(body: string): string {
+  const firstLine = body.trim().split(/\n+/)[0]?.trim() ?? ""
+  if (!firstLine) return "Untitled mark"
+  return firstLine.length > 96 ? `${firstLine.slice(0, 93)}...` : firstLine
+}
+
 function annotationNumber(pin: Pin, pagePins: Pin[]): number {
   const sorted = pagePins.slice().sort((a, b) => a.createdAt - b.createdAt)
   const ix = sorted.findIndex((p) => p.id === pin.id)
@@ -75,7 +89,7 @@ function annotationNumber(pin: Pin, pagePins: Pin[]): number {
 function buildPinFromCapture(
   detail: ReviewCaptureDetail,
   spaceId: string,
-  title: string,
+  body: string,
   priority: PinPriority
 ): Pin {
   const raw = normalizePageUrlForMatch(detail.url) || detail.url
@@ -102,8 +116,15 @@ function buildPinFromCapture(
     strategy: detail.strategy,
     bbox: detail.bbox,
     viewport: detail.viewport,
-    title: title.trim().slice(0, STORAGE_LIMITS.pinTitle),
-    thread: [],
+    title: titleFromBody(body).slice(0, STORAGE_LIMITS.pinTitle),
+    thread: [
+      {
+        id: makeThreadMessageId(),
+        body: body.trim().slice(0, STORAGE_LIMITS.threadBody),
+        createdAt: now,
+        authorLabel: "You"
+      }
+    ],
     status: "open",
     priority,
     createdAt: now,
@@ -144,7 +165,9 @@ const CapturePanel = () => {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const refreshPinsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshPinsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  )
 
   useEffect(() => {
     return () => {
@@ -160,11 +183,14 @@ const CapturePanel = () => {
     if (pin) setViewingPin(pin)
   }, [])
 
-  const reloadPagePins = useCallback(async (pageUrl: string, sidOpt?: string) => {
-    const sid = sidOpt ?? (await getActiveSpaceId())
-    const pins = await getPinsForPage(sid, pageUrl)
-    setPagePins(pins)
-  }, [])
+  const reloadPagePins = useCallback(
+    async (pageUrl: string, sidOpt?: string) => {
+      const sid = sidOpt ?? (await getActiveSpaceId())
+      const pins = await getPinsForPage(sid, pageUrl)
+      setPagePins(pins)
+    },
+    []
+  )
 
   const scheduleReloadPagePins = useCallback(
     (pageUrl: string, sidOpt?: string) => {
@@ -245,10 +271,9 @@ const CapturePanel = () => {
 
   useEffect(() => {
     if (!open || !viewingPin) return
-    const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-      changes,
-      area
-    ) => {
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
       if (area !== "local" || !changes[KEY_PINS]) return
       void reloadPin(viewingPin.id)
       scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
@@ -259,10 +284,9 @@ const CapturePanel = () => {
 
   useEffect(() => {
     if (!open || !capture || mode !== "create") return
-    const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-      changes,
-      area
-    ) => {
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
       if (area !== "local" || !changes[KEY_PINS]) return
       scheduleReloadPagePins(capture.url)
     }
@@ -271,7 +295,12 @@ const CapturePanel = () => {
   }, [open, capture, mode, scheduleReloadPagePins])
 
   useEffect(() => {
-    if (!open || (mode === "create" && !capture) || (mode === "thread" && !viewingPin)) return
+    if (
+      !open ||
+      (mode === "create" && !capture) ||
+      (mode === "thread" && !viewingPin)
+    )
+      return
     if (saving) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return
@@ -298,12 +327,7 @@ const CapturePanel = () => {
     setSaveError(null)
     try {
       await setActiveSpaceId(spaceId)
-      const pin = buildPinFromCapture(
-        capture,
-        spaceId,
-        body.trim(),
-        priority
-      )
+      const pin = buildPinFromCapture(capture, spaceId, body.trim(), priority)
       const ok = await addPin(pin)
       if (!ok) {
         setSaveError("Couldn't save. Try again.")
@@ -333,19 +357,22 @@ const CapturePanel = () => {
 
   const sendReply = async () => {
     if (!viewingPin || !replyDraft.trim() || saving) return
+    const body = replyDraft.trim()
     setSaving(true)
     setSaveError(null)
     try {
-      const next = await appendThreadComment(
-        viewingPin.id,
-        replyDraft,
-        "You"
-      )
+      const next = await appendThreadComment(viewingPin.id, body, "You")
       if (!next) {
         setSaveError("Could not add reply.")
         return
       }
       setReplyDraft("")
+      const synced = await pushPinCommentToWorkspace(viewingPin, body)
+      if (!synced.skipped && !synced.ok && synced.error) {
+        setSaveError(
+          `Reply saved locally. ${synced.error} Open the popup to reconnect.`
+        )
+      }
       await reloadPin(viewingPin.id)
     } finally {
       setSaving(false)
@@ -355,8 +382,15 @@ const CapturePanel = () => {
   const setPinStatus = async (status: PinStatus) => {
     if (!viewingPin || saving) return
     setSaving(true)
+    setSaveError(null)
     try {
       await patchPin(viewingPin.id, { status, updatedAt: Date.now() })
+      const synced = await pushPinStatusToWorkspace(viewingPin, status)
+      if (!synced.skipped && !synced.ok && synced.error) {
+        setSaveError(
+          `Status updated locally. ${synced.error} Open the popup to reconnect.`
+        )
+      }
       await reloadPin(viewingPin.id)
       scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
     } finally {
@@ -388,13 +422,13 @@ const CapturePanel = () => {
             <h2
               id="capture-panel-title"
               className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-              New Annotation
+              New mark
             </h2>
             <p
               id="capture-panel-desc"
               title={capture.selector}
               className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
-              Element: {selectorPreview}
+              Selector: {selectorPreview}
             </p>
           </div>
           <button
@@ -427,7 +461,7 @@ const CapturePanel = () => {
               <textarea
                 id="capture-body"
                 value={body}
-                maxLength={STORAGE_LIMITS.pinTitle}
+                maxLength={STORAGE_LIMITS.threadBody}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Describe the change…"
                 rows={5}
@@ -437,7 +471,7 @@ const CapturePanel = () => {
             </label>
 
             <div>
-              <span className={fieldLabel}>Namespace</span>
+              <span className={fieldLabel}>Space</span>
               <select
                 id="capture-namespace"
                 className={selectCls}
@@ -457,12 +491,11 @@ const CapturePanel = () => {
                 id="capture-priority"
                 className={selectCls}
                 value={priority}
-                onChange={(e) =>
-                  setPriority(e.target.value as PinPriority)
-                }>
+                onChange={(e) => setPriority(e.target.value as PinPriority)}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
+                <option value="critical">Critical</option>
               </select>
             </div>
 
@@ -486,7 +519,7 @@ const CapturePanel = () => {
                 aria-busy={saving}
                 className={btnPrimary}
                 onClick={() => void handleSave()}>
-                {saving ? "Saving…" : "Add →"}
+                {saving ? "Saving…" : "Save mark"}
               </button>
             </div>
             <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
@@ -517,7 +550,7 @@ const CapturePanel = () => {
             <h2
               id="thread-panel-title"
               className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-              Annotation {n > 0 ? `#${n}` : ""}
+              Mark {n > 0 ? `#${n}` : ""}
             </h2>
             <p className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
               {truncateMiddle(viewingPin.selector, 48)}
@@ -556,7 +589,9 @@ const CapturePanel = () => {
                     <span className="font-semibold text-[color:var(--yi-ext-text-soft)]">
                       {m.authorLabel}:
                     </span>{" "}
-                    <span className="text-[color:var(--yi-ext-text)]">{m.body}</span>
+                    <span className="text-[color:var(--yi-ext-text)]">
+                      {m.body}
+                    </span>
                     <div className="mt-1 text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
                       {formatShortDate(m.createdAt)}
                     </div>
@@ -597,7 +632,7 @@ const CapturePanel = () => {
                   void setPinStatus(e.target.value as PinStatus)
                 }>
                 <option value="open">Open</option>
-                <option value="resolved">Resolved</option>
+                <option value="closed">Resolved</option>
               </select>
             </div>
 
@@ -611,10 +646,10 @@ const CapturePanel = () => {
               </a>
               <button
                 type="button"
-                disabled={saving || viewingPin.status === "resolved"}
+                disabled={saving || viewingPin.status === "closed"}
                 className={btnPrimary}
-                onClick={() => void setPinStatus("resolved")}>
-                Mark Resolved ✓
+                onClick={() => void setPinStatus("closed")}>
+                Resolve
               </button>
               <button type="button" className={btnGhost} onClick={resume}>
                 Close
@@ -622,7 +657,9 @@ const CapturePanel = () => {
             </div>
 
             {saveError ? (
-              <p role="alert" className="mt-3 text-[12px] text-[color:var(--yi-ext-danger-text)]">
+              <p
+                role="alert"
+                className="mt-3 text-[12px] text-[color:var(--yi-ext-danger-text)]">
                 {saveError}
               </p>
             ) : null}

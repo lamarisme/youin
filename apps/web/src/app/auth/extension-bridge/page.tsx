@@ -32,11 +32,13 @@ function BridgeContent() {
   const [status, setStatus] = useState<Status>("checking");
   const [message, setMessage] = useState<string>("");
   const triggeredOauth = useRef(false);
+  const displayStatus: Status = extensionId ? status : "error";
+  const displayMessage = extensionId
+    ? message
+    : "Missing extension id. Reopen this page from the youin extension popup.";
 
   useEffect(() => {
     if (!extensionId) {
-      setStatus("error");
-      setMessage("Missing extension id. Reopen this page from the youin extension popup.");
       return;
     }
     let cancelled = false;
@@ -45,7 +47,7 @@ function BridgeContent() {
       const { data, error } = await supabase.auth.getSession();
       if (cancelled) return;
       if (error || !data.session) {
-        // Not signed in. If the popup asked for Google OAuth, kick it off here so
+        // Not signed in. If the popup asked for Google OAuth, start it here so
         // the user lands back on /auth/callback with this same `next` URL.
         if (provider === "google" && !triggeredOauth.current) {
           triggeredOauth.current = true;
@@ -99,27 +101,27 @@ function BridgeContent() {
         Connect youin extension
       </h2>
       <p className="mt-1 text-[0.8125rem] text-ink-2">
-        {status === "checking" && "Checking your session…"}
-        {status === "needs-login" && "Sign in to your youin account to finish connecting the extension."}
-        {status === "sending" && "Sending your session to the extension…"}
-        {status === "ok" && "Extension connected."}
-        {status === "error" && "Could not connect the extension."}
+        {displayStatus === "checking" && "Checking your session…"}
+        {displayStatus === "needs-login" && "Sign in to your youin account to finish connecting the extension."}
+        {displayStatus === "sending" && "Sending your session to the extension…"}
+        {displayStatus === "ok" && "Extension connected."}
+        {displayStatus === "error" && "Could not connect the extension."}
       </p>
 
-      {message ? (
+      {displayMessage ? (
         <p
           role="alert"
           className={`mt-4 rounded-md border px-3 py-2 text-[0.75rem] ${
-            status === "error"
+            displayStatus === "error"
               ? "border-mark/25 bg-mark-soft text-mark"
               : "border-rule bg-paper text-ink-2"
           }`}
         >
-          {message}
+          {displayMessage}
         </p>
       ) : null}
 
-      {status === "needs-login" ? (
+      {displayStatus === "needs-login" ? (
         <Button className="mt-5 w-full bg-mark text-paper hover:bg-mark-bright" onClick={handleLogin}>
           Sign in to continue
         </Button>

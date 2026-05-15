@@ -43,7 +43,7 @@ export function MarkPageOpenButton({
       await navigator.clipboard.writeText(trimmed);
       toast.success("Page URL copied to clipboard.");
     } catch {
-      toast.error("Couldn't copy — select and copy the URL manually.");
+      toast.error("Couldn't copy. Select and copy the URL manually.");
     }
   }
 

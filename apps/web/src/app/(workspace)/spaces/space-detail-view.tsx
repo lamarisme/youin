@@ -183,7 +183,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     setSelectedIds(new Set());
     if (failed === 0) {
       toast.success(
-        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "resolved" : "reopened"}.`,
       );
     }
   }
@@ -239,7 +239,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="min-w-0">
-                <h1 className="break-words font-display text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.625rem]">
+                <h1 className="break-words text-lg font-semibold leading-tight text-ink sm:text-xl">
                   {space.name}
                 </h1>
                 {space.notes ? (
@@ -261,7 +261,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 variant={space.pinned ? "default" : "outline"}
                 onClick={() => toggleSpacePinned(space.id)}
                 className={cn(
-                  "h-8 px-2.5",
+                  "h-11 px-3 sm:h-8 sm:px-2.5",
                   !space.pinned && "border-rule bg-paper text-ink hover:bg-paper-2",
                 )}
               >
@@ -275,14 +275,14 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 }
                 options={CANONICAL_PIN_PRIORITY_OPTIONS}
                 ariaLabel="Space priority"
-                triggerClassName="h-8 w-[110px]"
+                triggerClassName="h-11 w-[130px] sm:h-8 sm:w-[110px]"
               />
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={startEdit}
                 aria-label="Edit space details"
-                className="h-8 px-2.5 text-ink-2"
+                className="h-11 px-3 text-ink-2 sm:h-8 sm:px-2.5"
               >
                 <Edit3 className="size-3.5" />
               </Button>
@@ -291,14 +291,14 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 variant="ghost"
                 onClick={() => setConfirmDelete(true)}
                 aria-label="Delete space"
-                className="h-8 px-2.5 text-ink-3 hover:text-mark"
+                className="h-11 px-3 text-ink-3 hover:text-mark sm:h-8 sm:px-2.5"
               >
                 <Trash2 className="size-3.5" />
               </Button>
             </div>
           </div>
 
-          <Surface variant="subtle" padding="sm" className="mt-5 rounded-xl">
+          <Surface variant="subtle" padding="sm" className="mt-4">
             <div className="flex items-center justify-between text-[0.8125rem]">
               <span className="font-medium text-ink">{completionPct}% resolved</span>
               <span className="text-ink-3">{stats?.total ?? 0} marks total</span>
@@ -306,8 +306,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-paper-3">
               {stats && stats.total > 0 ? (
                 <>
-                  <div className="rounded-full bg-ok transition-all duration-300" style={{ width: `${completionPct}%` }} />
-                  <div className="bg-mark transition-all duration-300" style={{ width: `${100 - completionPct}%` }} />
+                  <div className="rounded-full bg-ok" style={{ width: `${completionPct}%` }} />
+                  <div className="bg-mark" style={{ width: `${100 - completionPct}%` }} />
                 </>
               ) : (
                 <div className="w-full rounded-full bg-paper-3" />
@@ -316,7 +316,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             <div className="mt-2 flex gap-4 text-[0.6875rem]">
               <span className="flex items-center gap-1 text-ok">
                 <CheckCircle2 className="size-3" />
-                {stats?.closed ?? 0} closed
+                {stats?.closed ?? 0} resolved
               </span>
               <span className="flex items-center gap-1 text-mark">
                 <CircleDashed className="size-3" />
@@ -348,7 +348,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   size="sm"
                   variant="ghost"
                   asChild
-                  className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-7 sm:px-2 sm:text-[0.6875rem]"
+                  className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-8 sm:px-2.5 sm:text-[0.75rem]"
                 >
                   <Link href={`/dashboard?space=${space.id}`}>
                     Open in dashboard
@@ -375,7 +375,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 }
               />
             ) : (
-              <div className="overflow-hidden rounded-xl border border-rule bg-paper">
+              <div className="overflow-hidden rounded-md border border-rule bg-paper">
                 <MarkTable
                   pins={spacePins}
                   membersById={membersById}
@@ -474,7 +474,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 id="space-edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="h-9 bg-paper text-[0.8125rem]"
+                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
                 autoFocus
               />
             </Field>
@@ -498,7 +498,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   variant="ghost"
                   onClick={() => setEditing(false)}
                   disabled={isSavingEdit}
-                  className="h-9"
+                  className="h-11 sm:h-9"
                 >
                   Cancel
                 </Button>
@@ -507,7 +507,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   loading={isSavingEdit}
                   disabled={!editName.trim()}
                   loadingText="Saving…"
-                  className="h-9"
+                  className="h-11 sm:h-9"
                 >
                   Save changes
                 </SubmitButton>
@@ -557,7 +557,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               variant="ghost"
               onClick={() => setConfirmDelete(false)}
               disabled={isDeleting}
-              className="h-9"
+              className="h-11 sm:h-9"
             >
               Cancel
             </Button>
@@ -565,7 +565,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+              className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-9"
             >
               Delete space
             </SubmitButton>

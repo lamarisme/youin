@@ -115,7 +115,7 @@ export function TeamTab() {
     <div className="space-y-8">
       <section className="space-y-5">
         <div>
-          <h2 className="font-display text-base font-semibold leading-tight text-ink">Team</h2>
+          <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Team</h2>
           <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
             Add teammates and decide who can see this workspace.
           </p>
@@ -127,7 +127,7 @@ export function TeamTab() {
               Your @username
             </Label>
             <p className="mt-0.5 text-[0.6875rem] text-ink-3">
-              Used in @mentions and to assign marks. Letters, numbers, and underscores only — must be unique here.
+              Used in @mentions and to assign marks. Letters, numbers, and underscores only, and unique here.
             </p>
             <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
@@ -150,7 +150,7 @@ export function TeamTab() {
                   maxLength={32}
                   aria-invalid={Boolean(usernameFieldError) || undefined}
                   aria-describedby={usernameFieldError ? "workspace-username-error" : undefined}
-                  className="h-9 bg-paper pl-7 font-mono text-[0.8125rem]"
+                  className="h-11 bg-paper pl-7 font-mono text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
                 />
               </div>
               <SubmitButton
@@ -164,7 +164,7 @@ export function TeamTab() {
                 }
                 onClick={() => void handleSaveUsername()}
                 loadingText="Saving…"
-                className="h-9 shrink-0 sm:px-4"
+                className="h-11 shrink-0 sm:h-9 sm:px-4"
               >
                 Save
               </SubmitButton>
@@ -203,7 +203,7 @@ export function TeamTab() {
               aria-describedby={
                 inviteFieldError || inviteError ? "invite-email-error" : undefined
               }
-              className="h-9 flex-1 bg-paper text-[0.8125rem]"
+              className="h-11 flex-1 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
               onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
             />
             <SubmitButton
@@ -211,7 +211,7 @@ export function TeamTab() {
               loading={isInviting}
               disabled={!canInvite}
               loadingText="Sending…"
-              className="h-9 shrink-0 sm:px-4"
+              className="h-11 shrink-0 sm:h-9 sm:px-4"
             >
               <UserPlus className="size-3.5" />
               Send invite
@@ -229,7 +229,7 @@ export function TeamTab() {
         </div>
       </section>
 
-      {/* Section 2 — roster. Bordered list so it visually anchors as "the team". */}
+      {/* Roster list, bordered so it visually anchors as the team. */}
       <section>
         <div className="mb-2.5 flex items-baseline justify-between gap-2">
           <p className="text-eyebrow">
@@ -241,7 +241,7 @@ export function TeamTab() {
             </p>
           ) : null}
         </div>
-        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
+        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
           {members.map((member) => {
             const parts = memberDisplayParts(member, displayNamePreference);
             const handlePrimary = displayNamePreference === "username";
@@ -284,7 +284,7 @@ export function TeamTab() {
                       handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
                     }
                     aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
-                    className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark sm:min-h-8 sm:min-w-8"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -295,9 +295,9 @@ export function TeamTab() {
           })}
         </ul>
 
-        {/* Pending invites — visually subordinate, dashed border to read as "not yet". */}
+        {/* Pending invites stay visually subordinate with a dashed border. */}
         {invites.length > 0 ? (
-          <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-xl border border-dashed border-rule bg-paper-2/40">
+          <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-md border border-dashed border-rule bg-paper-2/40">
             {invites.map((inv) => (
               <li
                 key={inv.id}
@@ -313,7 +313,7 @@ export function TeamTab() {
                   type="button"
                   onClick={() => handleCancel(inv.id, inv.email)}
                   aria-label={`Cancel invite for ${inv.email}`}
-                  className="shrink-0 rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark sm:min-h-8 sm:min-w-8"
                 >
                   <X className="size-3.5" />
                 </button>

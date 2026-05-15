@@ -71,6 +71,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
 
   const totalPins = workspace.pins.length;
   const totalOpen = workspace.pins.filter((p) => p.status === "open").length;
+  const filtersActive = priorityFilter !== "all" || pinnedFilter !== "all";
 
   async function handleCreate() {
     if (!newName.trim() || isCreating) return;
@@ -142,13 +143,41 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
         </div>
       </ToolbarPanel>
 
-      <div className="overflow-hidden rounded-xl border border-rule bg-paper">
+      <div className="overflow-hidden rounded-md border border-rule bg-paper">
         {filteredSpaces.length === 0 ? (
           <EmptyState
             variant="plain"
             className="rounded-none border-0 px-6 py-16"
-            title="No spaces match the current filters."
-            description="Try clearing filters, or create a new space."
+            title={filtersActive ? "No spaces match these filters." : "No spaces yet."}
+            description={filtersActive ? "Clear the filters to see every space." : "Create a space for a release, project, or review session."}
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                {filtersActive ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-11 sm:h-8"
+                    onClick={() => {
+                      setPriorityFilter("all");
+                      setPinnedFilter("all");
+                      setPage(1);
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-8"
+                  onClick={() => setShowCreate(true)}
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                  New space
+                </Button>
+              </div>
+            }
           />
         ) : (
           <div className="divide-y divide-rule">
@@ -206,7 +235,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={todayName}
-                className="h-9 bg-paper text-[0.8125rem]"
+                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && handleCreate()}
               />
@@ -227,7 +256,7 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="What this space covers"
-                className="h-9 bg-paper text-[0.8125rem]"
+                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
               />
             </Field>
             {createError ? (
@@ -249,10 +278,10 @@ export function SpacesListView({ onSelectSpace }: SpacesListViewProps) {
                 <span>to create</span>
               </p>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" onClick={() => setShowCreate(false)} className="h-9">
+                <Button variant="ghost" onClick={() => setShowCreate(false)} className="h-11 sm:h-9">
                   Cancel
                 </Button>
-                <Button onClick={handleCreate} disabled={!newName.trim()} className="h-9">
+                <Button onClick={handleCreate} disabled={!newName.trim()} className="h-11 sm:h-9">
                   Create
                 </Button>
               </div>

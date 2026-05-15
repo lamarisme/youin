@@ -10,6 +10,7 @@ function isAnchorHref(href: string) {
 
 export function ChromeGlyph({ className }: { className?: string }) {
   return (
+    /* eslint-disable-next-line @next/next/no-img-element */
     <img
       src="/chrome-logo.svg"
       alt=""

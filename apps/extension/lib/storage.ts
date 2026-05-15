@@ -2,6 +2,14 @@
 // scripts, and (future) background share one source of truth and react to
 // each other's writes via chrome.storage.onChanged.
 
+import {
+  isMarkPriority,
+  normalizeMarkPriority,
+  normalizeMarkStatus,
+  type MarkPriority,
+  type MarkStatus
+} from "@youin/domain"
+
 import { normalizePageUrlForMatch } from "./page-url"
 
 export const KEY_SPACES = "youin:spaces"
@@ -40,8 +48,8 @@ export interface LocalThreadMessage {
   authorLabel: string
 }
 
-export type PinStatus = "open" | "resolved"
-export type PinPriority = "low" | "medium" | "high"
+export type PinStatus = MarkStatus
+export type PinPriority = MarkPriority
 
 export interface Pin {
   id: string
@@ -71,12 +79,8 @@ function isStrategy(v: unknown): v is Pin["strategy"] {
   return v === "test-id" || v === "id" || v === "aria" || v === "path"
 }
 
-function isPinStatus(v: unknown): v is PinStatus {
-  return v === "open" || v === "resolved"
-}
-
 function isPinPriority(v: unknown): v is PinPriority {
-  return v === "low" || v === "medium" || v === "high"
+  return isMarkPriority(v)
 }
 
 const DEFAULT_SPACES: Space[] = [
@@ -173,10 +177,12 @@ function migrateRawPin(raw: unknown): Pin {
       : undefined
   const statusRaw = (p as { status?: unknown }).status
   const priorityRaw = (p as { priority?: unknown }).priority
-  const status: PinStatus = isPinStatus(statusRaw) ? statusRaw : "open"
+  const status: PinStatus = normalizeMarkStatus(
+    typeof statusRaw === "string" ? statusRaw : undefined
+  )
   const priority: PinPriority = isPinPriority(priorityRaw)
     ? priorityRaw
-    : "medium"
+    : normalizeMarkPriority(undefined)
 
   const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
@@ -307,8 +313,8 @@ export async function addPin(pin: Pin): Promise<boolean> {
     ...pin,
     url: normalizePageUrlForMatch(pin.url) || pin.url,
     title: pin.title.slice(0, STORAGE_LIMITS.pinTitle),
-    status: pin.status ?? "open",
-    priority: pin.priority ?? "medium",
+    status: normalizeMarkStatus(pin.status),
+    priority: normalizeMarkPriority(pin.priority),
     thread: pin.thread.map((m) => ({
       ...m,
       body: m.body.slice(0, STORAGE_LIMITS.threadBody),

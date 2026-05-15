@@ -71,14 +71,14 @@ export function InboxView() {
           }
           action={
             userId ? (
-              <Button asChild size="sm" variant="outline" className="h-8">
+              <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
                 <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
                   Go to dashboard
                   <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
               </Button>
             ) : (
-              <Button asChild size="sm" className="h-8 bg-mark text-paper hover:bg-mark-bright">
+              <Button asChild size="sm" className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-8">
                 <Link href="/login?next=%2Finbox" className="inline-flex items-center gap-1.5">
                   Sign in
                   <ArrowRight className="size-3.5" aria-hidden />
@@ -89,7 +89,7 @@ export function InboxView() {
           className="mt-2"
         />
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
+        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
           {inbox.groups.map((group) => (
             <InboxGroupRow
               key={group.pinId}
@@ -129,7 +129,7 @@ function InboxGroupRow({
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <p
               className={cn(
-                "truncate font-display text-[0.9375rem] font-semibold group-hover:text-mark",
+                "truncate text-[0.875rem] font-semibold group-hover:text-mark",
                 group.unreadCount > 0 ? "text-ink" : "text-ink-2",
               )}
             >
@@ -138,9 +138,12 @@ function InboxGroupRow({
             {spaceName ? (
               <span className="text-[0.6875rem] text-ink-3">{spaceName}</span>
             ) : null}
-            <span className="ml-auto shrink-0 text-[0.6875rem] tabular-nums text-ink-3">
+            <time
+              className="ml-auto shrink-0 text-[0.6875rem] tabular-nums text-ink-3"
+              dateTime={group.latestAt}
+            >
               {formatRelative(group.latestAt)}
-            </span>
+            </time>
           </div>
 
           <p className="truncate text-[0.8125rem] text-ink-2">
@@ -159,13 +162,16 @@ function InboxGroupRow({
 
 function UnreadDot({ active }: { active: boolean }) {
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "mt-2 size-2 shrink-0 rounded-full",
-        active ? "bg-mark" : "bg-transparent",
-      )}
-    />
+    <span className="mt-2 shrink-0">
+      <span
+        aria-hidden
+        className={cn(
+          "block size-2 rounded-full",
+          active ? "bg-mark" : "bg-transparent",
+        )}
+      />
+      {active ? <span className="sr-only">Unread updates</span> : null}
+    </span>
   );
 }
 

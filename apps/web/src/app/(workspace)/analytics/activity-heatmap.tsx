@@ -26,13 +26,19 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
     }
     return rows;
   }, [data]);
+  const activeDays = data.cells.filter((cell) => cell.count > 0).length;
+  const totalEvents = data.cells.reduce((sum, cell) => sum + cell.count, 0);
+  const summary =
+    totalEvents === 0
+      ? "Activity heatmap: no mark events recorded."
+      : `Activity heatmap: ${totalEvents} mark event${totalEvents === 1 ? "" : "s"} across ${activeDays} active day${activeDays === 1 ? "" : "s"}. Peak day has ${data.maxCount} event${data.maxCount === 1 ? "" : "s"}.`;
 
   return (
-    <section className="rounded-xl border border-rule bg-paper">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-4 py-3">
+    <section className="rounded-md border border-rule bg-paper">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-3 py-2.5">
         <div>
-          <h2 className="font-display text-[0.9375rem] font-semibold text-ink">Activity</h2>
-          <p className="text-[0.75rem] text-ink-3">Mark events per day (closing a mark excluded)</p>
+          <h2 className="text-[0.875rem] font-semibold text-ink">Activity</h2>
+          <p className="text-[0.75rem] text-ink-3">Mark events per day, resolved events excluded</p>
         </div>
         <Legend max={data.maxCount} />
       </header>
@@ -43,7 +49,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
         </p>
       ) : (
         <div className="overflow-x-auto px-4 py-3">
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5" role="img" aria-label={summary}>
             <div className="flex flex-col gap-[3px] pt-[1.125rem] text-[0.625rem] text-ink-3">
               {DAY_LABELS.map((d, i) => (
                 <span
@@ -56,7 +62,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                 </span>
               ))}
             </div>
-            <div className="flex gap-[3px]">
+            <div className="flex gap-[3px]" aria-hidden>
               {grid.map((week, w) => (
                 <div key={w} className="flex flex-col gap-[3px]">
                   {week.map((cell, d) => {
@@ -68,7 +74,6 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                       <span
                         key={d}
                         className={cn("size-3 rounded-[3px]", LEVEL_CLASS[level])}
-                        title={`${formatDate(cell.date)} — ${cell.count} event${cell.count === 1 ? "" : "s"}`}
                       />
                     );
                   })}
@@ -76,6 +81,13 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
               ))}
             </div>
           </div>
+          <ul className="sr-only">
+            {data.cells.map((cell) => (
+              <li key={cell.date}>
+                {formatDate(cell.date)}: {cell.count} event{cell.count === 1 ? "" : "s"}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>

@@ -107,7 +107,7 @@ export function MarkDetailActions({
         aria-keyshortcuts="X"
         className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
       >
-        {pin.status === "open" ? "Close mark" : "Reopen"}
+        {pin.status === "open" ? "Resolve" : "Reopen"}
       </Button>
       <MarkPageOpenButton
         page={pin.page}

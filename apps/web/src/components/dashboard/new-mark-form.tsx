@@ -84,7 +84,7 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
 interface NewMarkFormProps {
   labels: WorkspaceLabel[];
   members: TeamMember[];
-  /** Default assignee — usually the current user's id. Pass empty string to start unassigned. */
+  /** Default assignee, usually the current user's id. Pass empty string to start unassigned. */
   defaultAssigneeId?: string;
   onSubmit: (input: { title: string; page: string; description: string; labelIds: string[]; priority: PinPriority; assigneeId: string | null }) => void | Promise<void>;
   onCancel?: () => void;
@@ -92,7 +92,7 @@ interface NewMarkFormProps {
   open?: boolean;
   /** `surface`: legacy inline card. `plain`: body only for dialog content. */
   variant?: "surface" | "plain";
-  /** Name of the space the mark will land in — shown in the live preview row. */
+  /** Name of the space the mark will land in, shown in the live preview row. */
   targetSpaceLabel?: string;
 }
 
@@ -198,7 +198,7 @@ export function NewMarkForm({
           onChange={(e) => dispatch({ type: "set_title", value: e.target.value })}
           placeholder="What needs attention?"
           maxLength={180}
-          className="h-9 bg-paper text-[0.8125rem]"
+          className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
           autoFocus
         />
       </Field>
@@ -214,7 +214,7 @@ export function NewMarkForm({
           }}
           placeholder="https://app.example.com/pricing"
           maxLength={300}
-          className="h-9 bg-paper text-[0.8125rem]"
+          className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
         />
       </Field>
       <div className="sm:col-span-2">
@@ -247,7 +247,7 @@ export function NewMarkForm({
           options={NEW_MARK_PRIORITY_OPTIONS}
           ariaLabel="Choose priority"
           size="sm"
-          triggerClassName="h-9"
+          triggerClassName="h-11 sm:h-9"
         />
       </div>
       <div className="space-y-1.5">
@@ -258,7 +258,7 @@ export function NewMarkForm({
           options={assigneeOptions}
           ariaLabel="Choose assignee"
           size="sm"
-          triggerClassName="h-9"
+          triggerClassName="h-11 sm:h-9"
         />
       </div>
 
@@ -289,11 +289,11 @@ export function NewMarkForm({
         <KeyboardHint keys={["⌘", "Enter"]} action="to create" />
         <div className="flex items-center gap-2">
           {onCancel ? (
-            <Button variant="ghost" onClick={onCancel} className="h-9">
+            <Button variant="ghost" onClick={onCancel} className="h-11 sm:h-9">
               Cancel
             </Button>
           ) : null}
-          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-9">
+          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-11 sm:h-9">
             Create mark
           </SubmitButton>
         </div>

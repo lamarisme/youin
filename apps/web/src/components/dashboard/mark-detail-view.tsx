@@ -201,7 +201,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
                 </span>
                 <StatusPill status={pin.status} />
               </div>
-              <h1 className="mt-0.5 break-words font-display text-lg font-semibold leading-[1.15] tracking-[-0.01em] text-ink sm:text-xl">
+              <h1 className="mt-0.5 break-words text-lg font-semibold leading-[1.15] text-ink sm:text-xl">
                 {pin.title}
               </h1>
             </div>
@@ -214,10 +214,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               onConfirmDelete={() => setConfirmDelete(true)}
             />
           </div>
-
-          {pin.description ? (
-            <MarkDescriptionRead html={pin.description} className="mt-2.5" />
-          ) : null}
 
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <PriorityBadge priority={pin.priority} />
@@ -240,6 +236,15 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             ) : null}
           </div>
 
+          <MarkDetailCapture pin={pin} />
+
+          {pin.description ? (
+            <div className="mt-5">
+              <p className="text-eyebrow mb-2">Notes</p>
+              <MarkDescriptionRead html={pin.description} />
+            </div>
+          ) : null}
+
           <div className="mt-3 grid gap-1.5">
             <p className="text-eyebrow">Labels</p>
             <LabelPicker
@@ -260,8 +265,6 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               placeholder="Label this mark…"
             />
           </div>
-
-          <MarkDetailCapture pin={pin} />
         </div>
 
         <div className="lg:border-l lg:border-rule lg:pl-6">
@@ -307,7 +310,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
               hint={
                 <p className="text-[0.6875rem] leading-snug text-ink-3">
                   Always save the live page as a full <code className="font-mono">https://</code> (or{" "}
-                  <code className="font-mono">http://</code>) URL. Spaces organise marks — they don&apos;t set a
+                  <code className="font-mono">http://</code>) URL. Spaces organise marks, they don&apos;t set a
                   shared site root.
                 </p>
               }

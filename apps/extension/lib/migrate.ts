@@ -2,6 +2,8 @@
 // workspace after they sign in for the first time. Runs from the popup so
 // errors surface to the user; idempotent via the local migration flag.
 
+import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
+
 import { buildMarkDescription } from "./mark-description"
 import { getSupabase } from "./supabase"
 import {
@@ -219,8 +221,8 @@ export async function migrateLocalDataToWorkspace(
         title: pin.title.trim() || "Untitled mark",
         description,
         page: pin.url,
-        status: pin.status ?? "open",
-        priority: pin.priority ?? "medium",
+        status: normalizeMarkStatus(pin.status),
+        priority: normalizeMarkPriority(pin.priority),
         pinned: false,
         created_by_user_id: userId,
         selector: pin.selector,
@@ -293,4 +295,3 @@ export async function migrateLocalDataToWorkspace(
     commentsImported
   }
 }
-

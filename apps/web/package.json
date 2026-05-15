@@ -25,6 +25,7 @@
     "@tiptap/starter-kit": "^3.23.1",
     "@tiptap/suggestion": "3.23.1",
     "@youin/design-tokens": "workspace:*",
+    "@youin/domain": "workspace:*",
     "@youin/i18n": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

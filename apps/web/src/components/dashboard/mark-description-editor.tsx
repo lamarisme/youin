@@ -61,7 +61,7 @@ export function MarkDescriptionEditor({
           mode: "textSize",
         }),
         // Host getters run when the slash menu opens (Tiptap), not during React render.
-        // eslint-disable-next-line react-hooks/refs -- refs read only from deferred suggestion callbacks
+        // eslint-disable-next-line react-hooks/refs
         MarkDescriptionSlash.configure({
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,

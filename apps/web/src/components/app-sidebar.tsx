@@ -116,25 +116,25 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col border-b border-rule bg-paper-2 px-3 py-3 transition-[width,padding] duration-200 ease-out",
+        "flex flex-col border-b border-rule bg-paper px-3 py-3 transition-colors duration-200 ease-out",
         "lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:z-10",
-        collapsed ? "lg:w-[56px] lg:px-2 lg:py-4" : "lg:w-60 lg:px-4 lg:py-5",
+        collapsed ? "lg:w-[52px] lg:px-2 lg:py-3" : "lg:w-56 lg:px-3 lg:py-4",
       )}
     >
-      {/* --- Header --- */}
-      <div className={cn("mb-3 space-y-3 lg:mb-5", collapsed && "lg:mb-4 lg:space-y-2")}>
+      {/* Header */}
+      <div className={cn("mb-3 space-y-3 lg:mb-4", collapsed && "lg:space-y-2")}>
         <div className="flex items-center justify-between">
           <Link
             href="/dashboard"
             className={cn(
-              "flex items-center gap-2.5 px-1 shrink-0",
+              "flex items-center gap-2 px-1 shrink-0",
               collapsed && "lg:hidden",
             )}
             aria-label={tSide("homeAria")}
           >
             <span className="pin-dot shrink-0">Y</span>
             {!collapsed && (
-              <span className="font-display text-lg font-semibold text-ink hidden lg:inline">
+              <span className="hidden text-[0.9375rem] font-semibold text-ink lg:inline">
                 youin
               </span>
             )}
@@ -146,7 +146,7 @@ export function AppSidebar() {
             onClick={toggleCollapsed}
             aria-label={collapsed ? tSide("expandSidebar") : tSide("collapseSidebar")}
             className={cn(
-              "hidden lg:flex items-center justify-center size-8 rounded-md text-ink-3 transition-colors",
+              "hidden size-8 items-center justify-center rounded-md text-ink-3 transition-colors lg:flex",
               "hover:bg-paper-3 hover:text-ink",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               collapsed && "lg:mx-auto",
@@ -181,7 +181,7 @@ export function AppSidebar() {
                 onClick={openCommandPalette}
                 aria-label={tSide("openCommandPalette")}
                 className={cn(
-                  "hidden lg:flex items-center justify-center size-9 w-full rounded-md border border-rule bg-paper text-ink-3 transition-colors",
+                  "hidden size-8 w-full items-center justify-center rounded-md border border-rule bg-paper text-ink-3 transition-colors lg:flex",
                   "hover:border-ink/12 hover:bg-paper-3 hover:text-ink",
                   "focus-visible:border-mark/35 focus-visible:ring-2 focus-visible:ring-mark/40",
                 )}
@@ -202,7 +202,7 @@ export function AppSidebar() {
             onClick={openCommandPalette}
             aria-label={tSide("openCommandPalette")}
             className={cn(
-              "flex min-h-9 w-full cursor-pointer items-center gap-2 rounded-md border border-rule bg-paper px-2.5 text-left shadow-[inset_0_1px_0_0_oklch(100%_0_0/_0.04)] outline-none transition-colors",
+              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md border border-rule bg-paper px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
               "hover:border-ink/12 hover:bg-paper-3",
               "focus-visible:border-mark/35 focus-visible:ring-2 focus-visible:ring-mark/40 dark:shadow-none",
             )}
@@ -221,7 +221,7 @@ export function AppSidebar() {
         )}
       </div>
 
-      {/* --- Navigation --- */}
+      {/* Navigation */}
       <nav
         className={cn(
           "flex gap-1.5 overflow-x-auto pb-1",
@@ -245,9 +245,9 @@ export function AppSidebar() {
                     aria-current={isActive ? "page" : undefined}
                     aria-label={tNav(item.labelKey)}
                     className={cn(
-                      "relative hidden lg:flex items-center justify-center size-9 rounded-md transition-colors",
+                      "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
                       isActive
-                        ? "bg-mark-soft text-ink"
+                        ? "bg-paper-3 text-ink"
                         : "text-ink-2 hover:bg-paper-3 hover:text-ink",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                     )}
@@ -279,11 +279,12 @@ export function AppSidebar() {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "group inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.8125rem] transition-colors",
-                "lg:flex lg:w-full lg:min-h-9 lg:gap-2.5 lg:px-3",
+                "group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.9375rem] transition-colors",
+                "lg:flex lg:w-full lg:min-h-8 lg:gap-2 lg:px-2",
+                "lg:text-[0.8125rem]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                 isActive
-                  ? "bg-mark-soft font-medium text-ink"
+                  ? "bg-paper-3 font-medium text-ink"
                   : "text-ink-2 hover:bg-paper-3 hover:text-ink",
               )}
             >
@@ -306,7 +307,7 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* --- Bottom Section (Desktop) --- */}
+      {/* Bottom section, desktop */}
       <div className="mt-auto hidden pt-6 lg:block">
         {collapsed ? (
           <>
@@ -388,7 +389,7 @@ export function AppSidebar() {
                 className={cn(
                   "group flex min-h-10 items-center gap-2.5 rounded-md px-3 py-1.5 transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-                  accountActive ? "bg-mark-soft" : "hover:bg-paper-3",
+                  accountActive ? "bg-paper-3" : "hover:bg-paper-3",
                 )}
               >
                 <Avatar className="size-7">
@@ -420,7 +421,7 @@ export function AppSidebar() {
               onClick={handleSignOut}
               disabled={isSigningOut}
               className={cn(
-                "mt-3 flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-[0.8125rem] text-ink-3 transition-colors",
+                "mt-2 flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-[0.8125rem] text-ink-3 transition-colors",
                 "hover:bg-paper-3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               )}
@@ -459,7 +460,7 @@ function MobileAccountMenu({
         <button
           aria-label={t("openAccountMenu")}
           className={cn(
-            "rounded-full ring-2 ring-transparent transition-shadow",
+            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full ring-2 ring-transparent transition-shadow",
             "hover:ring-mark/30",
             "focus-visible:outline-none focus-visible:ring-mark/60",
           )}
@@ -520,7 +521,7 @@ function ThemeToggleButton({
         type="button"
         onClick={onToggle}
         className={cn(
-          "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-2 transition-colors",
+            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-2 transition-colors",
           "hover:bg-paper-3 hover:text-ink",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
         )}

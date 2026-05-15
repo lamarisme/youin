@@ -56,7 +56,7 @@ export function LabelsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-base font-semibold leading-tight text-ink">Labels</h2>
+        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Labels</h2>
         <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
           Labels appear here when you tag a mark. Use this list to remove ones you no longer need.
         </p>
@@ -66,9 +66,9 @@ export function LabelsTab() {
         <EmptyState
           icon={Tag}
           title="No labels yet."
-          description="Open a mark in the dashboard and add a label — it will show up here."
+          description="Open a mark in the dashboard and add a label. It will show up here."
           action={
-            <Button asChild size="sm" variant="outline" className="h-8">
+            <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
               <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
                 Open dashboard
                 <ArrowRight className="size-3.5" aria-hidden />
@@ -77,7 +77,7 @@ export function LabelsTab() {
           }
         />
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
+        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
           {labels.map((label) => {
             const count = usageById.get(label.id) ?? 0;
             return (
@@ -98,7 +98,7 @@ export function LabelsTab() {
                   variant="ghost"
                   onClick={() => setPending(label)}
                   aria-label={`Delete label ${label.name}`}
-                  className="h-8 px-2.5 text-ink-3 hover:text-mark"
+                  className="h-11 px-3 text-ink-3 hover:text-mark sm:h-8 sm:px-2.5"
                 >
                   <Trash2 className="size-3.5" />
                 </Button>

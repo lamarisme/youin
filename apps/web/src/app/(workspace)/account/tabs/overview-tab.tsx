@@ -58,7 +58,7 @@ export function OverviewTab() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               autoFocus
-              className="h-10 max-w-md bg-paper text-[0.9375rem] font-display font-semibold"
+              className="h-10 max-w-md bg-paper text-[0.9375rem] font-semibold"
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
                 if (e.key === "Escape") {
@@ -93,7 +93,7 @@ export function OverviewTab() {
           </div>
         ) : (
           <div className="mt-1 flex items-center gap-2">
-            <h2 className="font-display text-xl font-semibold leading-tight tracking-tight text-ink sm:text-[1.375rem]">
+            <h2 className="text-lg font-semibold leading-tight text-ink">
               {workspaceName || "Workspace"}
             </h2>
             {isOwner ? (
@@ -103,7 +103,7 @@ export function OverviewTab() {
                   setRenaming(true);
                   setDraft(workspaceName);
                 }}
-                className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink sm:min-h-8 sm:min-w-8"
                 aria-label="Rename workspace"
               >
                 <Edit3 className="size-3.5" />
@@ -112,7 +112,7 @@ export function OverviewTab() {
           </div>
         )}
 
-        {/* Inline meta chips — denser, less ceremony than separate cards. */}
+        {/* Inline meta chips, denser than separate cards. */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.8125rem] text-ink-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="text-ink-3">Role</span>
@@ -137,26 +137,26 @@ export function OverviewTab() {
         </div>
       </section>
 
-      {/* Settings — grouped list, divider-separated rows. Linear-style. */}
+      {/* Settings, grouped as a divider-separated list. */}
       <section>
-        <h2 className="font-display text-base font-semibold leading-tight text-ink">
+        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">
           Security & notifications
         </h2>
         <p className="mt-1 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-2">
           Sign-in protection and how the team hears about activity.
         </p>
 
-        <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-xl border border-rule bg-paper">
+        <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
           <SettingRow
             title="Two-factor authentication"
             description="Require a code from your phone at sign-in."
-            badge={<Badge variant="outline" className="text-[0.625rem]">Coming soon</Badge>}
+            badge={<Badge variant="outline" className="text-[0.625rem]">Not available yet</Badge>}
             muted
           />
           <SettingRow
             title="Daily comment summary"
             description="One email per day with new comments on your marks."
-            badge={<Badge variant="outline" className="text-[0.625rem] text-ok">On</Badge>}
+            badge={<Badge variant="outline" className="text-[0.625rem] text-ok">Enabled by default</Badge>}
           />
         </ul>
       </section>

@@ -2,7 +2,7 @@ import "./globals.css"
 
 import type { Session } from "@supabase/supabase-js"
 import { t } from "@youin/i18n/t"
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 
 import {
   getSession,
@@ -16,20 +16,22 @@ import {
   migrateLocalDataToWorkspace,
   type MigrationResult
 } from "./lib/migrate"
-import { syncWorkspaceFromRemote, createRemoteWorkspaceSpace } from "./lib/sync"
 import {
   addSpace,
   getActiveSpaceId,
   getPinsForPage,
   getSpaces,
+  getWidgetSettings,
   KEY_ACTIVE_SPACE,
   KEY_PINS,
   KEY_SPACES,
   setActiveSpaceId,
+  setWidgetSettings,
   STORAGE_LIMITS,
   type Space
 } from "./lib/storage"
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
+import { createRemoteWorkspaceSpace, syncWorkspaceFromRemote } from "./lib/sync"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
 
@@ -53,7 +55,10 @@ async function fetchWorkspaceLabel(): Promise<string | null> {
   return String(ws.name)
 }
 
-async function startInspectOnActiveTab(): Promise<{ ok: boolean; error?: string }> {
+async function startInspectOnActiveTab(): Promise<{
+  ok: boolean
+  error?: string
+}> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (!tab?.id) return { ok: false, error: "No active tab." }
   const url = tab.url ?? ""
@@ -85,6 +90,7 @@ function IndexPopup() {
   const [newSpaceName, setNewSpaceName] = useState("")
   const [spaceErr, setSpaceErr] = useState<string | null>(null)
   const [showAuth, setShowAuth] = useState(false)
+  const [floatingControl, setFloatingControl] = useState(true)
   const menuRef = useRef<HTMLDivElement>(null)
   const gearRef = useRef<HTMLButtonElement>(null)
 
@@ -98,8 +104,8 @@ function IndexPopup() {
     }
     const sid = await getActiveSpaceId()
     const pins = await getPinsForPage(sid, url)
-    setOpenCount(pins.filter((p) => p.status !== "resolved").length)
-    setResolvedCount(pins.filter((p) => p.status === "resolved").length)
+    setOpenCount(pins.filter((p) => p.status !== "closed").length)
+    setResolvedCount(pins.filter((p) => p.status === "closed").length)
   }, [])
 
   const refreshSpaces = useCallback(async () => {
@@ -110,6 +116,11 @@ function IndexPopup() {
       if (s.some((x) => x.id === active)) return active
       return s[0]?.id ?? ""
     })
+  }, [])
+
+  const refreshWidgetSettings = useCallback(async () => {
+    const settings = await getWidgetSettings()
+    setFloatingControl(settings.fabVisible)
   }, [])
 
   useEffect(() => {
@@ -133,17 +144,18 @@ function IndexPopup() {
   useEffect(() => {
     void refreshSpaces()
     void refreshCounts()
-    const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-      changes,
-      area
-    ) => {
+    void refreshWidgetSettings()
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
       if (area !== "local") return
+      void refreshWidgetSettings()
       if (changes[KEY_SPACES] || changes[KEY_ACTIVE_SPACE]) void refreshSpaces()
       if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE]) void refreshCounts()
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [refreshSpaces, refreshCounts])
+  }, [refreshSpaces, refreshCounts, refreshWidgetSettings])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -182,6 +194,15 @@ function IndexPopup() {
     }
   }, [view, session?.user?.id])
 
+  const beginInspect = () => {
+    setInspectMsg(null)
+    void (async () => {
+      const r = await startInspectOnActiveTab()
+      if (!r.ok) setInspectMsg(r.error ?? "Could not start inspect mode.")
+      else window.close()
+    })()
+  }
+
   const selectSpace = (id: string) => {
     setSpaceId(id)
     void setActiveSpaceId(id)
@@ -200,7 +221,7 @@ function IndexPopup() {
         const created = await createRemoteWorkspaceSpace(sess.user.id, name)
         if (!created.ok || !created.spaceId) {
           setSpaceErr(
-            created.error ?? "Could not create namespace. Try the web app."
+            created.error ?? "Could not create space. Try the web app."
           )
           return
         }
@@ -325,7 +346,7 @@ function IndexPopup() {
 
         <div>
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Namespace
+            Space
           </span>
           <div className="flex gap-1">
             <select
@@ -340,7 +361,7 @@ function IndexPopup() {
             </select>
             <button
               type="button"
-              title="New namespace"
+              title="New space"
               className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
@@ -352,7 +373,9 @@ function IndexPopup() {
           {creatingSpace ? (
             <div className="mt-2 flex flex-col gap-1">
               {spaceErr ? (
-                <p className="text-[11px] text-[color:var(--yi-ext-danger-text)]">{spaceErr}</p>
+                <p className="text-[11px] text-[color:var(--yi-ext-danger-text)]">
+                  {spaceErr}
+                </p>
               ) : null}
               <input
                 value={newSpaceName}
@@ -373,24 +396,55 @@ function IndexPopup() {
             </div>
           ) : null}
         </div>
+
+        <label className="flex min-h-9 items-center justify-between gap-3 rounded-md border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] px-2.5 py-2">
+          <span className="text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
+            Floating control
+          </span>
+          <input
+            type="checkbox"
+            checked={floatingControl}
+            className="size-4 accent-[color:var(--yi-mark)]"
+            onChange={(e) => {
+              const next = e.target.checked
+              setFloatingControl(next)
+              void setWidgetSettings({ fabVisible: next })
+            }}
+          />
+        </label>
       </div>
+
+      {view === "signedOut" && !showAuth ? (
+        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+          <div className="rounded-lg border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2.5">
+            <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
+              Local marks only
+            </p>
+            <p className="mt-1 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+              Sign in to sync captures, replies, and resolved status with the
+              dashboard.
+            </p>
+            <button
+              type="button"
+              className="mt-2 inline-flex min-h-8 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
+              onClick={() => setShowAuth(true)}>
+              Sign in
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         {inspectMsg ? (
-          <p className="mb-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">{inspectMsg}</p>
+          <p className="mb-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
+            {inspectMsg}
+          </p>
         ) : null}
         <button
           type="button"
           className="flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background,transform] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99]"
-          onClick={() => {
-            setInspectMsg(null)
-            void (async () => {
-              const r = await startInspectOnActiveTab()
-              if (!r.ok) setInspectMsg(r.error ?? "Could not start inspect mode.")
-              else window.close()
-            })()
-          }}>
-          Enable Inspect Mode
+          onClick={beginInspect}>
+          Mark this page
         </button>
         <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
           <kbd className="rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
@@ -410,14 +464,18 @@ function IndexPopup() {
         <button
           type="button"
           className="rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-transparent py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-stat)]"
-          onClick={() => void startInspectOnActiveTab()}>
-          <span className="block text-[color:var(--yi-ext-text-soft)]">Open annotations</span>
+          onClick={beginInspect}>
+          <span className="block text-[color:var(--yi-ext-text-soft)]">
+            Open marks
+          </span>
           <span className="font-mono text-[12px] text-[color:var(--yi-ext-accent)]">
             ({openCount})
           </span>
         </button>
         <div className="rounded-lg border border-[color:var(--yi-ext-border-faint)] bg-[color:var(--yi-ext-surface-stat)] py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-dim)]">
-          <span className="block text-[color:var(--yi-ext-text-muted)]">Resolved</span>
+          <span className="block text-[color:var(--yi-ext-text-muted)]">
+            Resolved
+          </span>
           <span className="font-mono text-[12px] text-[color:var(--yi-ext-text-dim)]">
             ({resolvedCount})
           </span>
@@ -440,9 +498,7 @@ function IndexPopup() {
         </div>
       ) : null}
 
-      {view === "signedIn" ? (
-        <SignedInBlock session={session} />
-      ) : null}
+      {view === "signedIn" ? <SignedInBlock session={session} /> : null}
     </main>
   )
 }
@@ -474,7 +530,9 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-[12px] font-semibold text-[var(--yi-ink)]">Sign in</h2>
+        <h2 className="text-[12px] font-semibold text-[var(--yi-ink)]">
+          Sign in
+        </h2>
         <button
           type="button"
           className="border-0 bg-transparent p-0 text-[11px] text-[color:var(--yi-ext-accent)] underline"
@@ -493,9 +551,15 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
       </button>
 
       <div className="my-3 flex items-center gap-2 text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-        <span className="h-px flex-1 bg-[color:var(--yi-ext-border)]" aria-hidden />
+        <span
+          className="h-px flex-1 bg-[color:var(--yi-ext-border)]"
+          aria-hidden
+        />
         or
-        <span className="h-px flex-1 bg-[color:var(--yi-ext-border)]" aria-hidden />
+        <span
+          className="h-px flex-1 bg-[color:var(--yi-ext-border)]"
+          aria-hidden
+        />
       </div>
 
       <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
@@ -539,7 +603,9 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
           type="submit"
           disabled={loading || !email.trim() || !password}
           className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-accent)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
-          {loading ? t("extension.popup.signingIn") : t("extension.popup.signIn")}
+          {loading
+            ? t("extension.popup.signingIn")
+            : t("extension.popup.signIn")}
         </button>
       </form>
     </section>
@@ -574,7 +640,10 @@ function SignedInBlock({ session }: { session: Session | null }) {
       } catch (e) {
         if (!cancelled)
           setMigrationStatus({
-            error: e instanceof Error ? e.message : t("extension.popup.migrationFailed")
+            error:
+              e instanceof Error
+                ? e.message
+                : t("extension.popup.migrationFailed")
           })
       } finally {
         if (!cancelled) setMigrating(false)

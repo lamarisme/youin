@@ -1,5 +1,7 @@
 "use strict";
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 /**
  * Runs Drizzle migrations against the configured DATABASE_URL using the
  * postgres-js driver with `prepare: false`.

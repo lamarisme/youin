@@ -5,7 +5,7 @@ import type { PinPriority, SpacePriority } from "@/lib/collab-types";
 export const DASHBOARD_STATUS_FILTER_OPTIONS: ReadonlyArray<FilterOption<StatusFilter>> = [
   { value: "all", label: "All statuses" },
   { value: "open", label: "Open" },
-  { value: "closed", label: "Closed" },
+  { value: "closed", label: "Resolved" },
 ];
 
 export const DASHBOARD_PRIORITY_FILTER_OPTIONS: ReadonlyArray<FilterOption<PriorityFilter>> = [

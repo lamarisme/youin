@@ -53,7 +53,7 @@ export function BulkActionBar({
       <FadeIn
         role="region"
         aria-label={`${count} marks selected`}
-        className="sticky bottom-4 z-20 mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-rule bg-paper px-3 py-1.5 shadow-[0_18px_48px_-22px_oklch(17%_0.012_50_/_0.5)] dark:shadow-[0_18px_48px_-22px_oklch(0%_0_0_/_0.7)]"
+        className="sticky bottom-4 z-20 mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-3 py-1.5"
       >
         <span className="flex items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink">
           <span className="text-mark">{count}</span> selected
@@ -65,7 +65,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => run(() => onSetStatus(allClosed ? "open" : "closed"))}
-          className="h-8 gap-1.5 px-2.5 text-[0.8125rem] text-ink-2 hover:text-ink"
+          className="h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
         >
           {allClosed ? (
             <>
@@ -73,7 +73,7 @@ export function BulkActionBar({
             </>
           ) : (
             <>
-              <CheckCircle2 className="size-3.5" /> Close
+              <CheckCircle2 className="size-3.5" /> Resolve
             </>
           )}
         </Button>
@@ -88,7 +88,7 @@ export function BulkActionBar({
             ...CANONICAL_PIN_PRIORITY_OPTIONS,
           ]}
           ariaLabel="Set priority for selected marks"
-          triggerClassName="w-[140px] h-8 text-[0.8125rem]"
+          triggerClassName="w-[150px] h-11 text-[0.9375rem] sm:h-8 sm:w-[140px] sm:text-[0.8125rem]"
         />
         <Button
           type="button"
@@ -96,7 +96,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => setConfirmDelete(true)}
-          className="h-8 gap-1.5 px-2.5 text-[0.8125rem] text-mark hover:bg-mark-soft hover:text-mark"
+          className="h-11 gap-1.5 px-3 text-[0.9375rem] text-mark hover:bg-mark-soft hover:text-mark sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
         >
           <Trash2 className="size-3.5" />
           Delete
@@ -109,7 +109,7 @@ export function BulkActionBar({
           disabled={busy}
           onClick={onClear}
           aria-label="Clear selection"
-          className="size-8 text-ink-3 hover:text-ink"
+          className="size-11 text-ink-3 hover:text-ink sm:size-8"
         >
           <X className="size-3.5" />
         </Button>

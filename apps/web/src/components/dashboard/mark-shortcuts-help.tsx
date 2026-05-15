@@ -10,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
-import { cn } from "@/lib/utils";
 
 interface MarkShortcutsHelpProps {
   open: boolean;
@@ -34,7 +33,7 @@ const GROUPS: ShortcutGroup[] = [
   {
     heading: "Actions",
     rows: [
-      { keys: ["X"], label: "Toggle close / reopen" },
+      { keys: ["X"], label: "Toggle resolve / reopen" },
       { keys: ["B"], label: "Toggle bookmark" },
       { keys: ["E"], label: "Edit title and description" },
     ],
@@ -62,7 +61,7 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="inline-flex items-center gap-2 font-display text-base font-semibold text-ink">
+          <DialogTitle className="inline-flex items-center gap-2 text-base font-semibold text-ink">
             <Keyboard className="size-4 text-ink-3" aria-hidden />
             Mark shortcuts
           </DialogTitle>

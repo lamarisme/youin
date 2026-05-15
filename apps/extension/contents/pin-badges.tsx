@@ -85,7 +85,7 @@ const PinBadges = () => {
   const refresh = useCallback(async () => {
     const spaceId = await getActiveSpaceId()
     const pins = await getPinsForPage(spaceId, location.href)
-    const openPins = pins.filter((p) => p.status !== "resolved")
+    const openPins = pins.filter((p) => p.status !== "closed")
     const nums = pinNumberMap(openPins)
     setItems(computeLayout(openPins, nums))
   }, [])

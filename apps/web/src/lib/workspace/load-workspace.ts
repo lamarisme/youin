@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
 
 import type {
   CommentType,
   MarkEventType,
   PinComment,
   PinItem,
-  PinPriority,
   SpacePriority,
   TeamInvite,
   TeamMember,
@@ -244,8 +244,8 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
       title: m.title as string,
       page: m.page as string,
       description: (m.description as string) ?? "",
-      status: m.status === "closed" ? "closed" : "open",
-      priority: (m.priority as PinPriority) ?? "medium",
+      status: normalizeMarkStatus(m.status as string | null | undefined),
+      priority: normalizeMarkPriority(m.priority as string | null | undefined),
       pinned: Boolean(m.pinned),
       labelIds: labelsByMark.get(m.id as string) ?? [],
       assigneeId: (m.assignee_user_id as string | null | undefined) ?? undefined,

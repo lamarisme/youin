@@ -12,6 +12,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.105.3",
     "@youin/design-tokens": "workspace:*",
+    "@youin/domain": "workspace:*",
     "@youin/i18n": "workspace:*",
     "html-to-image": "^1.11.13",
     "plasmo": "0.90.5",
@@ -41,7 +42,9 @@
     ],
     "externally_connectable": {
       "matches": [
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "https://youin.dev/*",
+        "https://www.youin.dev/*"
       ]
     }
   }

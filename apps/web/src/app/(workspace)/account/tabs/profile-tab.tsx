@@ -3,14 +3,11 @@
 import { useState } from "react";
 
 import { Field } from "@/components/field";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCollabStore } from "@/lib/collab-store";
 import { useUpdateProfileMutation } from "@/lib/queries/use-workspace-mutations";
-import { initialsFromFullName } from "@/lib/workspace/profile-utils";
-import { cn } from "@/lib/utils";
 
 function isValidHttpUrl(value: string): boolean {
   if (!value) return true;
@@ -24,8 +21,6 @@ function isValidHttpUrl(value: string): boolean {
 
 export function ProfileTab() {
   const profile = useCollabStore((s) => s.profile);
-  const workspace = useCollabStore((s) => s.workspace);
-  const userId = useCollabStore((s) => s.userId);
   const { mutateAsync: updateProfile, isPending: isSaving } =
     useUpdateProfileMutation();
 
@@ -68,47 +63,19 @@ export function ProfileTab() {
     }
   }
 
-  const initials = initialsFromFullName(draft.name || profile.email);
-  const myUsername = workspace.members.find((m) => m.id === userId)?.username?.trim() ?? "";
-  const previewPrimary =
-    draft.displayNamePreference === "username"
-      ? myUsername
-        ? `@${myUsername}`
-        : "Set @username in Team"
-      : draft.name || "Your name";
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="font-display text-base font-semibold leading-tight text-ink">Your profile</h2>
-          <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-snug text-ink-2">
-            How teammates see you in comments and the member list.
-          </p>
-        </div>
-        <div className="flex items-center gap-2.5 rounded-md border border-rule bg-paper-2 px-3 py-2">
-          <Avatar className="size-9">
-            <AvatarFallback className="bg-paper-3 text-[0.75rem] font-semibold text-ink">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0">
-            <p
-              className={cn(
-                "truncate text-[0.8125rem] font-medium text-ink",
-                draft.displayNamePreference === "username" && myUsername && "font-mono text-mark",
-              )}
-            >
-              {previewPrimary}
-            </p>
-            <p className="truncate text-[0.6875rem] text-ink-3">{draft.title || "No title"}</p>
-          </div>
-        </div>
+      <div>
+        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Your profile</h2>
+        <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-snug text-ink-2">
+          How teammates see you in comments and the member list.
+        </p>
       </div>
 
-      {/* Field groups — semantic chunks: identity / bio / prefs. */}
+      {/* Field groups: identity, bio, preferences. */}
       <div className="max-w-2xl space-y-6">
         <fieldset className="grid gap-4 sm:grid-cols-2">
+          <legend className="sr-only">Profile identity</legend>
           <Field id="profile-name" label="Full name" error={nameError}>
             <Input
               id="profile-name"
@@ -118,7 +85,7 @@ export function ProfileTab() {
               maxLength={120}
               aria-invalid={Boolean(nameError) || undefined}
               aria-describedby={nameError ? "profile-name-error" : undefined}
-              className="h-9 bg-paper-2 text-[0.8125rem]"
+              className="h-11 bg-paper-2 text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
             />
           </Field>
           <Field id="profile-title" label="Job title">
@@ -128,12 +95,13 @@ export function ProfileTab() {
               onChange={(e) => setDraft((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="e.g. Product Designer"
               maxLength={80}
-              className="h-9 bg-paper-2 text-[0.8125rem]"
+              className="h-11 bg-paper-2 text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
             />
           </Field>
         </fieldset>
 
         <fieldset className="space-y-4">
+          <legend className="sr-only">Profile details</legend>
           <Field id="profile-avatar" label="Profile picture URL" error={avatarError}>
             <Input
               id="profile-avatar"
@@ -144,7 +112,7 @@ export function ProfileTab() {
               placeholder="https://example.com/me.jpg"
               aria-invalid={Boolean(avatarError) || undefined}
               aria-describedby={avatarError ? "profile-avatar-error" : undefined}
-              className="h-9 bg-paper-2 text-[0.8125rem]"
+              className="h-11 bg-paper-2 text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
             />
           </Field>
           <Field id="profile-about" label="About" error={aboutError}>
@@ -152,7 +120,7 @@ export function ProfileTab() {
               id="profile-about"
               value={draft.about}
               onChange={(e) => setDraft((prev) => ({ ...prev, about: e.target.value }))}
-              placeholder="A short bio your teammates will see — a sentence or two."
+              placeholder="A short bio your teammates will see, a sentence or two."
               maxLength={400}
               aria-invalid={Boolean(aboutError) || undefined}
               aria-describedby={aboutError ? "profile-about-error" : undefined}
@@ -166,12 +134,12 @@ export function ProfileTab() {
             Names in the workspace
           </legend>
           <p className="max-w-[52ch] text-[0.75rem] leading-snug text-ink-3">
-            Choose whether teammate labels use profile full names or workspace @usernames — one or the other, not both.{" "}
+            Choose whether teammate labels use profile full names or workspace @usernames, one or the other.{" "}
             <span className="text-ink-2">
               Typing <span className="font-mono text-ink">@</span> always inserts a username so mentions stay precise.
             </span>
           </p>
-          <div className="flex flex-col gap-0.5 rounded-xl border border-rule bg-paper-2 p-1">
+          <div className="flex flex-col gap-0.5 rounded-md border border-rule bg-paper p-1">
             <NamePrefOption
               id="name-pref-full"
               title="Full name"
@@ -193,7 +161,7 @@ export function ProfileTab() {
           </div>
         </fieldset>
 
-        {/* Save row — divider above, right-aligned action. Reads as a footer, not a stray cell. */}
+        {/* Save row with a divider above, right-aligned so it reads as a footer. */}
         <div className="space-y-3 border-t border-rule pt-4">
           {saveError ? (
             <p
@@ -209,7 +177,7 @@ export function ProfileTab() {
               loading={isSaving}
               loadingText="Saving…"
               disabled={hasFieldErrors}
-              className="h-9"
+              className="h-11 sm:h-9"
             >
               Save changes
             </SubmitButton>

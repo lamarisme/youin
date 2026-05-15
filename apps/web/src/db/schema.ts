@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import { MARK_PRIORITIES, MARK_STATUSES } from "@youin/domain";
 import {
   boolean,
   check,
@@ -15,13 +16,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const roleEnum = pgEnum("workspace_role", ["owner", "member"]);
-export const markStatusEnum = pgEnum("mark_status", ["open", "closed"]);
-export const markPriorityEnum = pgEnum("mark_priority", [
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
+export const markStatusEnum = pgEnum("mark_status", MARK_STATUSES);
+export const markPriorityEnum = pgEnum("mark_priority", MARK_PRIORITIES);
 export const markEventTypeEnum = pgEnum("mark_event_type", [
   "created",
   "status_changed",

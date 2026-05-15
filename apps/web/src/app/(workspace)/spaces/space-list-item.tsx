@@ -44,7 +44,7 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className="font-display text-[0.9375rem] font-semibold tracking-tight text-ink">{space.name}</p>
+          <p className="text-[0.875rem] font-semibold text-ink">{space.name}</p>
           <span className="rounded bg-paper-3 px-1.5 py-px font-mono text-[0.625rem] font-medium uppercase text-ink-2">
             {space.code}
           </span>

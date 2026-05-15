@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { BarChart3, CircleDashed, Layers, Plus } from "lucide-react";
+import { CircleDashed, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
@@ -10,8 +9,6 @@ import { AppHeader } from "@/components/app-header";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect, type FilterOption } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
-import { Pill } from "@/components/pill";
-import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -118,17 +115,6 @@ export function TriageView() {
     return counts;
   }, [workspace.comments]);
 
-  const spaceStats = useMemo(() => {
-    let open = 0;
-    let closed = 0;
-    for (const pin of workspace.pins) {
-      if (selectedSpace && pin.spaceId !== selectedSpace.id) continue;
-      if (pin.status === "open") open += 1;
-      else closed += 1;
-    }
-    return { open, closed };
-  }, [workspace.pins, selectedSpace]);
-
   const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
     () => [
       { value: "all", label: "All spaces" },
@@ -155,7 +141,7 @@ export function TriageView() {
     setSelectedIds(new Set());
     if (failed === 0) {
       toast.success(
-        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "resolved" : "reopened"}.`,
       );
     }
   }
@@ -221,62 +207,27 @@ export function TriageView() {
 
   return (
     <>
-      <AppHeader title="Triage">
-        <div className="flex items-center gap-2 text-[0.75rem] tabular-nums">
-          <Pill variant="outline" className="gap-1.5 text-ink-3">
-            <span className="font-mono text-[0.6875rem] text-mark">{spaceStats.open}</span>
-            open
-          </Pill>
-          <Pill variant="outline" className="gap-1.5 text-ink-3">
-            <span className="font-mono text-[0.6875rem] text-ok">{spaceStats.closed}</span>
-            closed
-          </Pill>
-        </div>
-      </AppHeader>
+      <AppHeader title="Triage" />
 
-      <FadeIn>
-        <ToolbarPanel className="mb-4">
-          <FilterSelect
-            value={filters.spaceId}
-            onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
-            options={spaceOptions}
-            ariaLabel="Select space"
-            triggerClassName="h-11 sm:h-9"
-          />
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:ml-auto sm:w-auto">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowNew(true)}
-              className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
-            >
-              <Plus className="size-3.5 shrink-0 opacity-80" />
-              New mark
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              asChild
-              className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
-            >
-              <Link href="/analytics">
-                <BarChart3 className="size-3" />
-                Analytics
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              asChild
-              className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 hover:bg-transparent hover:text-ink sm:h-7 sm:px-2 sm:text-[0.6875rem]"
-            >
-              <Link href={selectedSpace ? `/spaces?space=${selectedSpace.id}` : "/spaces"}>
-                <Layers className="size-3" />
-                {selectedSpace ? "Open space" : "All spaces"}
-              </Link>
-            </Button>
-          </div>
-        </ToolbarPanel>
+      <FadeIn className="flex flex-wrap items-center gap-2">
+        <FilterSelect
+          value={filters.spaceId}
+          onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
+          options={spaceOptions}
+          ariaLabel="Select space"
+          triggerClassName="h-11 sm:h-9"
+        />
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowNew(true)}
+            className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
+          >
+            <Plus className="size-3.5 shrink-0 opacity-80" />
+            New mark
+          </Button>
+        </div>
       </FadeIn>
 
       <SavedViewsBar
@@ -293,12 +244,6 @@ export function TriageView() {
         labels={workspace.labels}
         onChange={update}
       />
-
-      {visiblePins.length > 0 ? (
-        <p className="mb-2.5 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-3">
-          Each row is one mark. Select it to open the side panel for discussion, history, and actions.
-        </p>
-      ) : null}
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
@@ -323,7 +268,7 @@ export function TriageView() {
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-xl border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.38)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)] overflow-hidden">
+      <div className="overflow-hidden rounded-md border border-rule bg-paper">
         {visiblePins.length === 0 ? (
           <EmptyState
             variant="plain"
@@ -333,14 +278,19 @@ export function TriageView() {
             description={
               filtersActive
                 ? "Broaden or clear filters to see more marks in this view."
-                : "Add a mark from New mark above, or capture feedback with the Chrome extension."
+                : "Start with one precise note on a live page. The mark keeps the page, selector, and discussion together."
             }
             action={
               filtersActive ? (
                 <Button type="button" variant="outline" size="sm" className="h-9" onClick={clearFilters}>
                   Clear filters
                 </Button>
-              ) : undefined
+              ) : (
+                <Button type="button" size="sm" className="h-9 bg-mark text-paper hover:bg-mark-bright" onClick={() => setShowNew(true)}>
+                  <Plus className="size-3.5" aria-hidden />
+                  New mark
+                </Button>
+              )
             }
           />
         ) : (
@@ -362,7 +312,7 @@ export function TriageView() {
           page={displayPage}
           totalPages={totalPages}
           onPageChange={(p) => update({ page: p })}
-          className="mt-5"
+          className="mt-4"
         />
       ) : null}
 

@@ -6,16 +6,16 @@ type SurfaceVariant = "default" | "subtle" | "flush";
 type SurfacePadding = "none" | "sm" | "md" | "lg";
 
 const VARIANT_CLASS: Record<SurfaceVariant, string> = {
-  default: "border border-rule bg-paper-2",
+  default: "border border-rule bg-paper",
   subtle: "border border-rule bg-paper",
   flush: "border border-rule bg-paper",
 };
 
 const PADDING_CLASS: Record<SurfacePadding, string> = {
   none: "",
-  sm: "p-3",
-  md: "p-4",
-  lg: "p-5",
+  sm: "p-2.5",
+  md: "p-3",
+  lg: "p-4",
 };
 
 interface SurfaceProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -28,7 +28,7 @@ export const Surface = React.forwardRef<HTMLDivElement, SurfaceProps>(
   ({ variant = "default", padding = "md", className, ...rest }, ref) => (
     <div
       ref={ref}
-      className={cn("rounded-lg", VARIANT_CLASS[variant], PADDING_CLASS[padding], className)}
+      className={cn("rounded-md", VARIANT_CLASS[variant], PADDING_CLASS[padding], className)}
       {...rest}
     />
   ),

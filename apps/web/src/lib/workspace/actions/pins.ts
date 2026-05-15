@@ -1,5 +1,7 @@
 "use server";
 
+import { normalizeMarkPriority } from "@youin/domain";
+
 import type { PinPriority } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -38,7 +40,7 @@ export async function createPinAction(input: {
       description: normalizeDescriptionForStorage(input.description),
       page: pageNormalized,
       status: "open",
-      priority: input.priority ?? "medium",
+      priority: normalizeMarkPriority(input.priority),
       pinned: false,
       created_by_user_id: userId,
       assignee_user_id: input.assigneeId ?? null,
@@ -152,7 +154,7 @@ export async function updatePinPriorityAction(
   const { supabase, workspaceId } = await requireSession();
   const { error } = await supabase
     .from("marks")
-    .update({ priority })
+    .update({ priority: normalizeMarkPriority(priority) })
     .eq("id", pinId)
     .eq("workspace_id", workspaceId);
   if (error) throw error;

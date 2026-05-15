@@ -193,7 +193,7 @@
 @layer utilities {
   .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.025em;
+    letter-spacing: 0;
   }
 
   .font-mono {
@@ -205,7 +205,7 @@
     font-weight: 600;
     font-size: clamp(2.5rem, 5.8vw + 0.5rem, 5.5rem);
     line-height: 0.95;
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
   }
 
   .text-editorial-md {
@@ -213,7 +213,7 @@
     font-weight: 600;
     font-size: clamp(1.75rem, 3vw + 0.5rem, 3.25rem);
     line-height: 1;
-    letter-spacing: -0.03em;
+    letter-spacing: 0;
   }
 
   .text-eyebrow {

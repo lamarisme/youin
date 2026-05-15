@@ -52,7 +52,7 @@ export function AnalyticsView() {
               hint={`of ${totalMarks} total`}
             />
             <StatTile
-              label="Closed"
+              label="Resolved"
               value={stats.headline.closedTotal}
               accent="ok"
               hint={
@@ -71,7 +71,7 @@ export function AnalyticsView() {
                   hint={`${stats.headline.openedInPeriod.prior} prior period`}
                 />
                 <StatTile
-                  label={`Closed · ${timeframeLabel(timeframe)}`}
+                  label={`Resolved · ${timeframeLabel(timeframe)}`}
                   value={stats.headline.closedInPeriod.current}
                   delta={stats.headline.closedInPeriod.delta}
                   deltaSemantic="up-good"

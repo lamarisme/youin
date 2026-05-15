@@ -186,9 +186,9 @@ export function describeEvent(
     case "created":
       return "created this mark";
     case "status_changed":
-      return event.toValue === "closed" ? "closed this mark" : "reopened this mark";
+      return event.toValue === "closed" ? "resolved this mark" : "reopened this mark";
     case "priority_changed":
-      return `set priority to ${event.toValue ?? "—"}`;
+      return `set priority to ${event.toValue ?? "none"}`;
     case "pinned_changed":
       return event.toValue === "true" ? "pinned this mark" : "unpinned this mark";
     case "linear_link_updated":

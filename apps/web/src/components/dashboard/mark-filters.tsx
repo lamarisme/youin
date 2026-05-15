@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  ArrowDownUp,
   ChevronDown,
-  Filter,
   Search,
   UserCheck,
   UserRound,
@@ -144,7 +142,8 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
   const secondaryCount =
     (filters.label !== "all" ? 1 : 0) +
     (filters.priority !== "all" ? 1 : 0) +
-    (filters.pinned !== "all" ? 1 : 0);
+    (filters.pinned !== "all" ? 1 : 0) +
+    (filters.assignee !== "all" ? 1 : 0);
 
   function clearAll() {
     onChange(
@@ -168,137 +167,90 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     "border-transparent bg-transparent text-ink-2 hover:border-rule hover:bg-paper/90 hover:text-ink dark:hover:bg-paper/50";
 
   return (
-    <FadeIn className="mb-5 w-full space-y-3">
-      <div className="flex w-full min-w-0 flex-col gap-2.5 rounded-xl border border-rule bg-paper-2 p-2.5">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-            <div className="relative flex min-w-[min(100%,12rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[260px]">
-              <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
-              <Input
-                type="search"
-                role="searchbox"
-                value={queryDraft}
-                onChange={(e) => setQueryDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape" && queryDraft) {
-                    e.preventDefault();
-                    setQueryDraft("");
-                    onChange({ q: null }, { resetPage: true });
-                  }
-                }}
-                placeholder="Search title, description, or URL…"
-                aria-label="Search marks by title, description, or page"
-                className="h-11 border-transparent bg-transparent pl-8 pr-8 text-[0.9375rem] shadow-none focus-visible:border-rule focus-visible:bg-paper sm:h-8 sm:text-[0.8125rem]"
-              />
-              {queryDraft ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQueryDraft("");
-                    onChange({ q: null }, { resetPage: true });
-                  }}
-                  aria-label="Clear search"
-                  className="absolute right-1.5 inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink sm:size-7"
-                >
-                  <X className="size-3.5 sm:size-3" />
-                </button>
-              ) : null}
-            </div>
-            <span aria-hidden className="hidden h-6 w-px shrink-0 bg-rule sm:inline-block" />
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-              <div className="flex items-center gap-1.5 text-ink-3">
-                <Filter aria-hidden className="size-3.5 shrink-0" />
-                <FilterSelect<StatusFilter>
-                  value={filters.status}
-                  onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
-                  options={DASHBOARD_STATUS_FILTER_OPTIONS}
-                  ariaLabel="Filter by status"
-                  triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
-                />
-              </div>
-              <div className="flex items-center gap-1.5 text-ink-3">
-                <ArrowDownUp aria-hidden className="size-3.5 shrink-0" />
-                <FilterSelect<SortMode>
-                  value={filters.sort}
-                  onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
-                  options={MARK_SORT_OPTIONS}
-                  ariaLabel="Sort marks"
-                  triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
-                />
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowMore((v) => !v)}
-                aria-expanded={showMore}
-                aria-controls="more-filters-panel"
-                className={cn(
-                  "h-11 gap-1.5 rounded-lg px-3 text-[0.9375rem] font-normal text-ink-2 hover:bg-paper hover:text-ink sm:h-8 sm:rounded-md sm:px-2.5 sm:text-[0.8125rem]",
-                  showMore && "bg-paper-3/50 text-ink",
-                )}
-              >
-                <span className="tabular-nums">
-                  More filters
-                  {secondaryCount > 0 ? (
-                    <span className="text-ink-3"> · {secondaryCount}</span>
-                  ) : null}
-                </span>
-                <ChevronDown
-                  aria-hidden
-                  className={cn(
-                    "size-3 shrink-0 transition-transform duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none",
-                    showMore && "rotate-180",
-                  )}
-                />
-              </Button>
-            </div>
-            <span className="flex w-full justify-end border-t border-rule pt-2 text-[0.6875rem] tabular-nums tracking-wide text-ink-3 sm:ml-auto sm:w-auto sm:border-t-0 sm:pt-0">
-              <span className="rounded-md bg-paper-3/60 px-2 py-1 font-mono text-[0.75rem] font-normal text-ink-3">
-                {visibleCount}
-              </span>
-              <span className="self-center pl-1.5 font-normal">marks</span>
-            </span>
-          </div>
-
-          <div
-            role="group"
-            aria-label="Assignee filters"
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-rule/70 pt-2.5"
-          >
-            <span className="hidden shrink-0 text-[0.625rem] font-medium uppercase tracking-[0.06em] text-ink-3 sm:inline-block sm:w-[4.75rem]">
-              Assignee
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!viewerId}
-                title={!viewerId ? "Sign in to filter by assignee." : undefined}
-                aria-pressed={filters.assignee === "me"}
-                onClick={() => viewerId && toggleAssigneePreset("me")}
-                className={cn(presetBtn, filters.assignee === "me" ? presetActive : presetIdle)}
-              >
-                <UserCheck className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
-                Mine
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                aria-pressed={filters.assignee === "unassigned"}
-                onClick={() => toggleAssigneePreset("unassigned")}
-                className={cn(presetBtn, filters.assignee === "unassigned" ? presetActive : presetIdle)}
-              >
-                <UserRound className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
-                Unassigned
-              </Button>
-            </div>
-          </div>
+    <FadeIn className="mb-3 w-full space-y-2">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+        <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
+          <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
+          <Input
+            type="search"
+            role="searchbox"
+            value={queryDraft}
+            onChange={(e) => setQueryDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && queryDraft) {
+                e.preventDefault();
+                setQueryDraft("");
+                onChange({ q: null }, { resetPage: true });
+              }
+            }}
+            placeholder="Search marks"
+            aria-label="Search marks by title, description, or page"
+            className="h-11 rounded-md border-rule bg-paper pl-8 pr-8 text-[0.9375rem] shadow-none sm:h-8 sm:text-[0.8125rem]"
+          />
+          {queryDraft ? (
+            <button
+              type="button"
+              onClick={() => {
+                setQueryDraft("");
+                onChange({ q: null }, { resetPage: true });
+              }}
+              aria-label="Clear search"
+              className="absolute right-1.5 inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink sm:size-7"
+            >
+              <X className="size-3.5 sm:size-3" />
+            </button>
+          ) : null}
         </div>
+
+        <FilterSelect<StatusFilter>
+          value={filters.status}
+          onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
+          options={DASHBOARD_STATUS_FILTER_OPTIONS}
+          ariaLabel="Filter by status"
+          triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
+        />
+        <FilterSelect<SortMode>
+          value={filters.sort}
+          onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
+          options={MARK_SORT_OPTIONS}
+          ariaLabel="Sort marks"
+          triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowMore((v) => !v)}
+          aria-expanded={showMore}
+          aria-controls="more-filters-panel"
+          className={cn(
+            "h-11 gap-1.5 rounded-md px-3 text-[0.9375rem] font-normal text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-[0.8125rem]",
+            showMore && "bg-paper-3/50 text-ink",
+          )}
+        >
+          <span className="tabular-nums">
+            More
+            {secondaryCount > 0 ? (
+              <span className="text-ink-3"> · {secondaryCount}</span>
+            ) : null}
+          </span>
+          <ChevronDown
+            aria-hidden
+            className={cn(
+              "size-3 shrink-0 transition-transform duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none",
+              showMore && "rotate-180",
+            )}
+          />
+        </Button>
+        <span className="ml-auto text-[0.75rem] tabular-nums text-ink-3">
+          {visibleCount} mark{visibleCount === 1 ? "" : "s"}
+        </span>
+      </div>
 
       {showMore ? (
         <div
           id="more-filters-panel"
-          className="flex flex-wrap items-center gap-2 rounded-xl border border-rule bg-paper-2/90 px-2.5 py-2"
+          className="flex flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-2.5 py-2"
         >
           <FilterSelect
             value={filters.label}
@@ -321,6 +273,29 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             ariaLabel="Filter by pinned"
             triggerClassName="w-[150px]"
           />
+          <span aria-hidden className="hidden h-6 w-px bg-rule sm:inline-block" />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!viewerId}
+            title={!viewerId ? "Sign in to filter by assignee." : undefined}
+            aria-pressed={filters.assignee === "me"}
+            onClick={() => viewerId && toggleAssigneePreset("me")}
+            className={cn(presetBtn, filters.assignee === "me" ? presetActive : presetIdle)}
+          >
+            <UserCheck className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
+            Mine
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={filters.assignee === "unassigned"}
+            onClick={() => toggleAssigneePreset("unassigned")}
+            className={cn(presetBtn, filters.assignee === "unassigned" ? presetActive : presetIdle)}
+          >
+            <UserRound className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
+            Unassigned
+          </Button>
         </div>
       ) : null}
 
@@ -331,12 +306,12 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
               key={f.key}
               asChild
               variant="outline"
-              className="h-auto gap-1 rounded-full border-rule bg-paper py-1 pr-1 pl-2.5 text-[0.6875rem] font-normal text-ink-2 shadow-none hover:border-rule hover:bg-paper-3 hover:text-ink"
+              className="h-auto gap-1 rounded-md border-rule bg-paper py-1 pr-1 pl-2.5 text-[0.6875rem] font-normal text-ink-2 shadow-none hover:border-rule hover:bg-paper-3 hover:text-ink"
             >
               <button
                 type="button"
                 onClick={f.reset}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full py-0.5 max-sm:px-0.5 sm:min-h-8 sm:py-1"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-md py-0.5 max-sm:px-0.5 sm:min-h-8 sm:py-1"
                 aria-label={`Clear ${f.label} filter (${f.value})`}
               >
                 <span className="max-w-[10rem] truncate text-ink-3 sm:max-w-none">{f.label}</span>

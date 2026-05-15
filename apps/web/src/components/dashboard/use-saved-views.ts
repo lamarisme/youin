@@ -48,7 +48,7 @@ function writeStorage(workspaceId: string, views: SavedView[]): void {
   try {
     window.localStorage.setItem(storageKey(workspaceId), JSON.stringify(views));
   } catch {
-    // Quota exceeded or storage unavailable — silently no-op
+    // Quota exceeded or storage unavailable, silently no-op.
   }
   for (const cb of localSubscribers) cb();
 }

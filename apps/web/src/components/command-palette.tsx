@@ -99,7 +99,7 @@ function CommandPaletteDialog({
   );
   const inbox = useInbox(workspace, workspaceId, userId);
 
-  // G + letter — same destinations as sidebar / palette; lives here to use `router` directly.
+  // G + letter uses the same destinations as sidebar and palette.
   useEffect(() => {
     if (open) return;
     let pendingG = false;
@@ -158,14 +158,6 @@ function CommandPaletteDialog({
       inputRef.current.focus();
     }
   }, [open]);
-
-  function onSelect(id: string) {
-    const cmd = allCommands.find((c) => c.id === id);
-    if (cmd) {
-      cmd.run();
-      onOpenChange(false);
-    }
-  }
 
   const allCommands = useMemo<PaletteCommand[]>(() => {
     const base: PaletteCommand[] = [
@@ -238,13 +230,24 @@ function CommandPaletteDialog({
     return [...base, ...spaceCommands];
   }, [router, theme, toggleTheme, spaces, inbox.unreadCount, t]);
 
+  const onSelect = useCallback(
+    (id: string) => {
+      const cmd = allCommands.find((c) => c.id === id);
+      if (cmd) {
+        cmd.run();
+        onOpenChange(false);
+      }
+    },
+    [allCommands, onOpenChange],
+  );
+
   return (
     <Command.Dialog
       open={open}
       onOpenChange={onOpenChange}
       label={t("label")}
       className={cn(
-        "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_24px_60px_-24px_oklch(17%_0.012_50_/_0.45)]",
+        "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-lg border border-rule bg-paper shadow-[0_20px_48px_-28px_oklch(17%_0.012_50_/_0.42)]",
         "dark:shadow-[0_24px_60px_-24px_oklch(0%_0_0_/_0.6)]",
       )}
     >

@@ -1,5 +1,7 @@
-export type PinStatus = "open" | "closed";
-export type PinPriority = "low" | "medium" | "high" | "critical";
+import type { MarkPriority, MarkStatus } from "@youin/domain";
+
+export type PinStatus = MarkStatus;
+export type PinPriority = MarkPriority;
 export type SpacePriority = PinPriority;
 export type MarkEventType =
   | "created"

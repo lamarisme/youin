@@ -1,10 +1,10 @@
 // Pull workspace spaces from Supabase into chrome.storage + push local captures as marks.
 
+import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
+
 import { getSession } from "./auth"
-import { allocateSpaceCode } from "./migrate"
 import { buildMarkDescription } from "./mark-description"
-import { uploadMarkScreenshot } from "./mark-screenshot-upload"
-import { getSupabase } from "./supabase"
+import { allocateSpaceCode } from "./migrate"
 import {
   getActiveSpaceId,
   getPins,
@@ -16,6 +16,7 @@ import {
   type Pin,
   type Space
 } from "./storage"
+import { getSupabase, WEB_APP_URL } from "./supabase"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -46,7 +47,9 @@ export interface SyncWorkspaceResult {
  * Fetch spaces for the user's workspace from Postgres, replace chrome.storage mirrors,
  * and remap pin {@link Pin.spaceId} from legacy local IDs to UUIDs by space name match.
  */
-export async function syncWorkspaceFromRemote(userId: string): Promise<SyncWorkspaceResult> {
+export async function syncWorkspaceFromRemote(
+  userId: string
+): Promise<SyncWorkspaceResult> {
   const workspaceId = await workspaceIdForUser(userId)
   if (!workspaceId) {
     return {
@@ -130,9 +133,69 @@ export interface PushPinResult {
   error?: string
 }
 
+interface CreatedRemoteMark {
+  id: string
+  seq: number
+  createdAt: string
+}
+
 async function reloadPin(pinId: string): Promise<Pin | undefined> {
   const pins = await getPins()
   return pins.find((p) => p.id === pinId)
+}
+
+async function patchRemoteMark(
+  pin: Pin,
+  patch: { status?: Pin["status"]; commentBody?: string }
+): Promise<PushPinResult> {
+  const session = await getSession()
+  if (!session?.user?.id) {
+    return { ok: true, skipped: true }
+  }
+  if (!pin.remoteMarkId) {
+    return { ok: true, skipped: true }
+  }
+
+  const res = await fetch(`${WEB_APP_URL}/api/extension/marks`, {
+    method: "PATCH",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
+      markId: pin.remoteMarkId,
+      ...patch
+    })
+  })
+
+  if (!res.ok) {
+    let message = "Could not sync mark."
+    try {
+      const body = (await res.json()) as { error?: string }
+      if (body.error) message = body.error
+    } catch {
+      /* response was not JSON */
+    }
+    return { ok: false, skipped: false, error: message }
+  }
+
+  return { ok: true, skipped: false }
+}
+
+export async function pushPinStatusToWorkspace(
+  pin: Pin,
+  status: Pin["status"]
+): Promise<PushPinResult> {
+  return patchRemoteMark(pin, { status: normalizeMarkStatus(status) })
+}
+
+export async function pushPinCommentToWorkspace(
+  pin: Pin,
+  commentBody: string
+): Promise<PushPinResult> {
+  const body = commentBody.trim()
+  if (!body) return { ok: true, skipped: true }
+  return patchRemoteMark(pin, { commentBody: body })
 }
 
 /** Insert a freshly saved local pin as a `marks` row when authenticated. */
@@ -152,7 +215,11 @@ export async function pushPinToWorkspace(
   if (fresh) pin = fresh
 
   if (!pin.title?.trim()) {
-    return { ok: false, skipped: false, error: "Mark needs a title before sync." }
+    return {
+      ok: false,
+      skipped: false,
+      error: "Mark needs a title before sync."
+    }
   }
   if (!isUuidLike(pin.spaceId)) {
     return {
@@ -163,75 +230,45 @@ export async function pushPinToWorkspace(
     }
   }
 
-  const userId = session.user.id
-  const workspaceId = await workspaceIdForUser(userId)
-  if (!workspaceId) {
-    return {
-      ok: false,
-      skipped: false,
-      error: "No workspace for this account. Open youin once in the browser."
-    }
-  }
-
-  const supabase = getSupabase()
   const description = buildMarkDescription(pin)
-  const { data: mark, error: markErr } = await supabase
-    .from("marks")
-    .insert({
-      workspace_id: workspaceId,
-      space_id: pin.spaceId,
+  const res = await fetch(`${WEB_APP_URL}/api/extension/marks`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${session.access_token}`
+    },
+    body: JSON.stringify({
+      spaceId: pin.spaceId,
       title: pin.title.trim(),
       description,
       page: pin.url,
-      status: pin.status ?? "open",
-      priority: pin.priority ?? "medium",
-      pinned: false,
-      created_by_user_id: userId,
-      selector: pin.selector || null,
+      status: normalizeMarkStatus(pin.status),
+      priority: normalizeMarkPriority(pin.priority),
+      selector: pin.selector,
       viewport: `${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`,
-      captured_at: new Date(pin.createdAt).toISOString()
+      capturedAt: new Date(pin.createdAt).toISOString(),
+      screenshotDataUrl: options?.screenshotDataUrl,
+      comments: (pin.thread ?? []).map((m) => ({ body: m.body }))
     })
-    .select("id")
-    .single()
+  })
 
-  if (markErr || !mark?.id) {
+  if (!res.ok) {
+    let message = "Could not sync mark."
+    try {
+      const body = (await res.json()) as { error?: string }
+      if (body.error) message = body.error
+    } catch {
+      /* response was not JSON */
+    }
     return {
       ok: false,
       skipped: false,
-      error: markErr?.message ?? "Could not sync mark."
+      error: message
     }
   }
 
-  const markId = mark.id as string
-  await patchPin(pin.id, { remoteMarkId: markId })
-
-  if (options?.screenshotDataUrl?.startsWith("data:")) {
-    const up = await uploadMarkScreenshot(
-      workspaceId,
-      markId,
-      options.screenshotDataUrl
-    )
-    if ("path" in up) {
-      await supabase
-        .from("marks")
-        .update({ screenshot_url: up.path })
-        .eq("id", markId)
-    }
-  }
-
-  const msgs = pin.thread ?? []
-  if (msgs.length) {
-    const rows = msgs.map((m) => ({
-      mark_id: markId,
-      author_user_id: userId,
-      type: "text" as const,
-      body: m.body
-    }))
-    const { error: cErr } = await supabase.from("mark_comments").insert(rows)
-    if (cErr) {
-      return { ok: false, skipped: false, error: cErr.message }
-    }
-  }
+  const mark = (await res.json()) as CreatedRemoteMark
+  await patchPin(pin.id, { remoteMarkId: mark.id })
 
   return { ok: true, skipped: false }
 }
@@ -285,7 +322,8 @@ export async function createRemoteWorkspaceSpace(
   if (insErr || !sp?.id) {
     return {
       ok: false,
-      error: insErr?.message ?? "Could not create space (name may already exist)."
+      error:
+        insErr?.message ?? "Could not create space (name may already exist)."
     }
   }
 

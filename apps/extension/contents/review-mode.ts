@@ -1,7 +1,11 @@
-import type { PlasmoCSConfig } from "plasmo"
+import {
+  color,
+  cssVars,
+  fontFamily,
+  shadow as shadows
+} from "@youin/design-tokens"
 import { toPng } from "html-to-image"
-
-import { colorDark, cssVars, fontFamily, shadow as shadows } from "@youin/design-tokens"
+import type { PlasmoCSConfig } from "plasmo"
 
 import {
   EVENT_REVIEW_CAPTURE,
@@ -13,7 +17,6 @@ import {
   type ReviewCaptureDetail,
   type ReviewStateDetail
 } from "../lib/events"
-import { TAB_CAPTURE_CROP, type TabCaptureCropResponse } from "../lib/tab-capture"
 import { generateSelector } from "../lib/selector"
 import {
   getActiveSpaceId,
@@ -23,6 +26,10 @@ import {
   KEY_PINS,
   KEY_SPACES
 } from "../lib/storage"
+import {
+  TAB_CAPTURE_CROP,
+  type TabCaptureCropResponse
+} from "../lib/tab-capture"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -59,7 +66,7 @@ async function refreshToolbarLabels() {
     const ns = spaces.find((s) => s.id === spaceId)?.name ?? "—"
     toolbarNsEl.textContent = ns
     const pins = await getPinsForPage(spaceId, location.href)
-    const open = pins.filter((p) => p.status !== "resolved").length
+    const open = pins.filter((p) => p.status !== "closed").length
     toolbarCountEl.textContent = `${open} open`
   } catch {
     toolbarNsEl.textContent = "—"
@@ -68,10 +75,9 @@ async function refreshToolbarLabels() {
 }
 
 function subscribeToolbarRefresh() {
-  const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-    changes,
-    area
-  ) => {
+  const onStorage: Parameters<
+    typeof chrome.storage.onChanged.addListener
+  >[0] = (changes, area) => {
     if (area !== "local") return
     if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE] || changes[KEY_SPACES]) {
       if (mode === "active") void refreshToolbarLabels()
@@ -98,7 +104,7 @@ function ensureHost() {
   style.textContent = `
     :host {
       all: initial;
-      ${cssVars(colorDark)}
+      ${cssVars(color)}
     }
     .highlight {
       position: absolute;
@@ -185,7 +191,7 @@ function ensureHost() {
   toolbar.setAttribute("role", "status")
   toolbar.innerHTML = `
     <span class="dot" aria-hidden="true"></span>
-    <span>Inspect ON</span>
+    <span>Marking page</span>
     <span class="sep" aria-hidden="true">|</span>
     <span class="muted" data-field="ns"></span>
     <span class="sep" aria-hidden="true">|</span>
@@ -270,7 +276,9 @@ function waitNext2Frames(): Promise<void> {
  * Snapshot via `captureVisibleTab` in the background, cropped to the element’s
  * on-screen rect. Hides the review overlay so it is not included in the image.
  */
-async function captureElementViaTab(rect: DOMRectReadOnly): Promise<string | undefined> {
+async function captureElementViaTab(
+  rect: DOMRectReadOnly
+): Promise<string | undefined> {
   const crop = intersectViewportRect(rect)
   if (!crop) return undefined
 

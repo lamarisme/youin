@@ -1,12 +1,10 @@
 "use client";
 
-import { Globe, Monitor, Mouse } from "lucide-react";
-
 import type { PinItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
-import { cn } from "@/lib/utils";
 
 import { shortMarkLabel } from "./format-mark-event";
+import { formatMarkPageLabel, formatMarkPageOrigin } from "./mark-page-label";
 import { MarkPageOpenButton } from "./mark-page-open";
 
 interface MarkDetailCaptureProps {
@@ -15,40 +13,45 @@ interface MarkDetailCaptureProps {
 
 export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
   const cap = pin.capture;
+  const pageLabel = formatMarkPageLabel(pin.page);
+  const pageOrigin = formatMarkPageOrigin(pin.page);
+
   return (
     <>
-      <div className="mt-6 overflow-hidden rounded-xl border border-rule bg-paper shadow-[0_10px_30px_-20px_oklch(17%_0.01_50_/_0.45)] dark:shadow-[0_10px_30px_-20px_oklch(0%_0_0_/_0.55)]">
-        <div className="flex items-center gap-1.5 border-b border-rule bg-paper-2 px-3 py-2.5">
-          <span className="size-2 rounded-full bg-paper-3" />
-          <span className="size-2 rounded-full bg-paper-3" />
-          <span className="size-2 rounded-full bg-paper-3" />
-          <span className="ml-2 min-w-0 flex-1 truncate rounded bg-paper px-2 py-0.5 font-mono text-[0.625rem] text-ink-3">
-            {pin.page}
+      <div className="mt-5 overflow-hidden rounded-lg border border-rule bg-paper">
+        <div className="flex items-center gap-2 border-b border-rule px-3 py-2">
+          <span className="pin-dot !size-5 !text-[8px]">
+            {shortMarkLabel(pin.displayKey)}
+          </span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-ink-3" title={pin.page}>
+            {pageLabel}
           </span>
           <MarkPageOpenButton
             page={pin.page}
             appearance="icon"
-            className="size-8 shrink-0 border-transparent bg-paper hover:bg-paper-3"
+            className="size-8 shrink-0 border-transparent bg-transparent hover:bg-paper-3"
           />
         </div>
-        <div className="relative bg-paper-2 px-6 py-9">
-          <div className="mx-auto max-w-sm space-y-3">
-            <div className="h-4 w-3/4 rounded bg-paper-3" />
-            <div className="h-3 w-full rounded bg-paper-3/60" />
-            <div className="h-3 w-5/6 rounded bg-paper-3/60" />
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="h-16 rounded bg-paper-3/40" />
-              <div className="relative h-16 rounded bg-paper-3/40">
-                <span className="pin-dot absolute -right-2 -top-2 z-10 !size-5 !text-[8px]">
-                  {shortMarkLabel(pin.displayKey)}
-                </span>
-              </div>
-              <div className="h-16 rounded bg-paper-3/40" />
+        <div className="relative bg-paper px-3 py-3">
+          {cap?.screenshotUrl ? (
+            <div className="mx-auto max-w-2xl overflow-hidden rounded-md border border-rule bg-paper-2">
+              {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cap.screenshotUrl}
+                alt={`Captured element for ${pin.displayKey}`}
+                loading="lazy"
+                decoding="async"
+                className="max-h-[22rem] w-full object-contain object-top"
+              />
             </div>
-            <div className="h-3 w-2/3 rounded bg-paper-3/60" />
-          </div>
+          ) : (
+            <p className="py-6 text-center text-[0.8125rem] text-ink-3">
+              No capture snapshot saved for this mark.
+            </p>
+          )}
           {cap?.selector ? (
-            <div className="absolute bottom-2 left-3 rounded bg-ink/80 px-2 py-0.5 font-mono text-[0.5625rem] text-paper">
+            <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded bg-ink/85 px-2 py-0.5 font-mono text-[0.5625rem] text-paper">
               {cap.selector}
             </div>
           ) : null}
@@ -56,41 +59,41 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
       </div>
 
       {cap ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <MetaCell icon={Globe} label="Page" value={pin.page} />
-          <MetaCell icon={Mouse} label="Selector" value={cap.selector ?? "—"} mono />
-          <MetaCell icon={Monitor} label="Viewport" value={cap.viewport ?? "—"} />
-          <MetaCell icon={Globe} label="Browser" value={cap.browser ?? "—"} />
-          {cap.os ? <MetaCell icon={Monitor} label="OS" value={cap.os} /> : null}
+        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem] text-ink-3">
+          {pageOrigin ? <MetaCell label="Origin" value={pageOrigin} /> : null}
+          <MetaCell label="Selector" value={cap.selector ?? "None"} mono />
+          <MetaCell label="Viewport" value={cap.viewport ?? "Unknown"} />
+          <MetaCell label="Browser" value={cap.browser ?? "Unknown"} />
+          {cap.os ? <MetaCell label="OS" value={cap.os} /> : null}
           {cap.capturedAt ? (
-            <MetaCell icon={Globe} label="Captured" value={formatDateTime(cap.capturedAt)} />
+            <MetaCell label="Captured" value={formatDateTime(cap.capturedAt)} />
           ) : null}
-        </div>
+        </dl>
       ) : null}
     </>
   );
 }
 
 function MetaCell({
-  icon: Icon,
   label,
   value,
+  title,
   mono,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
+  title?: string;
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-md bg-paper-2 px-3 py-2">
-      <div className="mb-1 flex items-center gap-1.5 text-ink-3">
-        <Icon className="size-3" />
-        <span className="text-[0.625rem] font-medium uppercase tracking-wider">{label}</span>
-      </div>
-      <p className={cn("truncate text-[0.8125rem] text-ink", mono && "font-mono text-[0.75rem]")}>
+    <div className="inline-flex min-w-0 items-baseline gap-1.5">
+      <dt className="shrink-0 font-medium text-ink-3">{label}</dt>
+      <dd
+        title={title ?? value}
+        className={mono ? "max-w-[18rem] truncate font-mono text-[0.6875rem] text-ink-2" : "max-w-[18rem] truncate text-ink-2"}
+      >
         {value}
-      </p>
+      </dd>
     </div>
   );
 }

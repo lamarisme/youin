@@ -1,5 +1,7 @@
 "use strict";
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 /**
  * Marks all migrations in drizzle/meta/_journal.json as applied without running SQL.
  *

@@ -20,6 +20,9 @@ importers:
       '@youin/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@youin/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@youin/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -105,6 +108,9 @@ importers:
       '@youin/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@youin/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@youin/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -211,6 +217,15 @@ importers:
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(@swc/core@1.15.32(@swc/helpers@0.5.21))(jiti@2.6.1)(postcss@8.5.12)(tsx@4.21.0)(typescript@5.3.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.3.3
+
+  packages/domain:
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.11.5
       typescript:
         specifier: ^5.3.0
         version: 5.3.3

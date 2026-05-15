@@ -27,7 +27,7 @@ export default function WorkspaceError({
         <AlertTriangle className="size-3.5 text-mark" aria-hidden />
         <span>{t("eyebrow")}</span>
       </div>
-      <h1 className="font-display text-2xl font-semibold text-ink sm:text-[1.75rem]">{t("title")}</h1>
+      <h1 className="text-xl font-semibold text-ink sm:text-2xl">{t("title")}</h1>
       <p className="max-w-[58ch] text-[0.875rem] leading-relaxed text-ink-2">{t("body")}</p>
       {error.digest ? (
         <p className="font-mono text-[0.6875rem] text-ink-3">

@@ -27,7 +27,7 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
 
   if (data.length === 0) {
     return (
-      <ChartShell title="Throughput" subtitle="Marks opened and closed per day">
+      <ChartShell title="Throughput" subtitle="Marks opened and resolved per day">
         <p className="px-4 py-10 text-center text-[0.8125rem] text-ink-3">
           No activity in this timeframe yet.
         </p>
@@ -43,11 +43,11 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
   return (
     <ChartShell
       title="Throughput"
-      subtitle="Marks opened and closed per day"
+      subtitle="Marks opened and resolved per day"
       legend={
         <>
           <LegendDot color="mark" label={`${stats.openedTotal} opened`} />
-          <LegendDot color="ok" label={`${stats.closedTotal} closed`} />
+          <LegendDot color="ok" label={`${stats.closedTotal} resolved`} />
         </>
       }
     >
@@ -55,7 +55,7 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
         <div
           className="relative h-[160px]"
           role="img"
-          aria-label={`Throughput chart: ${stats.openedTotal} opened, ${stats.closedTotal} closed across ${data.length} days`}
+          aria-label={`Throughput chart: ${stats.openedTotal} opened, ${stats.closedTotal} resolved across ${data.length} days`}
         >
           <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-rule/80" aria-hidden />
           <div className="absolute inset-0 flex items-stretch gap-px">
@@ -66,7 +66,7 @@ export function ThroughputChart({ data }: ThroughputChartProps) {
                 <div
                   key={b.date}
                   className="relative flex-1 min-w-0"
-                  title={`${formatDayLabel(b.date)} — ${b.opened} opened, ${b.closed} closed`}
+                  title={`${formatDayLabel(b.date)}: ${b.opened} opened, ${b.closed} resolved`}
                 >
                   {b.opened > 0 ? (
                     <div
@@ -113,13 +113,13 @@ function ChartShell({
   return (
     <section
       className={cn(
-        "rounded-xl border border-rule bg-paper shadow-[0_8px_24px_-26px_oklch(17%_0.012_50_/_0.32)]",
+        "rounded-md border border-rule bg-paper",
         className,
       )}
     >
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-4 py-3">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-3 py-2.5">
         <div>
-          <h2 className="font-display text-[0.9375rem] font-semibold text-ink">{title}</h2>
+          <h2 className="text-[0.875rem] font-semibold text-ink">{title}</h2>
           {subtitle ? <p className="text-[0.75rem] text-ink-3">{subtitle}</p> : null}
         </div>
         {legend ? <div className="flex flex-wrap items-center gap-3">{legend}</div> : null}
