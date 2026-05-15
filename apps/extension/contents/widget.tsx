@@ -104,12 +104,12 @@ function Widget() {
 
   if (!settings.fabVisible) return null
 
-  const label = active ? "Done" : "Mark"
+  const label = active ? "Exit review" : "Review"
   const ariaLabel = active
     ? "Exit marking mode"
     : openCount > 0
-      ? `Start marking. ${openCount} open mark${openCount === 1 ? "" : "s"} on this page.`
-      : "Start marking this page"
+      ? `Start review. ${openCount} open feedback item${openCount === 1 ? "" : "s"} on this page.`
+      : "Start reviewing this page"
 
   return (
     <div
@@ -135,7 +135,9 @@ function Widget() {
         />
         <span>{label}</span>
         {openCount > 0 ? (
-          <span className="rounded-full bg-[color:var(--yi-mark-soft)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)]">
+          <span
+            aria-label={`${openCount} open feedback item${openCount === 1 ? "" : "s"}`}
+            className="rounded-full bg-[color:var(--yi-mark-soft)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)]">
             {openCount}
           </span>
         ) : null}

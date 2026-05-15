@@ -83,6 +83,8 @@ function IndexPopup() {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [spaceId, setSpaceId] = useState<string>("")
   const [projectLabel, setProjectLabel] = useState<string>("Local")
+  const [pageLabel, setPageLabel] = useState<string>("Current page")
+  const [canReviewPage, setCanReviewPage] = useState(false)
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
   const [inspectMsg, setInspectMsg] = useState<string | null>(null)
@@ -98,9 +100,17 @@ function IndexPopup() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
     const url = tab?.url
     if (!url?.startsWith("http")) {
+      setPageLabel("Open a website")
+      setCanReviewPage(false)
       setOpenCount(0)
       setResolvedCount(0)
       return
+    }
+    setCanReviewPage(true)
+    try {
+      setPageLabel(new URL(url).hostname.replace(/^www\./, ""))
+    } catch {
+      setPageLabel("Current page")
     }
     const sid = await getActiveSpaceId()
     const pins = await getPinsForPage(sid, url)
@@ -257,7 +267,7 @@ function IndexPopup() {
   if (view === "checking") {
     return (
       <main className="youin-popup flex min-w-0 w-full max-w-[300px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
-        Loading…
+        Preparing review…
       </main>
     )
   }
@@ -334,19 +344,90 @@ function IndexPopup() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-3 px-4 py-3">
-        <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Project
-          </span>
-          <div className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text-soft)]">
-            {projectLabel}
+      <section className="px-4 pb-4 pt-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+              Review session
+            </p>
+            <h2 className="mt-1 truncate text-[16px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--yi-ink)]">
+              {pageLabel}
+            </h2>
           </div>
-        </label>
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
+              view === "signedIn"
+                ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+            }`}>
+            {view === "signedIn" ? "Synced" : "Local"}
+          </span>
+        </div>
 
-        <div>
+        <button
+          type="button"
+          disabled={!canReviewPage}
+          className="mt-3 flex w-full min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
+          onClick={beginInspect}>
+          Start reviewing
+        </button>
+
+        {inspectMsg ? (
+          <p className="mt-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
+            {inspectMsg}
+          </p>
+        ) : (
+          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+            Click any page element to leave feedback.
+          </p>
+        )}
+
+        <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)]">
+          <button
+            type="button"
+            disabled={!canReviewPage}
+            className="min-h-[58px] border-0 border-e border-[color:var(--yi-ext-border-hairline)] bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            onClick={beginInspect}>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-dim)]">
+              Open
+            </span>
+            <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-mark)]">
+              {openCount}
+            </span>
+          </button>
+          <div className="min-h-[58px] px-3 py-2 text-left">
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-dim)]">
+              Resolved
+            </span>
+            <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
+              {resolvedCount}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+              Workspace
+            </p>
+            <p className="mt-0.5 truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
+              {projectLabel}
+            </p>
+          </div>
+          <a
+            href={`${WEB_APP_URL}/dashboard?space=all`}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:underline">
+            Dashboard
+          </a>
+        </div>
+
+        <div className="mt-3">
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Space
+            Review space
           </span>
           <div className="flex gap-1">
             <select
@@ -361,8 +442,8 @@ function IndexPopup() {
             </select>
             <button
               type="button"
-              title="New space"
-              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)]"
+              title="New review space"
+              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
                 setSpaceErr(null)
@@ -384,45 +465,28 @@ function IndexPopup() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") submitNewSpace()
                 }}
-                placeholder="Name"
-                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none"
+                placeholder="Client homepage review"
+                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
               />
               <button
                 type="button"
                 className="rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
                 onClick={() => submitNewSpace()}>
-                Add
+                Create space
               </button>
             </div>
           ) : null}
         </div>
-
-        <label className="flex min-h-9 items-center justify-between gap-3 rounded-md border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] px-2.5 py-2">
-          <span className="text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
-            Floating control
-          </span>
-          <input
-            type="checkbox"
-            checked={floatingControl}
-            className="size-4 accent-[color:var(--yi-mark)]"
-            onChange={(e) => {
-              const next = e.target.checked
-              setFloatingControl(next)
-              void setWidgetSettings({ fabVisible: next })
-            }}
-          />
-        </label>
-      </div>
+      </section>
 
       {view === "signedOut" && !showAuth ? (
         <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
           <div className="rounded-lg border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2.5">
             <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
-              Local marks only
+              Feedback is local
             </p>
             <p className="mt-1 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-              Sign in to sync captures, replies, and resolved status with the
-              dashboard.
+              Sign in when you want teammates to see comments and replies.
             </p>
             <button
               type="button"
@@ -435,61 +499,21 @@ function IndexPopup() {
       ) : null}
 
       <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        {inspectMsg ? (
-          <p className="mb-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
-            {inspectMsg}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          className="flex w-full min-h-10 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background,transform] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99]"
-          onClick={beginInspect}>
-          Mark this page
-        </button>
-        <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-          <kbd className="rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
-            ⌥
-          </kbd>
-          <kbd className="ms-0.5 rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
-            ⇧
-          </kbd>
-          <kbd className="ms-0.5 rounded border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-kbd-bg)] px-1 font-mono text-[9px]">
-            Y
-          </kbd>
-          <span className="ms-1">toggles on page</span>
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2 border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <button
-          type="button"
-          className="rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-transparent py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-stat)]"
-          onClick={beginInspect}>
-          <span className="block text-[color:var(--yi-ext-text-soft)]">
-            Open marks
+        <label className="flex min-h-9 items-center justify-between gap-3">
+          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
+            Show floating review button
           </span>
-          <span className="font-mono text-[12px] text-[color:var(--yi-ext-accent)]">
-            ({openCount})
-          </span>
-        </button>
-        <div className="rounded-lg border border-[color:var(--yi-ext-border-faint)] bg-[color:var(--yi-ext-surface-stat)] py-2.5 text-left text-[11px] leading-snug text-[color:var(--yi-ext-text-dim)]">
-          <span className="block text-[color:var(--yi-ext-text-muted)]">
-            Resolved
-          </span>
-          <span className="font-mono text-[12px] text-[color:var(--yi-ext-text-dim)]">
-            ({resolvedCount})
-          </span>
-        </div>
-      </div>
-
-      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <a
-          href={`${WEB_APP_URL}/dashboard?space=all`}
-          target="_blank"
-          rel="noreferrer"
-          className="flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent text-[12px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-stat)]">
-          Open Dashboard ↗
-        </a>
+          <input
+            type="checkbox"
+            checked={floatingControl}
+            className="size-4 accent-[color:var(--yi-mark)]"
+            onChange={(e) => {
+              const next = e.target.checked
+              setFloatingControl(next)
+              void setWidgetSettings({ fabVisible: next })
+            }}
+          />
+        </label>
       </div>
 
       {view === "signedOut" && showAuth ? (
@@ -657,7 +681,7 @@ function SignedInBlock({ session }: { session: Session | null }) {
   if (syncingDb || migrating) {
     return (
       <p className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2 text-[10px] text-[color:var(--yi-ext-text-dim)]">
-        Syncing workspace…
+        Syncing feedback…
       </p>
     )
   }
@@ -704,7 +728,7 @@ function MigrationBanner({
   }
   return (
     <div className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-      Imported {r.pinsImported} pin{r.pinsImported === 1 ? "" : "s"}
+      Imported {r.pinsImported} feedback item{r.pinsImported === 1 ? "" : "s"}
       {r.spacesCreated > 0
         ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
         : ""}

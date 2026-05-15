@@ -111,9 +111,10 @@ function ensureHost() {
       box-sizing: border-box;
       pointer-events: none;
       border: 2px solid var(--yi-mark);
-      background: color-mix(in oklch, var(--yi-mark) 14%, transparent);
+      background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
       border-radius: 4px;
       display: none;
+      box-shadow: 0 0 0 1px color-mix(in oklch, var(--yi-paper) 85%, transparent);
     }
     .toolbar {
       position: fixed;
@@ -124,13 +125,13 @@ function ensureHost() {
       align-items: center;
       gap: 10px;
       max-width: min(calc(100vw - 24px), 520px);
-      padding: 8px 12px 8px 14px;
+      padding: 8px 10px 8px 14px;
       border-radius: 999px;
       pointer-events: auto;
       background: var(--yi-paper-2);
       color: var(--yi-ink-2);
       font: 500 12px/1.2 ${fontFamily.sans};
-      letter-spacing: 0.01em;
+      letter-spacing: 0;
       border: 1px solid color-mix(in oklch, var(--yi-rule) 75%, transparent);
       box-shadow: ${shadows.banner};
     }
@@ -156,6 +157,7 @@ function ensureHost() {
     .toolbar .counts {
       font-variant-numeric: tabular-nums;
       color: var(--yi-mark-bright);
+      white-space: nowrap;
     }
     .toolbar button.close {
       margin-left: 4px;
@@ -191,7 +193,7 @@ function ensureHost() {
   toolbar.setAttribute("role", "status")
   toolbar.innerHTML = `
     <span class="dot" aria-hidden="true"></span>
-    <span>Marking page</span>
+    <span>Click an element to leave feedback</span>
     <span class="sep" aria-hidden="true">|</span>
     <span class="muted" data-field="ns"></span>
     <span class="sep" aria-hidden="true">|</span>

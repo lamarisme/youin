@@ -338,9 +338,7 @@ const CapturePanel = () => {
       })
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
-          `Saved locally — ${
-            push.error.endsWith(".") ? push.error.slice(0, -1) : push.error
-          }. Open the popup to reconnect, then try again.`
+          `Saved locally. ${push.error.endsWith(".") ? push.error : `${push.error}.`} Open YouIn to sign in and share it.`
         )
         scheduleReloadPagePins(capture.url)
         return
@@ -370,7 +368,7 @@ const CapturePanel = () => {
       const synced = await pushPinCommentToWorkspace(viewingPin, body)
       if (!synced.skipped && !synced.ok && synced.error) {
         setSaveError(
-          `Reply saved locally. ${synced.error} Open the popup to reconnect.`
+          `Reply saved locally. ${synced.error} Open YouIn to sign in and share it.`
         )
       }
       await reloadPin(viewingPin.id)
@@ -388,7 +386,7 @@ const CapturePanel = () => {
       const synced = await pushPinStatusToWorkspace(viewingPin, status)
       if (!synced.skipped && !synced.ok && synced.error) {
         setSaveError(
-          `Status updated locally. ${synced.error} Open the popup to reconnect.`
+          `Status updated locally. ${synced.error} Open YouIn to sign in and share it.`
         )
       }
       await reloadPin(viewingPin.id)
@@ -422,13 +420,12 @@ const CapturePanel = () => {
             <h2
               id="capture-panel-title"
               className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-              New mark
+              Leave feedback
             </h2>
             <p
               id="capture-panel-desc"
-              title={capture.selector}
-              className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
-              Selector: {selectorPreview}
+              className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+              This comment will stay attached to the selected element.
             </p>
           </div>
           <button
@@ -457,47 +454,62 @@ const CapturePanel = () => {
             )}
 
             <label className="block" htmlFor="capture-body">
-              <span className={fieldLabel}>What needs changing?</span>
+              <span className={fieldLabel}>Feedback</span>
               <textarea
                 id="capture-body"
                 value={body}
                 maxLength={STORAGE_LIMITS.threadBody}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Describe the change…"
+                placeholder="What should change?"
                 rows={5}
                 aria-invalid={saveError ? true : undefined}
                 className="box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
               />
             </label>
 
-            <div>
-              <span className={fieldLabel}>Space</span>
-              <select
-                id="capture-namespace"
-                className={selectCls}
-                value={spaceId}
-                onChange={(e) => setSpaceId(e.target.value)}>
-                {spaces.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <details className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2">
+              <summary className="cursor-pointer select-none text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
+                Options
+              </summary>
+              <div className="mt-3 flex flex-col gap-4">
+                <div>
+                  <span className={fieldLabel}>Review space</span>
+                  <select
+                    id="capture-namespace"
+                    className={selectCls}
+                    value={spaceId}
+                    onChange={(e) => setSpaceId(e.target.value)}>
+                    {spaces.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <span className={fieldLabel}>Priority</span>
-              <select
-                id="capture-priority"
-                className={selectCls}
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as PinPriority)}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="critical">Critical</option>
-              </select>
-            </div>
+                <div>
+                  <span className={fieldLabel}>Priority</span>
+                  <select
+                    id="capture-priority"
+                    className={selectCls}
+                    value={priority}
+                    onChange={(e) =>
+                      setPriority(e.target.value as PinPriority)
+                    }>
+                    <option value="low">Low</option>
+                    <option value="medium">Normal</option>
+                    <option value="high">High</option>
+                    <option value="critical">Urgent</option>
+                  </select>
+                </div>
+
+                <p
+                  title={capture.selector}
+                  className="font-mono text-[10px] leading-snug text-[color:var(--yi-ext-text-placeholder)] [overflow-wrap:anywhere]">
+                  Element: {selectorPreview}
+                </p>
+              </div>
+            </details>
 
             {saveError ? (
               <p
@@ -519,11 +531,11 @@ const CapturePanel = () => {
                 aria-busy={saving}
                 className={btnPrimary}
                 onClick={() => void handleSave()}>
-                {saving ? "Saving…" : "Save mark"}
+                {saving ? "Posting…" : "Post feedback"}
               </button>
             </div>
             <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-              Esc closes without saving.
+              After posting, review mode resumes.
             </p>
           </div>
         </div>
@@ -547,13 +559,23 @@ const CapturePanel = () => {
         className={panelSurface}>
         <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 pb-4 pt-5">
           <div className="min-w-0">
-            <h2
-              id="thread-panel-title"
-              className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-              Mark {n > 0 ? `#${n}` : ""}
-            </h2>
-            <p className="mt-2 font-mono text-[11px] leading-snug text-[color:var(--yi-ext-accent-muted)] [overflow-wrap:anywhere]">
-              {truncateMiddle(viewingPin.selector, 48)}
+            <div className="flex items-center gap-2">
+              <h2
+                id="thread-panel-title"
+                className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
+                Feedback {n > 0 ? `#${n}` : ""}
+              </h2>
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  viewingPin.status === "closed"
+                    ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                    : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+                }`}>
+                {viewingPin.status === "closed" ? "Resolved" : "Open"}
+              </span>
+            </div>
+            <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+              Reply or resolve without leaving the page.
             </p>
           </div>
           <button
@@ -567,8 +589,8 @@ const CapturePanel = () => {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-6 pt-4 [scrollbar-gutter:stable]">
           <div className="px-3">
-            <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)]">
-              {viewingPin.title}
+            <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] [overflow-wrap:anywhere]">
+              {opener?.body ?? viewingPin.title}
             </div>
             {opener ? (
               <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
@@ -608,7 +630,7 @@ const CapturePanel = () => {
                 rows={3}
                 maxLength={STORAGE_LIMITS.threadBody}
                 onChange={(e) => setReplyDraft(e.target.value)}
-                placeholder="Reply…"
+                placeholder="Add a reply..."
                 className="box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
               />
             </label>
@@ -625,15 +647,22 @@ const CapturePanel = () => {
 
             <div className="mt-5">
               <span className={fieldLabel}>Status</span>
-              <select
-                className={selectCls}
-                value={viewingPin.status}
-                onChange={(e) =>
-                  void setPinStatus(e.target.value as PinStatus)
-                }>
-                <option value="open">Open</option>
-                <option value="closed">Resolved</option>
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={saving || viewingPin.status === "open"}
+                  className="min-h-10 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  onClick={() => void setPinStatus("open" as PinStatus)}>
+                  Open
+                </button>
+                <button
+                  type="button"
+                  disabled={saving || viewingPin.status === "closed"}
+                  className="min-h-10 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  onClick={() => void setPinStatus("closed" as PinStatus)}>
+                  Resolved
+                </button>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
@@ -642,14 +671,14 @@ const CapturePanel = () => {
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
-                Open dashboard ↗
+                Open dashboard
               </a>
               <button
                 type="button"
                 disabled={saving || viewingPin.status === "closed"}
                 className={btnPrimary}
                 onClick={() => void setPinStatus("closed")}>
-                Resolve
+                Mark resolved
               </button>
               <button type="button" className={btnGhost} onClick={resume}>
                 Close

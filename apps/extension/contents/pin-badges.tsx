@@ -1,6 +1,12 @@
-import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import tailwindCss from "data-text:~/globals.css"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState
+} from "react"
 
 import { EVENT_REVIEW_OPEN_PIN, EVENT_REVIEW_PAUSE } from "../lib/events"
 import {
@@ -49,13 +55,10 @@ function pinNumberMap(pins: Pin[]): Map<string, number> {
 function annotationLabel(pin: Pin, n: number): string {
   const t = pin.title.trim() || "Annotation"
   const short = t.length > 72 ? `${t.slice(0, 69)}…` : t
-  return `Open annotation ${n}: ${short}`
+  return `Open feedback ${n}: ${short}`
 }
 
-function computeLayout(
-  pins: Pin[],
-  nums: Map<string, number>
-): BadgeItem[] {
+function computeLayout(pins: Pin[], nums: Map<string, number>): BadgeItem[] {
   const out: BadgeItem[] = []
   for (const pin of pins) {
     try {
@@ -100,12 +103,15 @@ const PinBadges = () => {
 
   useEffect(() => {
     void refresh()
-    const onStorage: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (
-      changes,
-      area
-    ) => {
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
       if (area !== "local") return
-      if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE] || changes[KEY_SPACES]) {
+      if (
+        changes[KEY_PINS] ||
+        changes[KEY_ACTIVE_SPACE] ||
+        changes[KEY_SPACES]
+      ) {
         void refresh()
       }
     }
@@ -158,9 +164,9 @@ const PinBadges = () => {
             )
           }}>
           <span
-            className="flex h-5 min-w-5 select-none items-center justify-center rounded-full border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-ext-badge-bg)] px-1 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-ext-open-emphasis)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.5)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
+            className="flex h-6 min-w-6 select-none items-center justify-center rounded-full border border-[color:var(--yi-paper)] bg-[color:var(--yi-mark)] px-1.5 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_3px_12px_-3px_rgba(28,24,20,0.55)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
             aria-hidden>
-            ●{n}
+            {n}
           </span>
         </button>
       ))}
