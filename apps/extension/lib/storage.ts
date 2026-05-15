@@ -71,6 +71,8 @@ export interface Pin {
   createdAt: number
   updatedAt: number
   outerHTMLPreview: string
+  /** Unsynced element screenshot retained until a remote mark upload succeeds. */
+  screenshotDataUrl?: string
   /** @deprecated Prefer thread; migrated on read in {@link getPins}. */
   comment?: string
 }
@@ -183,6 +185,11 @@ function migrateRawPin(raw: unknown): Pin {
   const priority: PinPriority = isPinPriority(priorityRaw)
     ? priorityRaw
     : normalizeMarkPriority(undefined)
+  const screenshotDataUrl =
+    typeof p.screenshotDataUrl === "string" &&
+    p.screenshotDataUrl.startsWith("data:image/")
+      ? p.screenshotDataUrl
+      : undefined
 
   const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
@@ -212,7 +219,8 @@ function migrateRawPin(raw: unknown): Pin {
     outerHTMLPreview: String(p.outerHTMLPreview ?? "").slice(
       0,
       STORAGE_LIMITS.outerHTMLPreview
-    )
+    ),
+    screenshotDataUrl
   }
   return remoteMarkId ? { ...base, remoteMarkId } : base
 }
@@ -331,6 +339,9 @@ function serializePinsForStorage(pins: Pin[]): unknown[] {
   return pins.map((p) => {
     const { comment: _c, ...rest } = p as Pin & { comment?: string }
     if (!rest.remoteMarkId) delete (rest as { remoteMarkId?: string }).remoteMarkId
+    if (!rest.screenshotDataUrl) {
+      delete (rest as { screenshotDataUrl?: string }).screenshotDataUrl
+    }
     return rest
   })
 }

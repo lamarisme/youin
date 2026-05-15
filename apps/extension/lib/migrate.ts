@@ -5,6 +5,7 @@
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
 import { buildMarkDescription } from "./mark-description"
+import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import { getSupabase } from "./supabase"
 import {
   getPins,
@@ -248,6 +249,21 @@ export async function migrateLocalDataToWorkspace(
       remoteMarkId: mark.id as string
     })
 
+    if (pin.screenshotDataUrl) {
+      const upload = await uploadMarkScreenshot(
+        workspaceId,
+        mark.id as string,
+        pin.screenshotDataUrl
+      )
+      if ("path" in upload) {
+        await supabase
+          .from("marks")
+          .update({ screenshot_url: upload.path })
+          .eq("id", mark.id as string)
+          .eq("workspace_id", workspaceId)
+      }
+    }
+
     const messages: LocalThreadMessage[] = pin.thread ?? []
     if (messages.length) {
       const rows = messages.map((m) => ({
@@ -280,7 +296,8 @@ export async function migrateLocalDataToWorkspace(
       return {
         ...p,
         spaceId: upd.spaceId,
-        remoteMarkId: upd.remoteMarkId
+        remoteMarkId: upd.remoteMarkId,
+        screenshotDataUrl: undefined
       }
     })
     await savePins(next)

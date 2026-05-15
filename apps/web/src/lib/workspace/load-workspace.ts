@@ -209,7 +209,21 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
     };
   });
 
+  const markScreenshotPaths: string[] = [];
+  for (const m of marksRows ?? []) {
+    const raw = m.screenshot_url as string | null | undefined;
+    if (isStoragePath(raw)) markScreenshotPaths.push(raw);
+  }
+  const signedMarkScreenshotByPath = await resolveImageUrls(
+    supabase,
+    markScreenshotPaths,
+  );
+
   const pins: PinItem[] = (marksRows ?? []).map((m) => {
+    const rawScreenshotUrl = m.screenshot_url as string | null | undefined;
+    const screenshotUrl = isStoragePath(rawScreenshotUrl)
+      ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
+      : rawScreenshotUrl;
     const cap =
       (m.selector as string | null | undefined)
         ? {
@@ -217,7 +231,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
             viewport: (m.viewport as string | null | undefined) ?? undefined,
             browser: (m.browser as string | null | undefined) ?? undefined,
             os: (m.os as string | null | undefined) ?? undefined,
-            screenshotUrl: (m.screenshot_url as string | null | undefined) ?? undefined,
+            screenshotUrl: screenshotUrl ?? undefined,
             capturedAt: (m.captured_at as string | null | undefined) ?? undefined,
           }
         : m.viewport || m.browser || m.os
@@ -226,7 +240,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
               viewport: (m.viewport as string | null | undefined) ?? undefined,
               browser: (m.browser as string | null | undefined) ?? undefined,
               os: (m.os as string | null | undefined) ?? undefined,
-              screenshotUrl: (m.screenshot_url as string | null | undefined) ?? undefined,
+              screenshotUrl: screenshotUrl ?? undefined,
               capturedAt: (m.captured_at as string | null | undefined) ?? undefined,
             }
           : undefined;

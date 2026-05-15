@@ -247,7 +247,7 @@ export async function pushPinToWorkspace(
       selector: pin.selector,
       viewport: `${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`,
       capturedAt: new Date(pin.createdAt).toISOString(),
-      screenshotDataUrl: options?.screenshotDataUrl,
+      screenshotDataUrl: options?.screenshotDataUrl ?? pin.screenshotDataUrl,
       comments: (pin.thread ?? []).map((m) => ({ body: m.body }))
     })
   })
@@ -268,7 +268,10 @@ export async function pushPinToWorkspace(
   }
 
   const mark = (await res.json()) as CreatedRemoteMark
-  await patchPin(pin.id, { remoteMarkId: mark.id })
+  await patchPin(pin.id, {
+    remoteMarkId: mark.id,
+    screenshotDataUrl: undefined
+  })
 
   return { ok: true, skipped: false }
 }

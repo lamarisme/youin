@@ -132,7 +132,8 @@ function buildPinFromCapture(
     outerHTMLPreview:
       typeof detail.outerHTML === "string"
         ? detail.outerHTML.slice(0, STORAGE_LIMITS.outerHTMLPreview)
-        : ""
+        : "",
+    screenshotDataUrl: detail.elementScreenshotDataUrl
   }
 }
 
