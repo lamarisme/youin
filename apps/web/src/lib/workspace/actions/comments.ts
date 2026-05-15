@@ -1,5 +1,7 @@
 "use server";
 
+import { normalizeCommentForStorage } from "@/lib/mark-description";
+
 import { requireSession, revalidateWorkspaceViews } from "./session";
 
 export async function addMarkCommentsAction(
@@ -12,7 +14,7 @@ export async function addMarkCommentsAction(
     mark_id: pinId,
     author_user_id: userId,
     type: item.type,
-    body: item.type === "text" ? (item.body ?? "") : null,
+    body: item.type === "text" ? normalizeCommentForStorage(item.body ?? "") : null,
     image_url: item.type === "image" ? (item.imageUrl ?? null) : null,
   }));
   const { error } = await supabase.from("mark_comments").insert(inserts);
@@ -25,8 +27,8 @@ export async function updateMarkCommentAction(
   body: string,
 ): Promise<void> {
   const { supabase, userId } = await requireSession();
-  const trimmed = body.trim();
-  if (!trimmed) throw new Error("Comment can't be empty.");
+  const normalized = normalizeCommentForStorage(body);
+  if (!normalized) throw new Error("Comment can't be empty.");
   const { data: row, error: rErr } = await supabase
     .from("mark_comments")
     .select("author_user_id, type")
@@ -39,7 +41,7 @@ export async function updateMarkCommentAction(
     throw new Error("Only text comments can be edited.");
   const { error } = await supabase
     .from("mark_comments")
-    .update({ body: trimmed })
+    .update({ body: normalized })
     .eq("id", commentId);
   if (error) throw error;
   revalidateWorkspaceViews();

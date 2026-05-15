@@ -16,6 +16,7 @@ interface LabelPickerProps {
   disabled?: boolean;
   ariaLabel?: string;
   className?: string;
+  variant?: "boxed" | "inline";
 }
 
 const MAX_OPTIONS = 6;
@@ -29,6 +30,7 @@ export function LabelPicker({
   disabled,
   ariaLabel = "Labels",
   className,
+  variant = "boxed",
 }: LabelPickerProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -110,18 +112,26 @@ export function LabelPicker({
       ref={containerRef}
       onBlur={handleBlur}
       className={cn(
-        "rounded-lg border border-rule bg-paper transition-colors focus-within:border-mark/40",
+        variant === "inline"
+          ? "rounded-md border border-transparent bg-transparent transition-colors hover:bg-paper-2 focus-within:border-mark/30 focus-within:bg-paper-2 focus-within:ring-2 focus-within:ring-mark/20"
+          : "rounded-lg border border-rule bg-paper transition-colors focus-within:border-mark/40",
         className,
       )}
     >
       <div
-        className="flex flex-wrap items-center gap-1.5 px-2 py-1.5"
+        className={cn(
+          "flex flex-wrap items-center gap-1.5",
+          variant === "inline" ? "min-h-11 px-1.5 py-1 sm:min-h-8" : "px-2 py-1.5",
+        )}
         onClick={() => inputRef.current?.focus()}
       >
         {selectedLabels.map((label) => (
           <span
             key={label.id}
-            className="inline-flex max-w-[16rem] items-center gap-0.5 rounded-md bg-paper-3 py-0.5 pl-2 pr-0.5 text-[0.6875rem] font-medium text-ink"
+            className={cn(
+              "inline-flex max-w-[16rem] items-center gap-0.5 rounded-md py-0.5 pl-2 pr-0.5 text-[0.6875rem] font-medium text-ink",
+              variant === "inline" ? "bg-paper-2" : "bg-paper-3",
+            )}
           >
             <span className="truncate" title={label.name}>{label.name}</span>
             <button
@@ -130,7 +140,7 @@ export function LabelPicker({
                 e.stopPropagation();
                 remove(label.id);
               }}
-              className="shrink-0 rounded-sm p-0.5 text-ink-3 transition-colors hover:bg-paper hover:text-mark"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-paper hover:text-mark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
               aria-label={`Remove ${label.name}`}
               disabled={disabled}
             >
@@ -152,12 +162,16 @@ export function LabelPicker({
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-expanded={showOptions}
-          className="min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-[0.8125rem] text-ink placeholder:text-ink-3 focus:outline-none"
+          className="min-h-9 min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-[0.8125rem] text-ink placeholder:text-ink-3 focus:outline-none sm:min-h-6"
         />
       </div>
 
       {showOptions ? (
-        <div id={listboxId} role="listbox" className="border-t border-rule p-1">
+        <div
+          id={listboxId}
+          role="listbox"
+          className={cn("p-1", variant === "boxed" && "border-t border-rule")}
+        >
           {filteredOptions.slice(0, MAX_OPTIONS).map((label, i) => {
             const isFirst = i === 0;
             const showEnter = isFirst && normalizedQuery.length > 0 && !canCreate;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MessageCircle, Pencil, Trash2, X } from "lucide-react";
-import { useReducer, useRef, useState } from "react";
+import { useReducer, useState } from "react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,11 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
 import { useCollabStore } from "@/lib/collab-store";
 import { formatDateTime, formatRelative } from "@/lib/dates";
+import {
+  MARK_COMMENT_MAX_LENGTH,
+  markDescriptionPlainText,
+  normalizeCommentForStorage,
+} from "@/lib/mark-description";
 import {
   useAddCommentsMutation,
   useDeleteCommentMutation,
@@ -29,9 +33,8 @@ import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/clie
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 import { getMarkUploadUrlAction } from "@/lib/workspace/actions";
 
-import { MentionPopover } from "./mention-popover";
-import { MentionRender } from "./mention-render";
-import { useMentionPicker } from "./use-mention-picker";
+import { MarkDescriptionEditor } from "./mark-description-editor";
+import { MarkDescriptionRead } from "./mark-description-read";
 
 type ComposerState = {
   text: string;
@@ -71,32 +74,35 @@ interface CommentThreadProps {
 
 export function CommentThread({ pin, comments, membersById }: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
-  const members = useCollabStore((s) => s.workspace.members);
-  const displayNamePreference = useCollabStore((s) => s.profile.displayNamePreference);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const { text, image, submitting } = state;
-  const composerRef = useRef<HTMLTextAreaElement>(null);
-  const mention = useMentionPicker({
-    setText: (value) => dispatch({ type: "set_text", value }),
-    members,
-    textareaRef: composerRef,
-  });
+  const hasText = Boolean(markDescriptionPlainText(text));
 
   async function handleSubmit() {
-    if (!text.trim() && !image) return;
+    if (!hasText && !image) return;
     if (submitting) return;
     dispatch({ type: "start_submit" });
     try {
       const next: PinComment[] = [];
-      if (text.trim()) {
+      let body = "";
+      if (hasText) {
+        try {
+          body = normalizeCommentForStorage(text);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Comment is invalid.");
+          dispatch({ type: "stop_submit" });
+          return;
+        }
+      }
+      if (body) {
         next.push({
           id: `c_${Date.now()}_txt`,
           pinId: pin.id,
           authorId: userId || "unknown",
           createdAt: new Date().toISOString(),
           type: "text",
-          body: text.trim(),
+          body,
         });
       }
       if (image) {
@@ -155,39 +161,16 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
         <label htmlFor="comment-composer" className="sr-only">
           Add a comment
         </label>
-        <div className="relative">
-          <Textarea
+        <div>
+          <MarkDescriptionEditor
             id="comment-composer"
-            ref={composerRef}
             value={text}
-            onChange={(e) => {
-              dispatch({ type: "set_text", value: e.target.value });
-              mention.refresh();
-            }}
-            onSelect={() => mention.refresh()}
-            onKeyDown={(e) => {
-              if (mention.handleKeyDown(e)) return;
-            }}
-            onBlur={(e) => {
-              if (e.relatedTarget && e.currentTarget.parentElement?.contains(e.relatedTarget)) {
-                return;
-              }
-              mention.refresh();
-            }}
-            placeholder="Leave a comment, type @ to mention a teammate"
-            maxLength={2000}
+            onChange={(value) => dispatch({ type: "set_text", value })}
+            placeholder="Leave a comment… Type / for formatting"
+            maxLength={MARK_COMMENT_MAX_LENGTH}
             disabled={submitting}
-            className="min-h-[88px] bg-paper text-[1rem] sm:min-h-[56px] sm:text-[0.8125rem]"
+            minHeightClassName="min-h-[88px] sm:min-h-[56px]"
           />
-          {mention.open ? (
-            <MentionPopover
-              members={mention.filteredMembers}
-              activeIndex={mention.activeIndex}
-              displayNamePreference={displayNamePreference}
-              onSelect={mention.selectMember}
-              onActiveIndexChange={mention.setActiveIndex}
-            />
-          ) : null}
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <Input
@@ -202,7 +185,7 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
             size="sm"
             onClick={handleSubmit}
             loading={submitting}
-            disabled={!text.trim() && !image}
+            disabled={!hasText && !image}
             loadingText="Sending..."
             className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
           >
@@ -222,7 +205,6 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, author, isOwn }: CommentItemProps) {
-  const members = useCollabStore((s) => s.workspace.members);
   const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
@@ -231,18 +213,21 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body ?? "");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const editRef = useRef<HTMLTextAreaElement>(null);
-  const editMention = useMentionPicker({
-    setText: setDraft,
-    members,
-    textareaRef: editRef,
-  });
+  const draftHasText = Boolean(markDescriptionPlainText(draft));
+  const draftChanged = draft.trim() !== (comment.body ?? "").trim();
 
   async function handleSave() {
-    const trimmed = draft.trim();
-    if (!trimmed || trimmed === comment.body || isSaving) return;
+    if (!draftHasText || !draftChanged || isSaving) return;
     try {
-      await updateComment({ commentId: comment.id, body: trimmed });
+      let body: string;
+      try {
+        body = normalizeCommentForStorage(draft);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Comment is invalid.");
+        return;
+      }
+      if (!body || body === comment.body) return;
+      await updateComment({ commentId: comment.id, body });
       setEditing(false);
     } catch {
       // toast handled by the mutation
@@ -317,7 +302,6 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           <div
             className="space-y-2"
             onKeyDown={(e) => {
-              if (editMention.open) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 setEditing(false);
@@ -328,31 +312,16 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
               }
             }}
           >
-            <div className="relative">
-              <Textarea
-                ref={editRef}
+            <div>
+              <MarkDescriptionEditor
                 value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  editMention.refresh();
-                }}
-                onSelect={() => editMention.refresh()}
-                onKeyDown={(e) => {
-                  if (editMention.handleKeyDown(e)) return;
-                }}
-                maxLength={2000}
+                onChange={setDraft}
+                placeholder="Edit comment… Type / for formatting"
+                maxLength={MARK_COMMENT_MAX_LENGTH}
+                minHeightClassName="min-h-[60px]"
+                disabled={isSaving}
                 autoFocus
-                className="min-h-[60px] bg-paper text-[0.8125rem]"
               />
-              {editMention.open ? (
-                <MentionPopover
-                  members={editMention.filteredMembers}
-                  activeIndex={editMention.activeIndex}
-                  displayNamePreference={namePref}
-                  onSelect={editMention.selectMember}
-                  onActiveIndexChange={editMention.setActiveIndex}
-                />
-              ) : null}
             </div>
             <div className="flex items-center justify-end gap-1.5">
               <Button
@@ -374,7 +343,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 size="sm"
                 onClick={handleSave}
                 loading={isSaving}
-                disabled={!draft.trim() || draft.trim() === comment.body}
+                disabled={!draftHasText || !draftChanged}
                 loadingText="Saving…"
                 className="h-7 px-2 text-[0.75rem]"
               >
@@ -384,11 +353,9 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
             </div>
           </div>
         ) : comment.type === "text" ? (
-          <MentionRender
-            body={comment.body ?? ""}
-            members={members}
-            displayNamePreference={namePref}
-            className="break-words text-[0.8125rem] leading-relaxed text-ink"
+          <MarkDescriptionRead
+            html={comment.body ?? ""}
+            className="max-w-none break-words text-[0.8125rem] leading-relaxed text-ink"
           />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">

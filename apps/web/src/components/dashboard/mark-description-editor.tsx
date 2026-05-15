@@ -22,7 +22,9 @@ interface MarkDescriptionEditorProps {
   placeholder?: string;
   className?: string;
   minHeightClassName?: string;
+  maxLength?: number;
   disabled?: boolean;
+  autoFocus?: boolean;
 }
 
 export function MarkDescriptionEditor({
@@ -32,7 +34,9 @@ export function MarkDescriptionEditor({
   placeholder = "Add detail… Type / for formatting",
   className,
   minHeightClassName = "min-h-[120px]",
+  maxLength = MARK_DESCRIPTION_MAX_LENGTH,
   disabled = false,
+  autoFocus = false,
 }: MarkDescriptionEditorProps) {
   const lastEmitted = useRef(value);
   const slashMountParentRef = useRef<HTMLDivElement>(null);
@@ -57,7 +61,7 @@ export function MarkDescriptionEditor({
         }),
         Placeholder.configure({ placeholder }),
         CharacterCount.configure({
-          limit: MARK_DESCRIPTION_MAX_LENGTH,
+          limit: maxLength,
           mode: "textSize",
         }),
         // Host getters run when the slash menu opens (Tiptap), not during React render.
@@ -69,6 +73,7 @@ export function MarkDescriptionEditor({
       ],
       content: storedDescriptionToEditorHtml(value),
       editable: !disabled,
+      autofocus: autoFocus,
       editorProps: {
         attributes: {
           id: id ?? "",
@@ -91,7 +96,7 @@ export function MarkDescriptionEditor({
         onChange(draft);
       },
     },
-    [placeholder, minHeightClassName],
+    [placeholder, minHeightClassName, maxLength, autoFocus],
   );
 
   useEffect(() => {
@@ -145,7 +150,7 @@ export function MarkDescriptionEditor({
       </div>
       <div className="flex justify-end border-t border-rule px-2 py-1">
         <span className="tabular-nums text-[0.6875rem] text-ink-3">
-          {chars} / {MARK_DESCRIPTION_MAX_LENGTH}
+          {chars} / {maxLength}
         </span>
       </div>
     </div>

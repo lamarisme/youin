@@ -37,6 +37,40 @@ async function workspaceIdForUser(userId: string): Promise<string | null> {
   return data.workspace_id as string
 }
 
+async function ensureDefaultProjectId(
+  workspaceId: string
+): Promise<{ projectId?: string; error?: string }> {
+  const supabase = getSupabase()
+  const { data: existing, error: readErr } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (readErr) return { error: readErr.message }
+  if (existing?.id) return { projectId: existing.id as string }
+
+  const { data: created, error: createErr } = await supabase
+    .from("projects")
+    .insert({ workspace_id: workspaceId, name: "General", description: "" })
+    .select("id")
+    .single()
+  if (created?.id) return { projectId: created.id as string }
+  if (createErr) {
+    const { data: retry, error: retryErr } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (retry?.id) return { projectId: retry.id as string }
+    return { error: retryErr?.message ?? createErr.message }
+  }
+  return { error: "Failed to create project." }
+}
+
 export interface SyncWorkspaceResult {
   ok: boolean
   error?: string
@@ -58,6 +92,10 @@ export async function syncWorkspaceFromRemote(
         "No workspace found for this user. Use the web app once to finish setup.",
       spaceCount: 0
     }
+  }
+  const project = await ensureDefaultProjectId(workspaceId)
+  if (!project.projectId) {
+    return { ok: false, error: project.error, spaceCount: 0 }
   }
 
   const supabase = getSupabase()
@@ -294,6 +332,10 @@ export async function createRemoteWorkspaceSpace(
   if (!workspaceId) {
     return { ok: false, error: "No workspace for this account." }
   }
+  const project = await ensureDefaultProjectId(workspaceId)
+  if (!project.projectId) {
+    return { ok: false, error: project.error ?? "Failed to resolve project." }
+  }
 
   const supabase = getSupabase()
   const { data: existingCodes, error: codesErr } = await supabase
@@ -313,6 +355,7 @@ export async function createRemoteWorkspaceSpace(
     .from("spaces")
     .insert({
       workspace_id: workspaceId,
+      project_id: project.projectId,
       code,
       name: trimmed,
       notes: "",

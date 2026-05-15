@@ -1,6 +1,7 @@
 import DOMPurify from "isomorphic-dompurify";
 
 export const MARK_DESCRIPTION_MAX_LENGTH = 3000;
+export const MARK_COMMENT_MAX_LENGTH = 2000;
 
 const MARK_DESCRIPTION_PURIFY = {
   ALLOWED_TAGS: [
@@ -84,15 +85,30 @@ export function editorHtmlToDraft(html: string): string {
   return html;
 }
 
+function normalizeRichTextForStorage(
+  raw: string,
+  maxLength: number,
+  label: string,
+): string {
+  const sanitized = sanitizeMarkDescriptionHtml(raw.trim());
+  const plain = markDescriptionPlainText(sanitized);
+  if (!plain) return "";
+  if (plain.length > maxLength) {
+    throw new Error(`${label} must be ${maxLength} characters or fewer.`);
+  }
+  return sanitized;
+}
+
 /**
  * Sanitize and drop empty descriptions. Enforce character limit on plain-text length.
  */
 export function normalizeDescriptionForStorage(raw: string): string {
-  const sanitized = sanitizeMarkDescriptionHtml(raw.trim());
-  const plain = markDescriptionPlainText(sanitized);
-  if (!plain) return "";
-  if (plain.length > MARK_DESCRIPTION_MAX_LENGTH) {
-    throw new Error(`Description must be ${MARK_DESCRIPTION_MAX_LENGTH} characters or fewer.`);
-  }
-  return sanitized;
+  return normalizeRichTextForStorage(raw, MARK_DESCRIPTION_MAX_LENGTH, "Description");
+}
+
+/**
+ * Sanitize and drop empty rich-text comments. Supports legacy plain-text comments.
+ */
+export function normalizeCommentForStorage(raw: string): string {
+  return normalizeRichTextForStorage(raw, MARK_COMMENT_MAX_LENGTH, "Comment");
 }

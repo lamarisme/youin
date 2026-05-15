@@ -1,12 +1,21 @@
 "use server";
 
 import type { SpacePriority } from "@/lib/collab-types";
+import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { proposeSpaceCodeFromName } from "@/lib/workspace/space-code";
 import { requireSession, revalidateWorkspaceViews } from "./session";
 import type { createClient } from "@/lib/supabase/server";
 
+export interface CreatedProject {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+}
+
 export interface CreatedSpace {
   id: string;
+  projectId: string;
   code: string;
   name: string;
   notes: string;
@@ -44,30 +53,67 @@ async function allocateSpaceCode(
   return tryReserve(`SP${salt}`) ?? `SP${salt}`.slice(0, 14);
 }
 
+export async function createProjectAction(
+  name: string,
+  description = "",
+): Promise<CreatedProject> {
+  const { supabase, workspaceId } = await requireSession();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Project name is required.");
+  const { data: project, error } = await supabase
+    .from("projects")
+    .insert({
+      workspace_id: workspaceId,
+      name: trimmed,
+      description: description.trim(),
+    })
+    .select("id, name, description, created_at")
+    .single();
+  if (error || !project) throw error ?? new Error("Could not create project.");
+  revalidateWorkspaceViews();
+  return {
+    id: project.id as string,
+    name: project.name as string,
+    description: (project.description as string | null) ?? "",
+    createdAt: project.created_at as string,
+  };
+}
+
 export async function createSpaceAction(
+  projectId: string,
   name: string,
   notes: string,
 ): Promise<CreatedSpace> {
   const { supabase, workspaceId } = await requireSession();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Space name is required.");
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (projectError) throw projectError;
+  if (!project) throw new Error("Project not found.");
   const code = await allocateSpaceCode(supabase, workspaceId, trimmed);
   const { data: sp, error } = await supabase
     .from("spaces")
     .insert({
       workspace_id: workspaceId,
+      project_id: projectId,
       code,
       name: trimmed,
-      notes: notes.trim(),
+      notes: normalizeDescriptionForStorage(notes),
       priority: "medium",
       pinned: false,
     })
-    .select("id, code, name, notes, priority, pinned, created_at")
+    .select("id, project_id, code, name, notes, priority, pinned, created_at")
     .single();
   if (error || !sp) throw error ?? new Error("Could not create space.");
   revalidateWorkspaceViews();
   return {
     id: sp.id as string,
+    projectId: sp.project_id as string,
     code: sp.code as string,
     name: sp.name as string,
     notes: (sp.notes as string) ?? "",
@@ -86,7 +132,7 @@ export async function updateSpaceAction(
     .from("spaces")
     .update({
       name: updates.name.trim(),
-      notes: updates.notes.trim(),
+      notes: normalizeDescriptionForStorage(updates.notes),
     })
     .eq("id", spaceId)
     .eq("workspace_id", workspaceId);

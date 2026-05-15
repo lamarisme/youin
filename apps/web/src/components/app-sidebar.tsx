@@ -2,10 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
+  Check,
   ChevronRight,
+  ChevronsUpDown,
   Inbox as InboxIcon,
   Layers,
   LayoutGrid,
@@ -14,17 +16,26 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
   Sun,
   User,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +49,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Field } from "@/components/field";
+import { Input } from "@/components/ui/input";
 import { useCollabStore } from "@/lib/collab-store";
+import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
@@ -73,6 +87,7 @@ export function AppSidebar() {
   const tCommon = useTranslations("common");
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
@@ -123,22 +138,18 @@ export function AppSidebar() {
     >
       {/* Header */}
       <div className={cn("mb-3 space-y-3 lg:mb-4", collapsed && "lg:space-y-2")}>
-        <div className="flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            className={cn(
-              "flex items-center gap-2 px-1 shrink-0",
-              collapsed && "lg:hidden",
-            )}
-            aria-label={tSide("homeAria")}
-          >
-            <span className="pin-dot shrink-0">Y</span>
-            {!collapsed && (
-              <span className="hidden text-[0.9375rem] font-semibold text-ink lg:inline">
-                youin
-              </span>
-            )}
-          </Link>
+        <div
+          className={cn(
+            "flex items-center justify-between gap-2",
+            collapsed && "lg:flex-col lg:justify-start",
+          )}
+        >
+          <ProjectSwitcher
+            collapsed={collapsed}
+            pathname={pathname}
+            searchParams={searchParams}
+            onNavigate={(href) => router.push(href)}
+          />
 
           {/* Desktop: collapse toggle */}
           <button
@@ -437,6 +448,283 @@ export function AppSidebar() {
         )}
       </div>
     </aside>
+  );
+}
+
+function ProjectSwitcher({
+  collapsed,
+  pathname,
+  searchParams,
+  onNavigate,
+}: {
+  collapsed: boolean;
+  pathname: string;
+  searchParams: { get: (name: string) => string | null; toString: () => string };
+  onNavigate: (href: string) => void;
+}) {
+  const { projects, spaces, pins, workspaceName } = useCollabStore(
+    useShallow((s) => ({
+      workspaceName: s.workspace.name,
+      projects: s.workspace.projects,
+      spaces: s.workspace.spaces,
+      pins: s.workspace.pins,
+    })),
+  );
+  const { mutateAsync: createProject, isPending: isCreating } =
+    useCreateProjectMutation();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const spaceById = useMemo(
+    () => new Map(spaces.map((space) => [space.id, space])),
+    [spaces],
+  );
+  const projectStats = useMemo(() => {
+    const map = new Map<string, { spaces: number; marks: number }>();
+    for (const project of projects) map.set(project.id, { spaces: 0, marks: 0 });
+    for (const space of spaces) {
+      const stats = map.get(space.projectId);
+      if (stats) stats.spaces += 1;
+    }
+    for (const pin of pins) {
+      const projectId = spaceById.get(pin.spaceId)?.projectId;
+      const stats = projectId ? map.get(projectId) : null;
+      if (stats) stats.marks += 1;
+    }
+    return map;
+  }, [pins, projects, spaceById, spaces]);
+
+  const urlProjectId = searchParams.get("project");
+  const urlSpaceId = searchParams.get("space");
+  const selectedFromProject = projects.find((project) => project.id === urlProjectId);
+  const selectedFromSpace = urlSpaceId
+    ? projects.find((project) => project.id === spaceById.get(urlSpaceId)?.projectId)
+    : null;
+  const selectedProject = selectedFromProject ?? selectedFromSpace ?? null;
+  const selectedProjectId = selectedProject?.id ?? "all";
+  const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
+  const switcherLabel = selectedProject?.name ?? "All projects";
+  const switcherMeta = selectedProject
+    ? `${selectedStats?.spaces ?? 0} spaces · ${selectedStats?.marks ?? 0} marks`
+    : `${projects.length} projects · ${spaces.length} spaces`;
+
+  function hrefForProject(projectId: string): string {
+    const params = new URLSearchParams(searchParams.toString());
+    if (projectId === "all") params.delete("project");
+    else params.set("project", projectId);
+    params.delete("space");
+    params.delete("mark");
+    params.delete("page");
+
+    const base = pathname.startsWith("/spaces") || pathname.startsWith("/dashboard")
+      ? pathname
+      : "/dashboard";
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  }
+
+  function selectProject(projectId: string) {
+    onNavigate(hrefForProject(projectId));
+  }
+
+  async function handleCreateProject() {
+    if (!name.trim() || isCreating) return;
+    setError(null);
+    try {
+      const project = await createProject({
+        name,
+        description,
+      });
+      setName("");
+      setDescription("");
+      setCreateOpen(false);
+      onNavigate(`/spaces?project=${encodeURIComponent(project.id)}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't create this project.");
+    }
+  }
+
+  return (
+    <div className={cn("min-w-0 flex-1", collapsed && "lg:flex-none")}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label="Switch project"
+            className={cn(
+              "group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors",
+              "hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              "lg:min-h-10",
+              collapsed && "lg:size-8 lg:min-h-0 lg:justify-center lg:px-0 lg:py-0",
+            )}
+          >
+            <span
+              className={cn(
+                "pin-dot !size-7 shrink-0 !text-[0.5625rem] transition-transform group-hover:scale-[1.03]",
+                collapsed && "lg:size-8",
+              )}
+              aria-hidden
+            >
+              Y
+            </span>
+            <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
+              <span className="block truncate text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3">
+                Project
+              </span>
+              <span className="block truncate text-[0.8125rem] font-semibold leading-tight text-ink">
+                {switcherLabel}
+              </span>
+            </span>
+            <ChevronsUpDown
+              className={cn(
+                "size-3.5 shrink-0 text-ink-3 transition-colors group-hover:text-ink-2",
+                collapsed && "lg:hidden",
+              )}
+            />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          side={collapsed ? "right" : "bottom"}
+          className="w-64"
+        >
+          <DropdownMenuLabel>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate">{workspaceName || "Workspace"}</span>
+              <span className="truncate font-normal text-muted-foreground">
+                {switcherMeta}
+              </span>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => selectProject("all")}>
+            <Check
+              className={cn(
+                "size-4",
+                selectedProjectId === "all" ? "opacity-100" : "opacity-0",
+              )}
+            />
+            <div className="min-w-0">
+              <p className="truncate">All projects</p>
+              <p className="text-[0.6875rem] text-muted-foreground">
+                {spaces.length} spaces · {pins.length} marks
+              </p>
+            </div>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {projects.map((project) => {
+            const stats = projectStats.get(project.id);
+            return (
+              <DropdownMenuItem
+                key={project.id}
+                onClick={() => selectProject(project.id)}
+              >
+                <Check
+                  className={cn(
+                    "size-4",
+                    selectedProjectId === project.id ? "opacity-100" : "opacity-0",
+                  )}
+                />
+                <div className="min-w-0">
+                  <p className="truncate">{project.name}</p>
+                  <p className="text-[0.6875rem] text-muted-foreground">
+                    {stats?.spaces ?? 0} spaces · {stats?.marks ?? 0} marks
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={(event) => {
+              event.preventDefault();
+              setCreateOpen(true);
+            }}
+          >
+            <Plus className="size-4" />
+            New project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            setName("");
+            setDescription("");
+            setError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New project</DialogTitle>
+            <DialogDescription>
+              Group spaces for one client, release, product area, or review stream.
+            </DialogDescription>
+          </DialogHeader>
+          <div
+            className="grid gap-4"
+            onKeyDown={(event) => {
+              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                event.preventDefault();
+                void handleCreateProject();
+              }
+            }}
+          >
+            <Field id="sidebar-project-name" label="Name">
+              <Input
+                id="sidebar-project-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Website QA"
+                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                autoFocus
+              />
+            </Field>
+            <Field id="sidebar-project-description" label="Description">
+              <Input
+                id="sidebar-project-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="What this project is collecting"
+                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+              />
+            </Field>
+            {error ? (
+              <p
+                role="alert"
+                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
+              >
+                {error}
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setCreateOpen(false)}
+                disabled={isCreating}
+                className="h-11 sm:h-9"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreateProject}
+                disabled={!name.trim() || isCreating}
+                className="h-11 sm:h-9"
+              >
+                {isCreating ? "Creating..." : "Create"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
 

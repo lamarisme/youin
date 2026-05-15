@@ -1,11 +1,20 @@
 "use client";
 
+import type { ReactNode } from "react";
+import {
+  CalendarClock,
+  Code2,
+  Globe2,
+  Laptop,
+  Monitor,
+  PanelTop,
+} from "lucide-react";
+
 import type { PinItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
 
 import { shortMarkLabel } from "./format-mark-event";
-import { formatMarkPageLabel, formatMarkPageOrigin } from "./mark-page-label";
-import { MarkPageOpenButton } from "./mark-page-open";
+import { formatMarkPageOrigin } from "./mark-page-label";
 
 interface MarkDetailCaptureProps {
   pin: PinItem;
@@ -13,7 +22,6 @@ interface MarkDetailCaptureProps {
 
 export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
   const cap = pin.capture;
-  const pageLabel = formatMarkPageLabel(pin.page);
   const pageOrigin = formatMarkPageOrigin(pin.page);
 
   return (
@@ -23,14 +31,9 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
           <span className="pin-dot !size-5 !text-[8px]">
             {shortMarkLabel(pin.displayKey)}
           </span>
-          <span className="min-w-0 flex-1 truncate font-mono text-[0.6875rem] text-ink-3" title={pin.page}>
-            {pageLabel}
+          <span className="min-w-0 flex-1 truncate text-[0.75rem] font-medium text-ink-2">
+            Capture
           </span>
-          <MarkPageOpenButton
-            page={pin.page}
-            appearance="icon"
-            className="size-8 shrink-0 border-transparent bg-transparent hover:bg-paper-3"
-          />
         </div>
         <div className="relative bg-paper px-3 py-3">
           {cap?.screenshotUrl ? (
@@ -59,14 +62,43 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
       </div>
 
       {cap ? (
-        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem] text-ink-3">
-          {pageOrigin ? <MetaCell label="Origin" value={pageOrigin} /> : null}
-          <MetaCell label="Selector" value={cap.selector ?? "None"} mono />
-          <MetaCell label="Viewport" value={cap.viewport ?? "Unknown"} />
-          <MetaCell label="Browser" value={cap.browser ?? "Unknown"} />
-          {cap.os ? <MetaCell label="OS" value={cap.os} /> : null}
+        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.6875rem] text-ink-3">
+          {pageOrigin ? (
+            <MetaCell
+              label="Origin"
+              value={pageOrigin}
+              icon={<Globe2 className="size-3" aria-hidden />}
+            />
+          ) : null}
+          <MetaCell
+            label="Selector"
+            value={cap.selector ?? "None"}
+            icon={<Code2 className="size-3" aria-hidden />}
+            mono
+          />
+          <MetaCell
+            label="Viewport"
+            value={cap.viewport ?? "Unknown"}
+            icon={<Monitor className="size-3" aria-hidden />}
+          />
+          <MetaCell
+            label="Browser"
+            value={cap.browser ?? "Unknown"}
+            icon={<PanelTop className="size-3" aria-hidden />}
+          />
+          {cap.os ? (
+            <MetaCell
+              label="OS"
+              value={cap.os}
+              icon={<Laptop className="size-3" aria-hidden />}
+            />
+          ) : null}
           {cap.capturedAt ? (
-            <MetaCell label="Captured" value={formatDateTime(cap.capturedAt)} />
+            <MetaCell
+              label="Captured"
+              value={formatDateTime(cap.capturedAt)}
+              icon={<CalendarClock className="size-3" aria-hidden />}
+            />
           ) : null}
         </dl>
       ) : null}
@@ -78,19 +110,31 @@ function MetaCell({
   label,
   value,
   title,
+  icon,
   mono,
 }: {
   label: string;
   value: string;
   title?: string;
+  icon: ReactNode;
   mono?: boolean;
 }) {
   return (
-    <div className="inline-flex min-w-0 items-baseline gap-1.5">
-      <dt className="shrink-0 font-medium text-ink-3">{label}</dt>
+    <div className="inline-flex min-w-0 items-center gap-1.5">
+      <dt
+        className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-ink-3"
+        title={label}
+      >
+        <span className="sr-only">{label}</span>
+        {icon}
+      </dt>
       <dd
         title={title ?? value}
-        className={mono ? "max-w-[18rem] truncate font-mono text-[0.6875rem] text-ink-2" : "max-w-[18rem] truncate text-ink-2"}
+        className={
+          mono
+            ? "max-w-[18rem] truncate font-mono text-[0.6875rem] text-ink-2"
+            : "max-w-[18rem] truncate text-ink-2"
+        }
       >
         {value}
       </dd>

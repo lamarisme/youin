@@ -23,6 +23,7 @@ interface FilterSelectProps<TValue extends string = string> {
   triggerClassName?: string;
   placeholder?: string;
   size?: "sm" | "md";
+  variant?: "boxed" | "inline";
 }
 
 export function FilterSelect<TValue extends string = string>({
@@ -34,6 +35,7 @@ export function FilterSelect<TValue extends string = string>({
   triggerClassName,
   placeholder,
   size = "sm",
+  variant = "boxed",
 }: FilterSelectProps<TValue>) {
   return (
     <Select value={value} onValueChange={(v) => onValueChange(v as TValue)}>
@@ -43,7 +45,9 @@ export function FilterSelect<TValue extends string = string>({
           size === "sm"
             ? "h-11 text-[0.9375rem] sm:h-8 sm:text-[0.8125rem]"
             : "h-11 text-[0.9375rem] sm:h-10 sm:text-[0.875rem]",
-          "bg-paper text-ink",
+          variant === "inline"
+            ? "border-transparent bg-transparent px-1.5 text-ink shadow-none hover:bg-paper-2 focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
+            : "bg-paper text-ink",
           triggerClassName,
           className,
         )}

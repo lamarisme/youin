@@ -10,7 +10,10 @@ import {
 } from "@youin/domain";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { normalizeDescriptionForStorage } from "@/lib/mark-description";
+import {
+  normalizeCommentForStorage,
+  normalizeDescriptionForStorage,
+} from "@/lib/mark-description";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
   isValidMarkPageUrl,
@@ -210,18 +213,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const comments = Array.isArray(input.comments)
-    ? input.comments
-        .map((item) =>
-          item && typeof item === "object"
-            ? asString((item as ExtensionMarkCommentInput).body)
-                .trim()
-                .slice(0, 4000)
-            : "",
-        )
-        .filter(Boolean)
-        .slice(0, 20)
-    : [];
+  let comments: string[] = [];
+  try {
+    comments = Array.isArray(input.comments)
+      ? input.comments
+          .map((item) =>
+            item && typeof item === "object"
+              ? normalizeCommentForStorage(
+                  asString((item as ExtensionMarkCommentInput).body)
+                    .trim()
+                    .slice(0, 4000),
+                )
+              : "",
+          )
+          .filter(Boolean)
+          .slice(0, 20)
+      : [];
+  } catch (e) {
+    return jsonError(e instanceof Error ? e.message : "Comment is invalid.", 400);
+  }
 
   let warning: string | undefined;
   if (comments.length) {
@@ -287,7 +297,14 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     if (statusError) return jsonError(statusError.message, 400);
   }
 
-  const commentBody = asString(input.commentBody).trim().slice(0, 4000);
+  let commentBody = "";
+  try {
+    commentBody = normalizeCommentForStorage(
+      asString(input.commentBody).trim().slice(0, 4000),
+    );
+  } catch (e) {
+    return jsonError(e instanceof Error ? e.message : "Comment is invalid.", 400);
+  }
   if (commentBody) {
     const { error: commentError } = await supabase
       .from("mark_comments")

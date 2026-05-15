@@ -80,6 +80,7 @@ AS $$
 DECLARE
   v_user_id uuid := auth.uid();
   v_workspace_id uuid;
+  v_project_id uuid;
   v_invite_email text;
   v_space_code text;
   v_resolved_username text;
@@ -128,6 +129,10 @@ BEGIN
     left(v_resolved_username, 48)
   );
 
+  INSERT INTO public.projects (workspace_id, name, description)
+  VALUES (v_workspace_id, 'General', '')
+  RETURNING id INTO v_project_id;
+
   v_space_code :=
     upper(substring(
       regexp_replace(
@@ -143,9 +148,10 @@ BEGIN
     v_space_code := 'GN';
   END IF;
 
-  INSERT INTO public.spaces (workspace_id, code, name, notes, priority, pinned)
+  INSERT INTO public.spaces (workspace_id, project_id, code, name, notes, priority, pinned)
   VALUES (
     v_workspace_id,
+    v_project_id,
     v_space_code,
     COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
     COALESCE(p_space_notes, ''),

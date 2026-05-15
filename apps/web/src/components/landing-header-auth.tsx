@@ -7,7 +7,7 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { ChromeCtaButton } from "@/components/landing-buttons";
+import { LandingPrimaryButton } from "@/components/landing-buttons";
 
 function useIsSignedIn() {
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -41,7 +41,7 @@ export function LandingHeaderAuth() {
 
   if (isSignedIn) {
     return (
-      <Button asChild size="sm" className="h-9 px-3.5 text-[0.8125rem]">
+      <Button asChild size="sm" className="min-h-11 px-3.5 text-[0.8125rem]">
         <Link href="/dashboard?space=all" className="inline-flex items-center gap-2">
           {t("openDashboard")}
           <ArrowRight className="size-3.5" />
@@ -54,11 +54,13 @@ export function LandingHeaderAuth() {
     <>
       <Link
         href="/login"
-        className="-mx-1 -my-1.5 hidden px-1 py-1.5 text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:inline-flex sm:items-center"
+        className="-mx-1 hidden min-h-11 px-1 text-[0.8125rem] font-medium text-ink-2 hover:text-ink sm:inline-flex sm:items-center"
       >
         {t("signIn")}
       </Link>
-      <ChromeCtaButton href="#install" compact />
+      <LandingPrimaryButton href="/signup" compact>
+        {t("startTrial")}
+      </LandingPrimaryButton>
     </>
   );
 }

@@ -9,6 +9,7 @@ import type {
   SpacePriority,
   UserProfile,
   Workspace,
+  WorkspaceProject,
   WorkspaceSpace,
 } from "@/lib/collab-types";
 import * as ws from "@/lib/workspace/actions";
@@ -22,6 +23,7 @@ function emptyWorkspace(): Workspace {
   return {
     id: "",
     name: "",
+    projects: [],
     spaces: [],
     labels: [],
     members: [],
@@ -61,7 +63,8 @@ interface CollabStoreState {
   workspace: Workspace;
   profile: UserProfile;
   hydrate: (bundle: WorkspaceBootstrap) => void;
-  createSpace: (name: string, notes: string) => Promise<WorkspaceSpace>;
+  createProject: (name: string, description?: string) => Promise<WorkspaceProject>;
+  createSpace: (projectId: string, name: string, notes: string) => Promise<WorkspaceSpace>;
   updateSpace: (
     spaceId: string,
     updates: Pick<WorkspaceSpace, "name" | "notes">,
@@ -109,10 +112,24 @@ export const useCollabStore = create<CollabStoreState>()((set, get) => ({
   // Spaces
   // -----------------------------------------------------------------------
 
-  createSpace: async (name, notes) => {
-    const created = await ws.createSpaceAction(name, notes);
+  createProject: async (name, description = "") => {
+    const created = await ws.createProjectAction(name, description);
+    const project: WorkspaceProject = {
+      id: created.id,
+      name: created.name,
+      description: created.description,
+      createdAt: created.createdAt,
+    };
+    const { workspace } = get();
+    set({ workspace: { ...workspace, projects: [...workspace.projects, project] } });
+    return project;
+  },
+
+  createSpace: async (projectId, name, notes) => {
+    const created = await ws.createSpaceAction(projectId, name, notes);
     const space: WorkspaceSpace = {
       id: created.id,
+      projectId: created.projectId,
       code: created.code,
       name: created.name,
       notes: created.notes,

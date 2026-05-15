@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { NextIntlClientProvider } from "next-intl";
@@ -13,18 +13,6 @@ import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const figtree = Figtree({
-  variable: "--font-figtree",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
 });
@@ -49,7 +37,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bricolage.variable} ${figtree.variable} ${geistMono.variable} h-full`}
+      className={`${bricolage.variable} h-full`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <NextIntlClientProvider messages={messages}>

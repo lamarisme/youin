@@ -6,7 +6,7 @@ import type { DashboardFilters } from "./use-dashboard-filters";
 
 export type SavedViewFilters = Pick<
   DashboardFilters,
-  "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
+  "projectId" | "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 export interface SavedView {
@@ -29,14 +29,31 @@ function parseViews(raw: string | null): SavedView[] {
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return EMPTY_VIEWS;
-    const valid = parsed.filter(
-      (v): v is SavedView =>
+    const valid = parsed
+      .filter(
+        (v): v is SavedView =>
         typeof v === "object" &&
         v !== null &&
         typeof (v as SavedView).id === "string" &&
         typeof (v as SavedView).name === "string" &&
         typeof (v as SavedView).filters === "object",
-    );
+      )
+      .map((view) => ({
+        ...view,
+        filters: {
+          projectId:
+            typeof view.filters.projectId === "string"
+              ? view.filters.projectId
+              : "all",
+          status: view.filters.status,
+          priority: view.filters.priority,
+          pinned: view.filters.pinned,
+          label: view.filters.label,
+          assignee: view.filters.assignee,
+          q: view.filters.q,
+          sort: view.filters.sort,
+        },
+      }));
     return valid.length === 0 ? EMPTY_VIEWS : valid;
   } catch {
     return EMPTY_VIEWS;
@@ -55,6 +72,7 @@ function writeStorage(workspaceId: string, views: SavedView[]): void {
 
 export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
   return {
+    projectId: filters.projectId,
     status: filters.status,
     priority: filters.priority,
     pinned: filters.pinned,
@@ -68,6 +86,7 @@ export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
 export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
   return (
     snapshot.status === "all" &&
+    snapshot.projectId === "all" &&
     snapshot.priority === "all" &&
     snapshot.pinned === "all" &&
     snapshot.label === "all" &&
@@ -80,6 +99,7 @@ export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
 export function describeFilters(snapshot: SavedViewFilters): string {
   const parts: string[] = [];
   if (snapshot.status !== "all") parts.push(snapshot.status);
+  if (snapshot.projectId !== "all") parts.push("project");
   if (snapshot.priority !== "all") parts.push(snapshot.priority);
   if (snapshot.pinned !== "all") parts.push(snapshot.pinned === "pinned" ? "pinned" : "unpinned");
   if (snapshot.assignee === "me") parts.push("mine");

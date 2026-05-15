@@ -16,7 +16,11 @@ module.exports = {
         "mark-bright": "var(--yi-mark-bright)",
         "mark-soft": "var(--yi-mark-soft)",
         ok: "var(--yi-ok)",
-        "ok-soft": "var(--yi-ok-soft)"
+        "ok-soft": "var(--yi-ok-soft)",
+        warn: "var(--yi-warn)",
+        "warn-soft": "var(--yi-warn-soft)",
+        info: "var(--yi-info)",
+        "info-soft": "var(--yi-info-soft)"
       },
       fontFamily: {
         sans: [
@@ -38,11 +42,11 @@ module.exports = {
       },
       boxShadow: {
         "widget-fab":
-          "0 2px 8px -2px oklch(0% 0 0 / 0.18), 0 8px 24px -8px oklch(52% 0.19 25 / 0.45), inset 0 0 0 2px oklch(100% 0 0 / 0.4)",
+          "0 2px 8px -2px oklch(17.5% 0.014 255 / 0.18), 0 8px 24px -8px oklch(54% 0.2 25 / 0.45), inset 0 0 0 2px oklch(98.4% 0.003 255 / 0.4)",
         "widget-panel":
-          "0 1px 2px oklch(0% 0 0 / 0.04), 0 12px 32px -8px oklch(0% 0 0 / 0.18)",
+          "0 1px 2px oklch(17.5% 0.014 255 / 0.04), 0 12px 32px -8px oklch(17.5% 0.014 255 / 0.18)",
         "widget-review":
-          "0 4px 16px -4px oklch(0% 0 0 / 0.18)"
+          "0 4px 16px -4px oklch(17.5% 0.014 255 / 0.18)"
       }
     }
   },

@@ -89,6 +89,7 @@ export interface PinItem {
 
 export interface WorkspaceSpace {
   id: string;
+  projectId: string;
   /** Uppercase short key; marks in this space use `CODE-seq` display ids. */
   code: string;
   name: string;
@@ -96,6 +97,13 @@ export interface WorkspaceSpace {
   createdAt: string;
   priority: SpacePriority;
   pinned: boolean;
+}
+
+export interface WorkspaceProject {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
 }
 
 export interface WorkspaceLabel {
@@ -107,6 +115,7 @@ export interface WorkspaceLabel {
 export interface Workspace {
   id: string;
   name: string;
+  projects: WorkspaceProject[];
   spaces: WorkspaceSpace[];
   labels: WorkspaceLabel[];
   members: TeamMember[];

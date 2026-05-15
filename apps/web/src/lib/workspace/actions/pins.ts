@@ -31,6 +31,14 @@ export async function createPinAction(input: {
   if (!isValidMarkPageUrl(pageNormalized)) {
     throw new Error(BAD_PAGE);
   }
+  const { data: space, error: spaceError } = await supabase
+    .from("spaces")
+    .select("id")
+    .eq("id", input.spaceId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (spaceError) throw spaceError;
+  if (!space) throw new Error("Space not found.");
   const { data: mk, error } = await supabase
     .from("marks")
     .insert({
@@ -99,7 +107,17 @@ export async function updatePinFieldsAction(
     }
     patch.page = normalized;
   }
-  if (typeof updates.spaceId === "string") patch.space_id = updates.spaceId;
+  if (typeof updates.spaceId === "string") {
+    const { data: space, error: spaceError } = await supabase
+      .from("spaces")
+      .select("id")
+      .eq("id", updates.spaceId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+    if (spaceError) throw spaceError;
+    if (!space) throw new Error("Space not found.");
+    patch.space_id = updates.spaceId;
+  }
   if (!Object.keys(patch).length) return;
   const { error } = await supabase
     .from("marks")

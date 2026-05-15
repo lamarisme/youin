@@ -2,14 +2,15 @@ import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
 import Link from "next/link";
+import { Check } from "lucide-react";
 
 export async function AuthShellLayout({ children }: { children: ReactNode }) {
   const t = await getTranslations("authShell");
 
   return (
     <div className="min-h-screen bg-paper">
-      <div className="shell flex min-h-screen flex-col page-y">
-        <header className="mb-8 flex items-center justify-between">
+      <div className="shell flex min-h-screen flex-col py-4">
+        <header className="mb-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
             <span className="pin-dot">Y</span>
             <span className="font-display text-lg font-semibold text-ink">youin</span>
@@ -19,7 +20,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
         <div className="h-px bg-rule" />
 
-        <main className="grid flex-1 items-center gap-12 py-8 md:grid-cols-[1.12fr_1fr] md:gap-16 md:py-12">
+        <main className="grid flex-1 items-center gap-6 py-4 md:grid-cols-[1.12fr_1fr] md:gap-12 md:py-6">
           <section className="section-block order-2 md:order-1">
             <div>
               <p className="text-eyebrow mb-2">{t("eyebrow")}</p>
@@ -28,15 +29,15 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
             <p className="max-w-[46ch] text-[0.9375rem] leading-relaxed text-ink-2">{t("lead")}</p>
 
-            <div className="max-w-[32rem] overflow-hidden rounded-lg border border-rule">
-              <div className="grid grid-cols-3 gap-px bg-rule">
-                <Stat label={t("statTeams")} value="236" />
-                <Stat label={t("statMarksPerDay")} value="12.4k" />
-                <Stat label={t("statMedianTriage")} value="11m" />
+            <div className="max-w-[34rem] rounded-lg border border-rule bg-paper-2 p-2.5">
+              <div className="grid gap-2 sm:grid-cols-3">
+                <BetaPoint label={t("betaFree")} />
+                <BetaPoint label={t("betaNoCard")} />
+                <BetaPoint label={t("betaSetup")} />
               </div>
             </div>
 
-            <ul className="space-y-1.5 text-[0.8125rem] leading-relaxed text-ink-2">
+            <ul className="space-y-1 text-[0.8125rem] leading-relaxed text-ink-2">
               <li>{t("bullet1")}</li>
               <li>{t("bullet2")}</li>
               <li>{t("bullet3")}</li>
@@ -52,11 +53,13 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function BetaPoint({ label }: { label: string }) {
   return (
-    <div className="bg-paper-2 px-4 py-3.5">
-      <p className="text-eyebrow">{label}</p>
-      <p className="mt-1.5 font-display text-xl font-semibold text-ink">{value}</p>
+    <div className="flex items-center gap-2 rounded-md bg-paper px-3 py-2 text-[0.8125rem] font-medium text-ink">
+      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok">
+        <Check className="size-3" aria-hidden />
+      </span>
+      <span>{label}</span>
     </div>
   );
 }

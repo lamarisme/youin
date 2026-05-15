@@ -130,7 +130,7 @@ export function TeamTab() {
               Used in @mentions and to assign marks. Letters, numbers, and underscores only, and unique here.
             </p>
             <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1">
+              <div className="relative flex-1 rounded-md transition-colors hover:bg-paper-2 focus-within:bg-paper-2">
                 <span
                   className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[0.8125rem] text-ink-3"
                   aria-hidden
@@ -150,7 +150,7 @@ export function TeamTab() {
                   maxLength={32}
                   aria-invalid={Boolean(usernameFieldError) || undefined}
                   aria-describedby={usernameFieldError ? "workspace-username-error" : undefined}
-                  className="h-11 bg-paper pl-7 font-mono text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                  className="h-11 rounded-none border-transparent bg-transparent pl-7 font-mono text-[0.9375rem] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
                 />
               </div>
               <SubmitButton
@@ -164,7 +164,7 @@ export function TeamTab() {
                 }
                 onClick={() => void handleSaveUsername()}
                 loadingText="Saving…"
-                className="h-11 shrink-0 sm:h-9 sm:px-4"
+                className="h-11 shrink-0 sm:h-9 sm:px-3"
               >
                 Save
               </SubmitButton>
@@ -203,7 +203,7 @@ export function TeamTab() {
               aria-describedby={
                 inviteFieldError || inviteError ? "invite-email-error" : undefined
               }
-              className="h-11 flex-1 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-[0.9375rem] shadow-none hover:bg-paper-2 focus-visible:border-transparent focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
               onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
             />
             <SubmitButton

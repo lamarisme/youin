@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   CircleDashed,
   Edit3,
+  FolderKanban,
   MessageCircle,
   Plus,
   Trash2,
@@ -39,10 +40,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
+import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { formatDate, formatDateShort } from "@/lib/dates";
+import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import {
   useCreatePinMutation,
   useDeletePinMutation,
@@ -81,6 +84,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
   const statsMap = useSpaceStats(workspace);
   const stats = statsMap.get(space.id);
+  const project = workspace.projects.find((p) => p.id === space.projectId) ?? null;
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
   const namePref = useCollabStore((s) => s.profile.displayNamePreference);
@@ -117,11 +121,18 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
   async function saveEdit() {
     if (isSavingEdit || !editName.trim()) return;
+    let notes: string;
+    try {
+      notes = normalizeDescriptionForStorage(editNotes);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Description is invalid.");
+      return;
+    }
     try {
       await updateSpace({
         spaceId: space.id,
         name: editName,
-        notes: editNotes,
+        notes,
       });
       setEditing(false);
     } catch {
@@ -242,10 +253,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 <h1 className="break-words text-lg font-semibold leading-tight text-ink sm:text-xl">
                   {space.name}
                 </h1>
-                {space.notes ? (
-                  <p className="mt-1 max-w-[58ch] break-words text-[0.8125rem] leading-snug text-ink-2">
-                    {space.notes}
+                {project ? (
+                  <p className="mt-1 text-[0.75rem] font-medium text-ink-3">
+                    {project.name}
                   </p>
+                ) : null}
+                {space.notes ? (
+                  <MarkDescriptionRead
+                    html={space.notes}
+                    className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2"
+                  />
                 ) : null}
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <PriorityBadge priority={space.priority} />
@@ -399,6 +416,13 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               <p className="text-eyebrow mb-2">Details</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-[0.8125rem]">
+                  <FolderKanban className="size-3.5 text-ink-3" />
+                  <span className="text-ink-2">Project</span>
+                  <span className="ml-auto min-w-0 truncate font-medium text-ink">
+                    {project?.name ?? "Project"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[0.8125rem]">
                   <CalendarDays className="size-3.5 text-ink-3" />
                   <span className="text-ink-2">Created</span>
                   <span className="ml-auto font-medium text-ink">
@@ -479,12 +503,13 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               />
             </Field>
             <Field id="space-edit-notes" label="Description">
-              <Textarea
+              <MarkDescriptionEditor
                 id="space-edit-notes"
                 value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                placeholder="What this space covers"
-                className="min-h-[80px] bg-paper text-[0.8125rem]"
+                onChange={setEditNotes}
+                placeholder="What this space covers… Type / for formatting"
+                minHeightClassName="min-h-[80px]"
+                disabled={isSavingEdit}
               />
             </Field>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

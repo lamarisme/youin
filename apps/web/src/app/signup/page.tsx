@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useState, useMemo, Suspense } from "react";
-import { ArrowLeft, ArrowRight, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 
 import { Field } from "@/components/field";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -12,34 +12,26 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
   {
-    eyebrow: "Identity",
-    title: "Set up your account",
-    subtitle: "Use a work email so teammates can find you when they invite reviewers.",
+    eyebrow: "Access",
+    title: "Start with your email",
+    subtitle: "Use the address your team will recognize. Google works too, after you accept the beta terms.",
+  },
+  {
+    eyebrow: "Profile",
+    title: "Set your profile",
+    subtitle: "This is what teammates and reviewers see beside your marks and comments.",
   },
   {
     eyebrow: "Workspace",
-    title: "Name your workspace",
-    subtitle: "This is where reviews land. You can rename or add more later.",
-  },
-  {
-    eyebrow: "Team",
-    title: "Invite your reviewers",
-    subtitle: "Optional. Anyone you add will join as a member when they sign up.",
-  },
-  {
-    eyebrow: "Defaults",
-    title: "Choose your triage stance",
-    subtitle: "How you want the dashboard to behave on day one. Tune later.",
+    title: "Name the workspace",
+    subtitle: "Create the place where your first review tasks will land.",
   },
 ] as const;
-
-const TOTAL_STEPS = STEPS.length;
 
 function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
   if (!pw) return 0;
@@ -50,12 +42,27 @@ function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
   return Math.min(score, 3) as 0 | 1 | 2 | 3;
 }
 
-function emailInitials(email: string): string {
-  const local = email.split("@")[0] ?? "";
-  if (!local) return "?";
-  const parts = local.split(/[._-]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return local.slice(0, 2).toUpperCase();
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">
+      <path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+    </svg>
+  );
 }
 
 export default function SignUpPage() {
@@ -77,20 +84,15 @@ function SignUpPageContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(inviteEmail ?? "");
   const [username, setUsername] = useState("");
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [workspaceName, setWorkspaceName] = useState("");
   const [firstSpaceName, setFirstSpaceName] = useState("");
-  const [workspaceGoal, setWorkspaceGoal] = useState("");
-
-  const [inviteInput, setInviteInput] = useState("");
-  const [invites, setInvites] = useState<string[]>([]);
-
-  const [digestEnabled, setDigestEnabled] = useState(true);
-  const [showAllMarksByDefault, setShowAllMarksByDefault] = useState(true);
-  const [autoPinCritical, setAutoPinCritical] = useState(true);
+  const [workspaceNameTouched, setWorkspaceNameTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -104,16 +106,16 @@ function SignUpPageContent() {
       : null;
   const passwordFieldError =
     password.length > 0 && password.length < 8 ? "Must be at least 8 characters." : null;
-  const canContinueStep1 =
-    name.trim().length > 1 &&
-    emailIsValid &&
-    password.length >= 8 &&
-    agreedToTerms &&
-    username.trim().length >= 2;
-  const canContinueStep2 = workspaceName.trim().length > 1 && firstSpaceName.trim().length > 1;
-  const strength = passwordStrength(password);
-  const canInvite = EMAIL_RE.test(inviteInput.trim());
   const isInvited = Boolean(inviteToken);
+  const visibleSteps = isInvited ? STEPS.slice(0, 2) : STEPS;
+  const totalSteps = visibleSteps.length;
+  const canContinueAccess = emailIsValid && agreedToTerms;
+  const canContinueProfile =
+    name.trim().length > 1 &&
+    password.length >= 8 &&
+    username.trim().length >= 2;
+  const canContinueWorkspace = workspaceName.trim().length > 1;
+  const strength = passwordStrength(password);
 
   function generateUsernameFromEmail(emailStr: string): string {
     const local = emailStr.split("@")[0] ?? "";
@@ -125,27 +127,29 @@ function SignUpPageContent() {
       .slice(0, 32) || "member";
   }
 
-  function addInvite() {
-    const candidate = inviteInput.trim();
-    if (!candidate.includes("@") || !candidate.includes(".")) return;
-    if (invites.includes(candidate)) return;
-    setInvites((prev) => [...prev, candidate]);
-    setInviteInput("");
+  function workspaceNameFromEmail(emailStr: string): string {
+    const domain = emailStr.split("@")[1]?.split(".")[0] ?? "";
+    if (!domain || ["gmail", "icloud", "outlook", "hotmail", "yahoo", "proton"].includes(domain)) {
+      return "My workspace";
+    }
+    return `${domain.charAt(0).toUpperCase()}${domain.slice(1)} workspace`;
   }
 
-  function removeInvite(emailToRemove: string) {
-    setInvites((prev) => prev.filter((e) => e !== emailToRemove));
+  function handleEmailChange(value: string) {
+    setEmail(value);
+    if (!usernameTouched) {
+      setUsername(generateUsernameFromEmail(value));
+    }
+    if (!workspaceNameTouched && EMAIL_RE.test(value.trim())) {
+      setWorkspaceName(workspaceNameFromEmail(value.trim()));
+    }
   }
 
   function continueStep() {
-    if (step === 0 && !canContinueStep1) return;
-    if (step === 1 && !canContinueStep2) return;
-    // If invited, skip workspace creation and team steps
-    if (isInvited && step === 0) {
-      setStep(3); // Jump to Defaults
-      return;
-    }
-    setStep((prev) => Math.min(TOTAL_STEPS - 1, prev + 1));
+    if (step === 0 && !canContinueAccess) return;
+    if (step === 1 && !canContinueProfile) return;
+    if (step === 2 && !canContinueWorkspace) return;
+    setStep((prev) => Math.min(totalSteps - 1, prev + 1));
   }
 
   function goBack() {
@@ -170,14 +174,9 @@ function SignUpPageContent() {
             workspace_name: isInvited ? undefined : workspaceName.trim(),
             workspace_username: username.trim().toLowerCase(),
             invite_token: inviteToken,
-            first_space_name: isInvited ? undefined : firstSpaceName.trim(),
-            workspace_goal: isInvited ? undefined : workspaceGoal.trim(),
-            teammate_invites: isInvited ? [] : invites,
-            defaults: {
-              digest_enabled: digestEnabled,
-              show_all_marks_by_default: showAllMarksByDefault,
-              auto_pin_critical: autoPinCritical,
-            },
+            first_space_name: isInvited ? undefined : firstSpaceName.trim() || "General",
+            workspace_goal: undefined,
+            teammate_invites: [],
           },
         },
       });
@@ -198,30 +197,54 @@ function SignUpPageContent() {
     }
   }
 
-  const current = STEPS[step];
-  const isLastStep = step === TOTAL_STEPS - 1 || (isInvited && step === 0);
+  async function handleGoogleSignUp() {
+    setError(null);
+    setSuccessMessage(null);
+    setOauthLoading(true);
+    try {
+      const supabase = createClient();
+      const redirectTo = new URL("/auth/callback", window.location.origin);
+      redirectTo.searchParams.set("next", "/dashboard?space=all");
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectTo.toString(),
+        },
+      });
+      if (oauthError) {
+        setError(oauthError.message);
+      }
+    } finally {
+      setOauthLoading(false);
+    }
+  }
+
+  const current = visibleSteps[step];
+  const isLastStep = step === totalSteps - 1;
   const canAdvance =
-    (step === 0 && canContinueStep1) ||
-    (step === 1 && canContinueStep2) ||
-    step >= 2 ||
-    (isInvited && step === 0);
+    (step === 0 && canContinueAccess) ||
+    (step === 1 && canContinueProfile) ||
+    (step === 2 && canContinueWorkspace);
 
   return (
     <div className="space-y-5">
       {/* Panel ─────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-rule bg-paper-2 p-6 shadow-[0_24px_60px_-40px_oklch(20%_0.02_50_/_0.5)] sm:p-8">
+      <div className="rounded-lg border border-rule bg-paper-2 p-4 shadow-[0_24px_60px_-40px_oklch(17.5%_0.014_255_/_0.45)]">
         {/* Stepper */}
-        <StepIndicator current={step} total={TOTAL_STEPS} steps={STEPS} />
+        <StepIndicator current={step} total={totalSteps} steps={visibleSteps} />
 
         {/* Header */}
-        <header className="mt-6">
-          <p className="text-eyebrow">
-            Step {String(step + 1).padStart(2, "0")} of {String(TOTAL_STEPS).padStart(2, "0")} · {current.eyebrow}
-          </p>
-          <h1 className="mt-2 font-display text-[1.625rem] font-semibold leading-[1.05] tracking-[-0.025em] text-ink sm:text-[1.875rem]">
+        <header className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-eyebrow">{current.eyebrow}</p>
+            <span className="rounded-full border border-info/25 bg-info-soft px-2 py-0.5 text-[0.6875rem] font-medium text-info">
+              Free beta
+            </span>
+          </div>
+          <h1 className="mt-2 text-[1.25rem] font-semibold leading-tight text-ink sm:text-[1.5rem]">
             {current.title}
           </h1>
-          <p className="mt-2 max-w-[44ch] text-[0.875rem] leading-relaxed text-ink-2">
+          <p className="mt-1.5 max-w-[44ch] text-[0.8125rem] leading-relaxed text-ink-2">
             {current.subtitle}
           </p>
         </header>
@@ -237,87 +260,42 @@ function SignUpPageContent() {
           }}
         >
           {step === 0 ? (
-            <fieldset className="space-y-5">
-              <legend className="sr-only">Identity</legend>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="name" label="Full name">
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Mira Klein"
-                    autoComplete="name"
-                    className="h-10 bg-paper text-[0.875rem]"
-                    autoFocus
-                  />
-                </Field>
-                <Field id="email" label="Work email" error={emailFieldError}>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@agency.com"
-                    autoComplete="email"
-                    aria-invalid={Boolean(emailFieldError) || undefined}
-                    aria-describedby={emailFieldError ? "email-error" : undefined}
-                    className="h-10 bg-paper text-[0.875rem]"
-                  />
-                </Field>
-              </div>
+            <fieldset className="space-y-4">
+              <legend className="sr-only">Access</legend>
+              {!isInvited ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 w-full bg-paper"
+                    onClick={handleGoogleSignUp}
+                    disabled={oauthLoading || loading || !agreedToTerms}
+                  >
+                    {oauthLoading ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
+                    Continue with Google
+                  </Button>
 
-              <Field
-                id="password"
-                label="Password"
-                error={passwordFieldError}
-                hint={
-                  <PasswordStrength score={strength} />
-                }
-              >
-                <PasswordInput
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  autoComplete="new-password"
-                  aria-invalid={Boolean(passwordFieldError) || undefined}
-                  aria-describedby={passwordFieldError ? "password-error" : undefined}
+                  <div className="flex items-center gap-3">
+                    <span className="h-px flex-1 bg-rule" aria-hidden />
+                    <span className="text-[0.6875rem] text-ink-3">or use email</span>
+                    <span className="h-px flex-1 bg-rule" aria-hidden />
+                  </div>
+                </>
+              ) : null}
+
+              <Field id="email" label="Work email" error={emailFieldError}>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => handleEmailChange(e.target.value)}
+                  placeholder="you@agency.com"
+                  autoComplete="email"
+                  aria-invalid={Boolean(emailFieldError) || undefined}
+                  aria-describedby={emailFieldError ? "email-error" : undefined}
                   className="h-10 bg-paper text-[0.875rem]"
+                  autoFocus
                 />
-              </Field>
-
-              <Field
-                id="username"
-                label="Workspace username"
-                error={usernameFieldError}
-                hint={
-                  <p className="text-[0.6875rem] text-ink-3">
-                    Unique within your workspace. Lowercase letters, numbers, and underscores.
-                  </p>
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[0.875rem] text-ink-3">@</span>
-                  <Input
-                    id="username"
-                    value={username}
-                    onChange={(e) => {
-                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
-                      setUsername(val);
-                    }}
-                    onBlur={() => {
-                      if (!username && emailIsValid) {
-                        setUsername(generateUsernameFromEmail(email));
-                      }
-                    }}
-                    placeholder={emailIsValid ? generateUsernameFromEmail(email) : "mira"}
-                    autoComplete="username"
-                    maxLength={32}
-                    aria-invalid={Boolean(usernameFieldError) || undefined}
-                    aria-describedby={usernameFieldError ? "username-error" : undefined}
-                    className="h-10 bg-paper text-[0.875rem]"
-                  />
-                </div>
               </Field>
 
               <label
@@ -346,13 +324,79 @@ function SignUpPageContent() {
           ) : null}
 
           {step === 1 ? (
-            <fieldset className="space-y-6">
+            <fieldset className="space-y-4">
+              <legend className="sr-only">Profile</legend>
+              <Field id="name" label="Full name">
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Mira Klein"
+                  autoComplete="name"
+                  className="h-10 bg-paper text-[0.875rem]"
+                  autoFocus
+                />
+              </Field>
+
+              <Field
+                id="username"
+                label="Workspace username"
+                error={usernameFieldError}
+                hint={
+                  <p className="text-[0.6875rem] text-ink-3">
+                    Lowercase letters, numbers, and underscores.
+                  </p>
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-[0.875rem] text-ink-3">@</span>
+                  <Input
+                    id="username"
+                    value={username}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+                      setUsernameTouched(true);
+                      setUsername(val);
+                    }}
+                    placeholder={emailIsValid ? generateUsernameFromEmail(email) : "mira"}
+                    autoComplete="username"
+                    maxLength={32}
+                    aria-invalid={Boolean(usernameFieldError) || undefined}
+                    aria-describedby={usernameFieldError ? "username-error" : undefined}
+                    className="h-10 bg-paper text-[0.875rem]"
+                  />
+                </div>
+              </Field>
+
+              <Field
+                id="password"
+                label="Password"
+                error={passwordFieldError}
+                hint={
+                  <PasswordStrength score={strength} />
+                }
+              >
+                <PasswordInput
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(passwordFieldError) || undefined}
+                  aria-describedby={passwordFieldError ? "password-error" : undefined}
+                  className="h-10 bg-paper text-[0.875rem]"
+                />
+              </Field>
+            </fieldset>
+          ) : null}
+
+          {step === 2 ? (
+            <fieldset className="space-y-4">
               <legend className="sr-only">Workspace</legend>
 
               <Field
                 id="workspace"
                 label="Workspace name"
-                hero
                 hint={
                   <p className="text-[0.6875rem] text-ink-3">
                     Visible to anyone you invite. Use your team or studio name.
@@ -362,155 +406,33 @@ function SignUpPageContent() {
                 <Input
                   id="workspace"
                   value={workspaceName}
-                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  onChange={(e) => {
+                    setWorkspaceNameTouched(true);
+                    setWorkspaceName(e.target.value);
+                  }}
                   placeholder="Acme Studio"
-                  className="h-12 bg-paper text-[1rem] font-medium"
+                  className="h-10 bg-paper text-[0.875rem] font-medium"
                   autoFocus
                 />
               </Field>
 
-              <div aria-hidden className="h-px bg-rule" />
-
-              <div className="space-y-5">
-                <Field
+              <Field
+                id="space"
+                label="First space"
+                hint={
+                  <p className="text-[0.6875rem] text-ink-3">
+                    Optional. Spaces scope reviews to a release, project, or sprint.
+                  </p>
+                }
+              >
+                <Input
                   id="space"
-                  label="First space"
-                  hint={
-                    <p className="text-[0.6875rem] text-ink-3">
-                      Spaces scope reviews to a release, project, or sprint.
-                    </p>
-                  }
-                >
-                  <Input
-                    id="space"
-                    value={firstSpaceName}
-                    onChange={(e) => setFirstSpaceName(e.target.value)}
-                    placeholder="2026.05 Release"
-                    className="h-10 bg-paper text-[0.875rem]"
-                  />
-                </Field>
-
-                <Field id="goal" label="What are you reviewing first?">
-                  <Textarea
-                    id="goal"
-                    value={workspaceGoal}
-                    onChange={(e) => setWorkspaceGoal(e.target.value)}
-                    placeholder="Landing page polish + auth QA"
-                    className="min-h-[88px] bg-paper text-[0.8125rem] leading-relaxed"
-                  />
-                </Field>
-              </div>
-            </fieldset>
-          ) : null}
-
-          {step === 2 ? (
-            <fieldset className="space-y-5">
-              <legend className="sr-only">Team</legend>
-
-              <Field id="invite" label="Add by email">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    id="invite"
-                    type="email"
-                    value={inviteInput}
-                    onChange={(e) => setInviteInput(e.target.value)}
-                    placeholder="teammate@company.com"
-                    className="h-10 bg-paper text-[0.875rem]"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        if (canInvite) addInvite();
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addInvite}
-                    disabled={!canInvite}
-                    className="h-10 shrink-0 sm:px-4"
-                  >
-                    <Plus className="size-3.5" />
-                    Add
-                  </Button>
-                </div>
+                  value={firstSpaceName}
+                  onChange={(e) => setFirstSpaceName(e.target.value)}
+                  placeholder="General"
+                  className="h-10 bg-paper text-[0.875rem]"
+                />
               </Field>
-
-              <div className="rounded-lg border border-rule bg-paper">
-                <div className="flex items-center justify-between border-b border-rule px-4 py-2.5">
-                  <p className="text-eyebrow">Pending invites</p>
-                  <span className="font-mono text-[0.6875rem] text-ink-3">
-                    {invites.length} of 10
-                  </span>
-                </div>
-
-                {invites.length === 0 ? (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-[0.8125rem] text-ink-2">No invites queued.</p>
-                    <p className="mt-0.5 text-[0.75rem] text-ink-3">
-                      Skip — you can invite anyone later from Settings → Team.
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-rule">
-                    {invites.map((inv) => (
-                      <li
-                        key={inv}
-                        className="flex items-center gap-3 px-4 py-2.5"
-                      >
-                        <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-paper-3 font-mono text-[0.6875rem] font-semibold text-ink-2">
-                          {emailInitials(inv)}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[0.8125rem] text-ink">{inv}</p>
-                          <p className="text-[0.6875rem] text-ink-3">Will receive an invite when they sign up</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeInvite(inv)}
-                          aria-label={`Remove ${inv}`}
-                          className="rounded-md p-1.5 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </fieldset>
-          ) : null}
-
-          {step === 3 ? (
-            <fieldset>
-              <legend className="sr-only">Defaults</legend>
-              <div className="rounded-lg border border-rule bg-paper">
-                <PreferenceRow
-                  id="all-marks"
-                  label="Open dashboard in 'All marks' view"
-                  description="See activity across every space when you sign in. Switch to a single space anytime."
-                  checked={showAllMarksByDefault}
-                  onChange={setShowAllMarksByDefault}
-                />
-                <PreferenceRow
-                  id="digest"
-                  label="Daily activity digest"
-                  description="One email per morning summarising new marks, comments, and resolutions."
-                  checked={digestEnabled}
-                  onChange={setDigestEnabled}
-                />
-                <PreferenceRow
-                  id="critical"
-                  label="Auto-pin critical marks"
-                  description="Marks set to 'critical' priority appear at the top of triage automatically."
-                  checked={autoPinCritical}
-                  onChange={setAutoPinCritical}
-                  isLast
-                />
-              </div>
-              <p className="mt-3 text-[0.6875rem] text-ink-3">
-                Every preference can be changed later in Settings.
-              </p>
             </fieldset>
           ) : null}
 
@@ -537,7 +459,7 @@ function SignUpPageContent() {
           ) : null}
 
           {/* Action bar */}
-          <div className="mt-7 flex items-center justify-between gap-3 border-t border-rule pt-5">
+          <div className="mt-5 flex items-center justify-between gap-3 border-t border-rule pt-3.5">
             {step > 0 ? (
               <button
                 type="button"
@@ -562,7 +484,7 @@ function SignUpPageContent() {
               loading={loading}
               className="h-10 min-w-[148px] bg-mark text-paper hover:bg-mark-bright"
             >
-              {isLastStep ? (loading ? "Creating account…" : "Finish setup") : "Continue"}
+              {isLastStep ? (loading ? "Creating account..." : "Create account") : "Continue"}
               <ArrowRight className="size-4" />
             </SubmitButton>
           </div>
@@ -570,8 +492,8 @@ function SignUpPageContent() {
       </div>
 
       {/* Footer */}
-      <p className="text-center text-[0.75rem] text-ink-3">
-        Setting up takes about 60 seconds. You can change every choice later.
+      <p className="text-center text-[0.6875rem] text-ink-3">
+        Each screen is intentionally small. Invite reviewers after you land in the app.
       </p>
     </div>
   );
@@ -591,36 +513,25 @@ function StepIndicator({
   return (
     <ol
       aria-label="Onboarding progress"
-      className="flex items-center gap-1.5"
+      className="flex items-center gap-2"
     >
       {Array.from({ length: total }).map((_, i) => {
         const state = i === current ? "current" : i < current ? "done" : "todo";
         return (
-          <li key={i} className="flex flex-1 items-center gap-1.5">
+          <li key={i} className="flex flex-1 items-center gap-2">
             <span
               aria-current={state === "current" ? "step" : undefined}
               aria-label={`Step ${i + 1}: ${steps[i].eyebrow}${state === "done" ? " (complete)" : ""}`}
               className={cn(
-                "inline-flex h-7 min-w-[2.25rem] flex-1 items-center justify-center rounded-md border font-mono text-[0.6875rem] font-semibold tabular-nums tracking-tight transition-colors",
+                "h-1.5 flex-1 rounded-full transition-colors",
                 state === "current" &&
-                  "border-mark bg-mark text-paper shadow-[0_4px_12px_-6px_oklch(52%_0.19_25_/_0.5)]",
+                  "bg-mark shadow-[0_4px_12px_-6px_oklch(54%_0.2_25_/_0.5)]",
                 state === "done" &&
-                  "border-rule bg-paper-3 text-ink-2",
+                  "bg-mark/45",
                 state === "todo" &&
-                  "border-rule bg-transparent text-ink-3",
+                  "bg-rule",
               )}
-            >
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            {i < total - 1 ? (
-              <span
-                aria-hidden
-                className={cn(
-                  "h-px w-3 shrink-0 transition-colors",
-                  i < current ? "bg-mark/45" : "bg-rule",
-                )}
-              />
-            ) : null}
+            />
           </li>
         );
       })}
@@ -661,44 +572,5 @@ function PasswordStrength({ score }: { score: 0 | 1 | 2 | 3 }) {
         {labels[score]}
       </span>
     </div>
-  );
-}
-
-function PreferenceRow({
-  id,
-  label,
-  description,
-  checked,
-  onChange,
-  isLast,
-}: {
-  id: string;
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  isLast?: boolean;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className={cn(
-        "flex cursor-pointer items-start gap-4 px-4 py-3.5 transition-colors hover:bg-paper-3",
-        !isLast && "border-b border-rule",
-      )}
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-[0.875rem] font-medium text-ink">{label}</p>
-        <p className="mt-0.5 max-w-[42ch] text-[0.75rem] leading-relaxed text-ink-2">
-          {description}
-        </p>
-      </div>
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={(value) => onChange(Boolean(value))}
-        className="mt-[3px] shrink-0"
-      />
-    </label>
   );
 }

@@ -56,6 +56,40 @@ export async function allocateSpaceCode(
   return cand
 }
 
+async function ensureDefaultProjectId(
+  workspaceId: string
+): Promise<{ projectId?: string; error?: string }> {
+  const supabase = getSupabase()
+  const { data: existing, error: readErr } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (readErr) return { error: readErr.message }
+  if (existing?.id) return { projectId: existing.id as string }
+
+  const { data: created, error: createErr } = await supabase
+    .from("projects")
+    .insert({ workspace_id: workspaceId, name: "General", description: "" })
+    .select("id")
+    .single()
+  if (created?.id) return { projectId: created.id as string }
+  if (createErr) {
+    const { data: retry, error: retryErr } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (retry?.id) return { projectId: retry.id as string }
+    return { error: retryErr?.message ?? createErr.message }
+  }
+  return { error: "Failed to create project." }
+}
+
 export async function isMigrationDoneForUser(userId: string): Promise<boolean> {
   const r = await chrome.storage.local.get(KEY_MIGRATION_DONE)
   const map = (r[KEY_MIGRATION_DONE] ?? {}) as Record<string, boolean>
@@ -120,6 +154,17 @@ export async function migrateLocalDataToWorkspace(
     }
   }
   const workspaceId = membership.workspace_id as string
+  const project = await ensureDefaultProjectId(workspaceId)
+  if (!project.projectId) {
+    return {
+      ok: false,
+      spacesCreated: 0,
+      spacesMatched: 0,
+      pinsImported: 0,
+      commentsImported: 0,
+      error: project.error ?? "Failed to resolve project."
+    }
+  }
 
   const [localSpaces, localPins] = await Promise.all([getSpaces(), getPins()])
   if (!localPins.length) {
@@ -179,6 +224,7 @@ export async function migrateLocalDataToWorkspace(
       .from("spaces")
       .insert({
         workspace_id: workspaceId,
+        project_id: project.projectId,
         code,
         name,
         notes: "",

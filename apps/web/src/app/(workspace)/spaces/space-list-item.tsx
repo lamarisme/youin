@@ -6,6 +6,7 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import type { WorkspaceSpace } from "@/lib/collab-types";
 import { formatDateShort } from "@/lib/dates";
+import { markDescriptionPlainText } from "@/lib/mark-description";
 
 import type { SpaceStats } from "./use-space-stats";
 
@@ -17,6 +18,7 @@ interface SpaceListItemProps {
 
 export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
   const pct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
+  const notesPreview = markDescriptionPlainText(space.notes);
 
   return (
     <button
@@ -52,7 +54,9 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
             {formatDateShort(space.createdAt)}
           </span>
         </div>
-        <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">{space.notes}</p>
+        {notesPreview ? (
+          <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">{notesPreview}</p>
+        ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <PriorityBadge priority={space.priority} size="sm" />
           {space.pinned ? (

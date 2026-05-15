@@ -81,6 +81,34 @@ export const workspaces = pgTable(
   (table) => [index("workspaces_name_idx").on(table.name)],
 );
 
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("projects_workspace_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("projects_workspace_created_at_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const workspaceMembers = pgTable(
   "workspace_members",
   {
@@ -120,6 +148,9 @@ export const spaces = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     /** Short uppercase key for mark display ids (e.g. WEB-42), unique per workspace. */
     code: text("code").notNull(),
     /**
@@ -140,10 +171,12 @@ export const spaces = pgTable(
   },
   (table) => [
     uniqueIndex("spaces_workspace_code_unique").on(table.workspaceId, table.code),
-    uniqueIndex("spaces_workspace_name_unique").on(
+    uniqueIndex("spaces_project_name_unique").on(
       table.workspaceId,
+      table.projectId,
       table.name,
     ),
+    index("spaces_project_created_at_idx").on(table.projectId, table.createdAt),
     index("spaces_workspace_priority_idx").on(
       table.workspaceId,
       table.priority,
@@ -364,11 +397,20 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(workspaceMembers),
+  projects: many(projects),
   spaces: many(spaces),
   marks: many(marks),
   labels: many(markLabels),
   events: many(markEvents),
   invites: many(workspaceInvites),
+}));
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [projects.workspaceId],
+    references: [workspaces.id],
+  }),
+  spaces: many(spaces),
 }));
 
 export const workspaceMembersRelations = relations(
@@ -389,6 +431,10 @@ export const spacesRelations = relations(spaces, ({ one, many }) => ({
   workspace: one(workspaces, {
     fields: [spaces.workspaceId],
     references: [workspaces.id],
+  }),
+  project: one(projects, {
+    fields: [spaces.projectId],
+    references: [projects.id],
   }),
   marks: many(marks),
 }));
@@ -478,6 +524,7 @@ export const workspaceInvitesRelations = relations(
 
 export type Profile = typeof profiles.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
+export type Project = typeof projects.$inferSelect;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Mark = typeof marks.$inferSelect;

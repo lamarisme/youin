@@ -58,7 +58,7 @@ export function OverviewTab() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               autoFocus
-              className="h-10 max-w-md bg-paper text-[0.9375rem] font-semibold"
+              className="h-8 max-w-md rounded-none border-transparent bg-transparent px-0 py-0 text-lg font-semibold leading-tight shadow-none focus-visible:border-transparent focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
                 if (e.key === "Escape") {
@@ -72,7 +72,7 @@ export function OverviewTab() {
               size="sm"
               onClick={save}
               disabled={isSaving || !draft.trim()}
-              className="h-10 px-2.5"
+              className="size-8 px-0"
               aria-label="Save workspace name"
             >
               <Check className="size-3.5" />
@@ -85,30 +85,32 @@ export function OverviewTab() {
                 setRenaming(false);
                 setDraft(workspaceName);
               }}
-              className="h-10 px-2.5"
+              className="size-8 px-0"
               aria-label="Cancel rename"
             >
               <X className="size-3.5" />
             </Button>
           </div>
         ) : (
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex items-center gap-1.5">
             <h2 className="text-lg font-semibold leading-tight text-ink">
-              {workspaceName || "Workspace"}
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRenaming(true);
+                    setDraft(workspaceName);
+                  }}
+                  className="group inline-flex max-w-full items-center gap-1.5 rounded-md text-left transition-colors hover:bg-paper-2"
+                  aria-label="Rename workspace"
+                >
+                  <span className="min-w-0 truncate text-ink">{workspaceName || "Workspace"}</span>
+                  <Edit3 className="hidden size-3.5 shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block" />
+                </button>
+              ) : (
+                <span className="text-ink">{workspaceName || "Workspace"}</span>
+              )}
             </h2>
-            {isOwner ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setRenaming(true);
-                  setDraft(workspaceName);
-                }}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink sm:min-h-8 sm:min-w-8"
-                aria-label="Rename workspace"
-              >
-                <Edit3 className="size-3.5" />
-              </button>
-            ) : null}
           </div>
         )}
 

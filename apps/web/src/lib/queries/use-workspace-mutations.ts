@@ -10,6 +10,7 @@ import type {
   PinItem,
   PinPriority,
   SpacePriority,
+  WorkspaceProject,
   WorkspaceSpace,
 } from "@/lib/collab-types";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
@@ -33,11 +34,30 @@ import type { ProfileUpdates } from "@/lib/workspace/actions";
 // Spaces
 // ---------------------------------------------------------------------------
 
+export function useCreateProjectMutation() {
+  const createProject = useCollabStore((s) => s.createProject);
+  return useMutation({
+    mutationFn: ({ name, description }: { name: string; description?: string }) =>
+      createProject(name, description),
+    onSuccess: (project: WorkspaceProject) =>
+      toast.success(`Created “${project.name}”.`),
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't create this project.")),
+  });
+}
+
 export function useCreateSpaceMutation() {
   const createSpace = useCollabStore((s) => s.createSpace);
   return useMutation({
-    mutationFn: ({ name, notes }: { name: string; notes: string }) =>
-      createSpace(name, notes),
+    mutationFn: ({
+      projectId,
+      name,
+      notes,
+    }: {
+      projectId: string;
+      name: string;
+      notes: string;
+    }) => createSpace(projectId, name, notes),
     onSuccess: (space: WorkspaceSpace) =>
       toast.success(`Created “${space.name}”.`),
     onError: (e) =>

@@ -56,6 +56,7 @@ export function TriageView() {
   function applySavedView(snapshot: SavedViewFilters) {
     update(
       {
+        projectId: snapshot.projectId,
         status: snapshot.status,
         priority: snapshot.priority,
         pinned: snapshot.pinned,
@@ -75,7 +76,20 @@ export function TriageView() {
     return workspace.spaces.find((s) => s.id === filters.spaceId) ?? null;
   }, [filters.spaceId, workspace.spaces]);
 
-  const newMarkTargetSpace = selectedSpace ?? workspace.spaces[0];
+  const projectSpaces = useMemo(
+    () =>
+      filters.projectId === "all"
+        ? workspace.spaces
+        : workspace.spaces.filter((space) => space.projectId === filters.projectId),
+    [filters.projectId, workspace.spaces],
+  );
+
+  const selectedProject = useMemo(() => {
+    if (filters.projectId === "all") return null;
+    return workspace.projects.find((project) => project.id === filters.projectId) ?? null;
+  }, [filters.projectId, workspace.projects]);
+
+  const newMarkTargetSpace = selectedSpace ?? projectSpaces[0] ?? workspace.spaces[0];
 
   const visiblePins = useVisibleDashboardPins();
 
@@ -86,6 +100,7 @@ export function TriageView() {
   const allSelectedClosed = selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
 
   const filtersActive =
+    filters.projectId !== "all" ||
     filters.status !== "all" ||
     filters.priority !== "all" ||
     filters.pinned !== "all" ||
@@ -95,7 +110,16 @@ export function TriageView() {
 
   function clearFilters() {
     update(
-      { status: "all", priority: "all", pinned: "all", label: "all", assignee: "all", q: null },
+      {
+        projectId: "all",
+        spaceId: "all",
+        status: "all",
+        priority: "all",
+        pinned: "all",
+        label: "all",
+        assignee: "all",
+        q: null,
+      },
       { resetPage: true },
     );
   }
@@ -115,12 +139,34 @@ export function TriageView() {
     return counts;
   }, [workspace.comments]);
 
-  const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
+  const projectOptions: ReadonlyArray<FilterOption> = useMemo(
     () => [
-      { value: "all", label: "All spaces" },
-      ...workspace.spaces.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` })),
+      { value: "all", label: "All projects" },
+      ...workspace.projects.map((project) => ({
+        value: project.id,
+        label: project.name,
+      })),
     ],
-    [workspace.spaces],
+    [workspace.projects],
+  );
+
+  const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
+    () => {
+      const projectById = new Map(workspace.projects.map((p) => [p.id, p.name]));
+      return [
+        { value: "all", label: "All spaces" },
+        ...projectSpaces.map((s) => {
+          const projectName = projectById.get(s.projectId);
+          return {
+            value: s.id,
+            label: projectName
+              ? `${projectName} / ${s.code} · ${s.name}`
+              : `${s.code} · ${s.name}`,
+          };
+        }),
+      ];
+    },
+    [projectSpaces, workspace.projects],
   );
 
   /** Receives the full new selection set from MarkTable. */
@@ -183,7 +229,7 @@ export function TriageView() {
     priority: PinPriority;
     assigneeId: string | null;
   }) {
-    const targetSpace = selectedSpace ?? workspace.spaces[0];
+    const targetSpace = selectedSpace ?? projectSpaces[0] ?? workspace.spaces[0];
     if (!targetSpace) {
       toast.error("Create a space before adding marks.");
       return;
@@ -210,6 +256,18 @@ export function TriageView() {
       <AppHeader title="Triage" />
 
       <FadeIn className="flex flex-wrap items-center gap-2">
+        <FilterSelect
+          value={filters.projectId}
+          onValueChange={(v) =>
+            update(
+              { projectId: v, spaceId: "all", markId: null },
+              { resetPage: true },
+            )
+          }
+          options={projectOptions}
+          ariaLabel="Select project"
+          triggerClassName="h-11 w-[min(100vw-2rem,190px)] sm:h-9"
+        />
         <FilterSelect
           value={filters.spaceId}
           onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
@@ -252,7 +310,9 @@ export function TriageView() {
             <DialogDescription>
               {newMarkTargetSpace
                 ? `Will be added to ${newMarkTargetSpace.name}.`
-                : "Create a space first to add marks."}
+                : selectedProject
+                  ? `Create a space in ${selectedProject.name} first.`
+                  : "Create a space first to add marks."}
             </DialogDescription>
           </DialogHeader>
           <NewMarkForm

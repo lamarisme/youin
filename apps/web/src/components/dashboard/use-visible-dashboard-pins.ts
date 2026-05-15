@@ -10,13 +10,19 @@ import { useDashboardFilters } from "./use-dashboard-filters";
 /** Pins visible under the current dashboard URL filters (space, status, priority, pinned, label, assignee). */
 export function useVisibleDashboardPins() {
   const pins = useCollabStore((s) => s.workspace.pins);
+  const spaces = useCollabStore((s) => s.workspace.spaces);
   const userId = useCollabStore((s) => s.userId);
   const { filters } = useDashboardFilters();
 
   return useMemo(
-    () =>
-      filterPinsByDashboardFilters(
-        pins,
+    () => {
+      const spaceProjectById = new Map(spaces.map((space) => [space.id, space.projectId]));
+      const projectPins =
+        filters.projectId === "all"
+          ? pins
+          : pins.filter((pin) => spaceProjectById.get(pin.spaceId) === filters.projectId);
+      return filterPinsByDashboardFilters(
+        projectPins,
         {
           spaceId: filters.spaceId,
           status: filters.status,
@@ -28,10 +34,13 @@ export function useVisibleDashboardPins() {
           sort: filters.sort,
         },
         { viewerId: userId },
-      ),
+      );
+    },
     [
       pins,
+      spaces,
       userId,
+      filters.projectId,
       filters.spaceId,
       filters.status,
       filters.priority,

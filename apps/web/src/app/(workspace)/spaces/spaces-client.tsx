@@ -14,6 +14,7 @@ import { SpacesListView } from "./spaces-list-view";
 
 function SpacesClientContent() {
   const spaces = useCollabStore((s) => s.workspace.spaces);
+  const projects = useCollabStore((s) => s.workspace.projects);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -23,6 +24,12 @@ function SpacesClientContent() {
     if (!id) return null;
     return spaces.find((s) => s.id === id) ?? null;
   }, [searchParams, spaces]);
+
+  const selectedProjectId = useMemo(() => {
+    const id = searchParams.get("project");
+    if (!id) return "all";
+    return projects.some((project) => project.id === id) ? id : "all";
+  }, [projects, searchParams]);
 
   const updateSpacesUrl = useCallback(
     (nextSpaceId: string | null) => {
@@ -35,12 +42,28 @@ function SpacesClientContent() {
     [router, pathname, searchParams],
   );
 
+  const updateProjectUrl = useCallback(
+    (nextProjectId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextProjectId && nextProjectId !== "all") params.set("project", nextProjectId);
+      else params.delete("project");
+      params.delete("space");
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname);
+    },
+    [router, pathname, searchParams],
+  );
+
   return (
     <PageContainer className="space-y-5">
       {selectedSpace ? (
         <SpaceDetailView space={selectedSpace} onBack={() => updateSpacesUrl(null)} />
       ) : (
-        <SpacesListView onSelectSpace={(id) => updateSpacesUrl(id)} />
+        <SpacesListView
+          selectedProjectId={selectedProjectId}
+          onSelectProject={updateProjectUrl}
+          onSelectSpace={(id) => updateSpacesUrl(id)}
+        />
       )}
     </PageContainer>
   );

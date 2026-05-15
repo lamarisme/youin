@@ -1,171 +1,217 @@
-# YouIn — Business Plan Reference
+# YouIn — Spatial Backlog Business Plan
 
-A visual annotation and project management layer that lives directly on your web app. Click any element, write what needs to change, ship it.
+YouIn turns a web app into a spatial backlog: every bug, comment, and task is anchored to the real UI element, kept in context across deployments, and synced with the team's development workflow.
 
-> "Your to-do list lives on your app, not in a spreadsheet."
+> "Your product backlog, pinned to your actual UI."
+
+## The sharper category
+
+YouIn is not "visual feedback for websites." That market is already mature, with tools like Marker.io, BugHerd, Usersnap, Userback, Ruttl, Pastel, MarkUp.io, Atarim, and Feedbucket covering screenshots, pinned comments, browser metadata, and PM integrations.
+
+The stronger category is:
+
+**Spatial backlog for web apps.**
+
+This makes the product feel closer to Linear or Jira mapped onto the live interface, not another client feedback widget. The job is not only to collect comments. The job is to make UI work live where the work exists.
+
+## Core promise
+
+1. **Turn any UI element into a task**
+   - Click a button, card, modal, table row, or empty state.
+   - Capture URL, selector, viewport, browser metadata, screenshot, and discussion.
+   - Create a task without asking the reviewer to write a perfect ticket.
+2. **Keep work attached to the product**
+   - Tasks remain visible on the live interface.
+   - Anchors use selector, viewport, and screenshot fallbacks.
+   - Stale or moved annotations become explicit product state, not hidden confusion.
+3. **Sync with the dev workflow**
+   - Send ready issues to Linear first, then Jira and GitHub as later integrations.
+   - Keep status, comments, and resolution connected so developers can stay in their tracker while reviewers stay on the product.
 
 ## The problem
 
-1. **Spatial todos live in flat lists**
-   - The work happens on the UI. The todos live in Notion, Linear, or Jira — abstracted into rows and tags.
-   - "Fix the spacing on the pricing card" is spatial information forced into prose.
+1. **UI work is spatial, but backlogs are flat**
+   - "Fix the spacing on the pricing CTA" is location-based work forced into prose.
+   - Screenshots go stale as soon as the product changes.
 2. **Feedback chains lose context**
-   - Designers and PMs screenshot, annotate in Figma or Cleanshot, paste into Slack, write context a dev still misunderstands.
-   - 5-step chain for a 5-second observation.
-3. **Bug tools are built for QA, not design review or self-iteration**
-   - Jam.dev is excellent for "something is broken." Wrong format for "this spacing feels off" or "the empty state needs a second pass."
-4. **Nothing owns the live UI annotation layer**
-   - Figma owns design files. Jam owns bug videos. Linear owns task lists.
-   - The moment someone looks at the live app and reacts, that space is empty.
-
-## Core product — annotate where the work lives
-
-1. **Two ways in**
-   - **Chrome extension** for client review, designer/PM workflow, and any-URL annotation.
-   - **npm dev dependency** for the developer's own dev/staging environment — no extension required, the inspect mode runs in the app itself.
-2. **DOM-anchored annotations**
-   - Click any element, leave an annotation with what needs changing and why.
-   - Three-anchor resilience system so annotations survive deploys:
-     1. CSS selector
-     2. Viewport position fallback
-     3. html2canvas screenshot as last resort
-3. **Namespaces**
-   - Group annotations by context: "Sprint 1," "Bugs," "Redesign," "Client review — Acme."
-   - Activate a namespace, see only its annotations overlaid on the page.
-   - Archive when done.
-4. **Auto-context capture**
-   - Every annotation attaches: console state, viewport size, browser version, element selector, screenshot.
-5. **One-click ticket**
-   - AI reads annotation + context, writes the GitHub / Linear / Jira issue.
-   - Title, repro steps, environment, expected vs actual.
-6. **Resolve in place**
-   - Mark resolved when the annotated element is fixed. Track progress on the page itself.
+   - Teams move from app to screenshot to Slack to Linear, then back to the app.
+   - Each handoff drops the selected element, viewport, page state, and original intent.
+3. **Client and stakeholder feedback is low quality by default**
+   - Clients say "this button" because they are looking at the button.
+   - Developers receive a detached sentence and have to reconstruct the moment.
+4. **Existing tools frame the category as feedback collection**
+   - That is useful, but it makes YouIn sound like a BugHerd or Marker.io clone.
+   - The wedge is broader and sharper: product work mapped onto the product itself.
 
 ## Target market
 
-- **Primary:** Solo devs and indie product teams who think spatially about their app
-  - Use the npm dev dep on their own staging. Annotation = todo list with location.
-- **Primary:** Product teams replacing scattered Slack/Linear feedback loops
-  - 3–15 person teams shipping a web product. Designers, PMs, and devs all annotate the same surface.
-- **Secondary:** Agencies collecting client feedback
-  - 5–50 person teams, multiple client projects. Chrome extension + guest links.
-- **Ideal user:** Anyone who can see something is off but shouldn't have to write a ticket about it
-  - Designer, PM, client, or the dev themselves at 11pm before sleep.
+### Primary wedge: web agencies
+
+Agencies feel the pain financially. Messy client feedback creates meetings, rework, and trust issues. They also pay for tools that make reviews more professional.
+
+- 5-50 person agencies building websites and web apps for clients.
+- Need guest review links, client workspaces, status visibility, and predictable pricing.
+- Main promise: client feedback without screenshots, Slack chaos, or vague tickets.
+
+### Secondary wedge: small product teams
+
+Small SaaS and product teams manage UI debt, QA, polish, and design feedback across PMs, designers, and developers.
+
+- 3-15 person teams shipping a live web product.
+- Need Linear-style workflow, but tied to the actual UI.
+- Main promise: Linear for your actual interface.
+
+### Tertiary wedge: solo builders
+
+Solo builders love the concept, but willingness to pay is weaker. Keep the plan affordable and use it as a bottom-up entry point, not the main GTM bet.
+
+- Indie devs and small teams using the npm dev dependency.
+- Main promise: a spatial to-do list for your own app.
+
+## MVP
+
+Build the narrow version first.
+
+1. Add script or Chrome extension.
+2. Click an element.
+3. Add a comment or task title.
+4. Store selector, URL, viewport, screenshot, and browser metadata.
+5. Show overlay pins on the live UI.
+6. Status: open, in progress, resolved.
+7. Share workspace with guests.
+8. Create a Linear ticket.
+
+Do not start with every integration, advanced AI, complex namespaces, mobile support, white label, or a full permissions matrix. The product must prove that spatial task creation is valuable before becoming a complete PM system.
+
+## Killer feature: persistent UI memory
+
+The long-term moat is not AI ticket generation. The moat is persistent UI memory.
+
+Examples:
+
+- "This button had 4 comments last sprint."
+- "This annotation moved because the DOM changed."
+- "This component appears on 12 pages."
+- "This issue is probably related to the same component."
+- "This UI area has recurring bugs."
+- "This was fixed in commit X."
+- "This annotation is stale because the element no longer exists."
+
+That turns YouIn from a feedback tool into a spatial product management system. The app becomes a map of work.
+
+## Product strategy
+
+1. **Lead with spatial backlog**
+   - Homepage language should say "backlog," "task," "Linear," "actual UI," and "context."
+   - Avoid leading with "visual feedback," "website annotation," or "client comments."
+2. **Linear first**
+   - Linear is the best early integration for small product teams and modern agencies.
+   - Jira and GitHub can follow, but they should not dilute the initial product shape.
+3. **Guest links matter**
+   - Extension install friction is real.
+   - Agencies need a no-install client review path.
+   - The extension should be a power-user path, not the only path.
+4. **Anchor reliability is product quality**
+   - Selector drift is not an implementation detail.
+   - It is the difference between a delightful spatial backlog and stale screenshots with red dots.
 
 ## Pricing
 
-Paid from day one. No free tier — the product earns its keep or it doesn't.
+Charge by active project or client workspace, not feedback count. Agencies hate unpredictable usage pricing.
 
 ### Solo
 
-- **EUR29 / month**
-- 1 seat
-- Unlimited namespaces and annotations
-- Chrome extension + npm dev dep
-- 50 AI tickets / month
-- Linear / Jira / GitHub sync
+- **EUR19 / month**
+- 1 active project
+- Chrome extension + npm dev dependency
+- Unlimited marks
+- Linear export
+- Spatial task history
 
-### Team (Most popular)
+### Studio
 
-- **EUR79 / month**
-- Up to 10 seats
-- Everything in Solo
-- Unlimited AI tickets
-- Namespace archiving
-- Team invites
+- **EUR49 / month**
+- 3 active projects
+- Guest review links
+- Shared task threads
+- Selector + viewport fallback
+- Linear and Jira export
+
+### Team
+
+- **EUR99 / month**
+- 10 active projects
+- Everything in Studio
+- Bidirectional status sync
+- Team labels and saved views
+- Priority workspace support
 
 ### Agency
 
-- **EUR149 / month**
-- Unlimited seats
+- **EUR199 / month**
+- Unlimited active projects
 - Everything in Team
-- Client guest links (no account required)
-- White-label widget
-- Priority support
-- Custom AI model (local)
+- Client workspaces
+- White-label guest review
+- Agency reporting
 
-## Path to EUR1k MRR
+## Validation target
 
-Realistic mix at month 3:
+Do not spend six months building quietly.
 
-- 15 Solo @ EUR29 = EUR435
-- 6 Team @ EUR79 = EUR474
-- 1 Agency @ EUR149 = EUR149
-- **= EUR1,058 MRR** (~22 paying customers, ~90 days)
+Build a polished MVP in 3-4 weeks, then sell manually to 10 agencies or small SaaS teams. The signal to keep going:
+
+- 10 teams use it on a real project.
+- 3 teams agree to pay EUR49-EUR99/month after the trial.
+- At least 1 team says the spatial pins are now part of their review habit.
 
 ## Go-to-market
 
-1. **Product Hunt launch + Chrome Web Store**
-   - One viral "look what this does" demo: click element → annotate → AI ticket. Month 1 acquisition.
-2. **Developer Twitter + the npm angle**
-   - The npm dev dep is the differentiator. "Visual todos for your own app, installed as a dev dependency."
-   - Audience: indie devs, hackers, weekend builders. Show the DX.
-3. **Agency cold outreach**
-   - LinkedIn DMs to heads of product at 5–30 person agencies.
-   - Opener: "How do you handle client feedback on live sites?"
-4. **Designer + Figma community**
-   - Positioning: "Figma comments, but on your shipped app."
-5. **Viral loop via guest links**
-   - Agency tier guest links — every client reviewer is a future buyer.
+1. **Agency founder-led sales**
+   - Reach out to agency leads and ask how client feedback currently arrives.
+   - Demo the loop: click element, create task, send to Linear.
+2. **Product team demo content**
+   - Show "Linear for your actual interface."
+   - Compare a vague screenshot ticket with a YouIn spatial task.
+3. **Comparison pages**
+   - Be honest: YouIn vs BugHerd, Marker.io, Jam.dev, and Slack screenshots.
+   - The point is not "they are bad." The point is "they collect feedback, YouIn maps product work."
+4. **Guest review loop**
+   - Every agency client review should expose YouIn as the layer that made the review painless.
 
-## Build roadmap
+## Competitive positioning
 
-### Phase 1 (Weeks 1-4) — The core loop, paid from day one
-
-- Chrome extension scaffold
-- npm dev dep scaffold (parallel distribution from day one)
-- DOM picker + three-anchor system (CSS selector, viewport fallback, html2canvas)
-- Annotation UI + namespace switcher
-- Auto-context capture (console, viewport, selector, screenshot)
-- Supabase backend
-- Stripe billing — Solo + Team tiers live
-
-### Phase 2 (Weeks 5-8) — AI + integrations
-
-- AI ticket generation (Claude API)
-- GitHub / Linear / Jira sync
-- Namespace archiving
-- Team invites
-
-### Phase 3 (Weeks 9-12) — Growth + Agency tier
-
-- Client guest links (no account required)
-- White-label widget
-- Local AI model support (Ollama)
-- Product Hunt launch
-
-## Competitive moat
-
-- **vs Marker.io / BugHerd / Pastel**
-  - Those are agency feedback tools. YouIn is a dev-native PM layer that includes feedback as one use case.
-  - The npm dev dep is unique — no competitor lets a developer install annotation-as-a-package into their own staging.
+- **vs Marker.io / BugHerd / Usersnap**
+  - They are primarily website feedback and bug-reporting tools.
+  - YouIn is a spatial backlog: tasks, state, and product memory attached to the live UI.
 - **vs Linear / Jira / Notion**
-  - Spreadsheet-style task lists, divorced from the UI.
-  - YouIn lives on the UI itself. The annotation IS the todo IS the location.
+  - They track work, but the work is detached from the interface.
+  - YouIn keeps the task where the issue exists and syncs downstream.
 - **vs Jam.dev**
-  - Different buyer (designer/PM/dev vs QA), format (spatial annotation vs video), workflow (continuous iteration vs incident report).
-- **vs Vercel Comments**
-  - Vercel Comments only works on Vercel preview deployments.
-  - YouIn works on any URL — production, staging, client sites, competitor sites.
-- **vs Figma**
-  - Figma comments live on design files. Once design ships, Figma becomes the wrong tool.
-  - YouIn picks up there.
+  - Jam is excellent for bug reports and repro capture.
+  - YouIn is built for UI work, product polish, stakeholder comments, and spatial task management.
+- **vs Figma comments**
+  - Figma comments live on design files.
+  - YouIn starts where Figma stops: the shipped product.
 
 ## Risks
 
-1. **DOM selector drift** (High → Medium)
-   - Mitigated by the three-anchor system (selector → viewport → screenshot).
-   - Still needs real-world testing across deploys before scoring it lower.
-2. **Paid-from-day-one acquisition** (Medium)
-   - No free tier means slower top-of-funnel growth. Each install is a paying decision.
-   - Validate willingness-to-pay early; consider a 14-day trial without freemium.
-3. **Scope creep — annotation + PM is broader than feedback** (Medium)
-   - Risk of being mediocre at both rather than excellent at one.
-   - Hold the line: YouIn is a spatial annotation layer. The PM functions are the natural consequence, not the headline.
-4. **Chrome extension install friction** (Reduced)
-   - npm dev dep removes this for solo devs and product teams entirely.
-   - Still applies to client guest reviewers — handled by no-install guest links on Agency tier.
-5. **Jam ships spatial comments** (Medium)
-   - Their brand is still QA, not design review or self-iteration. Wedge holds.
-6. **Pricing resistance at Agency tier** (Low)
-   - EUR149 is competitive vs Marker.io ($499 top tier) and BugHerd ($189 Deluxe). Room to move up.
+1. **Category confusion**
+   - Biggest risk. If people think "like BugHerd," YouIn becomes a cheaper clone.
+   - Mitigation: own "spatial backlog" consistently.
+2. **Selector drift**
+   - High technical risk.
+   - Mitigation: selector + viewport + screenshot fallback, plus explicit stale-anchor states.
+3. **Chrome extension friction**
+   - High adoption risk for clients.
+   - Mitigation: no-install guest review links.
+4. **Solo dev willingness to pay**
+   - Medium revenue risk.
+   - Mitigation: keep Solo as entry-level, sell agencies and teams first.
+5. **AI as fake differentiation**
+   - Medium positioning risk.
+   - Mitigation: use AI to improve ticket quality, but do not make it the headline.
+
+## One-liner
+
+YouIn turns your web app into a spatial backlog, so every bug, comment, and task lives exactly where it belongs.

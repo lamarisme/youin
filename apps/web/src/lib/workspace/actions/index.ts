@@ -1,11 +1,13 @@
 export { getWorkspaceBootstrap } from "./bootstrap";
 
 export {
+  createProjectAction,
   createSpaceAction,
   updateSpaceAction,
   toggleSpacePinnedAction,
   updateSpacePriorityAction,
   deleteSpaceAction,
+  type CreatedProject,
   type CreatedSpace,
 } from "./spaces";
 

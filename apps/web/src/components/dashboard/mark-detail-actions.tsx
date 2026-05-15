@@ -1,6 +1,15 @@
 "use client";
 
-import { Bookmark, Pencil, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  Bookmark,
+  CheckCircle2,
+  CircleDashed,
+  Flag,
+  Folder,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 
 import { FilterSelect } from "@/components/filter-select";
 import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
@@ -9,6 +18,7 @@ import type {
   DisplayNamePreference,
   PinItem,
   PinPriority,
+  WorkspaceProject,
   TeamMember,
   WorkspaceSpace,
 } from "@/lib/collab-types";
@@ -22,23 +32,21 @@ import {
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
-import { MarkPageOpenButton } from "./mark-page-open";
-
 interface MarkDetailActionsProps {
   pin: PinItem;
   members: TeamMember[];
+  projects?: WorkspaceProject[];
   spaces: WorkspaceSpace[];
   displayNamePreference: DisplayNamePreference;
-  onEdit: () => void;
   onConfirmDelete: () => void;
 }
 
 export function MarkDetailActions({
   pin,
   members,
+  projects = [],
   spaces,
   displayNamePreference,
-  onEdit,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
   const { mutate: togglePinStatus } = useTogglePinStatusMutation();
@@ -46,16 +54,98 @@ export function MarkDetailActions({
   const { mutate: updatePinPriority } = useUpdatePinPriorityMutation();
   const { mutate: assignMark } = useAssignMarkMutation();
   const { mutate: updatePin } = useUpdatePinMutation();
+  const projectById = new Map(projects.map((project) => [project.id, project.name]));
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[0.8125rem] text-ink-2">
+      <PropertyGroup
+        label="Status"
+        icon={
+          pin.status === "open" ? (
+            <CircleDashed className="size-3.5" aria-hidden />
+          ) : (
+            <CheckCircle2 className="size-3.5" aria-hidden />
+          )
+        }
+      >
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => togglePinStatus(pin.id)}
+          aria-keyshortcuts="X"
+          aria-label={pin.status === "open" ? "Resolve mark" : "Reopen mark"}
+          className={cn(
+            "h-11 px-1.5 text-[0.8125rem] hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+            pin.status === "open" ? "text-mark" : "text-ok",
+          )}
+        >
+          {pin.status === "open" ? "Open" : "Resolved"}
+        </Button>
+      </PropertyGroup>
+
+      <PropertyGroup label="Priority" icon={<Flag className="size-3.5" aria-hidden />}>
+        <FilterSelect<PinPriority>
+          value={pin.priority}
+          onValueChange={(v) => updatePinPriority({ pinId: pin.id, priority: v })}
+          options={PIN_PRIORITY_OPTIONS_TRIAGE}
+          ariaLabel="Mark priority"
+          triggerClassName="h-11 w-[104px] sm:h-8"
+          variant="inline"
+        />
+      </PropertyGroup>
+
+      <PropertyGroup label="Assignee" icon={<UserRound className="size-3.5" aria-hidden />}>
+        <FilterSelect
+          value={pin.assigneeId ?? "__unassigned"}
+          onValueChange={(v) =>
+            assignMark({
+              pinId: pin.id,
+              assigneeId: v === "__unassigned" ? null : v,
+            })
+          }
+          options={[
+            { value: "__unassigned", label: "Unassigned" },
+            ...members.map((m) => ({
+              value: m.id,
+              label: memberPickerLabel(m, displayNamePreference),
+            })),
+          ]}
+          ariaLabel="Mark assignee"
+          triggerClassName="h-11 w-[134px] sm:h-8"
+          variant="inline"
+        />
+      </PropertyGroup>
+
+      <PropertyGroup label="Space" icon={<Folder className="size-3.5" aria-hidden />}>
+        <FilterSelect
+          value={pin.spaceId}
+          onValueChange={(v) => {
+            if (v === pin.spaceId) return;
+            updatePin({ pinId: pin.id, updates: { spaceId: v } });
+          }}
+          options={spaces.map((s) => {
+            const projectName = projectById.get(s.projectId);
+            return {
+              value: s.id,
+              label: projectName ? `${projectName} / ${s.name}` : s.name,
+            };
+          })}
+          ariaLabel="Mark space"
+          triggerClassName="h-11 w-[150px] sm:h-8"
+          variant="inline"
+        />
+      </PropertyGroup>
+
       <Button
         size="sm"
-        variant={pin.pinned ? "default" : "outline"}
+        variant="ghost"
         onClick={() => togglePinPinned(pin.id)}
         aria-pressed={pin.pinned}
         aria-keyshortcuts="B"
-        className="h-11 border-mark/30 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+        className={cn(
+          "h-11 px-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+          pin.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
+        )}
       >
         <Bookmark
           className={cn(
@@ -65,74 +155,40 @@ export function MarkDetailActions({
         />
         {pin.pinned ? "Pinned" : "Pin"}
       </Button>
-      <FilterSelect<PinPriority>
-        value={pin.priority}
-        onValueChange={(v) => updatePinPriority({ pinId: pin.id, priority: v })}
-        options={PIN_PRIORITY_OPTIONS_TRIAGE}
-        ariaLabel="Mark priority"
-        triggerClassName="h-11 w-[110px] sm:h-8"
-      />
-      <FilterSelect
-        value={pin.assigneeId ?? "__unassigned"}
-        onValueChange={(v) =>
-          assignMark({
-            pinId: pin.id,
-            assigneeId: v === "__unassigned" ? null : v,
-          })
-        }
-        options={[
-          { value: "__unassigned", label: "Unassigned" },
-          ...members.map((m) => ({
-            value: m.id,
-            label: memberPickerLabel(m, displayNamePreference),
-          })),
-        ]}
-        ariaLabel="Mark assignee"
-        triggerClassName="h-11 w-[140px] sm:h-8"
-      />
-      <FilterSelect
-        value={pin.spaceId}
-        onValueChange={(v) => {
-          if (v === pin.spaceId) return;
-          updatePin({ pinId: pin.id, updates: { spaceId: v } });
-        }}
-        options={spaces.map((s) => ({ value: s.id, label: `${s.code} · ${s.name}` }))}
-        ariaLabel="Mark space"
-        triggerClassName="h-11 w-[160px] sm:h-8"
-      />
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => togglePinStatus(pin.id)}
-        aria-keyshortcuts="X"
-        className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
-      >
-        {pin.status === "open" ? "Resolve" : "Reopen"}
-      </Button>
-      <MarkPageOpenButton
-        page={pin.page}
-        appearance="labeled"
-        className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
-      />
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={onEdit}
-        aria-label="Edit mark details"
-        aria-keyshortcuts="E"
-        className="h-11 px-2.5 text-ink-2 hover:text-ink sm:h-8"
-      >
-        <Pencil className="size-3.5" aria-hidden />
-      </Button>
+
       <Button
         size="sm"
         variant="ghost"
         onClick={onConfirmDelete}
         aria-label="Delete mark"
-        className="h-11 px-2.5 text-ink-3 hover:text-mark sm:h-8"
+        className="h-11 px-1.5 text-ink-3 hover:bg-paper-2 hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8"
       >
         <Trash2 className="size-3.5" aria-hidden />
       </Button>
     </div>
+  );
+}
+
+function PropertyGroup({
+  label,
+  icon,
+  children,
+}: {
+  label: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex min-h-11 items-center gap-1 sm:min-h-8">
+      <span
+        className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 sm:size-6"
+        aria-hidden
+        title={label}
+      >
+        {icon}
+      </span>
+      <span className="sr-only">{label}</span>
+      {children}
+    </span>
   );
 }

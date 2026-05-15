@@ -12,6 +12,7 @@ import type {
   TeamRole,
   UserProfile,
   Workspace,
+  WorkspaceProject,
   WorkspaceSpace,
   WorkspaceLabel,
 } from "@/lib/collab-types";
@@ -85,8 +86,18 @@ async function resolveImageUrls(
 }
 
 export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspaceId: string): Promise<Workspace> {
-  const [{ data: wsRow, error: wsErr }, { data: spacesRows }, { data: labelsRows }] = await Promise.all([
+  const [
+    { data: wsRow, error: wsErr },
+    { data: projectRows },
+    { data: spacesRows },
+    { data: labelsRows },
+  ] = await Promise.all([
     supabase.from("workspaces").select("id,name").eq("id", workspaceId).single(),
+    supabase
+      .from("projects")
+      .select("id,name,description,created_at")
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: true }),
     supabase
       .from("spaces")
       .select("*")
@@ -96,6 +107,15 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
   ]);
 
   if (wsErr || !wsRow) throw wsErr ?? new Error("Workspace not found.");
+
+  const projects: WorkspaceProject[] = (projectRows ?? []).map((p) => ({
+    id: p.id as string,
+    name: p.name as string,
+    description: (p.description as string | null) ?? "",
+    createdAt: p.created_at as string,
+  }));
+
+  const fallbackProjectId = projects[0]?.id ?? "";
 
   const { data: membersRows } = await supabase
     .from("workspace_members")
@@ -150,6 +170,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
 
   const spaces: WorkspaceSpace[] = (spacesRows ?? []).map((s) => ({
     id: s.id as string,
+    projectId: (s.project_id as string | null | undefined) ?? fallbackProjectId,
     code: String(s.code ?? "SP").toUpperCase(),
     name: s.name as string,
     notes: (s.notes as string) || "",
@@ -305,6 +326,7 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
   return {
     id: wsRow.id as string,
     name: wsRow.name as string,
+    projects,
     spaces,
     labels,
     members,
