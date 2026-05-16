@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart3,
   Check,
-  ChevronRight,
   ChevronsUpDown,
   Inbox as InboxIcon,
   Layers,
@@ -170,13 +169,14 @@ export function AppSidebar() {
             )}
           </button>
 
-          {/* Mobile: theme toggle + avatar dropdown */}
+          {/* Mobile: avatar dropdown */}
           <div className="flex items-center gap-1.5 lg:hidden">
-            <ThemeToggleButton theme={theme} onToggle={toggleTheme} compact />
             <MobileAccountMenu
               initials={initials}
               displayName={displayName}
               workspaceLabel={workspaceLabel}
+              theme={theme}
+              onToggleTheme={toggleTheme}
               isSigningOut={isSigningOut}
               onSignOut={handleSignOut}
             />
@@ -323,128 +323,30 @@ export function AppSidebar() {
         {collapsed ? (
           <>
             <div className="flex flex-col items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <ThemeToggleButton theme={theme} onToggle={toggleTheme} compact />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  {theme === "dark" ? tSide("lightMode") : tSide("darkMode")}
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Link
-                    href="/account"
-                    aria-label={tSide("accountAria", { name: displayName })}
-                    aria-current={accountActive ? "page" : undefined}
-                    className={cn(
-                      "flex items-center justify-center size-9 rounded-md transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-                      accountActive
-                        ? "bg-paper-3 text-ink"
-                        : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
-                    )}
-                  >
-                    <Avatar className="size-7">
-                      <AvatarFallback
-                        className={cn(
-                          "text-[10px] font-medium text-ink",
-                          accountActive ? "bg-paper-3" : "bg-paper-2",
-                        )}
-                      >
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <div className="flex flex-col">
-                    <span className="font-medium">{displayName}</span>
-                    <span className="text-ink-3">{workspaceLabel}</span>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
+              <DesktopAccountMenu
+                collapsed
+                initials={initials}
+                displayName={displayName}
+                workspaceLabel={workspaceLabel}
+                accountActive={accountActive}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+                isSigningOut={isSigningOut}
+                onSignOut={handleSignOut}
+              />
             </div>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  disabled={isSigningOut}
-                  aria-label={tSide("signOutAria")}
-                  className={cn(
-                    "mx-auto mt-3 flex items-center justify-center size-9 rounded-md text-ink-3 transition-colors",
-                    "hover:bg-paper-3/80 hover:text-ink disabled:opacity-60",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-                  )}
-                >
-                  {isSigningOut ? (
-                    <Loader2 className="size-[1.05rem] animate-spin" />
-                  ) : (
-                    <LogOut className="size-[1.05rem]" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{tSide("signOut")}</TooltipContent>
-            </Tooltip>
           </>
         ) : (
-          <>
-            <div className="flex flex-col gap-0.5">
-              <ThemeToggleButton theme={theme} onToggle={toggleTheme} />
-              <Link
-                href="/account"
-                aria-current={accountActive ? "page" : undefined}
-                className={cn(
-                  "group flex min-h-10 items-center gap-2.5 rounded-md px-3 py-1.5 transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-                  accountActive ? "bg-paper-3" : "hover:bg-paper-3/80",
-                )}
-              >
-                <Avatar className="size-7">
-                  <AvatarFallback
-                    className={cn(
-                      "text-[10px] font-medium text-ink",
-                      accountActive ? "bg-paper-3" : "bg-paper-2",
-                    )}
-                  >
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.8125rem] font-medium text-ink">{displayName}</p>
-                  <p className="truncate text-[0.6875rem] text-ink-3">{workspaceLabel}</p>
-                </div>
-                <ChevronRight
-                  className={cn(
-                    "size-3.5 shrink-0 text-ink-3 transition-opacity",
-                    accountActive ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                  )}
-                  aria-hidden="true"
-                />
-              </Link>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className={cn(
-                "mt-2 flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-[0.8125rem] text-ink-3 transition-colors",
-                "hover:bg-paper-3/80 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-              )}
-            >
-              {isSigningOut ? (
-                <Loader2 className="size-[1.05rem] animate-spin" />
-              ) : (
-                <LogOut className="size-[1.05rem]" />
-              )}
-              <span>{isSigningOut ? tSide("signingOut") : tSide("signOut")}</span>
-            </button>
-          </>
+          <DesktopAccountMenu
+            initials={initials}
+            displayName={displayName}
+            workspaceLabel={workspaceLabel}
+            accountActive={accountActive}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isSigningOut={isSigningOut}
+            onSignOut={handleSignOut}
+          />
         )}
       </div>
     </aside>
@@ -716,12 +618,16 @@ function MobileAccountMenu({
   initials,
   displayName,
   workspaceLabel,
+  theme,
+  onToggleTheme,
   isSigningOut,
   onSignOut,
 }: {
   initials: string;
   displayName: string;
   workspaceLabel: string;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
   isSigningOut: boolean;
   onSignOut: () => void;
 }) {
@@ -745,76 +651,155 @@ function MobileAccountMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>
-          <div className="flex flex-col">
-            <span>{displayName}</span>
-            <span className="font-normal text-muted-foreground">{workspaceLabel}</span>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/account">
-            <User className="size-4" />
-            {t("accountSettings")}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onSignOut}
-          disabled={isSigningOut}
-        >
-          {isSigningOut ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <LogOut className="size-4" />
-          )}
-          {isSigningOut ? t("accountSettingsSigningOut") : t("signOut")}
-        </DropdownMenuItem>
+        <AccountMenuContent
+          displayName={displayName}
+          workspaceLabel={workspaceLabel}
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          isSigningOut={isSigningOut}
+          onSignOut={onSignOut}
+        />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-function ThemeToggleButton({
+function DesktopAccountMenu({
+  initials,
+  displayName,
+  workspaceLabel,
+  accountActive,
   theme,
-  onToggle,
-  compact,
+  onToggleTheme,
+  isSigningOut,
+  onSignOut,
+  collapsed = false,
 }: {
+  initials: string;
+  displayName: string;
+  workspaceLabel: string;
+  accountActive: boolean;
   theme: "light" | "dark";
-  onToggle: () => void;
-  compact?: boolean;
+  onToggleTheme: () => void;
+  isSigningOut: boolean;
+  onSignOut: () => void;
+  collapsed?: boolean;
 }) {
   const t = useTranslations("sidebar");
-  const Icon = theme === "dark" ? Sun : Moon;
-  const label = theme === "dark" ? t("lightMode") : t("darkMode");
-  if (compact) {
-    return (
-      <button
-        type="button"
-        onClick={onToggle}
-        className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-2 transition-colors",
-          "hover:bg-paper-3 hover:text-ink",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-        )}
-        aria-label={label}
-      >
-        <Icon className="size-[1.05rem]" />
-      </button>
-    );
-  }
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className={cn(
-        "flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-[0.8125rem] text-ink-2 transition-colors",
-        "hover:bg-paper-3 hover:text-ink",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-      )}
-    >
-      <Icon className="size-[1.05rem]" />
-      <span>{label}</span>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {collapsed ? (
+          <button
+            type="button"
+            aria-label={t("openAccountMenu")}
+            className={cn(
+              "flex size-9 items-center justify-center rounded-md transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              accountActive
+                ? "bg-paper-3 text-ink"
+                : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
+            )}
+          >
+            <Avatar className="size-7">
+              <AvatarFallback
+                className={cn(
+                  "text-[10px] font-medium text-ink",
+                  accountActive ? "bg-paper-3" : "bg-paper-2",
+                )}
+              >
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        ) : (
+          <button
+            type="button"
+            aria-label={t("openAccountMenu")}
+            className={cn(
+              "group flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              accountActive ? "bg-paper-3" : "hover:bg-paper-3/80",
+            )}
+          >
+            <Avatar className="size-7">
+              <AvatarFallback
+                className={cn(
+                  "text-[10px] font-medium text-ink",
+                  accountActive ? "bg-paper-3" : "bg-paper-2",
+                )}
+              >
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[0.8125rem] font-medium text-ink">{displayName}</p>
+              <p className="truncate text-[0.6875rem] text-ink-3">{workspaceLabel}</p>
+            </div>
+            <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />
+          </button>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align={collapsed ? "center" : "start"} side={collapsed ? "right" : "top"} className="w-56">
+        <AccountMenuContent
+          displayName={displayName}
+          workspaceLabel={workspaceLabel}
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          isSigningOut={isSigningOut}
+          onSignOut={onSignOut}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function AccountMenuContent({
+  displayName,
+  workspaceLabel,
+  theme,
+  onToggleTheme,
+  isSigningOut,
+  onSignOut,
+}: {
+  displayName: string;
+  workspaceLabel: string;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
+  isSigningOut: boolean;
+  onSignOut: () => void;
+}) {
+  const t = useTranslations("sidebar");
+  const ThemeIcon = theme === "dark" ? Sun : Moon;
+  const themeLabel = theme === "dark" ? t("lightMode") : t("darkMode");
+  return (
+    <>
+      <DropdownMenuLabel>
+        <div className="flex flex-col">
+          <span>{displayName}</span>
+          <span className="font-normal text-muted-foreground">{workspaceLabel}</span>
+        </div>
+      </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem asChild>
+        <Link href="/account">
+          <User className="size-4" />
+          {t("accountSettings")}
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={onToggleTheme}>
+        <ThemeIcon className="size-4" />
+        {themeLabel}
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={onSignOut} disabled={isSigningOut}>
+        {isSigningOut ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <LogOut className="size-4" />
+        )}
+        {isSigningOut ? t("accountSettingsSigningOut") : t("signOut")}
+      </DropdownMenuItem>
+    </>
   );
 }
