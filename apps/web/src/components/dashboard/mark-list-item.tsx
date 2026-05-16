@@ -84,7 +84,7 @@ export function MarkListItem({
         type="button"
         onClick={onSelect}
         aria-label={`Open mark ${pin.displayKey}: ${pin.title}. ${pin.status === "open" ? "Open" : "Resolved"}.`}
-        className="interactive-lift flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
+        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
         {pin.status === "open" ? (
           <CircleDashed className="mt-px size-3.5 shrink-0 text-mark" aria-hidden />

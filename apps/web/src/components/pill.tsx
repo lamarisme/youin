@@ -9,7 +9,7 @@ const VARIANT_CLASS: Record<PillVariant, string> = {
   neutral: "bg-paper-2 text-ink-2",
   mark: "bg-mark-soft/75 text-mark",
   ok: "bg-ok-soft/75 text-ok",
-  outline: "border border-rule bg-paper text-ink-2",
+  outline: "bg-paper-2 text-ink-2",
 };
 
 const SIZE_CLASS: Record<PillSize, string> = {

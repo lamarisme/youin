@@ -167,8 +167,8 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     "bg-transparent text-ink-2 hover:bg-paper-3/70 hover:text-ink";
 
   return (
-    <FadeIn className="mb-3 w-full space-y-2">
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+    <FadeIn className="w-full space-y-1.5">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
         <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
           <Input
@@ -250,7 +250,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
       {showMore ? (
         <div
           id="more-filters-panel"
-          className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 px-2.5 py-2"
+          className="flex flex-wrap items-center gap-1.5 rounded-md bg-paper-2 p-1.5"
         >
           <FilterSelect
             value={filters.label}
@@ -300,7 +300,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
       ) : null}
 
       {activeFilters.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {activeFilters.map((f) => (
             <Badge
               key={f.key}

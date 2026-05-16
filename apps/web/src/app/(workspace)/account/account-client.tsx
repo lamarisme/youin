@@ -47,13 +47,13 @@ export function AccountClient() {
   ];
 
   return (
-    <PageContainer className="space-y-5">
+    <PageContainer>
       <AppHeader title="Account" eyebrow="Settings" />
 
-      <div className="grid gap-6 lg:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[13rem_minmax(0,52rem)] lg:gap-8">
         <nav
           aria-label="Account sections"
-          className="-mx-1 flex gap-1 overflow-x-auto border-b border-rule pb-2 lg:mx-0 lg:block lg:space-y-1 lg:border-b-0 lg:pb-0"
+          className="-mx-1 flex gap-1 overflow-x-auto rounded-md bg-paper-2 p-1 lg:mx-0 lg:block lg:space-y-1"
         >
           {sections.map((section) => {
             const active = section.value === activeSection;
@@ -67,7 +67,7 @@ export function AccountClient() {
                   "lg:min-h-8 lg:w-full lg:px-2.5 lg:py-1.5",
                   active
                     ? "bg-paper-3 text-ink"
-                    : "text-ink-2 hover:bg-paper-2 hover:text-ink",
+                    : "text-ink-2 hover:bg-paper-3/70 hover:text-ink",
                 )}
               >
                 <span className="min-w-0">
@@ -81,7 +81,7 @@ export function AccountClient() {
                 {typeof section.count === "number" ? (
                   <span
                     className={cn(
-                      "rounded bg-paper px-1.5 py-px font-mono text-[0.625rem] tabular-nums",
+                      "rounded bg-paper-3 px-1.5 py-px font-mono text-[0.625rem] tabular-nums",
                       active ? "text-ink-2" : "text-ink-3",
                     )}
                   >

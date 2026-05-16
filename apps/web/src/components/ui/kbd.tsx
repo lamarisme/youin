@@ -10,7 +10,7 @@ function Kbd({
   return (
     <kbd
       className={cn(
-        "rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3",
+        "rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3",
         "inline-flex items-center justify-center",
         className,
       )}

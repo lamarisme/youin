@@ -33,7 +33,7 @@ export function TimeframeFilter({ value, onChange }: TimeframeFilterProps) {
     <div
       role="radiogroup"
       aria-label="Analytics timeframe"
-      className="inline-flex items-center gap-0.5 rounded-lg border border-rule bg-paper p-0.5"
+      className="inline-flex items-center gap-0.5 rounded-lg bg-paper-2 p-0.5"
     >
       {OPTIONS.map((opt) => {
         const active = opt.value === value;

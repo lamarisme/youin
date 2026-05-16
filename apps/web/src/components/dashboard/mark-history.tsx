@@ -19,11 +19,11 @@ export function MarkHistory({ events, membersById }: MarkHistoryProps) {
   const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   return (
     <div>
-      <h2 className="mb-3 flex items-center gap-1.5 text-eyebrow">
+      <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
         <History className="size-3.5" aria-hidden />
         Mark history{events.length > 0 ? ` (${events.length})` : ""}
       </h2>
-      <div className="annotation-rail space-y-2.5">
+      <div className="space-y-2">
         {events.length === 0 ? (
           <p className="text-[0.8125rem] text-ink-3">No history yet.</p>
         ) : null}

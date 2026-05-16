@@ -139,11 +139,11 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-1.5 text-eyebrow">
+      <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
         <MessageCircle className="size-3.5" aria-hidden />
         Discussion{comments.length > 0 ? ` (${comments.length})` : ""}
       </h2>
-      <div className="annotation-rail space-y-3">
+      <div className="space-y-2">
         {comments.length === 0 ? (
           <p className="text-[0.8125rem] text-ink-3">No comments yet. Start the conversation.</p>
         ) : null}
@@ -157,7 +157,7 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
         ))}
       </div>
 
-      <div className="mt-4 rounded-lg border border-dashed border-rule bg-paper p-3">
+      <div className="mt-3 rounded-lg bg-paper-2 p-2">
         <label htmlFor="comment-composer" className="sr-only">
           Add a comment
         </label>
@@ -248,7 +248,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
 
   return (
     <>
-      <div className="group rounded-md border border-rule bg-paper p-3">
+      <div className="group rounded-md bg-paper-2 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Avatar className="size-5">
@@ -280,7 +280,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                       setDraft(comment.body ?? "");
                       setEditing(true);
                     }}
-                    className="rounded p-1 text-ink-3 transition-colors hover:bg-paper hover:text-ink"
+                    className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink"
                     aria-label="Edit comment"
                   >
                     <Pencil className="size-3" aria-hidden />
@@ -289,7 +289,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="rounded p-1 text-ink-3 transition-colors hover:bg-paper hover:text-mark"
+                  className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
                   aria-label="Delete comment"
                 >
                   <Trash2 className="size-3" aria-hidden />
@@ -358,7 +358,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
             className="max-w-none break-words text-[0.8125rem] leading-relaxed text-ink"
           />
         ) : comment.imageUrl ? (
-          <div className="aspect-[16/7] w-full overflow-hidden rounded border border-rule bg-paper-3">
+          <div className="aspect-[16/7] w-full overflow-hidden rounded bg-paper-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={comment.imageUrl}

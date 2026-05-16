@@ -53,7 +53,7 @@ export function BulkActionBar({
       <FadeIn
         role="region"
         aria-label={`${count} marks selected`}
-        className="sticky bottom-4 z-20 mx-auto mt-4 flex w-fit max-w-full flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-3 py-1.5"
+        className="sticky bottom-4 z-20 mx-auto mt-3 flex w-fit max-w-full flex-wrap items-center gap-1.5 rounded-md bg-paper-2 px-2 py-1.5"
       >
         <span className="flex items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink">
           <span className="text-mark">{count}</span> selected

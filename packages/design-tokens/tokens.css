@@ -13,10 +13,10 @@
 
 :root {
   /* ── Paper (technical neutral surfaces) ── */
-  --yi-paper:      oklch(97.8% 0.004 286);
-  --yi-paper-2:    oklch(95.2% 0.006 286);
-  --yi-paper-3:    oklch(91.4% 0.008 286);
-  --yi-paper-elevated: oklch(96.2% 0.006 286);
+  --yi-paper:      oklch(98.4% 0.003 286);
+  --yi-paper-2:    oklch(96.8% 0.004 286);
+  --yi-paper-3:    oklch(94.2% 0.006 286);
+  --yi-paper-elevated: oklch(97.2% 0.004 286);
 
   /* ── Ink (foreground) ── */
   --yi-ink:        oklch(18.2% 0.012 286);

@@ -23,15 +23,15 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-lg py-10 text-center",
-        variant === "dashed" && "border border-dashed border-rule",
+        "rounded-lg px-4 py-12 text-center",
+        variant === "dashed" && "bg-paper-2",
         className,
       )}
     >
       {Icon ? <Icon className="mx-auto mb-2 size-6 text-ink-3" aria-hidden /> : null}
       <p className="text-[0.8125rem] text-ink">{title}</p>
       {description ? (
-        <p className="mt-1 text-[0.75rem] text-ink-3">{description}</p>
+        <p className="mx-auto mt-1 max-w-[42ch] text-[0.75rem] leading-relaxed text-ink-3">{description}</p>
       ) : null}
       {action ? <div className="mt-3 flex justify-center">{action}</div> : null}
     </div>

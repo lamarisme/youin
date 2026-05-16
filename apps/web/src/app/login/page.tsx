@@ -108,7 +108,7 @@ function LoginPageContent() {
       <Button
         type="button"
         variant="outline"
-        className="mb-5 w-full"
+        className="mb-5 h-10 w-full"
         onClick={handleGoogleSignIn}
         disabled={loading}
       >
@@ -171,7 +171,7 @@ function LoginPageContent() {
 
         <SubmitButton
           type="submit"
-          className="w-full bg-mark text-paper hover:bg-mark-bright"
+          className="h-10 w-full"
           loading={loading}
           disabled={!email.trim() || !password}
           loadingText="Signing in..."

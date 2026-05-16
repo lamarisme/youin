@@ -120,7 +120,7 @@ export function MarkDescriptionEditor({
     return (
       <div
         className={cn(
-          "rounded-md border border-rule bg-paper",
+          "rounded-md bg-paper-2",
           "animate-pulse",
           minHeightClassName,
           className,
@@ -135,7 +135,7 @@ export function MarkDescriptionEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-rule bg-paper shadow-sm",
+        "rounded-md bg-paper-2",
         disabled && "pointer-events-none opacity-60",
         className,
       )}
@@ -148,7 +148,7 @@ export function MarkDescriptionEditor({
           aria-hidden
         />
       </div>
-      <div className="flex justify-end border-t border-rule px-2 py-1">
+      <div className="flex justify-end px-2 py-1">
         <span className="tabular-nums text-[0.6875rem] text-ink-3">
           {chars} / {maxLength}
         </span>

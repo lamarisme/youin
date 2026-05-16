@@ -70,7 +70,7 @@ export function InboxView() {
               Try again
             </Button>
           }
-          className="mt-2"
+          className="mt-1"
         />
       ) : inbox.isPending ? (
         <InboxLoadingRows />
@@ -100,7 +100,7 @@ export function InboxView() {
               </Button>
             )
           }
-          className="mt-2"
+          className="mt-1"
         />
       ) : (
         <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">

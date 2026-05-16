@@ -83,7 +83,7 @@ export function LabelsTab() {
             return (
               <li
                 key={label.id}
-                className="flex items-center justify-between gap-3 px-3 py-2.5"
+                className="flex items-center justify-between gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55"
               >
                 <span className="inline-flex items-center gap-2">
                   <Tag className="size-3.5 text-ink-3" aria-hidden />

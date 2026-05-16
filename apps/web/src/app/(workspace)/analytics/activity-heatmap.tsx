@@ -34,8 +34,8 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       : `Activity heatmap: ${totalEvents} mark event${totalEvents === 1 ? "" : "s"} across ${activeDays} active day${activeDays === 1 ? "" : "s"}. Peak day has ${data.maxCount} event${data.maxCount === 1 ? "" : "s"}.`;
 
   return (
-    <section className="rounded-md border border-rule bg-paper">
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-3 py-2.5">
+    <section className="rounded-md bg-paper-2">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 px-3 py-2.5">
         <div>
           <h2 className="text-[0.875rem] font-semibold text-ink">Activity</h2>
           <p className="text-[0.75rem] text-ink-3">Mark events per day, resolved events excluded</p>

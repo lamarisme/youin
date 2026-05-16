@@ -122,7 +122,7 @@ function BridgeContent() {
       ) : null}
 
       {displayStatus === "needs-login" ? (
-        <Button className="mt-5 w-full bg-mark text-paper hover:bg-mark-bright" onClick={handleLogin}>
+        <Button className="mt-5 h-10 w-full" onClick={handleLogin}>
           Sign in to continue
         </Button>
       ) : null}
@@ -130,7 +130,7 @@ function BridgeContent() {
       {status === "error" ? (
         <Button
           variant="outline"
-          className="mt-5 w-full"
+          className="mt-5 h-10 w-full"
           onClick={() => window.location.reload()}
         >
           Try again

@@ -113,11 +113,11 @@ function ChartShell({
   return (
     <section
       className={cn(
-        "rounded-md border border-rule bg-paper",
+        "rounded-md bg-paper-2",
         className,
       )}
     >
-      <header className="flex flex-wrap items-baseline justify-between gap-3 border-b border-rule px-3 py-2.5">
+      <header className="flex flex-wrap items-baseline justify-between gap-3 px-3 py-2.5">
         <div>
           <h2 className="text-[0.875rem] font-semibold text-ink">{title}</h2>
           {subtitle ? <p className="text-[0.75rem] text-ink-3">{subtitle}</p> : null}

@@ -76,11 +76,11 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
               <p className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3">
                 {group.heading}
               </p>
-              <dl className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+              <dl className="space-y-1 rounded-md bg-paper-2 p-1">
                 {group.rows.map((row) => (
                   <div
                     key={row.label}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-[0.8125rem]"
+                    className="flex items-center justify-between gap-3 rounded px-2 py-1.5 text-[0.8125rem]"
                   >
                     <dt className="text-ink-2">{row.label}</dt>
                     <dd className="flex shrink-0 items-center gap-1">

@@ -9,7 +9,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 backdrop-blur">
+      <header className="sticky top-0 z-20 bg-paper/95 backdrop-blur">
         <div className="shell flex items-center justify-between py-3.5">
           <Link href="/" aria-label="youin home" className="flex min-h-11 items-center gap-2.5">
             <span className="pin-dot">Y</span>
@@ -32,7 +32,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
           <p className="max-w-[46ch] text-[0.9375rem] leading-relaxed text-ink-2">{t("lead")}</p>
 
-          <div className="surface-inset w-full max-w-[34rem] rounded-lg border border-rule p-2.5">
+          <div className="w-full max-w-[34rem] rounded-lg bg-paper-2 p-2.5">
             <div className="grid gap-2 sm:grid-cols-3">
               <BetaPoint label={t("betaFree")} />
               <BetaPoint label={t("betaNoCard")} />

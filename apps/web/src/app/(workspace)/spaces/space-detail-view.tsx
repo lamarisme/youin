@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Kbd } from "@/components/ui/kbd";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
@@ -232,20 +233,20 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
   return (
     <>
-      <div className="mb-5 border-b border-rule pb-4">
+      <div className="mb-3">
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="interactive-lift min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
+          className="min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
         >
           <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
           All spaces
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -356,7 +357,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   size="sm"
                   variant="outline"
                   onClick={() => setShowNew(true)}
-                  className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-8 sm:text-[0.75rem]"
+                  className="h-11 gap-1.5 bg-paper-2 px-3 text-[0.875rem] text-ink hover:bg-paper-3 hover:text-ink sm:h-8 sm:text-[0.75rem]"
                 >
                   <Plus className="size-3.5" />
                   New mark
@@ -514,8 +515,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             </Field>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">⌘</kbd>
-                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">Enter</kbd>
+                <Kbd className="min-w-[1.25rem] py-px text-ink-2">⌘</Kbd>
+                <Kbd className="min-w-[1.25rem] py-px text-ink-2">Enter</Kbd>
                 <span>to save</span>
               </p>
               <div className="flex items-center gap-2">

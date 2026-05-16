@@ -250,7 +250,7 @@ export function TriageView() {
     <>
       <AppHeader title="Triage" />
 
-      <FadeIn className="flex flex-wrap items-center gap-2">
+      <FadeIn className="flex flex-wrap items-center gap-1.5 rounded-md bg-paper-2 p-1.5">
         <FilterSelect
           value={filters.spaceId}
           onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
@@ -258,12 +258,12 @@ export function TriageView() {
           ariaLabel={selectedProject ? `Select space in ${selectedProject.name}` : "Select space"}
           triggerClassName="h-11 sm:h-9"
         />
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5">
           <Button
             size="sm"
             variant="outline"
             onClick={() => setShowNew(true)}
-            className="h-11 gap-1.5 bg-paper-2 px-3 text-[0.875rem] text-ink hover:bg-paper-3 sm:h-9 sm:text-[0.8125rem]"
+            className="h-11 gap-1.5 bg-paper-3 px-3 text-[0.875rem] text-ink hover:bg-paper-3/80 sm:h-9 sm:text-[0.8125rem]"
           >
             <Plus className="size-3.5 shrink-0 opacity-80" />
             New mark
@@ -355,7 +355,7 @@ export function TriageView() {
           page={displayPage}
           totalPages={totalPages}
           onPageChange={(p) => update({ page: p })}
-          className="mt-4"
+          className="mt-2"
         />
       ) : null}
 

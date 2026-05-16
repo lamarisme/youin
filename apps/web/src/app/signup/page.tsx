@@ -267,7 +267,7 @@ function SignUpPageContent() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 w-full bg-paper"
+                    className="h-10 w-full"
                     onClick={handleGoogleSignUp}
                     disabled={oauthLoading || loading || !agreedToTerms}
                   >
@@ -482,7 +482,7 @@ function SignUpPageContent() {
               type="submit"
               disabled={!canAdvance}
               loading={loading}
-              className="h-10 min-w-[148px] bg-mark text-paper hover:bg-mark-bright"
+              className="h-10 min-w-[148px]"
             >
               {isLastStep ? (loading ? "Creating account..." : "Create account") : "Continue"}
               <ArrowRight className="size-4" />

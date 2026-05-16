@@ -14,6 +14,7 @@ import { Field } from "@/components/field";
 import { Pagination } from "@/components/pagination";
 import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Dialog,
   DialogContent,
@@ -135,16 +136,12 @@ export function SpacesListView({
           size="sm"
           onClick={() => setShowCreate(true)}
           disabled={!targetProject}
-          className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
+          className="h-11 gap-1.5 bg-paper-3 px-3 text-[0.875rem] text-ink hover:bg-paper-3/80 sm:h-9 sm:text-[0.8125rem]"
         >
           <Plus className="size-3.5" />
           New space
         </Button>
-        <span
-          aria-hidden
-          className="hidden h-6 w-px shrink-0 bg-rule sm:inline-block"
-        />
-        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+        <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
           <FilterSelect<"all" | SpacePriority>
             value={priorityFilter}
             onValueChange={(v) => {
@@ -306,12 +303,12 @@ export function SpacesListView({
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
-                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                <Kbd className="min-w-[1.25rem] py-px text-ink-2">
                   ⌘
-                </kbd>
-                <kbd className="inline-flex min-w-[1.25rem] items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-2">
+                </Kbd>
+                <Kbd className="min-w-[1.25rem] py-px text-ink-2">
                   Enter
-                </kbd>
+                </Kbd>
                 <span>to create</span>
               </p>
               <div className="flex items-center gap-2">

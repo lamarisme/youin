@@ -3,6 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
 
+import { Kbd } from "@/components/ui/kbd";
 import type { WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
@@ -113,8 +114,8 @@ export function LabelPicker({
       onBlur={handleBlur}
       className={cn(
         variant === "inline"
-          ? "rounded-md border border-transparent bg-transparent transition-colors hover:bg-paper-2 focus-within:border-mark/30 focus-within:bg-paper-2 focus-within:ring-2 focus-within:ring-mark/20"
-          : "rounded-lg border border-rule bg-paper transition-colors focus-within:border-mark/40",
+          ? "rounded-md bg-transparent transition-colors hover:bg-paper-2 focus-within:bg-paper-2 focus-within:ring-2 focus-within:ring-mark/20"
+          : "rounded-lg bg-paper-2 transition-colors focus-within:ring-2 focus-within:ring-mark/20",
         className,
       )}
     >
@@ -167,11 +168,7 @@ export function LabelPicker({
       </div>
 
       {showOptions ? (
-        <div
-          id={listboxId}
-          role="listbox"
-          className={cn("p-1", variant === "boxed" && "border-t border-rule")}
-        >
+        <div id={listboxId} role="listbox" className="p-1">
           {filteredOptions.slice(0, MAX_OPTIONS).map((label, i) => {
             const isFirst = i === 0;
             const showEnter = isFirst && normalizedQuery.length > 0 && !canCreate;
@@ -189,9 +186,9 @@ export function LabelPicker({
               >
                 <span className="truncate">{label.name}</span>
                 {showEnter ? (
-                  <kbd className="inline-flex items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-3">
+                  <Kbd className="py-px">
                     ↵
-                  </kbd>
+                  </Kbd>
                 ) : null}
               </button>
             );
@@ -217,9 +214,9 @@ export function LabelPicker({
                 )}
               </span>
               {!creating ? (
-                <kbd className="inline-flex items-center justify-center rounded border border-rule bg-paper px-1.5 py-px font-mono text-[0.625rem] text-ink-3">
+                <Kbd className="py-px">
                   ↵
-                </kbd>
+                </Kbd>
               ) : null}
             </button>
           ) : null}

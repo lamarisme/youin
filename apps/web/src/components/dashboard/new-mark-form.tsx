@@ -262,7 +262,7 @@ export function NewMarkForm({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-rule bg-paper-2 px-3 py-2 sm:col-span-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 sm:col-span-2">
         <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3">
           Preview
         </span>

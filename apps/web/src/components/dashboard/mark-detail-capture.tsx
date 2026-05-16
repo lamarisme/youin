@@ -27,8 +27,8 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
 
   return (
     <>
-      <div className="mt-5 overflow-hidden rounded-lg border border-rule bg-paper">
-        <div className="flex items-center gap-2 border-b border-rule px-3 py-2">
+      <div className="mt-5 overflow-hidden rounded-lg bg-paper-2">
+        <div className="flex items-center gap-2 px-3 py-2">
           <span className="pin-dot !size-5 !text-[8px]">
             {shortMarkLabel(pin.displayKey)}
           </span>
@@ -36,9 +36,9 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
             Capture
           </span>
         </div>
-        <div className="relative bg-paper px-3 py-3">
+        <div className="relative px-3 pb-3">
           {cap?.screenshotUrl ? (
-            <div className="mx-auto max-w-2xl overflow-hidden rounded-md border border-rule bg-paper-2">
+            <div className="mx-auto max-w-2xl overflow-hidden rounded-md bg-paper-3">
               {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -105,8 +105,8 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
           </dl>
 
           {domContext ? (
-            <div className="mt-3 overflow-hidden rounded-lg border border-rule bg-paper">
-              <div className="flex items-center gap-2 border-b border-rule px-3 py-2 text-[0.75rem] font-medium text-ink-2">
+            <div className="mt-3 overflow-hidden rounded-lg bg-paper-2">
+              <div className="flex items-center gap-2 px-3 py-2 text-[0.75rem] font-medium text-ink-2">
                 <Code2 className="size-3.5 text-ink-3" aria-hidden />
                 <span>DOM context</span>
               </div>
@@ -114,7 +114,7 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
                 {domContext.outerHTML}
               </pre>
               {domContext.nearbyText ? (
-                <p className="border-t border-rule px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-3">
+                <p className="px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-3">
                   {domContext.nearbyText}
                 </p>
               ) : null}

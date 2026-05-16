@@ -29,6 +29,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
+import { Kbd } from "@/components/ui/kbd";
 import { useCollabStore } from "@/lib/collab-store";
 import { cn } from "@/lib/utils";
 
@@ -246,11 +247,11 @@ function CommandPaletteDialog({
       onOpenChange={onOpenChange}
       label={t("label")}
       className={cn(
-        "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-lg border border-rule bg-paper shadow-[0_20px_48px_-28px_oklch(17%_0.012_50_/_0.42)]",
+        "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-lg bg-paper-2 shadow-[0_20px_48px_-28px_oklch(17%_0.012_50_/_0.42)] ring-1 ring-rule",
         "dark:shadow-[0_24px_60px_-24px_oklch(0%_0_0_/_0.6)]",
       )}
     >
-      <div className="flex items-center gap-2 border-b border-rule px-3.5 py-2.5">
+      <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
         <Command.Input
           ref={inputRef}
@@ -258,9 +259,9 @@ function CommandPaletteDialog({
           placeholder={t("placeholder")}
           className="flex-1 bg-transparent text-[0.9375rem] text-ink outline-none placeholder:text-ink-3"
         />
-        <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
+        <Kbd>
           esc
-        </kbd>
+        </Kbd>
       </div>
 
       <Command.List className="max-h-[60vh] overflow-y-auto py-1.5">
@@ -302,9 +303,9 @@ function CommandPaletteDialog({
                       ) : null}
                     </span>
                     {cmd.shortcut ? (
-                      <kbd className="ml-auto shrink-0 rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
+                      <Kbd className="ml-auto shrink-0">
                         {cmd.shortcut}
-                      </kbd>
+                      </Kbd>
                     ) : null}
                   </Command.Item>
                 );
@@ -314,16 +315,16 @@ function CommandPaletteDialog({
         })}
       </Command.List>
 
-      <div className="flex items-center justify-between border-t border-rule px-3.5 py-2 text-[0.6875rem] text-ink-3">
+      <div className="flex items-center justify-between px-3.5 py-2 text-[0.6875rem] text-ink-3">
         <span className="flex items-center gap-1.5">
-          <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">↑↓</kbd>
+          <Kbd>↑↓</Kbd>
           {t("footerNavigate")}
           <span className="px-1">·</span>
-          <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">↵</kbd>
+          <Kbd>↵</Kbd>
           {t("footerRun")}
         </span>
         <span className="flex items-center gap-1.5">
-          <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono">⌘K</kbd>
+          <Kbd>⌘K</Kbd>
           {t("footerToggle")}
         </span>
       </div>

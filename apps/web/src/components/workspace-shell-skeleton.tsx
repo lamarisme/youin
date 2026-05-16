@@ -28,7 +28,7 @@ export function WorkspaceMainSkeleton({ id }: { id?: string }) {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <ShimmerBar key={`sk-${String(i)}`} className="h-36 rounded-xl" />
+          <ShimmerBar key={`sk-${String(i)}`} className="h-36 rounded-lg" />
         ))}
       </div>
     </div>

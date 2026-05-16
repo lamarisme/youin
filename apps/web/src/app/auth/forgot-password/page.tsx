@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
             <Button
               type="button"
               variant="outline"
-              className="flex-1"
+              className="h-10 flex-1"
               onClick={() => {
                 setSent(false);
                 setEmail("");
@@ -79,7 +79,7 @@ export default function ForgotPasswordPage() {
             <SubmitButton
               type="button"
               variant="outline"
-              className="flex-1"
+              className="h-10 flex-1"
               onClick={() => handleSubmit({ preventDefault: () => {} } as FormEvent<HTMLFormElement>)}
               loading={loading}
               loadingText="Resending..."
@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
 
           <SubmitButton
             type="submit"
-            className="w-full bg-mark text-paper hover:bg-mark-bright"
+            className="h-10 w-full"
             loading={loading}
             disabled={!email.trim()}
             loadingText="Sending link..."

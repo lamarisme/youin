@@ -11,10 +11,10 @@
 
 export const color = {
   /* Paper — technical neutral surfaces */
-  paper:   "oklch(97.8% 0.004 286)",
-  paper2:  "oklch(95.2% 0.006 286)",
-  paper3:  "oklch(91.4% 0.008 286)",
-  paperElevated: "oklch(96.2% 0.006 286)",
+  paper:   "oklch(98.4% 0.003 286)",
+  paper2:  "oklch(96.8% 0.004 286)",
+  paper3:  "oklch(94.2% 0.006 286)",
+  paperElevated: "oklch(97.2% 0.004 286)",
 
   /* Ink — foreground text */
   ink:     "oklch(18.2% 0.012 286)",

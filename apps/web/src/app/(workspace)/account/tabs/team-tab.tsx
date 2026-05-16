@@ -112,8 +112,8 @@ export function TeamTab() {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-5">
+    <div className="space-y-6">
+      <section className="space-y-4">
         <div>
           <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Team</h2>
           <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
@@ -130,7 +130,7 @@ export function TeamTab() {
               Used in @mentions and to assign marks. Letters, numbers, and underscores only, and unique here.
             </p>
             <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="relative flex-1 rounded-md transition-colors hover:bg-paper-2 focus-within:bg-paper-2">
+              <div className="relative flex-1 rounded-md transition-colors hover:bg-paper-3 focus-within:bg-paper-3">
                 <span
                   className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[0.8125rem] text-ink-3"
                   aria-hidden
@@ -203,7 +203,7 @@ export function TeamTab() {
               aria-describedby={
                 inviteFieldError || inviteError ? "invite-email-error" : undefined
               }
-              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-[0.9375rem] shadow-none hover:bg-paper-2 focus-visible:border-transparent focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
+              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-[0.9375rem] shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
               onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
             />
             <SubmitButton
@@ -248,7 +248,7 @@ export function TeamTab() {
             return (
             <li
               key={member.id}
-              className="flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:bg-paper-2"
+              className="flex items-center justify-between gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar className="size-7 shrink-0">
@@ -301,7 +301,7 @@ export function TeamTab() {
             {invites.map((inv) => (
               <li
                 key={inv.id}
-                className="flex items-center justify-between gap-3 px-3 py-2 text-[0.8125rem]"
+                className="flex items-center justify-between gap-3 rounded-md px-3 py-2 text-[0.8125rem] transition-colors hover:bg-paper-3/45"
               >
                 <span className="inline-flex min-w-0 items-center gap-2 text-ink-2">
                   <span className="text-[0.625rem] uppercase tracking-wider text-ink-3">

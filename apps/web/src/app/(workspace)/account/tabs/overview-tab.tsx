@@ -49,8 +49,8 @@ export function OverviewTab() {
   }
 
   return (
-    <div className="space-y-8">
-      <section className="border-b border-rule pb-6">
+    <div className="space-y-6">
+      <section className="pb-2">
         <p className="text-eyebrow">Workspace</p>
         {renaming ? (
           <div className="mt-2 flex items-center gap-1.5">
@@ -101,7 +101,7 @@ export function OverviewTab() {
                     setRenaming(true);
                     setDraft(workspaceName);
                   }}
-                  className="group inline-flex max-w-full items-center gap-1.5 rounded-md text-left transition-colors hover:bg-paper-2"
+                  className="group inline-flex max-w-full items-center gap-1.5 rounded-md text-left transition-colors hover:bg-paper-3"
                   aria-label="Rename workspace"
                 >
                   <span className="min-w-0 truncate text-ink">{workspaceName || "Workspace"}</span>
@@ -178,7 +178,7 @@ function SettingRow({
   muted?: boolean;
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-3">
+    <li className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55">
       <div className={muted ? "opacity-70" : undefined}>
         <p className="text-[0.8125rem] font-medium text-ink">{title}</p>
         <p className="mt-0.5 text-[0.6875rem] text-ink-3">{description}</p>

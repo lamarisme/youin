@@ -37,7 +37,7 @@ export function MentionPopover({
       <div
         role="listbox"
         aria-label="Mentionable teammates"
-        className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-rule bg-paper p-2 shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.4)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)]"
+        className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg bg-paper-2 p-2 shadow-[var(--shadow-popover)] ring-1 ring-rule"
       >
         <p className="px-2 py-1.5 text-[0.75rem] text-ink-3">No matching teammates.</p>
       </div>
@@ -45,7 +45,7 @@ export function MentionPopover({
   }
 
   return (
-    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[14rem] overflow-hidden rounded-lg border border-rule bg-paper shadow-[0_12px_36px_-26px_oklch(17%_0.012_50_/_0.4)] dark:shadow-[0_12px_36px_-26px_oklch(0%_0_0_/_0.5)]">
+    <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[14rem] overflow-hidden rounded-lg bg-paper-2 shadow-[var(--shadow-popover)] ring-1 ring-rule">
       <ul
         ref={listRef}
         role="listbox"

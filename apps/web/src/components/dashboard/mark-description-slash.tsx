@@ -193,7 +193,7 @@ function SlashMenuView({
     <div
       role="listbox"
       aria-label="Formatting commands"
-      className="pointer-events-auto max-h-[min(40vh,16rem)] w-64 overflow-y-auto rounded-md border border-rule bg-paper py-1 text-ink shadow-lg outline-none"
+      className="pointer-events-auto max-h-[min(40vh,16rem)] w-64 overflow-y-auto rounded-md bg-paper-2 py-1 text-ink shadow-[var(--shadow-popover)] ring-1 ring-rule outline-none"
       style={{
         position,
         top,

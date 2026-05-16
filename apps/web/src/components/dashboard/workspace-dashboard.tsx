@@ -20,7 +20,7 @@ export function WorkspaceDashboard() {
   }, [filters.markId, pins]);
 
   return (
-    <PageContainer className="space-y-5">
+    <PageContainer>
       {selectedPin ? <MarkDetailView pin={selectedPin} /> : <TriageView />}
     </PageContainer>
   );

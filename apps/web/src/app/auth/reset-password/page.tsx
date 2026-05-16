@@ -132,7 +132,7 @@ export default function ResetPasswordPage() {
               </p>
             </div>
           </div>
-          <Button asChild className="w-full bg-mark text-paper hover:bg-mark-bright">
+          <Button asChild className="h-10 w-full">
             <Link href="/auth/forgot-password">Request a new link</Link>
           </Button>
         </div>
@@ -191,7 +191,7 @@ export default function ResetPasswordPage() {
 
           <SubmitButton
             type="submit"
-            className="w-full bg-mark text-paper hover:bg-mark-bright"
+            className="h-10 w-full"
             loading={loading}
             disabled={success || hasSession === null || !password || !confirm}
             loadingText="Updating..."

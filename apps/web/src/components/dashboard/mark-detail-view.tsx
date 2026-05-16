@@ -222,7 +222,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
         onShowHelp={() => setShowHelp(true)}
       />
 
-      <FadeIn key={pin.id} delay={0.08} className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <FadeIn key={pin.id} delay={0.08} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -274,7 +274,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             />
           </div>
 
-          <div className="mt-3 rounded-md bg-paper">
+          <div className="mt-3 rounded-md bg-paper-2">
             <div className="grid min-h-11 gap-1 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
               <span
                 className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
@@ -388,7 +388,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
             <button
               type="button"
               onClick={() => startEdit("description")}
-              className="mt-5 flex min-h-11 w-full items-center justify-between rounded-md border border-dashed border-rule bg-paper px-3 py-2 text-left text-[0.8125rem] text-ink-3 transition-colors hover:border-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
+              className="mt-5 flex min-h-11 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-[0.8125rem] text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
             >
               <span>Add notes</span>
               <Pencil className="size-3.5" aria-hidden />
@@ -424,8 +424,8 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
           </div>
         </div>
 
-        <div className="lg:border-l lg:border-rule lg:pl-6">
-          <div className="lg:sticky lg:top-8 space-y-6">
+        <div className="min-w-0">
+          <div className="space-y-4 lg:sticky lg:top-4">
             <CommentThread pin={pin} comments={comments} membersById={membersById} />
             <MarkHistory events={events} membersById={membersById} />
           </div>

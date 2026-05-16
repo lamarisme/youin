@@ -45,10 +45,10 @@ function AuthErrorContent() {
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button asChild className="bg-mark text-paper hover:bg-mark-bright">
+        <Button asChild className="h-10">
           <Link href={signInHref}>Back to sign in</Link>
         </Button>
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild className="h-10">
           <Link href="/auth/forgot-password">Forgot password</Link>
         </Button>
       </div>

@@ -6,5 +6,14 @@ interface PageContainerProps {
 }
 
 export function PageContainer({ children, className }: PageContainerProps) {
-  return <div className={cn("w-full min-w-0 space-y-3 px-4 py-4 sm:px-5", className)}>{children}</div>;
+  return (
+    <div
+      className={cn(
+        "w-full min-w-0 space-y-3 px-3 py-3 sm:px-4 sm:py-4 lg:pl-2 lg:pr-5",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }

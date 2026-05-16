@@ -25,7 +25,7 @@ export function StatTile({
     accent === "mark" ? "text-mark" : accent === "ok" ? "text-ok" : "text-ink";
 
   return (
-    <div className="rounded-md border border-rule bg-paper px-3 py-3">
+    <div className="rounded-md bg-paper-2 px-3 py-3">
       <p className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-ink-3">
         {label}
       </p>
