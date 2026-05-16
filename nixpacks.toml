@@ -1,0 +1,15 @@
+providers = ["node"]
+
+[variables]
+NODE_ENV = "production"
+NIXPACKS_NODE_VERSION = "22"
+NIXPACKS_PNPM_VERSION = "10.28.2"
+
+[phases.install]
+cmds = ["corepack enable", "pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["pnpm build:tokens", "pnpm build:web"]
+
+[start]
+cmd = "pnpm start:web"

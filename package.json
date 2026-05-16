@@ -4,6 +4,10 @@
   "private": true,
   "description": "A visual feedback layer for the live web. Click any element, leave a comment, ship a ticket — without leaving the browser.",
   "author": "opmarq@gmail.com",
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build:tokens": "pnpm --filter @youin/design-tokens build",
     "dev:tokens": "pnpm --filter @youin/design-tokens dev",

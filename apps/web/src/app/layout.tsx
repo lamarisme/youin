@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { NextIntlClientProvider } from "next-intl";
@@ -10,12 +9,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
-
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale("en");
@@ -35,10 +28,7 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html
-      lang="en"
-      className={`${bricolage.variable} h-full`}
-    >
+    <html lang="en" className="h-full">
       <body className="min-h-full flex flex-col bg-paper text-ink antialiased">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
