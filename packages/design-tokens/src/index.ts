@@ -10,61 +10,61 @@
 /* ─── Primitive palette ────────────────────────────────────────── */
 
 export const color = {
-  /* Paper — technical neutral surfaces */
-  paper:   "oklch(98.4% 0.003 286)",
-  paper2:  "oklch(96.8% 0.004 286)",
-  paper3:  "oklch(94.2% 0.006 286)",
-  paperElevated: "oklch(97.2% 0.004 286)",
+  /* Paper — inspection surfaces with a faint warm technical cast */
+  paper:   "oklch(98.3% 0.006 78)",
+  paper2:  "oklch(96.4% 0.008 78)",
+  paper3:  "oklch(93.5% 0.011 78)",
+  paperElevated: "oklch(97.4% 0.007 78)",
 
   /* Ink — foreground text */
-  ink:     "oklch(18.2% 0.012 286)",
+  ink:     "oklch(18.4% 0.018 62)",
   /** Filled control hover (primary buttons on paper) */
-  inkHover: "oklch(24% 0.014 286)",
-  ink2:    "oklch(42% 0.011 286)",
-  ink3:    "oklch(57% 0.01 286)",
+  inkHover: "oklch(24% 0.02 62)",
+  ink2:    "oklch(42% 0.016 62)",
+  ink3:    "oklch(56% 0.013 62)",
 
   /* Rule — borders, dividers */
-  rule:    "oklch(88% 0.007 286)",
-  ruleStrong: "oklch(81.5% 0.009 286)",
+  rule:    "oklch(87.2% 0.012 78)",
+  ruleStrong: "oklch(79.8% 0.016 78)",
 
-  /* Mark — brand / accent (warm red) */
-  mark:       "oklch(53% 0.19 26)",
-  markBright: "oklch(59% 0.21 26)",
-  markSoft:   "oklch(95.2% 0.035 26)",
+  /* Mark — annotation ink, not generic danger red */
+  mark:       "oklch(52.5% 0.205 24)",
+  markBright: "oklch(59.5% 0.215 24)",
+  markSoft:   "oklch(94.4% 0.045 24)",
 
   /* Semantic */
-  ok:       "oklch(53% 0.13 155)",
-  okSoft:   "oklch(96% 0.026 155)",
-  warn:     "oklch(68% 0.14 75)",
-  warnSoft: "oklch(96% 0.04 75)",
-  info:     "oklch(57% 0.12 245)",
-  infoSoft: "oklch(96% 0.025 245)",
+  ok:       "oklch(51% 0.12 154)",
+  okSoft:   "oklch(95.4% 0.03 154)",
+  warn:     "oklch(65% 0.13 82)",
+  warnSoft: "oklch(95.2% 0.045 82)",
+  info:     "oklch(55% 0.11 236)",
+  infoSoft: "oklch(95.2% 0.026 236)",
 } as const;
 
 export const colorDark = {
-  paper:   "oklch(15.2% 0.015 286)",
-  paper2:  "oklch(18.4% 0.016 286)",
-  paper3:  "oklch(22.8% 0.017 286)",
-  paperElevated: "oklch(19.8% 0.016 286)",
+  paper:   "oklch(15.4% 0.018 62)",
+  paper2:  "oklch(18.6% 0.02 62)",
+  paper3:  "oklch(22.8% 0.022 62)",
+  paperElevated: "oklch(19.8% 0.02 62)",
 
-  ink:     "oklch(92% 0.006 286)",
-  inkHover: "oklch(84% 0.007 286)",
-  ink2:    "oklch(70% 0.009 286)",
-  ink3:    "oklch(56% 0.011 286)",
+  ink:     "oklch(91.8% 0.008 78)",
+  inkHover: "oklch(84% 0.01 78)",
+  ink2:    "oklch(70% 0.012 78)",
+  ink3:    "oklch(56% 0.014 78)",
 
-  rule:    "oklch(25.5% 0.018 286)",
-  ruleStrong: "oklch(32% 0.02 286)",
+  rule:    "oklch(26% 0.024 62)",
+  ruleStrong: "oklch(33% 0.027 62)",
 
-  mark:       "oklch(63% 0.2 25)",
-  markBright: "oklch(69% 0.22 25)",
-  markSoft:   "oklch(25% 0.065 25)",
+  mark:       "oklch(63% 0.21 24)",
+  markBright: "oklch(69% 0.22 24)",
+  markSoft:   "oklch(25.5% 0.075 24)",
 
-  ok:       "oklch(64% 0.14 155)",
-  okSoft:   "oklch(25% 0.045 155)",
-  warn:     "oklch(74% 0.14 75)",
-  warnSoft: "oklch(27% 0.055 75)",
-  info:     "oklch(68% 0.12 245)",
-  infoSoft: "oklch(25% 0.045 245)",
+  ok:       "oklch(64% 0.13 154)",
+  okSoft:   "oklch(25.5% 0.05 154)",
+  warn:     "oklch(73% 0.135 82)",
+  warnSoft: "oklch(27.5% 0.06 82)",
+  info:     "oklch(67% 0.11 236)",
+  infoSoft: "oklch(25.5% 0.05 236)",
 } as const;
 
 /* ─── Typography ───────────────────────────────────────────────── */
@@ -113,9 +113,9 @@ export const shadow = {
   panel:
     "none",
   popover:
-    "0 16px 40px -24px oklch(8% 0.012 286 / 0.72)",
+    "0 16px 40px -24px oklch(12% 0.02 62 / 0.48)",
   fab:
-    "0 10px 24px -16px oklch(53% 0.19 26 / 0.72)",
+    "0 10px 24px -16px oklch(52.5% 0.205 24 / 0.72)",
   banner:
     "none",
   reviewFab:

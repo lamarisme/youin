@@ -248,7 +248,7 @@ function CommandPaletteDialog({
       label={t("label")}
       className={cn(
         "fixed left-1/2 top-[14vh] z-50 w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-lg bg-paper-2 shadow-[0_20px_48px_-28px_oklch(17%_0.012_50_/_0.42)] ring-1 ring-rule",
-        "dark:shadow-[0_24px_60px_-24px_oklch(0%_0_0_/_0.6)]",
+        "dark:shadow-[0_24px_60px_-24px_oklch(8%_0.018_62_/_0.6)]",
       )}
     >
       <div className="flex items-center gap-2 px-3.5 py-2.5">

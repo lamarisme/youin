@@ -30,10 +30,23 @@ Use the brand register for the homepage and public positioning pages.
 
 Product uses a **Restrained** color strategy.
 
-- Base: technical warm-gray neutrals, cleaner than the old manuscript paper.
-- Accent: manuscript red, used sparingly.
+- Scene: a designer, PM, or client is reviewing a mostly light live app in the browser and needs a calm inspection layer where one red mark can land with confidence.
+- Base: warm technical neutrals, closer to an inspection surface than paper or generic cool-gray SaaS chrome.
+- Accent: annotation red, used sparingly. It should feel like a precise mark on the interface, not a destructive state.
 - Semantics: green for resolved/success, amber for warning/stale, blue for info.
 - Dark mode exists for product surfaces, but it is not the default brand mood.
+
+## Core Palette
+
+All core colors use OKLCH. Neutrals carry a faint warm cast so the product feels hand-worked and precise without becoming beige.
+
+- `paper`: `oklch(98.3% 0.006 78)`
+- `paper-2`: `oklch(96.4% 0.008 78)`
+- `paper-3`: `oklch(93.5% 0.011 78)`
+- `ink`: `oklch(18.4% 0.018 62)`
+- `rule`: `oklch(87.2% 0.012 78)`
+- `mark`: `oklch(52.5% 0.205 24)`
+- `mark-soft`: `oklch(94.4% 0.045 24)`
 
 ## Palette Roles
 

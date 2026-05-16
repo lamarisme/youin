@@ -200,7 +200,7 @@ function SignUpPageContent() {
   return (
     <div className="space-y-5">
       {/* Panel ─────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-rule bg-paper-2 p-4 shadow-[0_24px_60px_-40px_oklch(17.5%_0.014_255_/_0.45)]">
+      <div className="rounded-lg border border-rule bg-paper-2 p-4 shadow-[0_24px_60px_-40px_oklch(18.4%_0.018_62_/_0.36)]">
         {/* Stepper */}
         <StepIndicator current={step} total={totalSteps} steps={visibleSteps} />
 
@@ -486,7 +486,7 @@ function StepIndicator({
               className={cn(
                 "h-1.5 flex-1 rounded-full transition-colors",
                 state === "current" &&
-                  "bg-mark shadow-[0_4px_12px_-6px_oklch(54%_0.2_25_/_0.5)]",
+                  "bg-mark shadow-[0_4px_12px_-6px_oklch(52.5%_0.205_24_/_0.5)]",
                 state === "done" &&
                   "bg-mark/45",
                 state === "todo" &&

@@ -51,7 +51,6 @@ import {
 } from "./lib/sync"
 
 const SYNC_NOW = "youin:sync-now"
-const BRAND_ICON_URL = chrome.runtime.getURL("assets/icon.svg")
 
 type AuthView = "checking" | "signedOut" | "signedIn"
 
@@ -470,33 +469,28 @@ function IndexPopup() {
 
   if (view === "checking") {
     return (
-      <main className="youin-popup flex min-w-0 w-full max-w-[300px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
-        Preparing review…
+      <main className="youin-popup flex min-w-0 w-full max-w-[320px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
+        Preparing review...
       </main>
     )
   }
 
   return (
-    <main className="youin-popup relative flex min-w-0 w-full max-w-[300px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
-      <header className="flex items-center justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <img
-            src={BRAND_ICON_URL}
-            alt=""
-            className="size-8 shrink-0 object-contain"
-            aria-hidden
-          />
+    <main className="youin-popup relative flex min-w-0 w-full max-w-[320px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
+      <header className="flex items-center justify-between gap-3 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+        <div className="flex min-w-0 items-center">
+          <YouInMark />
         </div>
         <div className="relative shrink-0">
           <button
             ref={gearRef}
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            className="flex size-8 items-center justify-center rounded-md border border-transparent bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-hairline)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             aria-controls="youin-popup-account-menu"
             aria-expanded={menuOpen}
             aria-label="Account and settings"
             onClick={() => setMenuOpen((v) => !v)}>
-            ⚙
+            <SettingsIcon />
           </button>
           {menuOpen ? (
             <div
@@ -504,7 +498,7 @@ function IndexPopup() {
               id="youin-popup-account-menu"
               role="menu"
               aria-label="Account"
-              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.65)]">
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[var(--yi-shadow-popover)]">
               {view === "signedIn" ? (
                 <>
                   <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
@@ -513,7 +507,7 @@ function IndexPopup() {
                   <button
                     type="button"
                     role="menuitem"
-                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                     onClick={() => {
                       setMenuOpen(false)
                       void signOut()
@@ -525,7 +519,7 @@ function IndexPopup() {
                 <button
                   type="button"
                   role="menuitem"
-                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                   onClick={() => {
                     setMenuOpen(false)
                     setShowAuth(true)
@@ -538,9 +532,10 @@ function IndexPopup() {
                 href={`${WEB_APP_URL}/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
-                className="block px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline hover:bg-[color:var(--yi-ext-surface-hover)]"
+                className="flex items-center justify-between gap-3 px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                 onClick={() => setMenuOpen(false)}>
-                Web app ↗
+                <span>Web app</span>
+                <ExternalLinkIcon />
               </a>
             </div>
           ) : null}
@@ -550,18 +545,18 @@ function IndexPopup() {
       <section className="px-4 pb-4 pt-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+            <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
               Review session
             </p>
-            <h2 className="mt-1 truncate text-[16px] font-semibold leading-tight tracking-[-0.02em] text-[color:var(--yi-ink)]">
+            <h2 className="mt-1 truncate text-[16px] font-semibold leading-tight text-[color:var(--yi-ink)]">
               {pageLabel}
             </h2>
           </div>
           <span
-            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
+            className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${
               view === "signedIn"
-                ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
-                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+                ? "border-[color:var(--yi-ok-soft)] bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                : "border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
             }`}>
             {view === "signedIn" ? "Synced" : "Local"}
           </span>
@@ -599,7 +594,7 @@ function IndexPopup() {
             disabled={!canReviewPage || !spaceId || domainDisabled}
             className="min-h-[58px] border-0 border-e border-[color:var(--yi-ext-border-hairline)] bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             onClick={beginInspect}>
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-dim)]">
+            <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
               Open
             </span>
             <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-mark)]">
@@ -607,7 +602,7 @@ function IndexPopup() {
             </span>
           </button>
           <div className="min-h-[58px] px-3 py-2 text-left">
-            <span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-dim)]">
+            <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
               Resolved
             </span>
             <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
@@ -618,48 +613,54 @@ function IndexPopup() {
       </section>
 
       <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-              Workspace
+            <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+              Destination
             </p>
             <p className="mt-0.5 truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
-              {workspaceLabel}
+              {activeProjectName}
+            </p>
+            <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
+              {projectSpaces.find((space) => space.id === spaceId)?.name ??
+                "No space selected"}
             </p>
           </div>
           <a
             href={`${WEB_APP_URL}/dashboard?space=all`}
             target="_blank"
             rel="noreferrer"
-            className="shrink-0 text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:underline">
-            Dashboard
+            className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            aria-label={`Open ${workspaceLabel} dashboard`}>
+            <span>{workspaceLabel}</span>
+            <ExternalLinkIcon />
           </a>
         </div>
 
-        <div className="mt-3">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Project
-          </span>
-          <div className="flex gap-1">
-            <select
-              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
-              value={projectId}
-              onChange={(e) => selectProject(e.target.value)}>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+        <div className="mt-3 rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] p-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-1">
+            <label className="min-w-0">
+              <span className="sr-only">Project</span>
+              <select
+                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                value={projectId}
+                onChange={(e) => selectProject(e.target.value)}>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               title="New project"
-              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingProject((c) => !c)
                 setProjectErr(null)
               }}>
-              +
+              <PlusIcon />
             </button>
           </div>
           {creatingProject ? (
@@ -677,7 +678,7 @@ function IndexPopup() {
                   if (e.key === "Enter") submitNewProject()
                 }}
                 placeholder="Website QA"
-                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+                className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
               />
               <input
                 value={newProjectDescription}
@@ -687,42 +688,40 @@ function IndexPopup() {
                   if (e.key === "Enter") submitNewProject()
                 }}
                 placeholder="What this project collects"
-                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+                className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
               />
               <button
                 type="button"
-                className="rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
+                className="min-h-8 rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
                 onClick={() => submitNewProject()}>
                 Create project
               </button>
             </div>
           ) : null}
-        </div>
 
-        <div className="mt-3">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Space in {activeProjectName}
-          </span>
-          <div className="flex gap-1">
-            <select
-              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
-              value={spaceId}
-              onChange={(e) => selectSpace(e.target.value)}>
-              {projectSpaces.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+          <div className="mt-1 grid grid-cols-[minmax(0,1fr)_2.25rem] gap-1">
+            <label className="min-w-0">
+              <span className="sr-only">Space</span>
+              <select
+                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                value={spaceId}
+                onChange={(e) => selectSpace(e.target.value)}>
+                {projectSpaces.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               title="New review space"
-              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
                 setSpaceErr(null)
               }}>
-              +
+              <PlusIcon />
             </button>
           </div>
           {creatingSpace ? (
@@ -740,11 +739,11 @@ function IndexPopup() {
                   if (e.key === "Enter") submitNewSpace()
                 }}
                 placeholder="Client homepage review"
-                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+                className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
               />
               <button
                 type="button"
-                className="rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
+                className="min-h-8 rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
                 onClick={() => submitNewSpace()}>
                 Create space
               </button>
@@ -754,17 +753,19 @@ function IndexPopup() {
       </section>
 
       {view === "signedOut" && !showAuth ? (
-        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-          <div className="rounded-lg border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2.5">
-            <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
-              Feedback is local
-            </p>
-            <p className="mt-1 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-              Sign in when you want teammates to see comments and replies.
-            </p>
+        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
+                Local feedback
+              </p>
+              <p className="truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                Sign in to share it.
+              </p>
+            </div>
             <button
               type="button"
-              className="mt-2 inline-flex min-h-8 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
+              className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
               onClick={() => setShowAuth(true)}>
               Sign in
             </button>
@@ -772,120 +773,98 @@ function IndexPopup() {
         </div>
       ) : null}
 
-      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-              Settings
-            </p>
-            <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
-              Capture and sync controls
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={syncingNow || view !== "signedIn"}
-            className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-            onClick={runManualSync}>
-            {syncingNow ? "Syncing" : "Retry sync"}
-          </button>
-        </div>
-
-        {view === "signedIn" && (pendingSyncCount || failedSyncCount || syncMsg) ? (
-          <p
-            className={`mt-2 rounded-md border px-2 py-1.5 text-[10px] ${
-              failedSyncCount
-                ? "border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]"
-                : "border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
-            }`}>
-            {failedSyncCount
-              ? `${failedSyncCount} failed sync item${failedSyncCount === 1 ? "" : "s"}`
-              : pendingSyncCount
-                ? `${pendingSyncCount} pending sync item${pendingSyncCount === 1 ? "" : "s"}`
-                : syncMsg}
-          </p>
-        ) : null}
-
-        <label className="mt-3 flex min-h-8 items-center justify-between gap-3">
-          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
-            Show floating review button
-          </span>
-          <input
-            type="checkbox"
-            checked={floatingControl}
-            className="size-4 accent-[color:var(--yi-mark)]"
-            onChange={(e) => {
-              const next = e.target.checked
-              setFloatingControl(next)
-              void setWidgetSettings({ fabVisible: next })
-            }}
-          />
-        </label>
-
-        <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
-          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
-            Capture element screenshots
-          </span>
-          <input
-            type="checkbox"
-            checked={captureScreenshots}
-            className="size-4 accent-[color:var(--yi-mark)]"
-            onChange={(e) => {
-              const next = e.target.checked
-              setCaptureScreenshots(next)
-              void setWidgetSettings({ captureScreenshots: next })
-            }}
-          />
-        </label>
-
-        <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
-          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
-            Include DOM context
-          </span>
-          <input
-            type="checkbox"
-            checked={captureDomSnapshots}
-            className="size-4 accent-[color:var(--yi-mark)]"
-            onChange={(e) => {
-              const next = e.target.checked
-              setCaptureDomSnapshots(next)
-              void setWidgetSettings({ captureDomSnapshots: next })
-            }}
-          />
-        </label>
-
-        <label className="mt-2 block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Widget corner
-          </span>
-          <select
-            value={widgetCorner}
-            className="w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
-            onChange={(e) => {
-              const next = e.target.value as WidgetCorner
-              setWidgetCorner(next)
-              void setWidgetSettings({ corner: next })
-            }}>
-            <option value="bottom-right">Bottom right</option>
-            <option value="bottom-left">Bottom left</option>
-            <option value="top-right">Top right</option>
-            <option value="top-left">Top left</option>
-          </select>
-        </label>
-
-        {currentHost ? (
-          <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
-            <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
-              Disable on {currentHost}
+      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2">
+        <details className="group rounded-lg border border-transparent open:border-[color:var(--yi-ext-border-hairline)] open:bg-[color:var(--yi-ext-surface-stat)]">
+          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
+            <span>Options</span>
+            <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:hidden">
+              Capture, sync, widget
             </span>
-            <input
-              type="checkbox"
-              checked={domainDisabled}
-              className="size-4 accent-[color:var(--yi-mark)]"
-              onChange={(e) => toggleCurrentDomain(e.target.checked)}
-            />
-          </label>
-        ) : null}
+            <span className="hidden text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:inline">
+              Hide
+            </span>
+          </summary>
+
+          <div className="px-2 pb-2">
+            <div className="flex items-center justify-between gap-3 border-t border-[color:var(--yi-ext-border-hairline)] pt-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+                  Sync
+                </p>
+                <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                  {failedSyncCount
+                    ? `${failedSyncCount} failed`
+                    : pendingSyncCount
+                      ? `${pendingSyncCount} pending`
+                      : syncMsg ?? (view === "signedIn" ? "Up to date" : "Local only")}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={syncingNow || view !== "signedIn"}
+                className="min-h-8 shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                onClick={runManualSync}>
+                {syncingNow ? "Syncing" : "Retry"}
+              </button>
+            </div>
+
+            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-low)]">
+              <ToggleRow
+                label="Floating review button"
+                checked={floatingControl}
+                onChange={(next) => {
+                  setFloatingControl(next)
+                  void setWidgetSettings({ fabVisible: next })
+                }}
+              />
+              <ToggleRow
+                label="Element screenshots"
+                checked={captureScreenshots}
+                onChange={(next) => {
+                  setCaptureScreenshots(next)
+                  void setWidgetSettings({ captureScreenshots: next })
+                }}
+              />
+              <ToggleRow
+                label="DOM context"
+                checked={captureDomSnapshots}
+                onChange={(next) => {
+                  setCaptureDomSnapshots(next)
+                  void setWidgetSettings({ captureDomSnapshots: next })
+                }}
+              />
+            </div>
+
+            <label className="mt-2 block">
+              <span className="mb-1 block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+                Widget corner
+              </span>
+              <select
+                value={widgetCorner}
+                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                onChange={(e) => {
+                  const next = e.target.value as WidgetCorner
+                  setWidgetCorner(next)
+                  void setWidgetSettings({ corner: next })
+                }}>
+                <option value="bottom-right">Bottom right</option>
+                <option value="bottom-left">Bottom left</option>
+                <option value="top-right">Top right</option>
+                <option value="top-left">Top left</option>
+              </select>
+            </label>
+
+            {currentHost ? (
+              <div className="mt-2 rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-low)]">
+                <ToggleRow
+                  label={`Disable on ${currentHost}`}
+                  checked={domainDisabled}
+                  onChange={toggleCurrentDomain}
+                />
+              </div>
+            ) : null}
+          </div>
+        </details>
       </section>
 
       {view === "signedOut" && showAuth ? (
@@ -931,7 +910,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         </h2>
         <button
           type="button"
-          className="border-0 bg-transparent p-0 text-[11px] text-[color:var(--yi-ext-accent)] underline"
+          className="min-h-7 rounded-md border-0 bg-transparent px-2 text-[11px] font-medium text-[color:var(--yi-ext-accent)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
           onClick={onClose}>
           Close
         </button>
@@ -960,7 +939,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
 
       <form className="flex flex-col gap-2" onSubmit={handleSubmit}>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--yi-ext-text-placeholder)]">
+          <span className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-placeholder)]">
             Email
           </span>
           <input
@@ -970,11 +949,11 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@agency.com"
-            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus:border-[color:var(--yi-ext-accent-ring)]"
+            className="youin-input rounded-[var(--yi-radius-md)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--yi-ext-text-placeholder)]">
+          <span className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-placeholder)]">
             Password
           </span>
           <input
@@ -983,7 +962,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus:border-[color:var(--yi-ext-accent-ring)]"
+            className="youin-input rounded-[var(--yi-radius-md)] px-2.5 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
           />
         </label>
 
@@ -998,7 +977,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         <button
           type="submit"
           disabled={loading || !email.trim() || !password}
-          className="mt-1 inline-flex items-center justify-center rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-accent)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] transition-colors hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50">
+          className="mt-1 inline-flex min-h-8 items-center justify-center rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-accent)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-mark-bright)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:translate-y-0">
           {loading
             ? t("extension.popup.signingIn")
             : t("extension.popup.signIn")}
@@ -1010,18 +989,45 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
           href={`${WEB_APP_URL}/signup`}
           target="_blank"
           rel="noreferrer"
-          className="font-medium text-[color:var(--yi-ext-link)] no-underline hover:underline">
+          className="rounded-md px-1 font-medium text-[color:var(--yi-ext-link)] no-underline outline-none hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
           Create account
         </a>
         <a
           href={`${WEB_APP_URL}/login?mode=reset`}
           target="_blank"
           rel="noreferrer"
-          className="text-[color:var(--yi-ext-text-muted)] no-underline hover:underline">
+          className="rounded-md px-1 text-[color:var(--yi-ext-text-muted)] no-underline outline-none hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
           Forgot password?
         </a>
       </div>
     </section>
+  )
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange
+}: {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 px-2.5 py-2">
+      <span className="min-w-0 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+        {label}
+      </span>
+      <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-[color:var(--yi-paper-3)] transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] has-[:checked]:bg-[color:var(--yi-mark)]">
+        <input
+          type="checkbox"
+          checked={checked}
+          className="peer sr-only"
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span className="ms-0.5 size-4 rounded-full bg-[color:var(--yi-paper)] shadow-[0_1px_2px_oklch(18.4%_0.018_62_/_0.16)] transition-transform duration-150 [transition-timing-function:var(--yi-ease-out-expo)] peer-checked:translate-x-4 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none" />
+      </span>
+    </label>
   )
 }
 
@@ -1135,6 +1141,67 @@ function MigrationBanner({
         Dismiss
       </button>
     </div>
+  )
+}
+
+function YouInMark() {
+  return (
+    <svg
+      viewBox="150 180 760 540"
+      className="size-7 shrink-0 text-[color:var(--yi-mark)]"
+      fill="currentColor"
+      aria-hidden="true">
+      <path d="M479 218.9c-31 9.9-37.6 51.3-11.1 70.2 22.7 16.3 53.9 5.8 62.6-21 2.5-7.7 1.7-19.7-1.7-27.3-3.1-6.7-10.2-14.7-16.2-18.2-9.6-5.6-23.1-7.1-33.6-3.7zM484.8 323c-11.9 1.5-22.2 9.3-27.6 20.8l-2.7 5.7-.5 90.5c-.5 89.1-.6 90.6-2.7 98.2-9.5 33.7-35.1 59.1-68.9 68.4-9 2.4-28.1 2.9-39.2 1-34.1-5.9-61.9-30.4-73.2-64.4-4.6-14-5-21.3-5-93.9 0-77.2-.1-77.9-7.1-92.3-7.7-15.5-22.3-27-38.8-30.5-4-.8-11.5-1.5-16.7-1.5h-9.5l.4 104.2c.3 89.1.6 105.5 1.9 112.4 5.5 28.5 15.9 52.9 31.6 74 8.7 11.7 24.5 27.2 36.2 35.7 11.1 7.8 31.7 18.3 44.5 22.6 52.1 17.4 108.5 8.5 152.7-24.1 10.7-7.8 27.5-24.8 36-36.3 12.4-16.7 23.6-41.4 28.4-62.4 4.3-19.3 4.7-28.9 4.1-116.6-.4-79.9-.5-82.1-2.5-87.4-5.8-14.9-15.9-22.4-33.2-24.5-1.4-.2-5.1 0-8.2.4zM680 325.7c-32 5-58 16.9-81.5 37.3-28.9 25-47.9 58.7-55.6 98.5-.6 2.7-1.4 20.1-1.9 38.5-1.1 43.2-3.3 58.3-11.7 81-16.8 45.2-53.7 84-93.8 98.5-2.7 1-5.4 2.2-5.9 2.7-1.4 1.2 28.7 1 40.2-.3 52.8-5.7 96.1-32.7 121.5-75.7 6.1-10.2 12.6-25.9 15.7-37.7 4.4-17.2 5.2-24.9 6-61.5.9-38 1.4-42.7 6.6-55.6 10.3-25.9 31.7-45.1 57.9-52 9.8-2.6 33.3-2.6 42.5 0 27.9 7.7 48.5 28.1 57.2 56.7 2.2 7.4 2.2 7.6 2.8 97.9.5 83.5.7 90.8 2.3 95 3 7.6 6.4 12.5 12.4 18 10.5 9.6 21.5 13 43.1 13H851V577.2c0-59.6-.4-106.6-1-112-5-47.2-30.6-90.4-68.5-115.7-17.1-11.4-33.1-18-53.2-22-10.5-2.1-15-2.5-29.1-2.4-9.2.1-17.8.4-19.2.6z" />
+    </svg>
+  )
+}
+
+function SettingsIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M8.9 3.1h2.2l.42 1.72a5.9 5.9 0 0 1 1.15.48l1.52-.92 1.55 1.55-.92 1.52c.2.36.36.75.48 1.15l1.72.42v2.2l-1.72.42a5.9 5.9 0 0 1-.48 1.15l.92 1.52-1.55 1.55-1.52-.92c-.36.2-.75.36-1.15.48l-.42 1.72H8.9l-.42-1.72a5.9 5.9 0 0 1-1.15-.48l-1.52.92-1.55-1.55.92-1.52a5.9 5.9 0 0 1-.48-1.15l-1.72-.42v-2.2L4.7 8.6c.12-.4.28-.79.48-1.15l-.92-1.52 1.55-1.55 1.52.92c.36-.2.75-.36 1.15-.48l.42-1.72Z" />
+      <path d="M7.7 10.1a2.3 2.3 0 1 0 4.6 0 2.3 2.3 0 0 0-4.6 0Z" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.8"
+      aria-hidden="true">
+      <path d="M10 4.5v11M4.5 10h11" />
+    </svg>
+  )
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M8 5h7v7" />
+      <path d="m15 5-9.5 9.5" />
+    </svg>
   )
 }
 
