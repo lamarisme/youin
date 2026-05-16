@@ -11,24 +11,26 @@
 
 export const color = {
   /* Paper — technical neutral surfaces */
-  paper:   "oklch(98.4% 0.003 255)",
-  paper2:  "oklch(96.1% 0.004 255)",
-  paper3:  "oklch(92.6% 0.006 255)",
+  paper:   "oklch(97.8% 0.004 286)",
+  paper2:  "oklch(95.2% 0.006 286)",
+  paper3:  "oklch(91.4% 0.008 286)",
+  paperElevated: "oklch(96.2% 0.006 286)",
 
   /* Ink — foreground text */
-  ink:     "oklch(17.5% 0.014 255)",
+  ink:     "oklch(18.2% 0.012 286)",
   /** Filled control hover (primary buttons on paper) */
-  inkHover: "oklch(27% 0.012 255)",
-  ink2:    "oklch(39% 0.012 255)",
-  ink3:    "oklch(54% 0.01 255)",
+  inkHover: "oklch(24% 0.014 286)",
+  ink2:    "oklch(42% 0.011 286)",
+  ink3:    "oklch(57% 0.01 286)",
 
   /* Rule — borders, dividers */
-  rule:    "oklch(87.5% 0.006 255)",
+  rule:    "oklch(88% 0.007 286)",
+  ruleStrong: "oklch(81.5% 0.009 286)",
 
   /* Mark — brand / accent (warm red) */
-  mark:       "oklch(54% 0.2 25)",
-  markBright: "oklch(60% 0.22 25)",
-  markSoft:   "oklch(96% 0.032 25)",
+  mark:       "oklch(53% 0.19 26)",
+  markBright: "oklch(59% 0.21 26)",
+  markSoft:   "oklch(95.2% 0.035 26)",
 
   /* Semantic */
   ok:       "oklch(53% 0.13 155)",
@@ -40,16 +42,18 @@ export const color = {
 } as const;
 
 export const colorDark = {
-  paper:   "oklch(14.5% 0.014 255)",
-  paper2:  "oklch(18.5% 0.016 255)",
-  paper3:  "oklch(24% 0.018 255)",
+  paper:   "oklch(15.2% 0.015 286)",
+  paper2:  "oklch(18.4% 0.016 286)",
+  paper3:  "oklch(22.8% 0.017 286)",
+  paperElevated: "oklch(19.8% 0.016 286)",
 
-  ink:     "oklch(94% 0.006 255)",
-  inkHover: "oklch(84% 0.008 255)",
-  ink2:    "oklch(75% 0.008 255)",
-  ink3:    "oklch(60% 0.01 255)",
+  ink:     "oklch(92% 0.006 286)",
+  inkHover: "oklch(84% 0.007 286)",
+  ink2:    "oklch(70% 0.009 286)",
+  ink3:    "oklch(56% 0.011 286)",
 
-  rule:    "oklch(30% 0.016 255)",
+  rule:    "oklch(25.5% 0.018 286)",
+  ruleStrong: "oklch(32% 0.02 286)",
 
   mark:       "oklch(63% 0.2 25)",
   markBright: "oklch(69% 0.22 25)",
@@ -107,15 +111,15 @@ export const easing = {
 
 export const shadow = {
   panel:
-    "0 1px 2px oklch(17.5% 0.014 255 / 0.04), 0 12px 32px -8px oklch(17.5% 0.014 255 / 0.18)",
+    "none",
   popover:
-    "0 1px 2px oklch(17.5% 0.014 255 / 0.04), 0 16px 40px -10px oklch(17.5% 0.014 255 / 0.22)",
+    "0 16px 40px -24px oklch(8% 0.012 286 / 0.72)",
   fab:
-    "0 2px 8px -2px oklch(17.5% 0.014 255 / 0.18), 0 8px 24px -8px oklch(54% 0.2 25 / 0.45), inset 0 0 0 2px oklch(98.4% 0.003 255 / 0.4)",
+    "0 10px 24px -16px oklch(53% 0.19 26 / 0.72)",
   banner:
-    "0 6px 24px -8px oklch(17.5% 0.014 255 / 0.32)",
+    "none",
   reviewFab:
-    "0 4px 16px -4px oklch(17.5% 0.014 255 / 0.18)",
+    "none",
 } as const;
 
 /* ─── CSS custom-property name map (for generating CSS vars) ──── */
@@ -124,11 +128,13 @@ const tokenToVar: Record<string, string> = {
   paper:      "--yi-paper",
   paper2:     "--yi-paper-2",
   paper3:     "--yi-paper-3",
+  paperElevated: "--yi-paper-elevated",
   ink:        "--yi-ink",
   inkHover:   "--yi-ink-hover",
   ink2:       "--yi-ink-2",
   ink3:       "--yi-ink-3",
   rule:       "--yi-rule",
+  ruleStrong: "--yi-rule-strong",
   mark:       "--yi-mark",
   markBright: "--yi-mark-bright",
   markSoft:   "--yi-mark-soft",

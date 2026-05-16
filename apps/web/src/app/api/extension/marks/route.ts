@@ -36,6 +36,7 @@ type ExtensionMarkInput = {
   priority?: unknown;
   selector?: unknown;
   viewport?: unknown;
+  domSnapshot?: unknown;
   capturedAt?: unknown;
   comments?: unknown;
   screenshotDataUrl?: unknown;
@@ -53,7 +54,7 @@ type ExtensionAuthResult =
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
@@ -66,6 +67,79 @@ function jsonError(message: string, status: number): NextResponse {
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+const DOM_SNAPSHOT_LIMIT = 30000;
+
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+function normalizeDomSnapshotValue(
+  value: unknown,
+  depth = 0,
+): JsonValue | undefined {
+  if (depth > 8) return undefined;
+  if (value == null) return null;
+  if (typeof value === "string") return value.slice(0, 12000);
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+
+  if (Array.isArray(value)) {
+    return value
+      .slice(0, 80)
+      .map((item) => normalizeDomSnapshotValue(item, depth + 1))
+      .filter((item): item is JsonValue => item !== undefined);
+  }
+
+  if (typeof value !== "object") return undefined;
+
+  const out: { [key: string]: JsonValue } = {};
+  for (const [key, item] of Object.entries(value).slice(0, 120)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
+    const normalized = normalizeDomSnapshotValue(item, depth + 1);
+    if (normalized !== undefined) out[key.slice(0, 120)] = normalized;
+  }
+  return out;
+}
+
+function normalizeDomSnapshotForStorage(value: unknown): JsonValue | null {
+  const normalized = normalizeDomSnapshotValue(value);
+  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+    return null;
+  }
+
+  let snapshot = normalized as { [key: string]: JsonValue };
+  let json = JSON.stringify(snapshot);
+  if (json.length <= DOM_SNAPSHOT_LIMIT) return snapshot;
+
+  snapshot = JSON.parse(json) as { [key: string]: JsonValue };
+  const selected = snapshot.selectedElement;
+  if (selected && typeof selected === "object" && !Array.isArray(selected)) {
+    if (typeof selected.outerHTML === "string") {
+      selected.outerHTML = selected.outerHTML.slice(0, 6000);
+    }
+    if (typeof selected.textContent === "string") {
+      selected.textContent = selected.textContent.slice(0, 500);
+    }
+    selected.computedStyles = {};
+  }
+  const context = snapshot.context;
+  if (context && typeof context === "object" && !Array.isArray(context)) {
+    delete context.parentHTML;
+    if (typeof context.nearbyText === "string") {
+      context.nearbyText = context.nearbyText.slice(0, 1000);
+    }
+  }
+
+  json = JSON.stringify(snapshot);
+  return json.length <= DOM_SNAPSHOT_LIMIT ? snapshot : null;
 }
 
 async function createAuthorizedClient(
@@ -128,6 +202,90 @@ export function OPTIONS(): NextResponse {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
 
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const auth = await createAuthorizedClient(request);
+  if ("error" in auth) return auth.error;
+  const { supabase, workspaceId } = auth;
+
+  const { data: marks, error: markError } = await supabase
+    .from("marks")
+    .select(
+      "id,space_id,title,page,status,priority,selector,viewport,created_at,updated_at,captured_at,dom_snapshot",
+    )
+    .eq("workspace_id", workspaceId)
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  if (markError) return jsonError(markError.message, 400);
+
+  const markIds = (marks ?? []).map((mark) => mark.id as string);
+  const { data: comments, error: commentError } = markIds.length
+    ? await supabase
+        .from("mark_comments")
+        .select("id,mark_id,body,created_at,author_user_id")
+        .in("mark_id", markIds)
+        .order("created_at", { ascending: true })
+    : { data: [], error: null };
+
+  if (commentError) return jsonError(commentError.message, 400);
+
+  const authorIds = Array.from(
+    new Set(
+      (comments ?? [])
+        .map((comment) => comment.author_user_id as string | null)
+        .filter(Boolean),
+    ),
+  );
+  const { data: profiles } = authorIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id,full_name,email")
+        .in("id", authorIds)
+    : { data: [] };
+
+  const profileById = new Map(
+    (profiles ?? []).map((profile) => [
+      profile.id as string,
+      String(profile.full_name || profile.email || "Team"),
+    ]),
+  );
+  const commentsByMark = new Map<string, unknown[]>();
+  for (const comment of comments ?? []) {
+    const markId = comment.mark_id as string;
+    const rows = commentsByMark.get(markId) ?? [];
+    rows.push({
+      id: comment.id as string,
+      body: String(comment.body ?? ""),
+      createdAt: comment.created_at as string,
+      authorLabel:
+        profileById.get(comment.author_user_id as string) ??
+        (comment.author_user_id ? "Team" : "YouIn"),
+    });
+    commentsByMark.set(markId, rows);
+  }
+
+  return NextResponse.json(
+    {
+      marks: (marks ?? []).map((mark) => ({
+        id: mark.id as string,
+        spaceId: mark.space_id as string,
+        title: String(mark.title ?? ""),
+        page: String(mark.page ?? ""),
+        status: String(mark.status ?? "open"),
+        priority: String(mark.priority ?? "medium"),
+        selector: String(mark.selector ?? ""),
+        viewport: String(mark.viewport ?? ""),
+        createdAt: mark.created_at as string,
+        updatedAt: mark.updated_at as string,
+        capturedAt: mark.captured_at as string | null,
+        domSnapshot: mark.dom_snapshot ?? null,
+        comments: commentsByMark.get(mark.id as string) ?? [],
+      })),
+    },
+    { headers: CORS_HEADERS },
+  );
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let input: ExtensionMarkInput;
   try {
@@ -163,6 +321,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const description = normalizeDescriptionForStorage(
     asString(input.description),
   );
+  const domSnapshot = normalizeDomSnapshotForStorage(input.domSnapshot);
   const capturedAt = asString(input.capturedAt);
   const capturedDate = capturedAt ? new Date(capturedAt) : null;
 
@@ -180,6 +339,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       created_by_user_id: user.id,
       selector: asString(input.selector) || null,
       viewport: asString(input.viewport) || null,
+      dom_snapshot: domSnapshot,
       captured_at:
         capturedDate && !Number.isNaN(capturedDate.getTime())
           ? capturedDate.toISOString()

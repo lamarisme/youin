@@ -96,7 +96,7 @@ function LoginPageContent() {
   const displayError = error || callbackError || null;
 
   return (
-    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
+    <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
         <h2 className="font-display text-xl font-semibold text-ink">Sign in</h2>
         <p className="mt-1 text-[0.8125rem] text-ink-2">

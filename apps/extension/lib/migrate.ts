@@ -6,7 +6,6 @@ import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
 import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
-import { getSupabase } from "./supabase"
 import {
   getPins,
   getSpaces,
@@ -15,6 +14,7 @@ import {
   type Pin,
   type Space
 } from "./storage"
+import { getSupabase } from "./supabase"
 
 const KEY_MIGRATION_DONE = "youin:migration:done-for-user"
 
@@ -150,7 +150,8 @@ export async function migrateLocalDataToWorkspace(
       spacesMatched: 0,
       pinsImported: 0,
       commentsImported: 0,
-      error: "No workspace found for this user. Open the web app once to set one up."
+      error:
+        "No workspace found for this user. Open the web app once to set one up."
     }
   }
   const workspaceId = membership.workspace_id as string
@@ -252,8 +253,12 @@ export async function migrateLocalDataToWorkspace(
   let commentsImported = 0
 
   /** Local chrome pin id → row written to Postgres */
-  const linked: Array<{ pinId: string; spaceId: string; remoteMarkId: string }> =
-    []
+  const linked: Array<{
+    pinId: string
+    spaceId: string
+    remoteMarkId: string
+    screenshotUploaded: boolean
+  }> = []
 
   for (const pin of localPins) {
     const remoteSpaceId = localToRemoteSpaceId.get(pin.spaceId)
@@ -274,6 +279,7 @@ export async function migrateLocalDataToWorkspace(
         created_by_user_id: userId,
         selector: pin.selector,
         viewport: `${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`,
+        dom_snapshot: pin.domSnapshot ?? null,
         captured_at: new Date(pin.createdAt).toISOString()
       })
       .select("id")
@@ -292,7 +298,8 @@ export async function migrateLocalDataToWorkspace(
     linked.push({
       pinId: pin.id,
       spaceId: remoteSpaceId,
-      remoteMarkId: mark.id as string
+      remoteMarkId: mark.id as string,
+      screenshotUploaded: false
     })
 
     if (pin.screenshotDataUrl) {
@@ -307,6 +314,7 @@ export async function migrateLocalDataToWorkspace(
           .update({ screenshot_url: upload.path })
           .eq("id", mark.id as string)
           .eq("workspace_id", workspaceId)
+        linked[linked.length - 1].screenshotUploaded = true
       }
     }
 
@@ -343,7 +351,9 @@ export async function migrateLocalDataToWorkspace(
         ...p,
         spaceId: upd.spaceId,
         remoteMarkId: upd.remoteMarkId,
-        screenshotDataUrl: undefined
+        screenshotDataUrl: upd.screenshotUploaded
+          ? undefined
+          : p.screenshotDataUrl
       }
     })
     await savePins(next)

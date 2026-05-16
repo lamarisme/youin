@@ -148,7 +148,7 @@ export function OverviewTab() {
           Sign-in protection and how the team hears about activity.
         </p>
 
-        <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+        <ul className="mt-3 space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
           <SettingRow
             title="Two-factor authentication"
             description="Require a code from your phone at sign-in."

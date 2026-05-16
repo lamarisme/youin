@@ -64,6 +64,20 @@
       "when": 1778184000000,
       "tag": "0008_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778185000000,
+      "tag": "0009_mark_dom_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778186000000,
+      "tag": "0010_inbox_read_states",
+      "breakpoints": true
     }
   ]
 }

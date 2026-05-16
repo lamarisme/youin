@@ -8,13 +8,21 @@ import {
   useState
 } from "react"
 
-import { EVENT_REVIEW_OPEN_PIN, EVENT_REVIEW_PAUSE } from "../lib/events"
+import {
+  EVENT_LOCATION_CHANGE,
+  EVENT_REVIEW_OPEN_PIN,
+  EVENT_REVIEW_PAUSE
+} from "../lib/events"
+import { EXTENSION_LAYER } from "../lib/layers"
 import {
   getActiveSpaceId,
   getPinsForPage,
+  getWidgetSettings,
+  isHostDisabled,
   KEY_ACTIVE_SPACE,
   KEY_PINS,
   KEY_SPACES,
+  KEY_WIDGET_SETTINGS,
   type Pin
 } from "../lib/storage"
 
@@ -30,7 +38,7 @@ export const getStyle: PlasmoGetStyle = () => {
   return style
 }
 
-const Z_BADGES = 2147483645
+const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
 
@@ -39,6 +47,7 @@ type BadgeItem = {
   n: number
   left: number
   top: number
+  attached: boolean
 }
 
 function sortPinsForDisplay(pins: Pin[]): Pin[] {
@@ -63,8 +72,14 @@ function computeLayout(pins: Pin[], nums: Map<string, number>): BadgeItem[] {
   for (const pin of pins) {
     try {
       const el = document.querySelector(pin.selector)
-      if (!el) continue
-      const r = el.getBoundingClientRect()
+      const r = el
+        ? el.getBoundingClientRect()
+        : new DOMRect(
+            pin.bbox.x - window.scrollX,
+            pin.bbox.y - window.scrollY,
+            pin.bbox.width,
+            pin.bbox.height
+          )
       if (r.width < 1 && r.height < 1) continue
       const n = nums.get(pin.id) ?? 0
       if (!n) continue
@@ -72,7 +87,8 @@ function computeLayout(pins: Pin[], nums: Map<string, number>): BadgeItem[] {
         pin,
         n,
         left: Math.round(r.right - HIT),
-        top: Math.round(Math.max(4, r.top - 8))
+        top: Math.round(Math.max(4, r.top - 8)),
+        attached: Boolean(el)
       })
     } catch {
       continue
@@ -83,9 +99,17 @@ function computeLayout(pins: Pin[], nums: Map<string, number>): BadgeItem[] {
 
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
+  const [disabled, setDisabled] = useState(false)
   const rafRef = useRef<number | null>(null)
 
   const refresh = useCallback(async () => {
+    const settings = await getWidgetSettings()
+    const hostDisabled = isHostDisabled(location.href, settings)
+    setDisabled(hostDisabled)
+    if (hostDisabled) {
+      setItems([])
+      return
+    }
     const spaceId = await getActiveSpaceId()
     const pins = await getPinsForPage(spaceId, location.href)
     const openPins = pins.filter((p) => p.status !== "closed")
@@ -110,7 +134,8 @@ const PinBadges = () => {
       if (
         changes[KEY_PINS] ||
         changes[KEY_ACTIVE_SPACE] ||
-        changes[KEY_SPACES]
+        changes[KEY_SPACES] ||
+        changes[KEY_WIDGET_SETTINGS]
       ) {
         void refresh()
       }
@@ -123,9 +148,11 @@ const PinBadges = () => {
     const onViewport = () => scheduleViewportRefresh()
     window.addEventListener("scroll", onViewport, true)
     window.addEventListener("resize", onViewport)
+    window.addEventListener(EVENT_LOCATION_CHANGE, onViewport)
     return () => {
       window.removeEventListener("scroll", onViewport, true)
       window.removeEventListener("resize", onViewport)
+      window.removeEventListener(EVENT_LOCATION_CHANGE, onViewport)
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
@@ -133,18 +160,18 @@ const PinBadges = () => {
     }
   }, [scheduleViewportRefresh])
 
-  if (items.length === 0) return null
+  if (disabled || items.length === 0) return null
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-[2147483645]"
+      className="pointer-events-none fixed inset-0"
       style={{ zIndex: Z_BADGES }}>
-      {items.map(({ pin, n, left, top }) => (
+      {items.map(({ pin, n, left, top, attached }) => (
         <button
           key={pin.id}
           type="button"
-          aria-label={annotationLabel(pin, n)}
-          title={annotationLabel(pin, n)}
+          aria-label={`${annotationLabel(pin, n)}${attached ? "" : " (approximate position)"}`}
+          title={`${annotationLabel(pin, n)}${attached ? "" : " (approximate position)"}`}
           className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
           style={{
             left,
@@ -159,7 +186,7 @@ const PinBadges = () => {
             window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
             window.dispatchEvent(
               new CustomEvent(EVENT_REVIEW_OPEN_PIN, {
-                detail: { pinId: pin.id }
+                detail: { pinId: pin.id, attached }
               })
             )
           }}>

@@ -23,6 +23,7 @@ interface MarkDetailCaptureProps {
 export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
   const cap = pin.capture;
   const pageOrigin = formatMarkPageOrigin(pin.page);
+  const domContext = getDomSnapshotContext(cap?.domSnapshot);
 
   return (
     <>
@@ -62,48 +63,91 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
       </div>
 
       {cap ? (
-        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.6875rem] text-ink-3">
-          {pageOrigin ? (
+        <>
+          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.6875rem] text-ink-3">
+            {pageOrigin ? (
+              <MetaCell
+                label="Origin"
+                value={pageOrigin}
+                icon={<Globe2 className="size-3" aria-hidden />}
+              />
+            ) : null}
             <MetaCell
-              label="Origin"
-              value={pageOrigin}
-              icon={<Globe2 className="size-3" aria-hidden />}
+              label="Selector"
+              value={cap.selector ?? "None"}
+              icon={<Code2 className="size-3" aria-hidden />}
+              mono
             />
-          ) : null}
-          <MetaCell
-            label="Selector"
-            value={cap.selector ?? "None"}
-            icon={<Code2 className="size-3" aria-hidden />}
-            mono
-          />
-          <MetaCell
-            label="Viewport"
-            value={cap.viewport ?? "Unknown"}
-            icon={<Monitor className="size-3" aria-hidden />}
-          />
-          <MetaCell
-            label="Browser"
-            value={cap.browser ?? "Unknown"}
-            icon={<PanelTop className="size-3" aria-hidden />}
-          />
-          {cap.os ? (
             <MetaCell
-              label="OS"
-              value={cap.os}
-              icon={<Laptop className="size-3" aria-hidden />}
+              label="Viewport"
+              value={cap.viewport ?? "Unknown"}
+              icon={<Monitor className="size-3" aria-hidden />}
             />
-          ) : null}
-          {cap.capturedAt ? (
             <MetaCell
-              label="Captured"
-              value={formatDateTime(cap.capturedAt)}
-              icon={<CalendarClock className="size-3" aria-hidden />}
+              label="Browser"
+              value={cap.browser ?? "Unknown"}
+              icon={<PanelTop className="size-3" aria-hidden />}
             />
+            {cap.os ? (
+              <MetaCell
+                label="OS"
+                value={cap.os}
+                icon={<Laptop className="size-3" aria-hidden />}
+              />
+            ) : null}
+            {cap.capturedAt ? (
+              <MetaCell
+                label="Captured"
+                value={formatDateTime(cap.capturedAt)}
+                icon={<CalendarClock className="size-3" aria-hidden />}
+              />
+            ) : null}
+          </dl>
+
+          {domContext ? (
+            <div className="mt-3 overflow-hidden rounded-lg border border-rule bg-paper">
+              <div className="flex items-center gap-2 border-b border-rule px-3 py-2 text-[0.75rem] font-medium text-ink-2">
+                <Code2 className="size-3.5 text-ink-3" aria-hidden />
+                <span>DOM context</span>
+              </div>
+              <pre className="max-h-56 overflow-auto bg-paper-2 px-3 py-2 font-mono text-[0.6875rem] leading-relaxed text-ink-2 [overflow-wrap:anywhere] whitespace-pre-wrap">
+                {domContext.outerHTML}
+              </pre>
+              {domContext.nearbyText ? (
+                <p className="border-t border-rule px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-3">
+                  {domContext.nearbyText}
+                </p>
+              ) : null}
+            </div>
           ) : null}
-        </dl>
+        </>
       ) : null}
     </>
   );
+}
+
+function getDomSnapshotContext(snapshot: Record<string, unknown> | undefined):
+  | { outerHTML: string; nearbyText?: string }
+  | undefined {
+  if (!snapshot) return undefined;
+  const selected = snapshot.selectedElement;
+  const context = snapshot.context;
+  const outerHTML =
+    selected && typeof selected === "object" && !Array.isArray(selected)
+      ? (selected as Record<string, unknown>).outerHTML
+      : undefined;
+  const nearbyText =
+    context && typeof context === "object" && !Array.isArray(context)
+      ? (context as Record<string, unknown>).nearbyText
+      : undefined;
+  if (typeof outerHTML !== "string" || !outerHTML.trim()) return undefined;
+  return {
+    outerHTML: outerHTML.slice(0, 5000),
+    nearbyText:
+      typeof nearbyText === "string" && nearbyText.trim()
+        ? nearbyText.slice(0, 1200)
+        : undefined,
+  };
 }
 
 function MetaCell({

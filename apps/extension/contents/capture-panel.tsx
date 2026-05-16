@@ -8,22 +8,34 @@ import {
   EVENT_REVIEW_RESUME,
   type ReviewCaptureDetail
 } from "../lib/events"
+import { EXTENSION_LAYER } from "../lib/layers"
 import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
   addPin,
   appendThreadComment,
+  enqueuePinSyncOp,
+  getActiveProjectId,
   getActiveSpaceId,
   getPins,
   getPinsForPage,
+  getProjects,
   getSpaces,
+  KEY_ACTIVE_PROJECT,
+  KEY_ACTIVE_SPACE,
   KEY_PINS,
+  KEY_PROJECTS,
+  KEY_SPACES,
   makePinId,
+  markPinSyncFailure,
   patchPin,
+  removePinSyncOp,
+  setActiveProjectId,
   setActiveSpaceId,
   STORAGE_LIMITS,
   type Pin,
   type PinPriority,
   type PinStatus,
+  type Project,
   type Space
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
@@ -45,7 +57,7 @@ export const getStyle: PlasmoGetStyle = () => {
   return style
 }
 
-const Z_PANEL = 2147483646
+const Z_PANEL = EXTENSION_LAYER.panel
 
 type PanelMode = "create" | "thread"
 
@@ -133,6 +145,7 @@ function buildPinFromCapture(
       typeof detail.outerHTML === "string"
         ? detail.outerHTML.slice(0, STORAGE_LIMITS.outerHTMLPreview)
         : "",
+    domSnapshot: detail.domSnapshot,
     screenshotDataUrl: detail.elementScreenshotDataUrl
   }
 }
@@ -158,6 +171,8 @@ const CapturePanel = () => {
   const [capture, setCapture] = useState<ReviewCaptureDetail | null>(null)
   const [viewingPin, setViewingPin] = useState<Pin | null>(null)
   const [pagePins, setPagePins] = useState<Pin[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState<string>("")
   const [spaces, setSpaces] = useState<Space[]>([])
   const [spaceId, setSpaceId] = useState<string>("")
   const [body, setBody] = useState("")
@@ -207,10 +222,36 @@ const CapturePanel = () => {
   )
 
   const loadSpaces = useCallback(async () => {
-    const s = await getSpaces()
-    setSpaces(s)
-    const active = await getActiveSpaceId()
-    setSpaceId((prev) => (prev && s.some((x) => x.id === prev) ? prev : active))
+    const [projectRows, spaceRows, activeProject, activeSpace] =
+      await Promise.all([
+        getProjects(),
+        getSpaces(),
+        getActiveProjectId(),
+        getActiveSpaceId()
+      ])
+    const activeSpaceRow = spaceRows.find((space) => space.id === activeSpace)
+    const nextProjectId = projectRows.some(
+      (project) => project.id === activeProject
+    )
+      ? activeProject
+      : activeSpaceRow?.projectId || projectRows[0]?.id || ""
+    const projectSpaces = spaceRows.filter(
+      (space) => space.projectId === nextProjectId
+    )
+    const nextSpaceId = projectSpaces.some((space) => space.id === activeSpace)
+      ? activeSpace
+      : projectSpaces[0]?.id || ""
+
+    setProjects(projectRows)
+    setSpaces(spaceRows)
+    setProjectId(nextProjectId)
+    setSpaceId(nextSpaceId)
+    if (nextProjectId && nextProjectId !== activeProject) {
+      void setActiveProjectId(nextProjectId)
+    }
+    if (nextSpaceId !== activeSpace) {
+      void setActiveSpaceId(nextSpaceId)
+    }
   }, [])
 
   const resume = useCallback(() => {
@@ -239,9 +280,7 @@ const CapturePanel = () => {
       setBody("")
       setPriority("medium")
       setSaveError(null)
-      void loadSpaces().then(() => {
-        void getActiveSpaceId().then((id) => setSpaceId(id))
-      })
+      void loadSpaces()
       setOpen(true)
       void reloadPagePins(detail.url)
     }
@@ -275,25 +314,43 @@ const CapturePanel = () => {
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
-      if (area !== "local" || !changes[KEY_PINS]) return
-      void reloadPin(viewingPin.id)
-      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      if (area !== "local") return
+      if (
+        changes[KEY_PROJECTS] ||
+        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_ACTIVE_SPACE]
+      ) {
+        void loadSpaces()
+      }
+      if (changes[KEY_PINS]) {
+        void reloadPin(viewingPin.id)
+        scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, viewingPin, reloadPin, scheduleReloadPagePins])
+  }, [open, viewingPin, loadSpaces, reloadPin, scheduleReloadPagePins])
 
   useEffect(() => {
     if (!open || !capture || mode !== "create") return
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
-      if (area !== "local" || !changes[KEY_PINS]) return
-      scheduleReloadPagePins(capture.url)
+      if (area !== "local") return
+      if (
+        changes[KEY_PROJECTS] ||
+        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_ACTIVE_SPACE]
+      ) {
+        void loadSpaces()
+      }
+      if (changes[KEY_PINS]) scheduleReloadPagePins(capture.url)
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, capture, mode, scheduleReloadPagePins])
+  }, [open, capture, mode, loadSpaces, scheduleReloadPagePins])
 
   useEffect(() => {
     if (
@@ -324,6 +381,10 @@ const CapturePanel = () => {
 
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
+    if (!spaceId) {
+      setSaveError("Choose or create a review space first.")
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
@@ -339,7 +400,7 @@ const CapturePanel = () => {
       })
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
-          `Saved locally. ${push.error.endsWith(".") ? push.error : `${push.error}.`} Open YouIn to sign in and share it.`
+          `Saved locally. ${push.error.endsWith(".") ? push.error : `${push.error}.`} Open the extension popup to retry sync.`
         )
         scheduleReloadPagePins(capture.url)
         return
@@ -366,10 +427,17 @@ const CapturePanel = () => {
         return
       }
       setReplyDraft("")
+      const op = viewingPin.remoteMarkId
+        ? await enqueuePinSyncOp(viewingPin.id, { type: "comment", body })
+        : undefined
       const synced = await pushPinCommentToWorkspace(viewingPin, body)
+      if ((synced.ok || synced.skipped) && op) {
+        await removePinSyncOp(viewingPin.id, op.id)
+      }
       if (!synced.skipped && !synced.ok && synced.error) {
+        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
         setSaveError(
-          `Reply saved locally. ${synced.error} Open YouIn to sign in and share it.`
+          `Reply saved locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
       await reloadPin(viewingPin.id)
@@ -384,10 +452,17 @@ const CapturePanel = () => {
     setSaveError(null)
     try {
       await patchPin(viewingPin.id, { status, updatedAt: Date.now() })
+      const op = viewingPin.remoteMarkId
+        ? await enqueuePinSyncOp(viewingPin.id, { type: "status", status })
+        : undefined
       const synced = await pushPinStatusToWorkspace(viewingPin, status)
+      if ((synced.ok || synced.skipped) && op) {
+        await removePinSyncOp(viewingPin.id, op.id)
+      }
       if (!synced.skipped && !synced.ok && synced.error) {
+        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
         setSaveError(
-          `Status updated locally. ${synced.error} Open YouIn to sign in and share it.`
+          `Status updated locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
       await reloadPin(viewingPin.id)
@@ -398,6 +473,15 @@ const CapturePanel = () => {
   }
 
   if (!open) return null
+
+  const projectSpaces = spaces.filter((space) => space.projectId === projectId)
+  const selectProject = (id: string) => {
+    setProjectId(id)
+    void setActiveProjectId(id)
+    const nextSpace = spaces.find((space) => space.projectId === id)
+    setSpaceId(nextSpace?.id ?? "")
+    void setActiveSpaceId(nextSpace?.id ?? "")
+  }
 
   const panelSurface =
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] [box-shadow:var(--yi-ext-shadow-panel)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
@@ -474,18 +558,41 @@ const CapturePanel = () => {
               </summary>
               <div className="mt-3 flex flex-col gap-4">
                 <div>
+                  <span className={fieldLabel}>Project</span>
+                  <select
+                    id="capture-project"
+                    className={selectCls}
+                    value={projectId}
+                    onChange={(e) => selectProject(e.target.value)}>
+                    {projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
                   <span className={fieldLabel}>Review space</span>
                   <select
                     id="capture-namespace"
                     className={selectCls}
                     value={spaceId}
-                    onChange={(e) => setSpaceId(e.target.value)}>
-                    {spaces.map((s) => (
+                    onChange={(e) => {
+                      setSpaceId(e.target.value)
+                      void setActiveSpaceId(e.target.value)
+                    }}>
+                    {projectSpaces.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}
                       </option>
                     ))}
                   </select>
+                  {!projectSpaces.length ? (
+                    <p className="mt-1.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                      Create a space for this project from the extension popup.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -528,7 +635,7 @@ const CapturePanel = () => {
               </button>
               <button
                 type="button"
-                disabled={saving || !body.trim()}
+                disabled={saving || !body.trim() || !spaceId}
                 aria-busy={saving}
                 className={btnPrimary}
                 onClick={() => void handleSave()}>
@@ -546,6 +653,13 @@ const CapturePanel = () => {
 
   if (mode === "thread" && viewingPin) {
     const n = annotationNumber(viewingPin, pagePins)
+    const selectorAttached = (() => {
+      try {
+        return Boolean(document.querySelector(viewingPin.selector))
+      } catch {
+        return false
+      }
+    })()
     const threads = viewingPin.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -574,6 +688,15 @@ const CapturePanel = () => {
                 }`}>
                 {viewingPin.status === "closed" ? "Resolved" : "Open"}
               </span>
+              {viewingPin.syncState === "pending" ? (
+                <span className="rounded-full bg-[color:var(--yi-ext-surface-stat)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-text-muted)]">
+                  Pending
+                </span>
+              ) : viewingPin.syncState === "failed" ? (
+                <span className="rounded-full bg-[color:var(--yi-ext-danger-bg)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-danger-text)]">
+                  Sync failed
+                </span>
+              ) : null}
             </div>
             <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
               Reply or resolve without leaving the page.
@@ -593,6 +716,17 @@ const CapturePanel = () => {
             <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] [overflow-wrap:anywhere]">
               {opener?.body ?? viewingPin.title}
             </div>
+            {!selectorAttached ? (
+              <p className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+                The original element moved. The badge is using the saved page
+                position until the selector can attach again.
+              </p>
+            ) : null}
+            {viewingPin.syncState === "failed" && viewingPin.syncError ? (
+              <p className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]">
+                {viewingPin.syncError}
+              </p>
+            ) : null}
             {opener ? (
               <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
                 {opener.authorLabel} · {formatShortDate(opener.createdAt)}

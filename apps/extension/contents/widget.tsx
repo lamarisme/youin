@@ -3,17 +3,22 @@ import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useCallback, useEffect, useState } from "react"
 
 import {
+  EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
   type ReviewStateDetail
 } from "../lib/events"
+import { EXTENSION_LAYER } from "../lib/layers"
 import {
   getActiveSpaceId,
   getPinsForPage,
   getWidgetSettings,
+  isHostDisabled,
+  KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_PINS,
+  KEY_PROJECTS,
   KEY_SPACES,
   type WidgetCorner,
   type WidgetSettings
@@ -31,11 +36,20 @@ export const getStyle: PlasmoGetStyle = () => {
   return style
 }
 
-const Z_WIDGET = 2147483644
+const Z_WIDGET = EXTENSION_LAYER.widget
 
 const DEFAULT_SETTINGS: WidgetSettings = {
   corner: "bottom-right",
-  fabVisible: true
+  fabVisible: true,
+  captureScreenshots: true,
+  captureDomSnapshots: true,
+  disabledHosts: []
+}
+
+declare global {
+  interface Window {
+    __youinHistoryPatched?: boolean
+  }
 }
 
 function cornerClass(corner: WidgetCorner): string {
@@ -68,6 +82,24 @@ function Widget() {
   }, [])
 
   useEffect(() => {
+    if (!window.__youinHistoryPatched) {
+      window.__youinHistoryPatched = true
+      const notify = () =>
+        window.dispatchEvent(new CustomEvent(EVENT_LOCATION_CHANGE))
+      const pushState = history.pushState
+      const replaceState = history.replaceState
+      history.pushState = function (...args) {
+        const result = pushState.apply(this, args)
+        queueMicrotask(notify)
+        return result
+      }
+      history.replaceState = function (...args) {
+        const result = replaceState.apply(this, args)
+        queueMicrotask(notify)
+        return result
+      }
+    }
+
     void refreshSettings()
     void refreshCount()
 
@@ -78,6 +110,8 @@ function Widget() {
       void refreshSettings()
       if (
         changes[KEY_PINS] ||
+        changes[KEY_PROJECTS] ||
+        changes[KEY_ACTIVE_PROJECT] ||
         changes[KEY_ACTIVE_SPACE] ||
         changes[KEY_SPACES]
       ) {
@@ -91,18 +125,20 @@ function Widget() {
 
     chrome.storage.onChanged.addListener(onStorage)
     window.addEventListener(EVENT_REVIEW_STATE, onState)
+    window.addEventListener(EVENT_LOCATION_CHANGE, refreshCount)
     window.addEventListener("hashchange", refreshCount)
     window.addEventListener("popstate", refreshCount)
 
     return () => {
       chrome.storage.onChanged.removeListener(onStorage)
       window.removeEventListener(EVENT_REVIEW_STATE, onState)
+      window.removeEventListener(EVENT_LOCATION_CHANGE, refreshCount)
       window.removeEventListener("hashchange", refreshCount)
       window.removeEventListener("popstate", refreshCount)
     }
   }, [refreshCount, refreshSettings])
 
-  if (!settings.fabVisible) return null
+  if (!settings.fabVisible || isHostDisabled(location.href, settings)) return null
 
   const label = active ? "Exit review" : "Review"
   const ariaLabel = active

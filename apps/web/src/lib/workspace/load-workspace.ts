@@ -245,6 +245,10 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
     const screenshotUrl = isStoragePath(rawScreenshotUrl)
       ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
       : rawScreenshotUrl;
+    const domSnapshot =
+      m.dom_snapshot && typeof m.dom_snapshot === "object" && !Array.isArray(m.dom_snapshot)
+        ? (m.dom_snapshot as Record<string, unknown>)
+        : undefined;
     const cap =
       (m.selector as string | null | undefined)
         ? {
@@ -252,15 +256,17 @@ export async function loadWorkspaceAggregate(supabase: SupabaseClient, workspace
             viewport: (m.viewport as string | null | undefined) ?? undefined,
             browser: (m.browser as string | null | undefined) ?? undefined,
             os: (m.os as string | null | undefined) ?? undefined,
+            domSnapshot,
             screenshotUrl: screenshotUrl ?? undefined,
             capturedAt: (m.captured_at as string | null | undefined) ?? undefined,
           }
-        : m.viewport || m.browser || m.os
+        : m.viewport || m.browser || m.os || domSnapshot
           ? {
               selector: undefined,
               viewport: (m.viewport as string | null | undefined) ?? undefined,
               browser: (m.browser as string | null | undefined) ?? undefined,
               os: (m.os as string | null | undefined) ?? undefined,
+              domSnapshot,
               screenshotUrl: screenshotUrl ?? undefined,
               capturedAt: (m.captured_at as string | null | undefined) ?? undefined,
             }

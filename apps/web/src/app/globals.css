@@ -13,7 +13,9 @@
   --color-paper: var(--yi-paper);
   --color-paper-2: var(--yi-paper-2);
   --color-paper-3: var(--yi-paper-3);
+  --color-paper-elevated: var(--yi-paper-elevated);
   --color-rule: var(--yi-rule);
+  --color-rule-strong: var(--yi-rule-strong);
   --color-ink: var(--yi-ink);
   --color-ink-hover: var(--yi-ink-hover);
   --color-ink-2: var(--yi-ink-2);
@@ -29,6 +31,10 @@
   --color-info-soft: var(--yi-info-soft);
 
   --radius-pill: 999px;
+  --shadow-hairline: var(--yi-shadow-hairline);
+  --shadow-panel: var(--yi-shadow-panel);
+  --shadow-popover: var(--yi-shadow-popover);
+  --shadow-mark: var(--yi-shadow-mark);
 
   --space-2xs: var(--yi-space-2xs);
   --space-xs: var(--yi-space-xs);
@@ -56,9 +62,9 @@
   color-scheme: light;
   --ease-out-quart: var(--yi-ease-out-quart);
   --ease-out-expo: var(--yi-ease-out-expo);
-  --card: var(--yi-paper);
+  --card: var(--yi-paper-2);
   --card-foreground: var(--yi-ink);
-  --popover: var(--yi-paper);
+  --popover: var(--yi-paper-2);
   --popover-foreground: var(--yi-ink);
   --primary: var(--yi-ink);
   --primary-foreground: var(--yi-paper);
@@ -70,7 +76,7 @@
   --accent-foreground: var(--yi-ink);
   --destructive: var(--yi-mark);
   --border: var(--yi-rule);
-  --input: var(--yi-rule);
+  --input: var(--yi-paper-3);
   --ring: var(--yi-mark);
   --chart-1: var(--yi-mark);
   --chart-2: var(--yi-info);
@@ -78,7 +84,7 @@
   --chart-4: var(--yi-warn);
   --chart-5: var(--yi-ink-3);
   --radius: var(--yi-radius-lg);
-  --sidebar: var(--yi-paper-2);
+  --sidebar: var(--yi-paper);
   --sidebar-foreground: var(--yi-ink);
   --sidebar-primary: var(--yi-mark);
   --sidebar-primary-foreground: var(--yi-paper);
@@ -108,14 +114,14 @@
   --accent-foreground: var(--yi-ink);
   --destructive: var(--yi-mark);
   --border: var(--yi-rule);
-  --input: var(--yi-rule);
+  --input: var(--yi-paper-3);
   --ring: var(--yi-mark);
   --chart-1: var(--yi-mark);
   --chart-2: var(--yi-info);
   --chart-3: var(--yi-ok);
   --chart-4: var(--yi-warn);
   --chart-5: var(--yi-ink-3);
-  --sidebar: var(--yi-paper-2);
+  --sidebar: var(--yi-paper);
   --sidebar-foreground: var(--yi-ink);
   --sidebar-primary: var(--yi-mark);
   --sidebar-primary-foreground: var(--yi-paper);
@@ -136,6 +142,7 @@
 
   body {
     font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv05", "cv11";
     @apply bg-background text-foreground;
   }
 
@@ -220,11 +227,10 @@
 
   .bg-paper-grain {
     background-color: var(--color-paper);
-    background-image: radial-gradient(
-      oklch(from var(--yi-ink) l c h / 0.035) 0.5px,
-      transparent 0.5px
-    );
-    background-size: 6px 6px;
+    background-image:
+      linear-gradient(to bottom, oklch(from var(--yi-paper-elevated) l c h / 0.72), transparent 18rem),
+      radial-gradient(oklch(from var(--yi-ink) l c h / 0.035) 0.5px, transparent 0.5px);
+    background-size: auto, 6px 6px;
   }
 
   .pin-dot {
@@ -241,8 +247,7 @@
     font-family: var(--font-mono);
     font-size: 0.625rem;
     font-weight: 600;
-    box-shadow: 0 0 0 3px var(--pin-ring),
-      0 4px 12px -3px oklch(from var(--yi-mark) l c h / 0.4);
+    box-shadow: 0 0 0 3px var(--pin-ring), var(--shadow-mark);
   }
 
   .pin-dot::after {
@@ -292,6 +297,16 @@
   .rule {
     height: 1px;
     background: var(--color-rule);
+  }
+
+  .surface-elevated {
+    background: var(--color-paper-2);
+    box-shadow: none;
+  }
+
+  .surface-inset {
+    background: var(--color-paper-3);
+    box-shadow: none;
   }
 
   .shell {

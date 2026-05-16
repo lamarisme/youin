@@ -241,7 +241,7 @@ export function TeamTab() {
             </p>
           ) : null}
         </div>
-        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
           {members.map((member) => {
             const parts = memberDisplayParts(member, displayNamePreference);
             const handlePrimary = displayNamePreference === "username";
@@ -297,7 +297,7 @@ export function TeamTab() {
 
         {/* Pending invites stay visually subordinate with a dashed border. */}
         {invites.length > 0 ? (
-          <ul className="mt-2.5 divide-y divide-rule overflow-hidden rounded-md border border-dashed border-rule bg-paper-2/40">
+          <ul className="mt-2.5 space-y-1 overflow-hidden rounded-md bg-paper-2/60 p-1">
             {invites.map((inv) => (
               <li
                 key={inv.id}

@@ -1,181 +1,92 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useSyncExternalStore } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { MarkEventType, Workspace } from "@/lib/collab-types";
+import { workspaceKeys } from "@/lib/queries/keys";
+import {
+  getInboxAction,
+  markInboxReadAction,
+  type InboxEvent,
+  type InboxGroup,
+  type InboxSnapshot,
+} from "@/lib/workspace/actions";
 
-const READ_PREFIX = "youin:inbox-read:";
-const localSubscribers = new Set<() => void>();
+export type { InboxEvent, InboxGroup };
 
-function readKey(workspaceId: string, userId: string): string {
-  return `${READ_PREFIX}${workspaceId}:${userId}`;
-}
-
-function readLastReadAt(workspaceId: string, userId: string): string {
-  if (typeof window === "undefined" || !workspaceId || !userId) return "";
-  try {
-    return window.localStorage.getItem(readKey(workspaceId, userId)) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function writeLastReadAt(workspaceId: string, userId: string, value: string): void {
-  if (typeof window === "undefined" || !workspaceId || !userId) return;
-  try {
-    window.localStorage.setItem(readKey(workspaceId, userId), value);
-  } catch {
-    // ignore
-  }
-  for (const cb of localSubscribers) cb();
-}
-
-export interface InboxEvent {
-  id: string;
-  pinId: string;
-  pinTitle: string;
-  spaceId: string;
-  actorId: string;
-  actorName: string;
-  actorUsername: string;
-  actorInitials: string;
-  type: MarkEventType;
-  fromValue?: string;
-  toValue?: string;
-  createdAt: string;
-  unread: boolean;
-}
-
-export interface InboxGroup {
-  pinId: string;
-  pinDisplayKey: string;
-  pinTitle: string;
-  spaceId: string;
-  events: InboxEvent[];
-  latestAt: string;
-  unreadCount: number;
-}
-
-export interface InboxData {
-  groups: InboxGroup[];
-  totalEvents: number;
-  unreadCount: number;
-  lastReadAt: string;
+export interface InboxData extends InboxSnapshot {
+  isError: boolean;
+  isMarkingAllRead: boolean;
+  isPending: boolean;
   markAllRead: () => void;
+  refetch: () => void;
 }
 
-function useLastReadAt(workspaceId: string, userId: string): string {
-  const cacheRef = useRef<string>("");
-
-  const subscribe = useCallback((cb: () => void) => {
-    if (typeof window === "undefined") return () => {};
-    const onStorage = (e: StorageEvent) => {
-      if (!workspaceId || !userId) return;
-      if (e.key === readKey(workspaceId, userId) || e.key === null) cb();
-    };
-    window.addEventListener("storage", onStorage);
-    localSubscribers.add(cb);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      localSubscribers.delete(cb);
-    };
-  }, [workspaceId, userId]);
-
-  const getSnapshot = useCallback(() => {
-    const next = readLastReadAt(workspaceId, userId);
-    if (next !== cacheRef.current) cacheRef.current = next;
-    return cacheRef.current;
-  }, [workspaceId, userId]);
-
-  const getServerSnapshot = useCallback(() => "", []);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+function emptyInbox(): InboxSnapshot {
+  return { groups: [], totalEvents: 0, unreadCount: 0, lastReadAt: "" };
 }
 
-export function useInbox(
-  workspace: Workspace,
-  workspaceId: string,
-  userId: string,
-): InboxData {
-  const lastReadAt = useLastReadAt(workspaceId, userId);
+function markSnapshotRead(snapshot: InboxSnapshot, lastReadAt: string): InboxSnapshot {
+  return {
+    ...snapshot,
+    lastReadAt,
+    unreadCount: 0,
+    groups: snapshot.groups.map((group) => ({
+      ...group,
+      unreadCount: 0,
+      events: group.events.map((event) => ({ ...event, unread: false })),
+    })),
+  };
+}
 
-  const data = useMemo<Omit<InboxData, "markAllRead">>(() => {
-    if (!userId) {
-      return { groups: [], totalEvents: 0, unreadCount: 0, lastReadAt };
-    }
+export function useInbox(workspaceId: string, userId: string): InboxData {
+  const queryClient = useQueryClient();
+  const queryKey = workspaceKeys.inbox(workspaceId, userId);
+  const enabled = Boolean(workspaceId && userId);
 
-    const memberMap = new Map(workspace.members.map((m) => [m.id, m]));
-    const pinMap = new Map(workspace.pins.map((p) => [p.id, p]));
+  const query = useQuery({
+    queryKey,
+    queryFn: getInboxAction,
+    enabled,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
 
-    const relevantPinIds = new Set<string>();
-    for (const pin of workspace.pins) {
-      if (pin.assigneeId === userId) relevantPinIds.add(pin.id);
-    }
-    for (const c of workspace.comments) {
-      if (c.authorId === userId) relevantPinIds.add(c.pinId);
-    }
-
-    const events: InboxEvent[] = [];
-    for (const e of workspace.markEvents) {
-      if (e.actorId === userId) continue;
-      if (!relevantPinIds.has(e.pinId)) continue;
-      const pin = pinMap.get(e.pinId);
-      if (!pin) continue;
-      const actor = memberMap.get(e.actorId);
-      events.push({
-        id: e.id,
-        pinId: e.pinId,
-        pinTitle: pin.title || "(untitled)",
-        spaceId: pin.spaceId,
-        actorId: e.actorId,
-        actorName: actor?.name ?? "Unknown",
-        actorUsername: actor?.username ?? "",
-        actorInitials: actor?.initials ?? "?",
-        type: e.type,
-        fromValue: e.fromValue,
-        toValue: e.toValue,
-        createdAt: e.createdAt,
-        unread: lastReadAt === "" ? true : e.createdAt > lastReadAt,
-      });
-    }
-
-    events.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-
-    const groupMap = new Map<string, InboxGroup>();
-    for (const ev of events) {
-      const existing = groupMap.get(ev.pinId);
-      if (existing) {
-        existing.events.push(ev);
-        if (ev.createdAt > existing.latestAt) existing.latestAt = ev.createdAt;
-        if (ev.unread) existing.unreadCount += 1;
-      } else {
-        const pin = pinMap.get(ev.pinId);
-        groupMap.set(ev.pinId, {
-          pinId: ev.pinId,
-          pinDisplayKey: pin?.displayKey ?? ev.pinId,
-          pinTitle: ev.pinTitle,
-          spaceId: ev.spaceId,
-          events: [ev],
-          latestAt: ev.createdAt,
-          unreadCount: ev.unread ? 1 : 0,
-        });
+  const snapshot = query.data ?? emptyInbox();
+  const mutation = useMutation({
+    mutationFn: markInboxReadAction,
+    onMutate: async () => {
+      const lastReadAt = new Date().toISOString();
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<InboxSnapshot>(queryKey);
+      queryClient.setQueryData<InboxSnapshot>(
+        queryKey,
+        markSnapshotRead(previous ?? snapshot, lastReadAt),
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
       }
-    }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
 
-    const groups = Array.from(groupMap.values()).sort((a, b) =>
-      a.latestAt < b.latestAt ? 1 : -1,
-    );
-    const unreadCount = events.reduce((acc, e) => acc + (e.unread ? 1 : 0), 0);
-
-    return { groups, totalEvents: events.length, unreadCount, lastReadAt };
-  }, [workspace, userId, lastReadAt]);
-
-  const markAllRead = useCallback(() => {
-    if (!workspaceId || !userId) return;
-    writeLastReadAt(workspaceId, userId, new Date().toISOString());
-  }, [workspaceId, userId]);
-
-  return { ...data, markAllRead };
+  return {
+    ...snapshot,
+    isError: query.isError,
+    isMarkingAllRead: mutation.isPending,
+    isPending: query.isPending,
+    markAllRead: () => {
+      if (!enabled || snapshot.unreadCount === 0 || mutation.isPending) return;
+      mutation.mutate(undefined);
+    },
+    refetch: () => {
+      void query.refetch();
+    },
+  };
 }
 
 export function describeEvent(

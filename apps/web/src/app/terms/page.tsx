@@ -4,7 +4,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Terms · youin",
+  title: "Terms",
   description: "The terms that govern your use of youin. Contact us for the current version.",
 };
 

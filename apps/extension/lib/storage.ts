@@ -10,12 +10,15 @@ import {
   type MarkStatus
 } from "@youin/domain"
 
+import type { ElementDomSnapshot } from "./dom-snapshot"
 import { normalizePageUrlForMatch } from "./page-url"
 
 export const KEY_SPACES = "youin:spaces"
+export const KEY_PROJECTS = "youin:projects"
+export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
 export const KEY_ACTIVE_SPACE = "youin:active-space-id"
 export const KEY_PINS = "youin:pins"
-const KEY_WIDGET_SETTINGS = "youin:widget-settings"
+export const KEY_WIDGET_SETTINGS = "youin:widget-settings"
 
 export type WidgetCorner =
   | "bottom-right"
@@ -28,15 +31,32 @@ export interface WidgetSettings {
   corner: WidgetCorner
   /** When false, the FAB is hidden; review still works via ⌥⇧Y / Esc. */
   fabVisible: boolean
+  /** When false, captures save comments without element screenshots. */
+  captureScreenshots: boolean
+  /** When false, captures omit DOM snapshots and only keep selectors. */
+  captureDomSnapshots: boolean
+  /** Lowercase hosts where YouIn content UI should stay hidden. */
+  disabledHosts: string[]
 }
 
 const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   corner: "bottom-right",
-  fabVisible: true
+  fabVisible: true,
+  captureScreenshots: true,
+  captureDomSnapshots: true,
+  disabledHosts: []
+}
+
+export interface Project {
+  id: string
+  name: string
+  description: string
+  createdAt: number
 }
 
 export interface Space {
   id: string
+  projectId: string
   name: string
   createdAt: number
 }
@@ -50,6 +70,25 @@ export interface LocalThreadMessage {
 
 export type PinStatus = MarkStatus
 export type PinPriority = MarkPriority
+export type PinSyncState = "synced" | "pending" | "failed"
+
+export type PinSyncOperation =
+  | {
+      id: string
+      type: "status"
+      status: PinStatus
+      createdAt: number
+      attempts: number
+      lastError?: string
+    }
+  | {
+      id: string
+      type: "comment"
+      body: string
+      createdAt: number
+      attempts: number
+      lastError?: string
+    }
 
 export interface Pin {
   id: string
@@ -71,8 +110,16 @@ export interface Pin {
   createdAt: number
   updatedAt: number
   outerHTMLPreview: string
+  /** Sanitized, bounded DOM context for issue tickets and agent prompts. */
+  domSnapshot?: ElementDomSnapshot
   /** Unsynced element screenshot retained until a remote mark upload succeeds. */
   screenshotDataUrl?: string
+  /** Local sync health for the popup and in-page panel. */
+  syncState?: PinSyncState
+  syncError?: string
+  pendingSyncOps?: PinSyncOperation[]
+  /** Last remote mark update applied locally, in epoch milliseconds. */
+  remoteUpdatedAt?: number
   /** @deprecated Prefer thread; migrated on read in {@link getPins}. */
   comment?: string
 }
@@ -85,10 +132,24 @@ function isPinPriority(v: unknown): v is PinPriority {
   return isMarkPriority(v)
 }
 
+const DEFAULT_PROJECTS: Project[] = [
+  { id: "local-general", name: "General", description: "", createdAt: 0 }
+]
+
 const DEFAULT_SPACES: Space[] = [
-  { id: "default", name: "Default", createdAt: 0 },
-  { id: "q4-review", name: "Q4 Review", createdAt: 0 },
-  { id: "design-qa", name: "Design QA", createdAt: 0 }
+  { id: "default", projectId: "local-general", name: "Default", createdAt: 0 },
+  {
+    id: "q4-review",
+    projectId: "local-general",
+    name: "Q4 Review",
+    createdAt: 0
+  },
+  {
+    id: "design-qa",
+    projectId: "local-general",
+    name: "Design QA",
+    createdAt: 0
+  }
 ]
 
 /** Client-side caps; enforced again on persist in {@link addPin}. */
@@ -96,8 +157,11 @@ export const STORAGE_LIMITS = {
   pinTitle: 280,
   pinComment: 4000,
   threadBody: 4000,
+  projectName: 120,
+  projectDescription: 240,
   spaceName: 120,
-  outerHTMLPreview: 400
+  outerHTMLPreview: 400,
+  domSnapshot: 30000
 } as const
 
 const WIDGET_CORNERS: WidgetCorner[] = [
@@ -111,8 +175,115 @@ function isWidgetCorner(v: unknown): v is WidgetCorner {
   return typeof v === "string" && WIDGET_CORNERS.includes(v as WidgetCorner)
 }
 
+function makeSyncOpId(): string {
+  return `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function isPinSyncState(v: unknown): v is PinSyncState {
+  return v === "synced" || v === "pending" || v === "failed"
+}
+
+function normalizeHost(value: string): string {
+  const trimmed = value.trim().toLowerCase()
+  if (!trimmed) return ""
+  try {
+    return new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`)
+      .hostname.replace(/^www\./, "")
+  } catch {
+    return trimmed.replace(/^www\./, "").replace(/\/.*$/, "")
+  }
+}
+
+function normalizeDisabledHosts(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return Array.from(
+    new Set(
+      value
+        .map((item) => (typeof item === "string" ? normalizeHost(item) : ""))
+        .filter(Boolean)
+    )
+  ).slice(0, 100)
+}
+
+function normalizeSyncOps(value: unknown): PinSyncOperation[] {
+  if (!Array.isArray(value)) return []
+  const out: PinSyncOperation[] = []
+  for (const item of value.slice(0, 50)) {
+    if (!item || typeof item !== "object") continue
+    const row = item as Record<string, unknown>
+    const id = typeof row.id === "string" && row.id ? row.id : makeSyncOpId()
+    const createdAt =
+      typeof row.createdAt === "number" && Number.isFinite(row.createdAt)
+        ? row.createdAt
+        : Date.now()
+    const attempts =
+      typeof row.attempts === "number" && Number.isFinite(row.attempts)
+        ? Math.max(0, Math.floor(row.attempts))
+        : 0
+    const lastError =
+      typeof row.lastError === "string" && row.lastError
+        ? row.lastError.slice(0, 300)
+        : undefined
+    if (row.type === "status") {
+      const status = normalizeMarkStatus(
+        typeof row.status === "string" ? row.status : undefined
+      )
+      out.push({ id, type: "status", status, createdAt, attempts, lastError })
+    } else if (row.type === "comment" && typeof row.body === "string") {
+      const body = row.body.trim().slice(0, STORAGE_LIMITS.threadBody)
+      if (body) out.push({ id, type: "comment", body, createdAt, attempts, lastError })
+    }
+  }
+  return out
+}
+
 function makeThreadMessageId(): string {
   return `t_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
+}
+
+function truncateStoredString(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined
+  return value.length <= max ? value : value.slice(0, max)
+}
+
+function normalizeDomSnapshot(value: unknown): ElementDomSnapshot | undefined {
+  if (!value || typeof value !== "object") return undefined
+  try {
+    const snapshot = JSON.parse(JSON.stringify(value)) as ElementDomSnapshot
+    if (snapshot.version !== 1 || !snapshot.selectedElement) return undefined
+
+    snapshot.selectedElement.outerHTML =
+      truncateStoredString(snapshot.selectedElement.outerHTML, 12000) ?? ""
+    snapshot.selectedElement.textContent =
+      truncateStoredString(snapshot.selectedElement.textContent, 1000) ?? ""
+    if (snapshot.context) {
+      snapshot.context.parentHTML = truncateStoredString(
+        snapshot.context.parentHTML,
+        12000
+      )
+      snapshot.context.nearbyText =
+        truncateStoredString(snapshot.context.nearbyText, 2000) ?? ""
+    }
+
+    if (JSON.stringify(snapshot).length > STORAGE_LIMITS.domSnapshot) {
+      snapshot.context.parentHTML = undefined
+      snapshot.selectedElement.outerHTML =
+        snapshot.selectedElement.outerHTML.slice(0, 6000)
+      snapshot.context.nearbyText = snapshot.context.nearbyText.slice(0, 1000)
+      snapshot.selectedElement.textContent =
+        snapshot.selectedElement.textContent.slice(0, 500)
+    }
+
+    if (JSON.stringify(snapshot).length > STORAGE_LIMITS.domSnapshot) {
+      snapshot.selectedElement.computedStyles = {}
+    }
+
+    return JSON.stringify(snapshot).length <= STORAGE_LIMITS.domSnapshot
+      ? snapshot
+      : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function legacyPinStableId(
@@ -190,6 +361,17 @@ function migrateRawPin(raw: unknown): Pin {
     p.screenshotDataUrl.startsWith("data:image/")
       ? p.screenshotDataUrl
       : undefined
+  const domSnapshot = normalizeDomSnapshot(p.domSnapshot)
+  const pendingSyncOps = normalizeSyncOps(p.pendingSyncOps)
+  const syncState = isPinSyncState(p.syncState)
+    ? p.syncState
+    : pendingSyncOps.length || screenshotDataUrl || !remoteMarkId
+      ? "pending"
+      : "synced"
+  const syncError =
+    typeof p.syncError === "string" && p.syncError
+      ? p.syncError.slice(0, 300)
+      : undefined
 
   const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
@@ -220,7 +402,15 @@ function migrateRawPin(raw: unknown): Pin {
       0,
       STORAGE_LIMITS.outerHTMLPreview
     ),
-    screenshotDataUrl
+    domSnapshot,
+    screenshotDataUrl,
+    syncState,
+    syncError,
+    pendingSyncOps,
+    remoteUpdatedAt:
+      typeof p.remoteUpdatedAt === "number" && Number.isFinite(p.remoteUpdatedAt)
+        ? p.remoteUpdatedAt
+        : undefined
   }
   return remoteMarkId ? { ...base, remoteMarkId } : base
 }
@@ -251,22 +441,71 @@ export async function getSpaces(): Promise<Space[]> {
     await write(KEY_SPACES, DEFAULT_SPACES)
     return DEFAULT_SPACES
   }
-  return stored
+  return stored.map((space) => ({
+    ...space,
+    projectId:
+      typeof (space as { projectId?: unknown }).projectId === "string" &&
+      (space as { projectId?: string }).projectId
+        ? (space as { projectId: string }).projectId
+        : DEFAULT_PROJECTS[0].id
+  }))
 }
 
 export async function setSpaces(spaces: Space[]): Promise<boolean> {
-  return write(KEY_SPACES, spaces)
+  return write(
+    KEY_SPACES,
+    spaces.map((space) => ({
+      ...space,
+      projectId: space.projectId || DEFAULT_PROJECTS[0].id
+    }))
+  )
 }
 
 export async function addSpace(space: Space): Promise<boolean> {
   const spaces = await getSpaces()
-  const next = [...spaces, space]
+  const next = [
+    ...spaces,
+    { ...space, projectId: space.projectId || DEFAULT_PROJECTS[0].id }
+  ]
   return write(KEY_SPACES, next)
+}
+
+export async function getProjects(): Promise<Project[]> {
+  const stored = await read<Project[] | null>(KEY_PROJECTS, null)
+  if (!stored) {
+    await write(KEY_PROJECTS, DEFAULT_PROJECTS)
+    return DEFAULT_PROJECTS
+  }
+  return stored.map((project) => ({
+    id: project.id,
+    name: project.name,
+    description: project.description ?? "",
+    createdAt: project.createdAt ?? 0
+  }))
+}
+
+export async function setProjects(projects: Project[]): Promise<boolean> {
+  return write(KEY_PROJECTS, projects.length ? projects : DEFAULT_PROJECTS)
+}
+
+export async function addProject(project: Project): Promise<boolean> {
+  const projects = await getProjects()
+  return write(KEY_PROJECTS, [...projects, project])
+}
+
+export async function getActiveProjectId(): Promise<string> {
+  const id = await read<string | null>(KEY_ACTIVE_PROJECT, null)
+  if (id) return id
+  return DEFAULT_PROJECTS[0].id
+}
+
+export async function setActiveProjectId(id: string): Promise<boolean> {
+  return write(KEY_ACTIVE_PROJECT, id)
 }
 
 export async function getActiveSpaceId(): Promise<string> {
   const id = await read<string | null>(KEY_ACTIVE_SPACE, null)
-  if (id) return id
+  if (id !== null) return id
   return DEFAULT_SPACES[0].id
 }
 
@@ -286,7 +525,22 @@ export async function getWidgetSettings(): Promise<WidgetSettings> {
     typeof stored?.fabVisible === "boolean"
       ? stored.fabVisible
       : DEFAULT_WIDGET_SETTINGS.fabVisible
-  return { corner, fabVisible }
+  const captureScreenshots =
+    typeof stored?.captureScreenshots === "boolean"
+      ? stored.captureScreenshots
+      : DEFAULT_WIDGET_SETTINGS.captureScreenshots
+  const captureDomSnapshots =
+    typeof stored?.captureDomSnapshots === "boolean"
+      ? stored.captureDomSnapshots
+      : DEFAULT_WIDGET_SETTINGS.captureDomSnapshots
+  const disabledHosts = normalizeDisabledHosts(stored?.disabledHosts)
+  return {
+    corner,
+    fabVisible,
+    captureScreenshots,
+    captureDomSnapshots,
+    disabledHosts
+  }
 }
 
 export async function setWidgetSettings(
@@ -296,10 +550,41 @@ export async function setWidgetSettings(
   const merged: WidgetSettings = {
     corner: isWidgetCorner(patch.corner) ? patch.corner : prev.corner,
     fabVisible:
-      typeof patch.fabVisible === "boolean" ? patch.fabVisible : prev.fabVisible
+      typeof patch.fabVisible === "boolean" ? patch.fabVisible : prev.fabVisible,
+    captureScreenshots:
+      typeof patch.captureScreenshots === "boolean"
+        ? patch.captureScreenshots
+        : prev.captureScreenshots,
+    captureDomSnapshots:
+      typeof patch.captureDomSnapshots === "boolean"
+        ? patch.captureDomSnapshots
+        : prev.captureDomSnapshots,
+    disabledHosts:
+      patch.disabledHosts === undefined
+        ? prev.disabledHosts
+        : normalizeDisabledHosts(patch.disabledHosts)
   }
   const saved = await write(KEY_WIDGET_SETTINGS, merged)
   return { settings: merged, saved }
+}
+
+export function hostForUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "").toLowerCase()
+  } catch {
+    return ""
+  }
+}
+
+export function isHostDisabled(
+  url: string,
+  settings: Pick<WidgetSettings, "disabledHosts">
+): boolean {
+  const host = hostForUrl(url)
+  if (!host) return false
+  return settings.disabledHosts.some(
+    (blocked) => host === blocked || host.endsWith(`.${blocked}`)
+  )
 }
 
 export async function getPins(): Promise<Pin[]> {
@@ -328,7 +613,14 @@ export async function addPin(pin: Pin): Promise<boolean> {
       body: m.body.slice(0, STORAGE_LIMITS.threadBody),
       authorLabel: m.authorLabel.slice(0, 80)
     })),
-    outerHTMLPreview: pin.outerHTMLPreview.slice(0, STORAGE_LIMITS.outerHTMLPreview)
+    domSnapshot: normalizeDomSnapshot(pin.domSnapshot),
+    syncState: pin.remoteMarkId ? "synced" : "pending",
+    syncError: undefined,
+    pendingSyncOps: normalizeSyncOps(pin.pendingSyncOps),
+    outerHTMLPreview: pin.outerHTMLPreview.slice(
+      0,
+      STORAGE_LIMITS.outerHTMLPreview
+    )
   }
   const next = [...pins, sanitized]
   return write(KEY_PINS, serializePinsForStorage(next))
@@ -338,9 +630,22 @@ export async function addPin(pin: Pin): Promise<boolean> {
 function serializePinsForStorage(pins: Pin[]): unknown[] {
   return pins.map((p) => {
     const { comment: _c, ...rest } = p as Pin & { comment?: string }
-    if (!rest.remoteMarkId) delete (rest as { remoteMarkId?: string }).remoteMarkId
+    if (!rest.remoteMarkId)
+      delete (rest as { remoteMarkId?: string }).remoteMarkId
     if (!rest.screenshotDataUrl) {
       delete (rest as { screenshotDataUrl?: string }).screenshotDataUrl
+    }
+    if (!rest.domSnapshot) {
+      delete (rest as { domSnapshot?: ElementDomSnapshot }).domSnapshot
+    }
+    if (!rest.pendingSyncOps?.length) {
+      delete (rest as { pendingSyncOps?: PinSyncOperation[] }).pendingSyncOps
+    }
+    if (!rest.syncError) {
+      delete (rest as { syncError?: string }).syncError
+    }
+    if (!rest.remoteUpdatedAt) {
+      delete (rest as { remoteUpdatedAt?: number }).remoteUpdatedAt
     }
     return rest
   })
@@ -351,7 +656,10 @@ export async function savePins(pins: Pin[]): Promise<boolean> {
 }
 
 /** Apply fields to one pin by id; no-op when missing */
-export async function patchPin(pinId: string, patch: Partial<Pin>): Promise<boolean> {
+export async function patchPin(
+  pinId: string,
+  patch: Partial<Pin>
+): Promise<boolean> {
   const pins = await getPins()
   const ix = pins.findIndex((p) => p.id === pinId)
   if (ix < 0) return false
@@ -386,6 +694,110 @@ export async function appendThreadComment(
   const next = [...pins.slice(0, idx), updated, ...pins.slice(idx + 1)]
   const ok = await write(KEY_PINS, serializePinsForStorage(next))
   return ok ? next : undefined
+}
+
+function computeSyncState(pin: Pin): PinSyncState {
+  if (pin.syncError) return "failed"
+  if (!pin.remoteMarkId || pin.screenshotDataUrl || pin.pendingSyncOps?.length) {
+    return "pending"
+  }
+  return "synced"
+}
+
+export async function enqueuePinSyncOp(
+  pinId: string,
+  op:
+    | { type: "status"; status: PinStatus }
+    | { type: "comment"; body: string }
+): Promise<PinSyncOperation | undefined> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return undefined
+  const now = Date.now()
+  const nextOp: PinSyncOperation =
+    op.type === "status"
+      ? {
+          id: makeSyncOpId(),
+          type: "status",
+          status: normalizeMarkStatus(op.status),
+          createdAt: now,
+          attempts: 0
+        }
+      : {
+          id: makeSyncOpId(),
+          type: "comment",
+          body: op.body.trim().slice(0, STORAGE_LIMITS.threadBody),
+          createdAt: now,
+          attempts: 0
+        }
+  if (nextOp.type === "comment" && !nextOp.body) return undefined
+  const pin = pins[ix]
+  pins[ix] = {
+    ...pin,
+    syncState: "pending",
+    syncError: undefined,
+    pendingSyncOps: [...(pin.pendingSyncOps ?? []), nextOp],
+    updatedAt: now
+  }
+  const ok = await savePins(pins)
+  return ok ? nextOp : undefined
+}
+
+export async function removePinSyncOp(
+  pinId: string,
+  opId: string
+): Promise<boolean> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return false
+  const pin = pins[ix]
+  const pendingSyncOps = (pin.pendingSyncOps ?? []).filter(
+    (op) => op.id !== opId
+  )
+  const next: Pin = {
+    ...pin,
+    pendingSyncOps,
+    syncError: undefined
+  }
+  next.syncState = computeSyncState(next)
+  pins[ix] = next
+  return savePins(pins)
+}
+
+export async function markPinSyncFailure(
+  pinId: string,
+  error: string,
+  opId?: string
+): Promise<boolean> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return false
+  const pin = pins[ix]
+  const message = error.slice(0, 300)
+  pins[ix] = {
+    ...pin,
+    syncState: "failed",
+    syncError: message,
+    pendingSyncOps: (pin.pendingSyncOps ?? []).map((op) =>
+      !opId || op.id === opId
+        ? { ...op, attempts: op.attempts + 1, lastError: message }
+        : op
+    )
+  }
+  return savePins(pins)
+}
+
+export async function markPinSynced(pinId: string): Promise<boolean> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return false
+  const pin = pins[ix]
+  pins[ix] = {
+    ...pin,
+    syncState: computeSyncState({ ...pin, syncError: undefined }),
+    syncError: undefined
+  }
+  return savePins(pins)
 }
 
 export async function getPinsForPage(

@@ -76,20 +76,28 @@ export function TriageView() {
     return workspace.spaces.find((s) => s.id === filters.spaceId) ?? null;
   }, [filters.spaceId, workspace.spaces]);
 
+  const selectedProject = useMemo(() => {
+    const projectFromSpace = selectedSpace
+      ? workspace.projects.find((project) => project.id === selectedSpace.projectId)
+      : null;
+    return (
+      projectFromSpace ??
+      workspace.projects.find((project) => project.id === filters.projectId) ??
+      workspace.projects[0] ??
+      null
+    );
+  }, [filters.projectId, selectedSpace, workspace.projects]);
+
+  const activeProjectId = selectedProject?.id ?? null;
   const projectSpaces = useMemo(
     () =>
-      filters.projectId === "all"
-        ? workspace.spaces
-        : workspace.spaces.filter((space) => space.projectId === filters.projectId),
-    [filters.projectId, workspace.spaces],
+      activeProjectId
+        ? workspace.spaces.filter((space) => space.projectId === activeProjectId)
+        : [],
+    [activeProjectId, workspace.spaces],
   );
 
-  const selectedProject = useMemo(() => {
-    if (filters.projectId === "all") return null;
-    return workspace.projects.find((project) => project.id === filters.projectId) ?? null;
-  }, [filters.projectId, workspace.projects]);
-
-  const newMarkTargetSpace = selectedSpace ?? projectSpaces[0] ?? workspace.spaces[0];
+  const newMarkTargetSpace = selectedSpace ?? projectSpaces[0];
 
   const visiblePins = useVisibleDashboardPins();
 
@@ -100,7 +108,6 @@ export function TriageView() {
   const allSelectedClosed = selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
 
   const filtersActive =
-    filters.projectId !== "all" ||
     filters.status !== "all" ||
     filters.priority !== "all" ||
     filters.pinned !== "all" ||
@@ -111,7 +118,6 @@ export function TriageView() {
   function clearFilters() {
     update(
       {
-        projectId: "all",
         spaceId: "all",
         status: "all",
         priority: "all",
@@ -138,17 +144,6 @@ export function TriageView() {
     for (const c of workspace.comments) counts.set(c.pinId, (counts.get(c.pinId) ?? 0) + 1);
     return counts;
   }, [workspace.comments]);
-
-  const projectOptions: ReadonlyArray<FilterOption> = useMemo(
-    () => [
-      { value: "all", label: "All projects" },
-      ...workspace.projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
-    ],
-    [workspace.projects],
-  );
 
   const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
     () => {
@@ -229,7 +224,7 @@ export function TriageView() {
     priority: PinPriority;
     assigneeId: string | null;
   }) {
-    const targetSpace = selectedSpace ?? projectSpaces[0] ?? workspace.spaces[0];
+    const targetSpace = selectedSpace ?? projectSpaces[0];
     if (!targetSpace) {
       toast.error("Create a space before adding marks.");
       return;
@@ -257,22 +252,10 @@ export function TriageView() {
 
       <FadeIn className="flex flex-wrap items-center gap-2">
         <FilterSelect
-          value={filters.projectId}
-          onValueChange={(v) =>
-            update(
-              { projectId: v, spaceId: "all", markId: null },
-              { resetPage: true },
-            )
-          }
-          options={projectOptions}
-          ariaLabel="Select project"
-          triggerClassName="h-11 w-[min(100vw-2rem,190px)] sm:h-9"
-        />
-        <FilterSelect
           value={filters.spaceId}
           onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
           options={spaceOptions}
-          ariaLabel="Select space"
+          ariaLabel={selectedProject ? `Select space in ${selectedProject.name}` : "Select space"}
           triggerClassName="h-11 sm:h-9"
         />
         <div className="ml-auto flex items-center gap-2">
@@ -280,7 +263,7 @@ export function TriageView() {
             size="sm"
             variant="outline"
             onClick={() => setShowNew(true)}
-            className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
+            className="h-11 gap-1.5 bg-paper-2 px-3 text-[0.875rem] text-ink hover:bg-paper-3 sm:h-9 sm:text-[0.8125rem]"
           >
             <Plus className="size-3.5 shrink-0 opacity-80" />
             New mark
@@ -328,7 +311,7 @@ export function TriageView() {
         </DialogContent>
       </Dialog>
 
-      <div className="overflow-hidden rounded-md border border-rule bg-paper">
+      <div className="overflow-hidden rounded-md bg-paper-2">
         {visiblePins.length === 0 ? (
           <EmptyState
             variant="plain"

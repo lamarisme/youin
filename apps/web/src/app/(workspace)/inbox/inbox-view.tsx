@@ -27,7 +27,7 @@ export function InboxView() {
     })),
   );
 
-  const inbox = useInbox(workspace, workspaceId, userId);
+  const inbox = useInbox(workspaceId, userId);
   const memberLookup = useMemo(
     () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
     [workspace.members],
@@ -42,7 +42,7 @@ export function InboxView() {
       <AppHeader title="Inbox">
         {inbox.unreadCount > 0 ? (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
-            {inbox.unreadCount} new
+            {formatCount(inbox.unreadCount)} new
           </span>
         ) : null}
         {inbox.totalEvents > 0 ? (
@@ -51,8 +51,8 @@ export function InboxView() {
             variant="ghost"
             size="sm"
             onClick={inbox.markAllRead}
-            disabled={inbox.unreadCount === 0}
-            className="h-9 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink"
+            disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
+            className="h-11 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
           >
             <CheckCheck className="size-3.5" aria-hidden />
             {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
@@ -60,7 +60,21 @@ export function InboxView() {
         ) : null}
       </AppHeader>
 
-      {inbox.groups.length === 0 ? (
+      {inbox.isError ? (
+        <EmptyState
+          icon={Inbox}
+          title="Inbox unavailable."
+          description="The latest inbox activity could not be loaded."
+          action={
+            <Button type="button" size="sm" variant="outline" className="h-11 sm:h-8" onClick={inbox.refetch}>
+              Try again
+            </Button>
+          }
+          className="mt-2"
+        />
+      ) : inbox.isPending ? (
+        <InboxLoadingRows />
+      ) : inbox.groups.length === 0 ? (
         <EmptyState
           icon={Inbox}
           title={userId ? "Inbox empty." : "Sign in to see your inbox."}
@@ -89,7 +103,7 @@ export function InboxView() {
           className="mt-2"
         />
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
           {inbox.groups.map((group) => (
             <InboxGroupRow
               key={group.pinId}
@@ -118,28 +132,35 @@ function InboxGroupRow({
 }) {
   const top = group.events[0];
   const extras = group.events.length - 1;
+  const eventSummary = describeEvent(top, members);
+  const actorLabel = top.actorUsername || top.actorName;
+  const rowLabel = `${group.pinDisplayKey}, ${group.pinTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt)}.`;
   return (
     <li>
       <Link
         href={`/dashboard?mark=${encodeURIComponent(group.pinDisplayKey)}`}
-        className="interactive-lift group flex items-start gap-3 px-4 py-3 hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
+        aria-label={rowLabel}
+        className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
         <UnreadDot active={group.unreadCount > 0} />
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <p
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5">
+            <div
               className={cn(
-                "truncate text-[0.875rem] font-semibold group-hover:text-mark",
+                "flex min-w-0 items-baseline gap-1.5 text-[0.875rem] font-semibold group-hover:text-mark",
                 group.unreadCount > 0 ? "text-ink" : "text-ink-2",
               )}
             >
-              {group.pinTitle}
-            </p>
+              <span className="shrink-0 font-mono text-[0.6875rem] font-medium text-ink-3">
+                {group.pinDisplayKey}
+              </span>
+              <span className="min-w-0 truncate">{group.pinTitle}</span>
+            </div>
             {spaceName ? (
-              <span className="text-[0.6875rem] text-ink-3">{spaceName}</span>
+              <span className="min-w-0 truncate text-[0.6875rem] text-ink-3">{spaceName}</span>
             ) : null}
             <time
-              className="ml-auto shrink-0 text-[0.6875rem] tabular-nums text-ink-3"
+              className="col-start-2 row-start-1 shrink-0 text-[0.6875rem] tabular-nums text-ink-3"
               dateTime={group.latestAt}
             >
               {formatRelative(group.latestAt)}
@@ -148,9 +169,9 @@ function InboxGroupRow({
 
           <p className="truncate text-[0.8125rem] text-ink-2">
             <ActorChip event={top} preference={displayNamePreference} />{" "}
-            {describeEvent(top, members)}
+            {eventSummary}
             {extras > 0 ? (
-              <span className="text-ink-3"> · +{extras} more update{extras === 1 ? "" : "s"}</span>
+              <span className="text-ink-3"> · +{formatCount(extras)} more update{extras === 1 ? "" : "s"}</span>
             ) : null}
           </p>
         </div>
@@ -196,5 +217,31 @@ function ActorChip({
 }
 
 function formatRelative(iso: string): string {
-  return formatDistanceToNow(new Date(iso), { addSuffix: true });
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "recently";
+  return formatDistanceToNow(date, { addSuffix: true });
+}
+
+function formatCount(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
+function InboxLoadingRows() {
+  return (
+    <ul
+      aria-label="Loading inbox"
+      className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1"
+    >
+      {Array.from({ length: 4 }).map((_, index) => (
+        <li key={index} className="flex items-start gap-3 rounded-md px-4 py-3">
+          <span className="mt-2 size-2 shrink-0 rounded-full bg-paper-3" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-3.5 w-2/3 rounded-sm bg-paper-3" />
+            <div className="h-3 w-5/6 rounded-sm bg-paper-2" />
+          </div>
+          <div className="mt-1 h-3 w-14 rounded-sm bg-paper-2" />
+        </li>
+      ))}
+    </ul>
+  );
 }

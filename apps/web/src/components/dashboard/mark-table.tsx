@@ -389,7 +389,7 @@ export function MarkTable({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
                 key={headerGroup.id}
-                className="border-rule hover:bg-transparent"
+                className="hover:bg-transparent"
               >
                 {headerGroup.headers.map((header) => {
                   const sorted = header.column.getIsSorted();
@@ -410,7 +410,7 @@ export function MarkTable({
                             ? "descending"
                             : undefined
                       }
-                      className="h-8 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-ink-3"
+                      className="h-7 px-3 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3"
                     >
                       {header.column.getCanSort() ? (
                         <button
@@ -439,8 +439,8 @@ export function MarkTable({
                 key={row.id}
                 data-state={row.getIsSelected() ? "selected" : undefined}
                 className={cn(
-                  "group/row border-rule transition-colors hover:bg-paper-2/70",
-                  row.getIsSelected() && "bg-mark-soft/35 hover:bg-mark-soft/45",
+                  "group/row transition-colors",
+                  row.getIsSelected() && "[&>td]:bg-mark-soft/35 hover:[&>td]:bg-mark-soft/45",
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -496,7 +496,7 @@ function MobileMarkList({
   }
 
   return (
-    <ul className="divide-y divide-rule">
+    <ul className="space-y-1 p-1">
       {pins.map((pin) => {
         const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
         const commentCount = commentCountByPinId.get(pin.id) ?? 0;
@@ -507,8 +507,8 @@ function MobileMarkList({
             key={pin.id}
             data-state={selected ? "selected" : undefined}
             className={cn(
-              "px-3 py-3 transition-colors",
-              selected && "bg-mark-soft/40",
+              "rounded-md px-3 py-3 transition-colors hover:bg-paper-3/55",
+              selected && "bg-mark-soft/40 hover:bg-mark-soft/45",
             )}
           >
             <div className="flex items-start gap-3">

@@ -63,6 +63,7 @@ export interface PinCapture {
   viewport?: string;
   browser?: string;
   os?: string;
+  domSnapshot?: Record<string, unknown>;
   screenshotUrl?: string;
   capturedAt?: string;
 }

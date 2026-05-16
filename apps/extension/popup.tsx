@@ -17,21 +17,40 @@ import {
   type MigrationResult
 } from "./lib/migrate"
 import {
+  addProject,
   addSpace,
+  getActiveProjectId,
   getActiveSpaceId,
+  getPins,
   getPinsForPage,
+  getProjects,
   getSpaces,
   getWidgetSettings,
+  hostForUrl,
+  isHostDisabled,
+  KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_PINS,
+  KEY_PROJECTS,
   KEY_SPACES,
+  setActiveProjectId,
   setActiveSpaceId,
   setWidgetSettings,
   STORAGE_LIMITS,
-  type Space
+  type Project,
+  type Space,
+  type WidgetCorner
 } from "./lib/storage"
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
-import { createRemoteWorkspaceSpace, syncWorkspaceFromRemote } from "./lib/sync"
+import {
+  createRemoteWorkspaceProject,
+  createRemoteWorkspaceSpace,
+  syncPendingPinsToWorkspace,
+  syncWorkspaceFromRemote,
+  syncWorkspaceMarksFromRemote
+} from "./lib/sync"
+
+const SYNC_NOW = "youin:sync-now"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
 
@@ -80,19 +99,34 @@ function IndexPopup() {
   const [view, setView] = useState<AuthView>("checking")
   const [session, setSession] = useState<Session | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
+  const [projectId, setProjectId] = useState<string>("")
   const [spaces, setSpaces] = useState<Space[]>([])
   const [spaceId, setSpaceId] = useState<string>("")
-  const [projectLabel, setProjectLabel] = useState<string>("Local")
+  const [workspaceLabel, setWorkspaceLabel] = useState<string>("Local")
   const [pageLabel, setPageLabel] = useState<string>("Current page")
   const [canReviewPage, setCanReviewPage] = useState(false)
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
   const [inspectMsg, setInspectMsg] = useState<string | null>(null)
+  const [creatingProject, setCreatingProject] = useState(false)
+  const [newProjectName, setNewProjectName] = useState("")
+  const [newProjectDescription, setNewProjectDescription] = useState("")
+  const [projectErr, setProjectErr] = useState<string | null>(null)
   const [creatingSpace, setCreatingSpace] = useState(false)
   const [newSpaceName, setNewSpaceName] = useState("")
   const [spaceErr, setSpaceErr] = useState<string | null>(null)
   const [showAuth, setShowAuth] = useState(false)
   const [floatingControl, setFloatingControl] = useState(true)
+  const [widgetCorner, setWidgetCorner] = useState<WidgetCorner>("bottom-right")
+  const [captureScreenshots, setCaptureScreenshots] = useState(true)
+  const [captureDomSnapshots, setCaptureDomSnapshots] = useState(true)
+  const [currentHost, setCurrentHost] = useState("")
+  const [domainDisabled, setDomainDisabled] = useState(false)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+  const [failedSyncCount, setFailedSyncCount] = useState(0)
+  const [syncingNow, setSyncingNow] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const gearRef = useRef<HTMLButtonElement>(null)
 
@@ -102,6 +136,8 @@ function IndexPopup() {
     if (!url?.startsWith("http")) {
       setPageLabel("Open a website")
       setCanReviewPage(false)
+      setCurrentHost("")
+      setDomainDisabled(false)
       setOpenCount(0)
       setResolvedCount(0)
       return
@@ -109,8 +145,10 @@ function IndexPopup() {
     setCanReviewPage(true)
     try {
       setPageLabel(new URL(url).hostname.replace(/^www\./, ""))
+      setCurrentHost(hostForUrl(url))
     } catch {
       setPageLabel("Current page")
+      setCurrentHost("")
     }
     const sid = await getActiveSpaceId()
     const pins = await getPinsForPage(sid, url)
@@ -119,18 +157,51 @@ function IndexPopup() {
   }, [])
 
   const refreshSpaces = useCallback(async () => {
-    const [s, active] = await Promise.all([getSpaces(), getActiveSpaceId()])
-    setSpaces(s)
-    setSpaceId((prev) => {
-      if (prev && s.some((x) => x.id === prev)) return prev
-      if (s.some((x) => x.id === active)) return active
-      return s[0]?.id ?? ""
-    })
+    const [projectRows, spaceRows, activeProject, activeSpace] =
+      await Promise.all([
+        getProjects(),
+        getSpaces(),
+        getActiveProjectId(),
+        getActiveSpaceId()
+      ])
+    setProjects(projectRows)
+    const nextProjectId = projectRows.some((x) => x.id === activeProject)
+      ? activeProject
+      : projectRows[0]?.id ?? ""
+    setProjectId(nextProjectId)
+    const projectSpaces = spaceRows.filter(
+      (space) => space.projectId === nextProjectId
+    )
+    const nextSpaceId = projectSpaces.some((x) => x.id === activeSpace)
+      ? activeSpace
+      : projectSpaces[0]?.id ?? ""
+    if (nextProjectId !== activeProject) void setActiveProjectId(nextProjectId)
+    if (nextSpaceId !== activeSpace) void setActiveSpaceId(nextSpaceId)
+    setSpaces(spaceRows)
+    setSpaceId(nextSpaceId)
   }, [])
 
   const refreshWidgetSettings = useCallback(async () => {
     const settings = await getWidgetSettings()
     setFloatingControl(settings.fabVisible)
+    setWidgetCorner(settings.corner)
+    setCaptureScreenshots(settings.captureScreenshots)
+    setCaptureDomSnapshots(settings.captureDomSnapshots)
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    setDomainDisabled(Boolean(tab?.url && isHostDisabled(tab.url, settings)))
+  }, [])
+
+  const refreshSyncSummary = useCallback(async () => {
+    const pins = await getPins()
+    setPendingSyncCount(
+      pins.filter(
+        (pin) =>
+          pin.syncState === "pending" ||
+          Boolean(pin.screenshotDataUrl) ||
+          Boolean(pin.pendingSyncOps?.length)
+      ).length
+    )
+    setFailedSyncCount(pins.filter((pin) => pin.syncState === "failed").length)
   }, [])
 
   useEffect(() => {
@@ -155,17 +226,27 @@ function IndexPopup() {
     void refreshSpaces()
     void refreshCounts()
     void refreshWidgetSettings()
+    void refreshSyncSummary()
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
       if (area !== "local") return
       void refreshWidgetSettings()
-      if (changes[KEY_SPACES] || changes[KEY_ACTIVE_SPACE]) void refreshSpaces()
-      if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE]) void refreshCounts()
+      if (
+        changes[KEY_PROJECTS] ||
+        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_ACTIVE_SPACE]
+      )
+        void refreshSpaces()
+      if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE]) {
+        void refreshCounts()
+        void refreshSyncSummary()
+      }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [refreshSpaces, refreshCounts, refreshWidgetSettings])
+  }, [refreshSpaces, refreshCounts, refreshWidgetSettings, refreshSyncSummary])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -191,13 +272,13 @@ function IndexPopup() {
 
   useEffect(() => {
     if (view !== "signedIn") {
-      setProjectLabel("Local")
+      setWorkspaceLabel("Local")
       return
     }
     let cancelled = false
     void (async () => {
       const label = await fetchWorkspaceLabel()
-      if (!cancelled) setProjectLabel(label?.trim() || "Workspace")
+      if (!cancelled) setWorkspaceLabel(label?.trim() || "Workspace")
     })()
     return () => {
       cancelled = true
@@ -213,9 +294,123 @@ function IndexPopup() {
     })()
   }
 
+  const runManualSync = () => {
+    setSyncingNow(true)
+    setSyncMsg(null)
+    void (async () => {
+      try {
+        const response = (await chrome.runtime.sendMessage({
+          type: SYNC_NOW
+        })) as { ok?: boolean; error?: string } | undefined
+        if (response?.ok === false) {
+          setSyncMsg(response.error ?? "Sync failed.")
+        } else {
+          setSyncMsg("Sync complete.")
+        }
+      } catch {
+        const sessionNow = await getSession()
+        if (sessionNow?.user?.id) {
+          await syncWorkspaceFromRemote(sessionNow.user.id)
+          await syncPendingPinsToWorkspace()
+          await syncWorkspaceMarksFromRemote()
+          setSyncMsg("Sync complete.")
+        }
+      } finally {
+        await refreshSpaces()
+        await refreshCounts()
+        await refreshSyncSummary()
+        setSyncingNow(false)
+      }
+    })()
+  }
+
+  const toggleCurrentDomain = (disabled: boolean) => {
+    if (!currentHost) return
+    setDomainDisabled(disabled)
+    void (async () => {
+      const settings = await getWidgetSettings()
+      const hosts = new Set(settings.disabledHosts)
+      if (disabled) hosts.add(currentHost)
+      else hosts.delete(currentHost)
+      await setWidgetSettings({ disabledHosts: Array.from(hosts) })
+      await refreshWidgetSettings()
+    })()
+  }
+
+  const projectSpaces = spaces.filter((space) => space.projectId === projectId)
+  const activeProjectName =
+    projects.find((project) => project.id === projectId)?.name ?? "General"
+
+  const selectProject = (id: string) => {
+    setProjectId(id)
+    void setActiveProjectId(id)
+    const nextSpace = spaces.find((space) => space.projectId === id)
+    if (nextSpace && nextSpace.id !== spaceId) {
+      selectSpace(nextSpace.id)
+    } else if (!nextSpace) {
+      setSpaceId("")
+      void setActiveSpaceId("")
+    }
+  }
+
   const selectSpace = (id: string) => {
     setSpaceId(id)
     void setActiveSpaceId(id)
+  }
+
+  const submitNewProject = () => {
+    const name = newProjectName.trim().slice(0, STORAGE_LIMITS.projectName)
+    const description = newProjectDescription
+      .trim()
+      .slice(0, STORAGE_LIMITS.projectDescription)
+    if (!name) {
+      setCreatingProject(false)
+      setProjectErr(null)
+      return
+    }
+    void (async () => {
+      const sess = await getSession()
+      if (sess?.user?.id) {
+        const created = await createRemoteWorkspaceProject(
+          sess.user.id,
+          name,
+          description
+        )
+        if (!created.ok || !created.projectId) {
+          setProjectErr(
+            created.error ?? "Could not create project. Try the web app."
+          )
+          return
+        }
+        await syncWorkspaceFromRemote(sess.user.id)
+        await setActiveProjectId(created.projectId)
+        await refreshSpaces()
+        setNewProjectName("")
+        setNewProjectDescription("")
+        setCreatingProject(false)
+        setProjectErr(null)
+        return
+      }
+
+      const slug =
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") || "project"
+      const id = `${slug}-${Date.now().toString(36)}`
+      const next: Project = { id, name, description, createdAt: Date.now() }
+      const added = await addProject(next)
+      if (!added) {
+        setProjectErr("Couldn't save project.")
+        return
+      }
+      await setActiveProjectId(id)
+      await refreshSpaces()
+      setNewProjectName("")
+      setNewProjectDescription("")
+      setCreatingProject(false)
+      setProjectErr(null)
+    })()
   }
 
   const submitNewSpace = () => {
@@ -225,10 +420,18 @@ function IndexPopup() {
       setSpaceErr(null)
       return
     }
+    if (!projectId) {
+      setSpaceErr("Choose or create a project first.")
+      return
+    }
     void (async () => {
       const sess = await getSession()
       if (sess?.user?.id) {
-        const created = await createRemoteWorkspaceSpace(sess.user.id, name)
+        const created = await createRemoteWorkspaceSpace(
+          sess.user.id,
+          projectId,
+          name
+        )
         if (!created.ok || !created.spaceId) {
           setSpaceErr(
             created.error ?? "Could not create space. Try the web app."
@@ -250,7 +453,7 @@ function IndexPopup() {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "") || "space"
       const id = `${slug}-${Date.now().toString(36)}`
-      const next: Space = { id, name, createdAt: Date.now() }
+      const next: Space = { id, projectId, name, createdAt: Date.now() }
       const added = await addSpace(next)
       if (!added) {
         setSpaceErr("Couldn't save space.")
@@ -366,13 +569,21 @@ function IndexPopup() {
 
         <button
           type="button"
-          disabled={!canReviewPage}
+          disabled={!canReviewPage || !spaceId || domainDisabled}
           className="mt-3 flex w-full min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
           onClick={beginInspect}>
           Start reviewing
         </button>
 
-        {inspectMsg ? (
+        {domainDisabled ? (
+          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+            YouIn is disabled on this site.
+          </p>
+        ) : !spaceId ? (
+          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+            Create a space in this project before reviewing.
+          </p>
+        ) : inspectMsg ? (
           <p className="mt-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
             {inspectMsg}
           </p>
@@ -385,7 +596,7 @@ function IndexPopup() {
         <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)]">
           <button
             type="button"
-            disabled={!canReviewPage}
+            disabled={!canReviewPage || !spaceId || domainDisabled}
             className="min-h-[58px] border-0 border-e border-[color:var(--yi-ext-border-hairline)] bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             onClick={beginInspect}>
             <span className="block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-dim)]">
@@ -413,7 +624,7 @@ function IndexPopup() {
               Workspace
             </p>
             <p className="mt-0.5 truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
-              {projectLabel}
+              {workspaceLabel}
             </p>
           </div>
           <a
@@ -427,14 +638,77 @@ function IndexPopup() {
 
         <div className="mt-3">
           <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
-            Review space
+            Project
+          </span>
+          <div className="flex gap-1">
+            <select
+              className="min-w-0 flex-1 cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+              value={projectId}
+              onChange={(e) => selectProject(e.target.value)}>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              title="New project"
+              className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 text-[14px] text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              onClick={() => {
+                setCreatingProject((c) => !c)
+                setProjectErr(null)
+              }}>
+              +
+            </button>
+          </div>
+          {creatingProject ? (
+            <div className="mt-2 flex flex-col gap-1">
+              {projectErr ? (
+                <p className="text-[11px] text-[color:var(--yi-ext-danger-text)]">
+                  {projectErr}
+                </p>
+              ) : null}
+              <input
+                value={newProjectName}
+                maxLength={STORAGE_LIMITS.projectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitNewProject()
+                }}
+                placeholder="Website QA"
+                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+              />
+              <input
+                value={newProjectDescription}
+                maxLength={STORAGE_LIMITS.projectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitNewProject()
+                }}
+                placeholder="What this project collects"
+                className="rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+              />
+              <button
+                type="button"
+                className="rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)]"
+                onClick={() => submitNewProject()}>
+                Create project
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-3">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+            Space in {activeProjectName}
           </span>
           <div className="flex gap-1">
             <select
               className="min-w-0 flex-1 cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
               value={spaceId}
               onChange={(e) => selectSpace(e.target.value)}>
-              {spaces.map((s) => (
+              {projectSpaces.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
@@ -498,8 +772,41 @@ function IndexPopup() {
         </div>
       ) : null}
 
-      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-        <label className="flex min-h-9 items-center justify-between gap-3">
+      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+              Settings
+            </p>
+            <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+              Capture and sync controls
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={syncingNow || view !== "signedIn"}
+            className="shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            onClick={runManualSync}>
+            {syncingNow ? "Syncing" : "Retry sync"}
+          </button>
+        </div>
+
+        {view === "signedIn" && (pendingSyncCount || failedSyncCount || syncMsg) ? (
+          <p
+            className={`mt-2 rounded-md border px-2 py-1.5 text-[10px] ${
+              failedSyncCount
+                ? "border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]"
+                : "border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
+            }`}>
+            {failedSyncCount
+              ? `${failedSyncCount} failed sync item${failedSyncCount === 1 ? "" : "s"}`
+              : pendingSyncCount
+                ? `${pendingSyncCount} pending sync item${pendingSyncCount === 1 ? "" : "s"}`
+                : syncMsg}
+          </p>
+        ) : null}
+
+        <label className="mt-3 flex min-h-8 items-center justify-between gap-3">
           <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
             Show floating review button
           </span>
@@ -514,7 +821,72 @@ function IndexPopup() {
             }}
           />
         </label>
-      </div>
+
+        <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
+          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
+            Capture element screenshots
+          </span>
+          <input
+            type="checkbox"
+            checked={captureScreenshots}
+            className="size-4 accent-[color:var(--yi-mark)]"
+            onChange={(e) => {
+              const next = e.target.checked
+              setCaptureScreenshots(next)
+              void setWidgetSettings({ captureScreenshots: next })
+            }}
+          />
+        </label>
+
+        <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
+          <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
+            Include DOM context
+          </span>
+          <input
+            type="checkbox"
+            checked={captureDomSnapshots}
+            className="size-4 accent-[color:var(--yi-mark)]"
+            onChange={(e) => {
+              const next = e.target.checked
+              setCaptureDomSnapshots(next)
+              void setWidgetSettings({ captureDomSnapshots: next })
+            }}
+          />
+        </label>
+
+        <label className="mt-2 block">
+          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.08em] text-[color:var(--yi-ext-text-dim)]">
+            Widget corner
+          </span>
+          <select
+            value={widgetCorner}
+            className="w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)]"
+            onChange={(e) => {
+              const next = e.target.value as WidgetCorner
+              setWidgetCorner(next)
+              void setWidgetSettings({ corner: next })
+            }}>
+            <option value="bottom-right">Bottom right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="top-right">Top right</option>
+            <option value="top-left">Top left</option>
+          </select>
+        </label>
+
+        {currentHost ? (
+          <label className="mt-2 flex min-h-8 items-center justify-between gap-3">
+            <span className="text-[11px] text-[color:var(--yi-ext-text-muted)]">
+              Disable on {currentHost}
+            </span>
+            <input
+              type="checkbox"
+              checked={domainDisabled}
+              className="size-4 accent-[color:var(--yi-mark)]"
+              onChange={(e) => toggleCurrentDomain(e.target.checked)}
+            />
+          </label>
+        ) : null}
+      </section>
 
       {view === "signedOut" && showAuth ? (
         <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
@@ -632,6 +1004,23 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
             : t("extension.popup.signIn")}
         </button>
       </form>
+
+      <div className="mt-3 flex items-center justify-between gap-2 text-[11px]">
+        <a
+          href={`${WEB_APP_URL}/signup`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-medium text-[color:var(--yi-ext-link)] no-underline hover:underline">
+          Create account
+        </a>
+        <a
+          href={`${WEB_APP_URL}/login?mode=reset`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[color:var(--yi-ext-text-muted)] no-underline hover:underline">
+          Forgot password?
+        </a>
+      </div>
     </section>
   )
 }
@@ -652,6 +1041,8 @@ function SignedInBlock({ session }: { session: Session | null }) {
       setSyncingDb(true)
       try {
         await syncWorkspaceFromRemote(userId)
+        await syncPendingPinsToWorkspace()
+        await syncWorkspaceMarksFromRemote()
       } finally {
         if (!cancelled) setSyncingDb(false)
       }
@@ -660,6 +1051,7 @@ function SignedInBlock({ session }: { session: Session | null }) {
       setMigrating(true)
       try {
         const r = await migrateLocalDataToWorkspace(userId)
+        if (r.ok) await syncPendingPinsToWorkspace()
         if (!cancelled) setMigrationStatus(r)
       } catch (e) {
         if (!cancelled)

@@ -5,6 +5,7 @@ export const EVENT_REVIEW_CAPTURE = "youin:review:capture"
 export const EVENT_REVIEW_RESUME = "youin:review:resume"
 export const EVENT_REVIEW_PAUSE = "youin:review:pause"
 export const EVENT_REVIEW_OPEN_PIN = "youin:review:open-pin"
+export const EVENT_LOCATION_CHANGE = "youin:location-change"
 
 export interface ReviewStateDetail {
   active: boolean
@@ -21,6 +22,7 @@ export interface ReviewCaptureDetail {
   viewport: { width: number; height: number; dpr: number }
   url: string
   outerHTML: string
+  domSnapshot?: import("./dom-snapshot").ElementDomSnapshot
   /** Element screenshot (PNG data URL), when capture succeeds. */
   elementScreenshotDataUrl?: string
 }

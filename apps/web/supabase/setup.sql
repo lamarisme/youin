@@ -125,6 +125,7 @@ ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks_to_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inbox_read_states ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -145,7 +146,8 @@ BEGIN
         'marks',
         'marks_to_labels',
         'mark_comments',
-        'mark_events'
+        'mark_events',
+        'inbox_read_states'
       )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', r.policyname, r.tablename);
@@ -346,6 +348,31 @@ CREATE POLICY mark_events_insert ON public.mark_events
   FOR INSERT TO authenticated
   WITH CHECK (
     actor_user_id = auth.uid()
+    AND public.user_workspace_member(workspace_id)
+  );
+
+CREATE POLICY inbox_read_states_select_own ON public.inbox_read_states
+  FOR SELECT TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  );
+
+CREATE POLICY inbox_read_states_insert_own ON public.inbox_read_states
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  );
+
+CREATE POLICY inbox_read_states_update_own ON public.inbox_read_states
+  FOR UPDATE TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  )
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
     AND public.user_workspace_member(workspace_id)
   );
 

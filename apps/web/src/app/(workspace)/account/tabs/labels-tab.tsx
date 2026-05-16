@@ -77,7 +77,7 @@ export function LabelsTab() {
           }
         />
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
           {labels.map((label) => {
             const count = usageById.get(label.id) ?? 0;
             return (

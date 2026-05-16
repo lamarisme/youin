@@ -17,10 +17,14 @@ export function useVisibleDashboardPins() {
   return useMemo(
     () => {
       const spaceProjectById = new Map(spaces.map((space) => [space.id, space.projectId]));
-      const projectPins =
-        filters.projectId === "all"
-          ? pins
-          : pins.filter((pin) => spaceProjectById.get(pin.spaceId) === filters.projectId);
+      const selectedSpaceProjectId =
+        filters.spaceId === "all" ? null : spaceProjectById.get(filters.spaceId) ?? null;
+      const activeProjectId =
+        selectedSpaceProjectId ??
+        (filters.projectId === "all" ? spaces[0]?.projectId : filters.projectId);
+      const projectPins = activeProjectId
+        ? pins.filter((pin) => spaceProjectById.get(pin.spaceId) === activeProjectId)
+        : [];
       return filterPinsByDashboardFilters(
         projectPins,
         {

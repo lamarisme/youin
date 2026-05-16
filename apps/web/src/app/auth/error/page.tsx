@@ -35,7 +35,7 @@ function AuthErrorContent() {
   const signInHref = `/login?next=${encodeURIComponent(next)}`;
 
   return (
-    <div className="mx-auto w-full rounded-xl border border-rule bg-paper-2 p-6 sm:p-7">
+    <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
         <div className="mb-3 inline-flex size-10 items-center justify-center rounded-lg border border-mark/25 bg-mark-soft">
           <AlertTriangle className="size-5 text-mark" />

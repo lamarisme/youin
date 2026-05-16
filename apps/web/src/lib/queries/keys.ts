@@ -4,6 +4,10 @@ export const workspaceKeys = {
   spaces: () => [...workspaceKeys.all, "spaces"] as const,
   labels: () => [...workspaceKeys.all, "labels"] as const,
   members: () => [...workspaceKeys.all, "members"] as const,
+  inbox: (workspaceId?: string, userId?: string) =>
+    workspaceId && userId
+      ? ([...workspaceKeys.all, "inbox", workspaceId, userId] as const)
+      : ([...workspaceKeys.all, "inbox"] as const),
   pins: (spaceId?: string) =>
     spaceId
       ? ([...workspaceKeys.all, "pins", spaceId] as const)

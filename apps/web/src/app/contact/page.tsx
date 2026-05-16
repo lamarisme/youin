@@ -4,7 +4,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Contact youin",
+  title: "Contact",
   description: "Talk to a human about youin. We respond within one working day.",
 };
 

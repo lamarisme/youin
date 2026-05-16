@@ -14,7 +14,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useLocalStorageState<Theme>("youin-theme", "light");
+  const [theme, setTheme] = useLocalStorageState<Theme>("youin-theme", "dark");
 
   useEffect(() => {
     const root = document.documentElement;

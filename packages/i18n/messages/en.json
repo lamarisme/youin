@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "youin: your product backlog, pinned to your UI",
+    "title": "Product backlog, pinned to your UI",
     "description": "Turn any part of your web app into a task with screenshots, selectors, browser metadata, and Linear-ready context attached."
   },
   "brand": {
@@ -16,7 +16,7 @@
   "nav": {
     "triage": "Triage",
     "inbox": "Inbox",
-    "spaces": "Projects",
+    "spaces": "Spaces",
     "analytics": "Analytics"
   },
   "sidebar": {
@@ -100,7 +100,7 @@
     "footerToggle": "toggle",
     "groups": {
       "navigate": "Navigate",
-      "spaces": "Projects",
+      "spaces": "Spaces",
       "theme": "Theme"
     },
     "nav": {
@@ -111,8 +111,8 @@
       "inboxSub": "Activity on marks you follow",
       "analytics": "Analytics",
       "analyticsSub": "Throughput and workspace activity",
-      "spaces": "Manage projects",
-      "spacesSub": "Projects and spaces",
+      "spaces": "Spaces",
+      "spacesSub": "Spaces in the selected project",
       "account": "Account settings",
       "accountSub": "Profile, team, and labels",
       "themeLight": "Switch to light mode",

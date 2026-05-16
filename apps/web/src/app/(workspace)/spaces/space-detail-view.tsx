@@ -392,7 +392,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 }
               />
             ) : (
-              <div className="overflow-hidden rounded-md border border-rule bg-paper">
+              <div className="overflow-hidden rounded-md bg-paper-2">
                 <MarkTable
                   pins={spacePins}
                   membersById={membersById}

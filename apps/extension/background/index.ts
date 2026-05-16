@@ -1,12 +1,19 @@
 // Background service worker: auth bridge from the web app, plus tab
 // screenshot capture for review mode (Chrome-rendered crop).
 
-import { setSessionFromBridge } from "../lib/auth"
+import { getSession, setSessionFromBridge } from "../lib/auth"
 import {
-  type TabCaptureCropMessage,
+  syncPendingPinsToWorkspace,
+  syncWorkspaceFromRemote,
+  syncWorkspaceMarksFromRemote
+} from "../lib/sync"
+import {
   TAB_CAPTURE_CROP,
+  type TabCaptureCropMessage,
   type TabCaptureCropResponse
 } from "../lib/tab-capture"
+
+const SYNC_NOW = "youin:sync-now"
 
 interface BridgeSessionMessage {
   type: "youin:set-session"
@@ -19,6 +26,11 @@ interface BridgePingMessage {
 }
 
 type ExternalMessage = BridgeSessionMessage | BridgePingMessage
+
+interface SyncNowResponse {
+  ok: boolean
+  error?: string
+}
 
 function isBridgeMessage(msg: unknown): msg is ExternalMessage {
   if (!msg || typeof msg !== "object") return false
@@ -33,6 +45,16 @@ function blobToDataUrl(blob: Blob): Promise<string> {
     fr.onerror = () => reject(fr.error ?? new Error("read failed"))
     fr.readAsDataURL(blob)
   })
+}
+
+async function canvasToImageDataUrl(canvas: OffscreenCanvas): Promise<string> {
+  try {
+    return await blobToDataUrl(
+      await canvas.convertToBlob({ type: "image/webp", quality: 0.84 })
+    )
+  } catch {
+    return blobToDataUrl(await canvas.convertToBlob({ type: "image/png" }))
+  }
 }
 
 /** Avoid `fetch(data:...)` in the service worker — support is inconsistent; decode locally. */
@@ -51,17 +73,35 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([decodeURIComponent(payload)], { type: mime })
 }
 
+async function runBackgroundSync(): Promise<SyncNowResponse> {
+  const session = await getSession()
+  if (!session?.user?.id) return { ok: true }
+  const workspace = await syncWorkspaceFromRemote(session.user.id)
+  if (!workspace.ok) return { ok: false, error: workspace.error }
+  const push = await syncPendingPinsToWorkspace()
+  const pull = await syncWorkspaceMarksFromRemote()
+  return {
+    ok: push.ok && pull.ok,
+    error: push.error ?? pull.error
+  }
+}
+
 chrome.runtime.onMessage.addListener(
   (
     message: unknown,
     sender,
-    sendResponse: (r: TabCaptureCropResponse) => void
+    sendResponse: (r: TabCaptureCropResponse | SyncNowResponse) => void
   ) => {
-    if (
-      !message ||
-      typeof message !== "object" ||
-      (message as { type?: unknown }).type !== TAB_CAPTURE_CROP
-    ) {
+    if (!message || typeof message !== "object") {
+      return false
+    }
+
+    const type = (message as { type?: unknown }).type
+    if (type === SYNC_NOW) {
+      void runBackgroundSync().then(sendResponse)
+      return true
+    }
+    if (type !== TAB_CAPTURE_CROP) {
       return false
     }
 
@@ -105,7 +145,12 @@ chrome.runtime.onMessage.addListener(
           return
         }
 
-        const canvas = new OffscreenCanvas(sw, sh)
+        const maxSide = 1400
+        const ratio = Math.min(1, maxSide / Math.max(sw, sh))
+        const outWidth = Math.max(1, Math.round(sw * ratio))
+        const outHeight = Math.max(1, Math.round(sh * ratio))
+
+        const canvas = new OffscreenCanvas(outWidth, outHeight)
         const ctx = canvas.getContext("2d")
         if (!ctx) {
           img.close()
@@ -113,11 +158,10 @@ chrome.runtime.onMessage.addListener(
           return
         }
 
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh)
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outWidth, outHeight)
         img.close()
 
-        const outBlob = await canvas.convertToBlob({ type: "image/png" })
-        const dataUrl = await blobToDataUrl(outBlob)
+        const dataUrl = await canvasToImageDataUrl(canvas)
         sendResponse({ ok: true, dataUrl })
       } catch (e) {
         sendResponse({
@@ -146,9 +190,23 @@ chrome.runtime.onMessageExternal.addListener(
         access_token: message.access_token,
         refresh_token: message.refresh_token
       })
+      if (result.ok) void runBackgroundSync()
       sendResponse(result)
     })()
     // Async response.
     return true
   }
 )
+
+chrome.runtime.onStartup?.addListener(() => {
+  void runBackgroundSync()
+})
+
+chrome.runtime.onInstalled?.addListener(() => {
+  void runBackgroundSync()
+})
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return
+  if (changes["youin:supabase-auth"]) void runBackgroundSync()
+})

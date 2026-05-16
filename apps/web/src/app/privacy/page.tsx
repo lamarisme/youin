@@ -4,7 +4,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Privacy · youin",
+  title: "Privacy",
   description: "How youin handles the data captured by marks, comments, and integrations.",
 };
 
@@ -34,9 +34,10 @@ export default function PrivacyPage() {
           <p className="text-eyebrow mb-2">Privacy</p>
           <h1 className="text-editorial-md text-ink">Privacy policy.</h1>
           <p className="mt-4 max-w-[60ch] text-[0.9375rem] leading-relaxed text-ink-2">
-            youin captures element selectors, viewport metadata, and screenshots of the live pages
-            you mark. The full policy — what we store, where, for how long, and who can request a
-            copy or deletion — is being finalized ahead of general availability.
+            youin captures element selectors, sanitized DOM context, viewport metadata, and
+            screenshots of the live pages you mark. The full policy — what we store, where, for how
+            long, and who can request a copy or deletion — is being finalized ahead of general
+            availability.
           </p>
 
           <div className="mt-8 rounded-xl border border-rule bg-paper-2 p-6">
@@ -62,7 +63,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="font-display text-xl font-semibold text-ink">What we capture</h2>
               <ul className="mt-3 list-inside list-disc space-y-1.5">
-                <li>Element selector, viewport size, browser, and a screenshot of the marked area.</li>
+                <li>Element selector, sanitized DOM context, viewport size, browser, and a screenshot of the marked area.</li>
                 <li>Page URL and title at the moment a mark is created.</li>
                 <li>Comments and their authors within your workspace.</li>
                 <li>Account info: email, workspace name, and billing details for paid plans.</li>

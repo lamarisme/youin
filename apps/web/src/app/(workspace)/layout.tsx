@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -6,6 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceBootstrap } from "@/lib/workspace/actions";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Workspace",
+};
 
 const DEFAULT_AFTER_SIGN_IN = "/dashboard?space=all";
 

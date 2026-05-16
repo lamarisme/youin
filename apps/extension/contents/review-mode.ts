@@ -7,7 +7,9 @@ import {
 import { toPng } from "html-to-image"
 import type { PlasmoCSConfig } from "plasmo"
 
+import { captureElementDomSnapshot } from "../lib/dom-snapshot"
 import {
+  EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_CAPTURE,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_PAUSE,
@@ -17,14 +19,22 @@ import {
   type ReviewCaptureDetail,
   type ReviewStateDetail
 } from "../lib/events"
+import { EXTENSION_LAYER } from "../lib/layers"
 import { generateSelector } from "../lib/selector"
 import {
+  getActiveProjectId,
   getActiveSpaceId,
   getPinsForPage,
+  getProjects,
   getSpaces,
+  getWidgetSettings,
+  isHostDisabled,
+  KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_PINS,
-  KEY_SPACES
+  KEY_PROJECTS,
+  KEY_SPACES,
+  KEY_WIDGET_SETTINGS
 } from "../lib/storage"
 import {
   TAB_CAPTURE_CROP,
@@ -39,7 +49,7 @@ export const config: PlasmoCSConfig = {
 
 const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
-const Z_TOP = 2147483647
+const Z_TOP = EXTENSION_LAYER.reviewOverlay
 
 type Mode = "inactive" | "active" | "paused"
 
@@ -61,9 +71,20 @@ let pendingHoverRect: {
 async function refreshToolbarLabels() {
   if (!toolbarNsEl || !toolbarCountEl) return
   try {
-    const spaceId = await getActiveSpaceId()
-    const spaces = await getSpaces()
-    const ns = spaces.find((s) => s.id === spaceId)?.name ?? "—"
+    const [activeProjectId, spaceId, projects, spaces] = await Promise.all([
+      getActiveProjectId(),
+      getActiveSpaceId(),
+      getProjects(),
+      getSpaces()
+    ])
+    const space = spaces.find((s) => s.id === spaceId)
+    const project = projects.find(
+      (p) => p.id === (space?.projectId ?? activeProjectId)
+    )
+    const ns =
+      project && space
+        ? `${project.name} / ${space.name}`
+        : space?.name || project?.name || "—"
     toolbarNsEl.textContent = ns
     const pins = await getPinsForPage(spaceId, location.href)
     const open = pins.filter((p) => p.status !== "closed").length
@@ -79,7 +100,19 @@ function subscribeToolbarRefresh() {
     typeof chrome.storage.onChanged.addListener
   >[0] = (changes, area) => {
     if (area !== "local") return
-    if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE] || changes[KEY_SPACES]) {
+    if (
+      changes[KEY_PINS] ||
+      changes[KEY_PROJECTS] ||
+      changes[KEY_SPACES] ||
+      changes[KEY_ACTIVE_PROJECT] ||
+      changes[KEY_ACTIVE_SPACE] ||
+      changes[KEY_WIDGET_SETTINGS]
+    ) {
+      if (changes[KEY_WIDGET_SETTINGS]) {
+        void getWidgetSettings().then((settings) => {
+          if (isHostDisabled(location.href, settings)) deactivate()
+        })
+      }
       if (mode === "active") void refreshToolbarLabels()
     }
   }
@@ -334,23 +367,31 @@ function onMouseOver(e: MouseEvent) {
 }
 
 async function captureAndDispatch(target: Element) {
+  const settings = await getWidgetSettings()
   const rect = target.getBoundingClientRect()
   const result = generateSelector(target)
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpr: window.devicePixelRatio
+  }
 
   let elementScreenshotDataUrl: string | undefined
-  try {
-    elementScreenshotDataUrl = await captureElementViaTab(rect)
-  } catch {
-    /* captureVisibleTab / message channel failures */
-  }
-  if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
+  if (settings.captureScreenshots) {
     try {
-      elementScreenshotDataUrl = await toPng(target, {
-        pixelRatio: Math.min(3, window.devicePixelRatio || 1),
-        cacheBust: true
-      })
+      elementScreenshotDataUrl = await captureElementViaTab(rect)
     } catch {
-      /* DOM / CORS snapshot fallback not possible */
+      /* captureVisibleTab / message channel failures */
+    }
+    if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
+      try {
+        elementScreenshotDataUrl = await toPng(target, {
+          pixelRatio: Math.min(3, window.devicePixelRatio || 1),
+          cacheBust: true
+        })
+      } catch {
+        /* DOM / CORS snapshot fallback not possible */
+      }
     }
   }
 
@@ -363,13 +404,17 @@ async function captureAndDispatch(target: Element) {
       width: Math.round(rect.width),
       height: Math.round(rect.height)
     },
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      dpr: window.devicePixelRatio
-    },
+    viewport,
     url: location.href,
     outerHTML: target.outerHTML.slice(0, 400),
+    domSnapshot: settings.captureDomSnapshots
+      ? captureElementDomSnapshot(
+          target,
+          result.selector,
+          result.strategy,
+          viewport
+        )
+      : undefined,
     elementScreenshotDataUrl
   }
 
@@ -428,14 +473,18 @@ function activate() {
     resume()
     return
   }
-  mode = "active"
-  ensureHost()
-  toolbarCleanup?.()
-  toolbarCleanup = subscribeToolbarRefresh()
-  void refreshToolbarLabels()
-  applyCursorOverride()
-  attachCaptureListeners()
-  emitState()
+  void (async () => {
+    const settings = await getWidgetSettings()
+    if (isHostDisabled(location.href, settings)) return
+    mode = "active"
+    ensureHost()
+    toolbarCleanup?.()
+    toolbarCleanup = subscribeToolbarRefresh()
+    void refreshToolbarLabels()
+    applyCursorOverride()
+    attachCaptureListeners()
+    emitState()
+  })()
 }
 
 function pause() {
@@ -469,6 +518,9 @@ window.addEventListener(EVENT_REVIEW_START, () => activate())
 window.addEventListener(EVENT_REVIEW_EXIT, () => deactivate())
 window.addEventListener(EVENT_REVIEW_RESUME, () => resume())
 window.addEventListener(EVENT_REVIEW_PAUSE, () => pause())
+window.addEventListener(EVENT_LOCATION_CHANGE, () => {
+  if (mode === "active") void refreshToolbarLabels()
+})
 
 document.addEventListener(
   "keydown",

@@ -27,25 +27,30 @@ function SpacesClientContent() {
 
   const selectedProjectId = useMemo(() => {
     const id = searchParams.get("project");
-    if (!id) return "all";
-    return projects.some((project) => project.id === id) ? id : "all";
+    if (id && projects.some((project) => project.id === id)) return id;
+    return projects[0]?.id ?? "";
   }, [projects, searchParams]);
 
   const updateSpacesUrl = useCallback(
     (nextSpaceId: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (nextSpaceId) params.set("space", nextSpaceId);
-      else params.delete("space");
+      if (nextSpaceId) {
+        params.set("space", nextSpaceId);
+        const spaceProjectId = spaces.find((space) => space.id === nextSpaceId)?.projectId;
+        if (spaceProjectId) params.set("project", spaceProjectId);
+      } else {
+        params.delete("space");
+      }
       const query = params.toString();
       router.push(query ? `${pathname}?${query}` : pathname);
     },
-    [router, pathname, searchParams],
+    [router, pathname, searchParams, spaces],
   );
 
   const updateProjectUrl = useCallback(
     (nextProjectId: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (nextProjectId && nextProjectId !== "all") params.set("project", nextProjectId);
+      if (nextProjectId) params.set("project", nextProjectId);
       else params.delete("project");
       params.delete("space");
       const query = params.toString();

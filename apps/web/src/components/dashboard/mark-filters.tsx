@@ -160,11 +160,11 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
   }
 
   const presetBtn =
-    "h-11 shrink-0 gap-1.5 rounded-full border px-3 text-[0.8125rem] font-normal shadow-none transition-colors duration-150 sm:h-8 sm:px-2.5 sm:text-[0.75rem]";
+    "h-11 shrink-0 gap-1.5 rounded-full px-3 text-[0.8125rem] font-normal shadow-none transition-colors duration-150 sm:h-8 sm:px-2.5 sm:text-[0.75rem]";
   const presetActive =
-    "border-mark/22 bg-mark-soft/70 text-ink hover:border-mark/28 hover:bg-mark-soft hover:text-ink dark:border-mark/18 dark:bg-mark-soft/30 dark:hover:bg-mark-soft/45";
+    "bg-mark-soft/70 text-ink hover:bg-mark-soft hover:text-ink dark:bg-mark-soft/30 dark:hover:bg-mark-soft/45";
   const presetIdle =
-    "border-transparent bg-transparent text-ink-2 hover:border-rule hover:bg-paper/90 hover:text-ink dark:hover:bg-paper/50";
+    "bg-transparent text-ink-2 hover:bg-paper-3/70 hover:text-ink";
 
   return (
     <FadeIn className="mb-3 w-full space-y-2">
@@ -185,7 +185,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             }}
             placeholder="Search marks"
             aria-label="Search marks by title, description, or page"
-            className="h-11 rounded-md border-rule bg-paper pl-8 pr-8 text-[0.9375rem] shadow-none sm:h-8 sm:text-[0.8125rem]"
+            className="h-11 rounded-md bg-paper-2 pl-8 pr-8 text-[0.9375rem] shadow-none sm:h-8 sm:text-[0.8125rem]"
           />
           {queryDraft ? (
             <button
@@ -250,7 +250,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
       {showMore ? (
         <div
           id="more-filters-panel"
-          className="flex flex-wrap items-center gap-2 rounded-md border border-rule bg-paper px-2.5 py-2"
+          className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 px-2.5 py-2"
         >
           <FilterSelect
             value={filters.label}
@@ -306,7 +306,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
               key={f.key}
               asChild
               variant="outline"
-              className="h-auto gap-1 rounded-md border-rule bg-paper py-1 pr-1 pl-2.5 text-[0.6875rem] font-normal text-ink-2 shadow-none hover:border-rule hover:bg-paper-3 hover:text-ink"
+              className="h-auto gap-1 rounded-md bg-paper-2 py-1 pr-1 pl-2.5 text-[0.6875rem] font-normal text-ink-2 shadow-none hover:bg-paper-3 hover:text-ink"
             >
               <button
                 type="button"

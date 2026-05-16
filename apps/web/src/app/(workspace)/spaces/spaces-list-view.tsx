@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderKanban, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AppHeader } from "@/components/app-header";
@@ -25,10 +25,7 @@ import { Input } from "@/components/ui/input";
 import type { SpacePriority } from "@/lib/collab-types";
 import { useCollabStore } from "@/lib/collab-store";
 import { formatDayKey } from "@/lib/dates";
-import {
-  useCreateProjectMutation,
-  useCreateSpaceMutation,
-} from "@/lib/queries/use-workspace-mutations";
+import { useCreateSpaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 import { SpaceListItem } from "./space-list-item";
 import { useSpaceStats } from "./use-space-stats";
@@ -47,18 +44,12 @@ export function SpacesListView({
   onSelectSpace,
 }: SpacesListViewProps) {
   const workspace = useCollabStore((s) => s.workspace);
-  const { mutateAsync: createProject, isPending: isCreatingProject } =
-    useCreateProjectMutation();
   const { mutateAsync: createSpace, isPending: isCreating } =
     useCreateSpaceMutation();
 
-  const [showCreateProject, setShowCreateProject] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [newProjectDescription, setNewProjectDescription] = useState("");
   const [newName, setNewName] = useState("");
   const [newNotes, setNewNotes] = useState("");
-  const [projectCreateError, setProjectCreateError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | SpacePriority>("all");
   const [pinnedFilter, setPinnedFilter] = useState<"all" | "pinned" | "unpinned">("all");
@@ -68,31 +59,18 @@ export function SpacesListView({
 
   const statsMap = useSpaceStats(workspace);
   const activeProject =
-    selectedProjectId === "all"
-      ? null
-      : workspace.projects.find((project) => project.id === selectedProjectId) ?? null;
+    workspace.projects.find((project) => project.id === selectedProjectId) ?? null;
   const targetProject = activeProject ?? workspace.projects[0] ?? null;
-
-  const projectOptions = useMemo(
-    () => [
-      { value: "all", label: "All projects" },
-      ...workspace.projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
-    ],
-    [workspace.projects],
-  );
 
   const filteredSpaces = useMemo(() => {
     return workspace.spaces.filter((space) => {
-      if (selectedProjectId !== "all" && space.projectId !== selectedProjectId) return false;
+      if (!targetProject || space.projectId !== targetProject.id) return false;
       if (priorityFilter !== "all" && space.priority !== priorityFilter) return false;
       if (pinnedFilter === "pinned" && !space.pinned) return false;
       if (pinnedFilter === "unpinned" && space.pinned) return false;
       return true;
     });
-  }, [workspace.spaces, selectedProjectId, priorityFilter, pinnedFilter]);
+  }, [workspace.spaces, targetProject, priorityFilter, pinnedFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSpaces.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, page), totalPages);
@@ -103,28 +81,7 @@ export function SpacesListView({
 
   const totalPins = workspace.pins.length;
   const totalOpen = workspace.pins.filter((p) => p.status === "open").length;
-  const filtersActive =
-    selectedProjectId !== "all" || priorityFilter !== "all" || pinnedFilter !== "all";
-
-  async function handleCreateProject() {
-    if (!newProjectName.trim() || isCreatingProject) return;
-    setProjectCreateError(null);
-    try {
-      const created = await createProject({
-        name: newProjectName,
-        description: newProjectDescription,
-      });
-      setNewProjectName("");
-      setNewProjectDescription("");
-      setShowCreateProject(false);
-      onSelectProject(created.id);
-      setPage(1);
-    } catch (err) {
-      setProjectCreateError(
-        err instanceof Error ? err.message : "Couldn't create the project. Try again.",
-      );
-    }
-  }
+  const filtersActive = priorityFilter !== "all" || pinnedFilter !== "all";
 
   async function handleCreate() {
     if (!newName.trim() || isCreating) return;
@@ -153,12 +110,15 @@ export function SpacesListView({
 
   return (
     <>
-      <AppHeader title="Projects">
+      <AppHeader title="Spaces">
         <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
-          <span className="font-mono text-ink">{workspace.projects.length}</span>
-          <span>projects</span>
-          <span aria-hidden className="mx-1 text-rule">/</span>
-          <span className="font-mono text-ink">{workspace.spaces.length}</span>
+          {targetProject ? (
+            <>
+              <span className="max-w-40 truncate text-ink">{targetProject.name}</span>
+              <span aria-hidden className="mx-1 text-rule">/</span>
+            </>
+          ) : null}
+          <span className="font-mono text-ink">{filteredSpaces.length}</span>
           <span>spaces</span>
           <span aria-hidden className="mx-1 text-rule">/</span>
           <span className="font-mono text-ink">{totalPins}</span>
@@ -173,16 +133,8 @@ export function SpacesListView({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowCreateProject(true)}
-          className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
-        >
-          <FolderKanban className="size-3.5" />
-          New project
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
           onClick={() => setShowCreate(true)}
+          disabled={!targetProject}
           className="h-11 gap-1.5 border-rule bg-paper px-3 text-[0.875rem] text-ink hover:bg-paper-2 hover:text-ink sm:h-9 sm:text-[0.8125rem]"
         >
           <Plus className="size-3.5" />
@@ -193,16 +145,6 @@ export function SpacesListView({
           className="hidden h-6 w-px shrink-0 bg-rule sm:inline-block"
         />
         <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
-          <FilterSelect<string>
-            value={selectedProjectId}
-            onValueChange={(v) => {
-              onSelectProject(v);
-              setPage(1);
-            }}
-            options={projectOptions}
-            ariaLabel="Filter spaces by project"
-            triggerClassName="w-[min(100vw-6rem,180px)] sm:w-[180px] h-11 sm:h-9"
-          />
           <FilterSelect<"all" | SpacePriority>
             value={priorityFilter}
             onValueChange={(v) => {
@@ -227,13 +169,19 @@ export function SpacesListView({
         </div>
       </ToolbarPanel>
 
-      <div className="overflow-hidden rounded-md border border-rule bg-paper">
+      <div className="overflow-hidden rounded-md bg-paper-2">
         {filteredSpaces.length === 0 ? (
           <EmptyState
             variant="plain"
             className="rounded-none border-0 px-6 py-16"
             title={filtersActive ? "No spaces match these filters." : "No spaces yet."}
-            description={filtersActive ? "Clear the filters to see every space." : "Create a space for a release, project, or review session."}
+            description={
+              !targetProject
+                ? "Create a project from the sidebar dropdown, then add spaces here."
+                : filtersActive
+                  ? "Clear the filters to see every space in this project."
+                  : "Create a space for a release, project, or review session."
+            }
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 {filtersActive ? (
@@ -245,7 +193,6 @@ export function SpacesListView({
                     onClick={() => {
                       setPriorityFilter("all");
                       setPinnedFilter("all");
-                      onSelectProject("all");
                       setPage(1);
                     }}
                   >
@@ -256,18 +203,17 @@ export function SpacesListView({
                   type="button"
                   size="sm"
                   className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-8"
-                  onClick={() =>
-                    workspace.projects.length ? setShowCreate(true) : setShowCreateProject(true)
-                  }
+                  onClick={() => setShowCreate(true)}
+                  disabled={!targetProject}
                 >
                   <Plus className="size-3.5" aria-hidden />
-                  {workspace.projects.length ? "New space" : "New project"}
+                  New space
                 </Button>
               </div>
             }
           />
         ) : (
-          <div className="divide-y divide-rule">
+          <div className="space-y-1 p-1">
             {paginatedSpaces.map((space) => (
               <SpaceListItem
                 key={space.id}
@@ -288,86 +234,6 @@ export function SpacesListView({
           alwaysShow
         />
       ) : null}
-
-      <Dialog
-        open={showCreateProject}
-        onOpenChange={(open) => {
-          setShowCreateProject(open);
-          if (!open) {
-            setNewProjectName("");
-            setNewProjectDescription("");
-            setProjectCreateError(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
-            <DialogDescription>
-              Projects group related spaces inside this workspace.
-            </DialogDescription>
-          </DialogHeader>
-          <div
-            className="grid gap-4"
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                void handleCreateProject();
-              }
-            }}
-          >
-            <Field id="new-project-name" label="Name">
-              <Input
-                id="new-project-name"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="Website QA"
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
-                autoFocus
-                onKeyDown={(e) =>
-                  e.key === "Enter" &&
-                  !e.metaKey &&
-                  !e.ctrlKey &&
-                  handleCreateProject()
-                }
-              />
-            </Field>
-            <Field id="new-project-description" label="Description">
-              <Input
-                id="new-project-description"
-                value={newProjectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-                placeholder="What this project is collecting"
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
-              />
-            </Field>
-            {projectCreateError ? (
-              <p
-                role="alert"
-                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
-              >
-                {projectCreateError}
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-              <Button
-                variant="ghost"
-                onClick={() => setShowCreateProject(false)}
-                className="h-11 sm:h-9"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateProject}
-                disabled={!newProjectName.trim()}
-                className="h-11 sm:h-9"
-              >
-                Create
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={showCreate}

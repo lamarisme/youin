@@ -214,6 +214,7 @@ export const marks = pgTable(
     viewport: text("viewport"),
     browser: text("browser"),
     os: text("os"),
+    domSnapshot: jsonb("dom_snapshot").$type<Record<string, unknown> | null>(),
     screenshotUrl: text("screenshot_url"),
     capturedAt: timestamp("captured_at", { withTimezone: true }),
     createdByUserId: uuid("created_by_user_id")
@@ -341,6 +342,31 @@ export const markEvents = pgTable(
   ],
 );
 
+export const inboxReadStates = pgTable(
+  "inbox_read_states",
+  {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    lastReadAt: timestamp("last_read_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.userId] }),
+    index("inbox_read_states_user_workspace_idx").on(
+      table.userId,
+      table.workspaceId,
+    ),
+  ],
+);
+
 export const workspaceInvites = pgTable(
   "workspace_invites",
   {
@@ -390,6 +416,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   memberships: many(workspaceMembers),
   authoredComments: many(markComments),
   authoredEvents: many(markEvents),
+  inboxReadStates: many(inboxReadStates),
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
   createdMarks: many(marks, { relationName: "marks_creator" }),
   sentInvites: many(workspaceInvites),
@@ -402,6 +429,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   marks: many(marks),
   labels: many(markLabels),
   events: many(markEvents),
+  inboxReadStates: many(inboxReadStates),
   invites: many(workspaceInvites),
 }));
 
@@ -508,6 +536,17 @@ export const markEventsRelations = relations(markEvents, ({ one }) => ({
   }),
 }));
 
+export const inboxReadStatesRelations = relations(inboxReadStates, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [inboxReadStates.workspaceId],
+    references: [workspaces.id],
+  }),
+  user: one(profiles, {
+    fields: [inboxReadStates.userId],
+    references: [profiles.id],
+  }),
+}));
+
 export const workspaceInvitesRelations = relations(
   workspaceInvites,
   ({ one }) => ({
@@ -532,4 +571,5 @@ export type NewMark = typeof marks.$inferInsert;
 export type MarkLabel = typeof markLabels.$inferSelect;
 export type MarkComment = typeof markComments.$inferSelect;
 export type MarkEvent = typeof markEvents.$inferSelect;
+export type InboxReadState = typeof inboxReadStates.$inferSelect;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;

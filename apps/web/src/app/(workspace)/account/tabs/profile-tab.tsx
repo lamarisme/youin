@@ -109,7 +109,7 @@ export function ProfileTab() {
             {saveError}
           </p>
         ) : null}
-        <div className="divide-y divide-rule overflow-hidden rounded-md border border-rule bg-paper">
+        <div className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
           <InlineProfileRow
             field="name"
             label="Full name"

@@ -30,6 +30,14 @@ export {
 } from "./comments";
 
 export {
+  getInboxAction,
+  markInboxReadAction,
+  type InboxEvent,
+  type InboxGroup,
+  type InboxSnapshot,
+} from "./inbox";
+
+export {
   updateProfileAction,
   updateWorkspaceAction,
   updateMyWorkspaceUsernameAction,

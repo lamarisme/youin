@@ -8,10 +8,10 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   return (
     <CommandPaletteProvider>
-      <div className="min-h-screen bg-paper">
-        <div className="grid w-full gap-0 lg:grid-cols-[auto_1fr]">
+      <div className="min-h-screen bg-paper text-ink">
+        <div className="grid w-full gap-0 lg:grid-cols-[auto_minmax(0,1fr)]">
           <AppSidebar />
-          <main className="min-h-screen py-4 sm:py-5">{children}</main>
+          <main className="min-h-screen min-w-0">{children}</main>
         </div>
       </div>
     </CommandPaletteProvider>

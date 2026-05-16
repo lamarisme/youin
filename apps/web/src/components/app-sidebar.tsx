@@ -58,8 +58,8 @@ import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
   { href: "/inbox", labelKey: "inbox" as const, icon: InboxIcon, shortcut: "I", exactOnly: false },
+  { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
   { href: "/spaces", labelKey: "spaces" as const, icon: Layers, shortcut: "S", exactOnly: false },
   { href: "/analytics", labelKey: "analytics" as const, icon: BarChart3, shortcut: "A", exactOnly: false },
 ] as const;
@@ -92,22 +92,22 @@ export function AppSidebar() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
 
-  const { profileName, profileEmail, displayNamePreference, workspaceName, workspace, workspaceId, userId } = useCollabStore(
+  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId } = useCollabStore(
     useShallow((s) => ({
       profileName: s.profile.name,
       profileEmail: s.profile.email,
       displayNamePreference: s.profile.displayNamePreference,
       workspaceName: s.workspace.name,
-      workspace: s.workspace,
+      members: s.workspace.members,
       workspaceId: s.workspaceId,
       userId: s.userId,
     })),
   );
 
-  const inbox = useInbox(workspace, workspaceId, userId);
+  const inbox = useInbox(workspaceId, userId);
   const openCommandPalette = useOpenCommandPalette();
 
-  const myUsername = workspace.members.find((m) => m.id === userId)?.username?.trim() ?? "";
+  const myUsername = members.find((m) => m.id === userId)?.username?.trim() ?? "";
   const displayName =
     displayNamePreference === "username" && myUsername
       ? `@${myUsername}`
@@ -131,8 +131,8 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col border-b border-rule bg-paper px-3 py-3 transition-colors duration-200 ease-out",
-        "lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:z-10",
+        "flex flex-col bg-paper px-3 py-3 transition-colors duration-150 ease-out",
+        "lg:sticky lg:top-0 lg:z-10 lg:h-screen",
         collapsed ? "lg:w-[52px] lg:px-2 lg:py-3" : "lg:w-56 lg:px-3 lg:py-4",
       )}
     >
@@ -158,7 +158,7 @@ export function AppSidebar() {
             aria-label={collapsed ? tSide("expandSidebar") : tSide("collapseSidebar")}
             className={cn(
               "hidden size-8 items-center justify-center rounded-md text-ink-3 transition-colors lg:flex",
-              "hover:bg-paper-3 hover:text-ink",
+              "hover:bg-paper-3/80 hover:text-ink",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               collapsed && "lg:mx-auto",
             )}
@@ -192,9 +192,9 @@ export function AppSidebar() {
                 onClick={openCommandPalette}
                 aria-label={tSide("openCommandPalette")}
                 className={cn(
-                  "hidden size-8 w-full items-center justify-center rounded-md border border-rule bg-paper text-ink-3 transition-colors lg:flex",
-                  "hover:border-ink/12 hover:bg-paper-3 hover:text-ink",
-                  "focus-visible:border-mark/35 focus-visible:ring-2 focus-visible:ring-mark/40",
+                  "hidden size-8 w-full items-center justify-center rounded-md bg-paper-2 text-ink-3 transition-colors lg:flex",
+                  "hover:bg-paper-3 hover:text-ink",
+                  "focus-visible:ring-2 focus-visible:ring-mark/40",
                 )}
               >
                 <Search className="size-[1rem]" />
@@ -202,7 +202,7 @@ export function AppSidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">
               {tSide("searchShortcut")}
-              <kbd className="ml-1.5 rounded border border-rule/50 bg-paper-2 px-1 py-0.5 font-mono text-[0.625rem]">
+              <kbd className="ml-1.5 rounded bg-paper-3 px-1 py-0.5 font-mono text-[0.625rem]">
                 ⌘K
               </kbd>
             </TooltipContent>
@@ -213,18 +213,18 @@ export function AppSidebar() {
             onClick={openCommandPalette}
             aria-label={tSide("openCommandPalette")}
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md border border-rule bg-paper px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
-              "hover:border-ink/12 hover:bg-paper-3",
-              "focus-visible:border-mark/35 focus-visible:ring-2 focus-visible:ring-mark/40 dark:shadow-none",
+              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md bg-paper-2 px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
+              "hover:bg-paper-3",
+              "focus-visible:ring-2 focus-visible:ring-mark/40",
             )}
           >
             <Search className="size-[1rem] shrink-0 text-ink-3" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
-              <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3 dark:bg-paper">
+              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
                 ⌘
               </kbd>
-              <kbd className="rounded border border-rule bg-paper-2 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3 dark:bg-paper">
+              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
                 K
               </kbd>
             </span>
@@ -259,7 +259,7 @@ export function AppSidebar() {
                       "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
                       isActive
                         ? "bg-paper-3 text-ink"
-                        : "text-ink-2 hover:bg-paper-3 hover:text-ink",
+                        : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                     )}
                   >
@@ -276,7 +276,7 @@ export function AppSidebar() {
                 </TooltipTrigger>
                 <TooltipContent side="right" className="flex items-center gap-1.5">
                   {tNav(item.labelKey)}
-                  <kbd className="rounded border border-rule/50 bg-paper-2 px-1 py-0.5 font-mono text-[0.625rem] text-ink-3">
+                  <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-[0.625rem] text-ink-3">
                     G {item.shortcut}
                   </kbd>
                 </TooltipContent>
@@ -296,7 +296,7 @@ export function AppSidebar() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                 isActive
                   ? "bg-paper-3 font-medium text-ink"
-                  : "text-ink-2 hover:bg-paper-3 hover:text-ink",
+                  : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
               )}
             >
               <Icon className="size-[1.1rem] shrink-0" />
@@ -342,15 +342,15 @@ export function AppSidebar() {
                       "flex items-center justify-center size-9 rounded-md transition-colors",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                       accountActive
-                        ? "bg-mark-soft text-ink"
-                        : "text-ink-2 hover:bg-paper-3 hover:text-ink",
+                        ? "bg-paper-3 text-ink"
+                        : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
                     )}
                   >
                     <Avatar className="size-7">
                       <AvatarFallback
                         className={cn(
                           "text-[10px] font-medium text-ink",
-                          accountActive ? "bg-mark/15" : "bg-paper-3",
+                          accountActive ? "bg-paper-3" : "bg-paper-2",
                         )}
                       >
                         {initials}
@@ -376,7 +376,7 @@ export function AppSidebar() {
                   aria-label={tSide("signOutAria")}
                   className={cn(
                     "mx-auto mt-3 flex items-center justify-center size-9 rounded-md text-ink-3 transition-colors",
-                    "hover:bg-paper-3 hover:text-ink disabled:opacity-60",
+                    "hover:bg-paper-3/80 hover:text-ink disabled:opacity-60",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                   )}
                 >
@@ -400,14 +400,14 @@ export function AppSidebar() {
                 className={cn(
                   "group flex min-h-10 items-center gap-2.5 rounded-md px-3 py-1.5 transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-                  accountActive ? "bg-paper-3" : "hover:bg-paper-3",
+                  accountActive ? "bg-paper-3" : "hover:bg-paper-3/80",
                 )}
               >
                 <Avatar className="size-7">
                   <AvatarFallback
                     className={cn(
                       "text-[10px] font-medium text-ink",
-                      accountActive ? "bg-mark/15" : "bg-paper-3",
+                      accountActive ? "bg-paper-3" : "bg-paper-2",
                     )}
                   >
                     {initials}
@@ -433,7 +433,7 @@ export function AppSidebar() {
               disabled={isSigningOut}
               className={cn(
                 "mt-2 flex min-h-8 w-full items-center gap-2 rounded-md px-2 py-1.5 text-[0.8125rem] text-ink-3 transition-colors",
-                "hover:bg-paper-3 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60",
+                "hover:bg-paper-3/80 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               )}
             >
@@ -502,18 +502,17 @@ function ProjectSwitcher({
   const selectedFromSpace = urlSpaceId
     ? projects.find((project) => project.id === spaceById.get(urlSpaceId)?.projectId)
     : null;
-  const selectedProject = selectedFromProject ?? selectedFromSpace ?? null;
-  const selectedProjectId = selectedProject?.id ?? "all";
+  const selectedProject = selectedFromProject ?? selectedFromSpace ?? projects[0] ?? null;
+  const selectedProjectId = selectedProject?.id ?? null;
   const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
-  const switcherLabel = selectedProject?.name ?? "All projects";
+  const switcherLabel = selectedProject?.name ?? "No project";
   const switcherMeta = selectedProject
     ? `${selectedStats?.spaces ?? 0} spaces · ${selectedStats?.marks ?? 0} marks`
-    : `${projects.length} projects · ${spaces.length} spaces`;
+    : "Create a project to start";
 
   function hrefForProject(projectId: string): string {
     const params = new URLSearchParams(searchParams.toString());
-    if (projectId === "all") params.delete("project");
-    else params.set("project", projectId);
+    params.set("project", projectId);
     params.delete("space");
     params.delete("mark");
     params.delete("page");
@@ -555,7 +554,7 @@ function ProjectSwitcher({
             aria-label="Switch project"
             className={cn(
               "group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors",
-              "hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              "hover:bg-paper-3/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               "lg:min-h-10",
               collapsed && "lg:size-8 lg:min-h-0 lg:justify-center lg:px-0 lg:py-0",
             )}
@@ -598,21 +597,6 @@ function ProjectSwitcher({
               </span>
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => selectProject("all")}>
-            <Check
-              className={cn(
-                "size-4",
-                selectedProjectId === "all" ? "opacity-100" : "opacity-0",
-              )}
-            />
-            <div className="min-w-0">
-              <p className="truncate">All projects</p>
-              <p className="text-[0.6875rem] text-muted-foreground">
-                {spaces.length} spaces · {pins.length} marks
-              </p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           {projects.map((project) => {
             const stats = projectStats.get(project.id);
             return (

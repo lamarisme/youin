@@ -89,15 +89,14 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { spaces, workspace, workspaceId, userId } = useCollabStore(
+  const { spaces, workspaceId, userId } = useCollabStore(
     useShallow((s) => ({
       spaces: s.workspace.spaces,
-      workspace: s.workspace,
       workspaceId: s.workspaceId,
       userId: s.userId,
     })),
   );
-  const inbox = useInbox(workspace, workspaceId, userId);
+  const inbox = useInbox(workspaceId, userId);
 
   // G + letter uses the same destinations as sidebar and palette.
   useEffect(() => {

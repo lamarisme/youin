@@ -75,10 +75,10 @@ export function SavedViewsBar({
           <span
             key={v.id}
             className={cn(
-              "group inline-flex items-center rounded-full border text-[0.75rem] transition-colors",
+              "group inline-flex items-center rounded-full text-[0.75rem] transition-colors",
               active
-                ? "border-mark/30 bg-mark-soft text-ink"
-                : "border-rule bg-paper text-ink-2 hover:border-rule hover:bg-paper-2 hover:text-ink",
+                ? "bg-mark-soft text-ink"
+                : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
             )}
           >
             <button
@@ -105,7 +105,7 @@ export function SavedViewsBar({
       })}
 
       {adding ? (
-        <span className="inline-flex items-center gap-1 rounded-full border border-rule bg-paper px-1.5 py-0.5">
+        <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-1.5 py-0.5">
           <input
             ref={inputRef}
             value={draftName}
@@ -142,7 +142,7 @@ export function SavedViewsBar({
           size="sm"
           variant="ghost"
           onClick={() => setAdding(true)}
-          className="h-8 gap-1 rounded-full border border-dashed border-rule px-2.5 text-[0.75rem] text-ink-3 hover:bg-paper-2 hover:text-ink"
+          className="h-8 gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-3 hover:bg-paper-2 hover:text-ink"
         >
           <Plus className="size-3" aria-hidden />
           Save view
