@@ -151,16 +151,16 @@ function buildPinFromCapture(
 }
 
 const btnPrimary =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold tracking-[0.005em] text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
+  "flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
 
 const btnGhost =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors motion-reduce:transition-none hover:bg-[color:var(--yi-ext-surface-hover)] active:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+  "flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color] motion-reduce:transition-none hover:bg-[color:var(--yi-ext-surface-hover)] active:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
 const fieldLabel =
-  "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.07em] text-[color:var(--yi-ext-text-label)]"
+  "mb-1.5 block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-label)]"
 
 const selectCls =
-  "box-border min-h-[2.5rem] w-full cursor-pointer rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+  "box-border min-h-[2.5rem] w-full cursor-pointer rounded-[var(--yi-radius-lg)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none transition-colors hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
 
 const headerCloseBtn =
   "flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
@@ -484,7 +484,7 @@ const CapturePanel = () => {
   }
 
   const panelSurface =
-    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] [box-shadow:var(--yi-ext-shadow-panel)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
+    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] [box-shadow:var(--yi-ext-shadow-panel),inset_1px_0_0_var(--yi-ext-border-hairline)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "create" && capture) {
     const selectorPreview = truncateMiddle(capture.selector, 56)
@@ -500,7 +500,7 @@ const CapturePanel = () => {
         }
         style={{ zIndex: Z_PANEL }}
         className={panelSurface}>
-        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 pb-4 pt-5">
+        <header className="flex shrink-0 items-start justify-between gap-2 px-4 pb-3 pt-5">
           <div className="min-w-0">
             <h2
               id="capture-panel-title"
@@ -523,9 +523,9 @@ const CapturePanel = () => {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
-          <div className="flex flex-col gap-5 px-4 pb-6 pt-5">
+          <div className="flex flex-col gap-5 px-4 pb-6 pt-4">
             {capture.elementScreenshotDataUrl ? (
-              <div className="overflow-hidden rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-shade)]">
+              <div className="overflow-hidden rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-shade)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
                 <img
                   src={capture.elementScreenshotDataUrl}
                   alt="Captured element screenshot"
@@ -548,15 +548,18 @@ const CapturePanel = () => {
                 placeholder="What should change?"
                 rows={5}
                 aria-invalid={saveError ? true : undefined}
-                className="box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className="youin-input box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)]"
               />
             </label>
 
-            <details className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2">
-              <summary className="cursor-pointer select-none text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
-                Options
+            <details className="group rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)]">
+              <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
+                <span>Options</span>
+                <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-placeholder)] group-open:hidden">
+                  Space, priority, selector
+                </span>
               </summary>
-              <div className="mt-3 flex flex-col gap-4">
+              <div className="flex flex-col gap-4 px-3 pb-3 pt-2">
                 <div>
                   <span className={fieldLabel}>Project</span>
                   <select
@@ -672,7 +675,7 @@ const CapturePanel = () => {
         aria-labelledby="thread-panel-title"
         style={{ zIndex: Z_PANEL }}
         className={panelSurface}>
-        <header className="flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 pb-4 pt-5">
+        <header className="flex shrink-0 items-start justify-between gap-2 px-4 pb-3 pt-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2
@@ -713,11 +716,11 @@ const CapturePanel = () => {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-6 pt-4 [scrollbar-gutter:stable]">
           <div className="px-3">
-            <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] [overflow-wrap:anywhere]">
+            <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
               {opener?.body ?? viewingPin.title}
             </div>
             {!selectorAttached ? (
-              <p className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+              <p className="mt-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
                 The original element moved. The badge is using the saved page
                 position until the selector can attach again.
               </p>
@@ -738,7 +741,7 @@ const CapturePanel = () => {
             )}
 
             {threads.length > 1 ? (
-              <ul className="mt-6 flex flex-col gap-4 border-t border-[color:var(--yi-ext-border-hairline)] pt-4">
+              <ul className="mt-6 flex flex-col gap-4 pt-1">
                 {threads.slice(1).map((m) => (
                   <li
                     key={m.id}
@@ -766,7 +769,7 @@ const CapturePanel = () => {
                 maxLength={STORAGE_LIMITS.threadBody}
                 onChange={(e) => setReplyDraft(e.target.value)}
                 placeholder="Add a reply..."
-                className="box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none placeholder:text-[color:var(--yi-ext-text-placeholder)] focus-visible:border-[color:var(--yi-ext-accent-ring)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className="youin-input box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2 text-[13px] text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)]"
               />
             </label>
 
@@ -774,7 +777,7 @@ const CapturePanel = () => {
               <button
                 type="button"
                 disabled={saving || !replyDraft.trim()}
-                className="rounded-lg bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none hover:opacity-95 disabled:opacity-40"
+                className="rounded-lg bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-40"
                 onClick={() => void sendReply()}>
                 Send reply
               </button>
@@ -786,14 +789,14 @@ const CapturePanel = () => {
                 <button
                   type="button"
                   disabled={saving || viewingPin.status === "open"}
-                  className="min-h-10 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                   onClick={() => void setPinStatus("open" as PinStatus)}>
                   Open
                 </button>
                 <button
                   type="button"
                   disabled={saving || viewingPin.status === "closed"}
-                  className="min-h-10 rounded-lg border border-[color:var(--yi-ext-border)] bg-transparent px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                   onClick={() => void setPinStatus("closed" as PinStatus)}>
                   Resolved
                 </button>
@@ -805,7 +808,7 @@ const CapturePanel = () => {
                 href={`${WEB_APP_URL}/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[color:var(--yi-ext-border-strong)] bg-transparent px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
+                className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
                 Open dashboard
               </a>
               <button

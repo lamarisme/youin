@@ -29,13 +29,13 @@ html:has(#__plasmo),
 
   --yi-ext-border-hairline: color-mix(
     in oklch,
-    var(--yi-rule) 72%,
+    var(--yi-rule) 48%,
     transparent
   );
-  --yi-ext-border: var(--yi-rule);
+  --yi-ext-border: color-mix(in oklch, var(--yi-rule) 68%, transparent);
   --yi-ext-border-strong: color-mix(
     in oklch,
-    var(--yi-rule) 72%,
+    var(--yi-rule) 55%,
     var(--yi-ink)
   );
   --yi-ext-accent: var(--yi-mark);
@@ -48,9 +48,9 @@ html:has(#__plasmo),
   );
   --yi-ext-surface-panel: var(--yi-paper-elevated);
   --yi-ext-surface-shade: var(--yi-paper-2);
-  --yi-ext-surface-input: var(--yi-paper-3);
+  --yi-ext-surface-input: color-mix(in oklch, var(--yi-paper-3) 52%, var(--yi-paper));
   --yi-ext-surface-quote: var(--yi-paper-2);
-  --yi-ext-surface-hover: color-mix(in oklch, var(--yi-ink) 8%, transparent);
+  --yi-ext-surface-hover: color-mix(in oklch, var(--yi-ink) 5.5%, transparent);
   --yi-ext-badge-bg: var(--yi-paper-2);
   --yi-ext-menu-bg: var(--yi-paper-2);
   --yi-ext-text: var(--yi-ink);
@@ -76,8 +76,8 @@ html:has(#__plasmo),
   --yi-ext-surface-low: var(--yi-paper);
   --yi-ext-surface-mid: var(--yi-paper-2);
   --yi-ext-kbd-bg: var(--yi-paper-2);
-  --yi-ext-border-faint: color-mix(in oklch, var(--yi-rule) 45%, transparent);
-  --yi-ext-surface-stat: color-mix(in oklch, var(--yi-ink) 5%, var(--yi-paper));
+  --yi-ext-border-faint: color-mix(in oklch, var(--yi-rule) 30%, transparent);
+  --yi-ext-surface-stat: color-mix(in oklch, var(--yi-ink) 3.5%, var(--yi-paper));
   --yi-ext-hit-target: 44px;
 
   --yi-space-2xs: 0.25rem;
@@ -98,7 +98,7 @@ html:has(#__plasmo),
   --yi-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --yi-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --yi-shadow-hairline: none;
-  --yi-shadow-panel: none;
+  --yi-shadow-panel: 0 18px 54px -34px oklch(18.4% 0.018 62 / 0.38);
   --yi-shadow-popover: 0 16px 40px -24px oklch(12% 0.02 62 / 0.48);
   --yi-shadow-mark: 0 10px 24px -16px oklch(from var(--yi-mark) l c h / 0.72);
 
@@ -172,15 +172,15 @@ html:has(#__plasmo) body {
 
 /* Refined input: borderless, focuses with mark ring */
 .youin-input {
-  background: transparent;
-  border: 1px solid var(--yi-rule);
+  background: var(--yi-ext-surface-input);
+  border: 1px solid transparent;
   transition:
     border-color 160ms var(--yi-ease-out-expo),
     box-shadow 160ms var(--yi-ease-out-expo),
     background-color 160ms var(--yi-ease-out-expo);
 }
 .youin-input:hover {
-  background: oklch(from var(--yi-paper-2) l c h / 0.55);
+  background: var(--yi-paper-3);
 }
 .youin-input:focus {
   outline: none;

@@ -155,7 +155,7 @@ function Widget() {
         type="button"
         aria-pressed={active}
         aria-label={ariaLabel}
-        className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--yi-ext-border-strong)] bg-[color:var(--yi-paper)] px-3.5 py-2 font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_4px_16px_-8px_rgba(28,24,20,0.32),0_1px_2px_rgba(28,24,20,0.08)] outline-none transition-[background-color,border-color,box-shadow,transform] duration-150 [font-feature-settings:'ss01','cv11','tnum'] [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+        className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[color:var(--yi-paper)] px-3.5 py-2 font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,box-shadow,transform] duration-150 [font-feature-settings:'ss01','cv11','tnum'] [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
         onClick={() => {
           window.dispatchEvent(
             new CustomEvent(active ? EVENT_REVIEW_EXIT : EVENT_REVIEW_START)

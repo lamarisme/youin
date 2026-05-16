@@ -191,7 +191,7 @@ const PinBadges = () => {
             )
           }}>
           <span
-            className="flex h-6 min-w-6 select-none items-center justify-center rounded-full border border-[color:var(--yi-paper)] bg-[color:var(--yi-mark)] px-1.5 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_3px_12px_-3px_rgba(28,24,20,0.55)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
+            className="flex h-6 min-w-6 select-none items-center justify-center rounded-full bg-[color:var(--yi-mark)] px-1.5 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.55),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
             aria-hidden>
             {n}
           </span>

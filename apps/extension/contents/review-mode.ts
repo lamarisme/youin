@@ -1,8 +1,7 @@
 import {
   color,
   cssVars,
-  fontFamily,
-  shadow as shadows
+  fontFamily
 } from "@youin/design-tokens"
 import { toPng } from "html-to-image"
 import type { PlasmoCSConfig } from "plasmo"
@@ -143,11 +142,11 @@ function ensureHost() {
       position: absolute;
       box-sizing: border-box;
       pointer-events: none;
-      border: 2px solid var(--yi-mark);
-      background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
+      border: 1.5px solid var(--yi-mark);
+      background: color-mix(in oklch, var(--yi-mark) 7%, transparent);
       border-radius: 4px;
       display: none;
-      box-shadow: 0 0 0 1px color-mix(in oklch, var(--yi-paper) 85%, transparent);
+      box-shadow: 0 0 0 1px color-mix(in oklch, var(--yi-paper) 78%, transparent);
     }
     .toolbar {
       position: fixed;
@@ -161,19 +160,19 @@ function ensureHost() {
       padding: 8px 10px 8px 14px;
       border-radius: 999px;
       pointer-events: auto;
-      background: var(--yi-paper-2);
+      background: color-mix(in oklch, var(--yi-paper) 82%, var(--yi-paper-2));
       color: var(--yi-ink-2);
       font: 500 12px/1.2 ${fontFamily.sans};
       letter-spacing: 0;
-      border: 1px solid color-mix(in oklch, var(--yi-rule) 75%, transparent);
-      box-shadow: ${shadows.banner};
+      border: 1px solid color-mix(in oklch, var(--yi-rule) 42%, transparent);
+      box-shadow: 0 16px 40px -28px oklch(18.4% 0.018 62 / 0.42);
     }
     .toolbar .dot {
       width: 7px;
       height: 7px;
       border-radius: 999px;
       background: var(--yi-mark);
-      box-shadow: 0 0 0 3px color-mix(in oklch, var(--yi-mark) 14%, transparent);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--yi-mark) 11%, transparent);
       flex-shrink: 0;
     }
     .toolbar .sep {

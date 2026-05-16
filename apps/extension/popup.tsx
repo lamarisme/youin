@@ -485,7 +485,7 @@ function IndexPopup() {
           <button
             ref={gearRef}
             type="button"
-            className="flex size-8 items-center justify-center rounded-md border border-transparent bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-hairline)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            className="flex size-8 items-center justify-center rounded-md bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             aria-controls="youin-popup-account-menu"
             aria-expanded={menuOpen}
             aria-label="Account and settings"
@@ -498,7 +498,7 @@ function IndexPopup() {
               id="youin-popup-account-menu"
               role="menu"
               aria-label="Account"
-              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[var(--yi-shadow-popover)]">
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[var(--yi-shadow-popover)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
               {view === "signedIn" ? (
                 <>
                   <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
@@ -553,10 +553,10 @@ function IndexPopup() {
             </h2>
           </div>
           <span
-            className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
               view === "signedIn"
-                ? "border-[color:var(--yi-ok-soft)] bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
-                : "border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+                ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
             }`}>
             {view === "signedIn" ? "Synced" : "Local"}
           </span>
@@ -588,11 +588,11 @@ function IndexPopup() {
           </p>
         )}
 
-        <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)]">
+        <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg bg-[color:var(--yi-ext-surface-stat)]">
           <button
             type="button"
             disabled={!canReviewPage || !spaceId || domainDisabled}
-            className="min-h-[58px] border-0 border-e border-[color:var(--yi-ext-border-hairline)] bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            className="min-h-[58px] border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             onClick={beginInspect}>
             <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
               Open
@@ -637,12 +637,12 @@ function IndexPopup() {
           </a>
         </div>
 
-        <div className="mt-3 rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] p-2">
+        <div className="mt-3 rounded-lg bg-[color:var(--yi-ext-surface-stat)] p-2">
           <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-1">
             <label className="min-w-0">
               <span className="sr-only">Project</span>
               <select
-                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
                 value={projectId}
                 onChange={(e) => selectProject(e.target.value)}>
                 {projects.map((project) => (
@@ -655,7 +655,7 @@ function IndexPopup() {
             <button
               type="button"
               title="New project"
-              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingProject((c) => !c)
                 setProjectErr(null)
@@ -703,7 +703,7 @@ function IndexPopup() {
             <label className="min-w-0">
               <span className="sr-only">Space</span>
               <select
-                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
                 value={spaceId}
                 onChange={(e) => selectSpace(e.target.value)}>
                 {projectSpaces.map((s) => (
@@ -716,7 +716,7 @@ function IndexPopup() {
             <button
               type="button"
               title="New review space"
-              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
                 setSpaceErr(null)
@@ -754,7 +754,7 @@ function IndexPopup() {
 
       {view === "signedOut" && !showAuth ? (
         <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2.5">
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2">
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-[color:var(--yi-mark-soft)] px-3 py-2">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
                 Local feedback
@@ -774,7 +774,7 @@ function IndexPopup() {
       ) : null}
 
       <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2">
-        <details className="group rounded-lg border border-transparent open:border-[color:var(--yi-ext-border-hairline)] open:bg-[color:var(--yi-ext-surface-stat)]">
+        <details className="group rounded-lg bg-transparent open:bg-[color:var(--yi-ext-surface-stat)]">
           <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
             <span>Options</span>
             <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:hidden">
@@ -786,7 +786,7 @@ function IndexPopup() {
           </summary>
 
           <div className="px-2 pb-2">
-            <div className="flex items-center justify-between gap-3 border-t border-[color:var(--yi-ext-border-hairline)] pt-2">
+            <div className="flex items-center justify-between gap-3 pt-2">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
                   Sync
@@ -802,13 +802,13 @@ function IndexPopup() {
               <button
                 type="button"
                 disabled={syncingNow || view !== "signedIn"}
-                className="min-h-8 shrink-0 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                className="min-h-8 shrink-0 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                 onClick={runManualSync}>
                 {syncingNow ? "Syncing" : "Retry"}
               </button>
             </div>
 
-            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-low)]">
+            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-lg bg-[color:var(--yi-ext-surface-low)]">
               <ToggleRow
                 label="Floating review button"
                 checked={floatingControl}
@@ -841,7 +841,7 @@ function IndexPopup() {
               </span>
               <select
                 value={widgetCorner}
-                className="min-h-9 w-full cursor-pointer rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
                 onChange={(e) => {
                   const next = e.target.value as WidgetCorner
                   setWidgetCorner(next)
@@ -855,7 +855,7 @@ function IndexPopup() {
             </label>
 
             {currentHost ? (
-              <div className="mt-2 rounded-lg border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-low)]">
+              <div className="mt-2 rounded-lg bg-[color:var(--yi-ext-surface-low)]">
                 <ToggleRow
                   label={`Disable on ${currentHost}`}
                   checked={domainDisabled}
@@ -919,7 +919,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
       <button
         type="button"
         onClick={handleGoogle}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-mid)] px-3 py-2 text-[12px] font-medium text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-menu-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12px] font-medium text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
         aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         Continue with Google
@@ -969,7 +969,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         {error ? (
           <p
             role="alert"
-            className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)]">
+            className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
             {error}
           </p>
         ) : null}
@@ -1109,7 +1109,7 @@ function MigrationBanner({
     return (
       <div
         role="alert"
-        className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-danger-text)]">
+        className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
         Import failed: {status.error}
         <button
           type="button"
@@ -1125,7 +1125,7 @@ function MigrationBanner({
     return null
   }
   return (
-    <div className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+    <div className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
       Imported {r.pinsImported} feedback item{r.pinsImported === 1 ? "" : "s"}
       {r.spacesCreated > 0
         ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
