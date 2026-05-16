@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CircleDashed, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
@@ -32,6 +33,7 @@ import { MarkTable } from "./mark-table";
 import { NewMarkForm } from "./new-mark-form";
 import { SavedViewsBar } from "./saved-views-bar";
 import { useDashboardFilters } from "./use-dashboard-filters";
+import { markHref } from "@/lib/workspace/routes";
 import { useSavedViews, type SavedViewFilters } from "./use-saved-views";
 import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 
@@ -51,6 +53,8 @@ export function TriageView() {
   const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();
   const { mutateAsync: deletePin } = useDeletePinMutation();
   const { filters, update } = useDashboardFilters();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { views: savedViews, saveView, deleteView } = useSavedViews(workspaceId);
 
   function applySavedView(snapshot: SavedViewFilters) {
@@ -239,7 +243,9 @@ export function TriageView() {
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
-      update({ spaceId: targetSpace.id, markId: created.displayKey });
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("space", targetSpace.id);
+      router.push(markHref(created.displayKey, params));
       setShowNew(false);
     } catch {
       // toast handled by the mutation
@@ -343,7 +349,7 @@ export function TriageView() {
             labelsById={labelsById}
             commentCountByPinId={commentCountByPinId}
             displayNamePreference={displayNamePreference}
-            onSelectMark={(pin) => update({ markId: pin.displayKey })}
+            onSelectMark={(pin) => router.push(markHref(pin.displayKey, searchParams))}
             selectedIds={selectedIds}
             onSelectionChange={handleSelectionChange}
           />

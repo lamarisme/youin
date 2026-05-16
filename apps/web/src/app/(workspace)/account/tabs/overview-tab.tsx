@@ -7,6 +7,8 @@ import { useShallow } from "zustand/react/shallow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProductList, ProductListItem } from "@/components/product-list";
+import { ProductSectionHeader } from "@/components/product-section";
 import { useCollabStore } from "@/lib/collab-store";
 import { useUpdateWorkspaceMutation } from "@/lib/queries/use-workspace-mutations";
 
@@ -141,14 +143,12 @@ export function OverviewTab() {
 
       {/* Settings, grouped as a divider-separated list. */}
       <section>
-        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">
-          Security & notifications
-        </h2>
-        <p className="mt-1 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-2">
-          Sign-in protection and how the team hears about activity.
-        </p>
+        <ProductSectionHeader
+          title="Security & notifications"
+          description="Sign-in protection and how the team hears about activity."
+        />
 
-        <ul className="mt-3 space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
+        <ProductList className="mt-3">
           <SettingRow
             title="Two-factor authentication"
             description="Require a code from your phone at sign-in."
@@ -160,7 +160,7 @@ export function OverviewTab() {
             description="One email per day with new comments on your marks."
             badge={<Badge variant="outline" className="text-[0.625rem] text-ok">Enabled by default</Badge>}
           />
-        </ul>
+        </ProductList>
       </section>
     </div>
   );
@@ -178,12 +178,12 @@ function SettingRow({
   muted?: boolean;
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55">
+    <ProductListItem className="flex items-center justify-between gap-4">
       <div className={muted ? "opacity-70" : undefined}>
         <p className="text-[0.8125rem] font-medium text-ink">{title}</p>
         <p className="mt-0.5 text-[0.6875rem] text-ink-3">{description}</p>
       </div>
       <div className="shrink-0">{badge}</div>
-    </li>
+    </ProductListItem>
   );
 }

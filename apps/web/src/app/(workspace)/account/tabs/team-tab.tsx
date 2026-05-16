@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProductList, ProductListItem } from "@/components/product-list";
+import { ProductSectionHeader } from "@/components/product-section";
 import { useCollabStore } from "@/lib/collab-store";
 import {
   useCancelInviteMutation,
@@ -114,12 +116,10 @@ export function TeamTab() {
   return (
     <div className="space-y-6">
       <section className="space-y-4">
-        <div>
-          <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Team</h2>
-          <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
-            Add teammates and decide who can see this workspace.
-          </p>
-        </div>
+        <ProductSectionHeader
+          title="Team"
+          description="Add teammates and decide who can see this workspace."
+        />
 
         {me ? (
           <div>
@@ -241,14 +241,14 @@ export function TeamTab() {
             </p>
           ) : null}
         </div>
-        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
+        <ProductList>
           {members.map((member) => {
             const parts = memberDisplayParts(member, displayNamePreference);
             const handlePrimary = displayNamePreference === "username";
             return (
-            <li
+            <ProductListItem
               key={member.id}
-              className="flex items-center justify-between gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55"
+              className="flex items-center justify-between gap-3"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar className="size-7 shrink-0">
@@ -290,18 +290,18 @@ export function TeamTab() {
                   </button>
                 ) : null}
               </div>
-            </li>
+            </ProductListItem>
             );
           })}
-        </ul>
+        </ProductList>
 
         {/* Pending invites stay visually subordinate with a dashed border. */}
         {invites.length > 0 ? (
-          <ul className="mt-2.5 space-y-1 overflow-hidden rounded-md bg-paper-2/60 p-1">
+          <ProductList tone="subtle" className="mt-2.5">
             {invites.map((inv) => (
-              <li
+              <ProductListItem
                 key={inv.id}
-                className="flex items-center justify-between gap-3 rounded-md px-3 py-2 text-[0.8125rem] transition-colors hover:bg-paper-3/45"
+                className="flex items-center justify-between gap-3 py-2 text-[0.8125rem] hover:bg-paper-3/45"
               >
                 <span className="inline-flex min-w-0 items-center gap-2 text-ink-2">
                   <span className="text-[0.625rem] uppercase tracking-wider text-ink-3">
@@ -317,9 +317,9 @@ export function TeamTab() {
                 >
                   <X className="size-3.5" />
                 </button>
-              </li>
+              </ProductListItem>
             ))}
-          </ul>
+          </ProductList>
         ) : null}
       </section>
     </div>

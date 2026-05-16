@@ -6,12 +6,14 @@ import { useMemo, useState } from "react";
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect } from "@/components/filter-select";
+import { Notice } from "@/components/notice";
 import {
   SPACE_PINNED_FILTER_OPTIONS,
   SPACE_PRIORITY_FILTER_OPTIONS,
 } from "@/components/select-options";
 import { Field } from "@/components/field";
 import { Pagination } from "@/components/pagination";
+import { ProductList } from "@/components/product-list";
 import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -169,7 +171,7 @@ export function SpacesListView({
         </div>
       </ToolbarPanel>
 
-      <div className="overflow-hidden rounded-md bg-paper-2">
+      <ProductList as="div">
         {filteredSpaces.length === 0 ? (
           <EmptyState
             variant="plain"
@@ -213,7 +215,7 @@ export function SpacesListView({
             }
           />
         ) : (
-          <div className="space-y-1 p-1">
+          <div className="space-y-1">
             {paginatedSpaces.map((space) => (
               <SpaceListItem
                 key={space.id}
@@ -224,7 +226,7 @@ export function SpacesListView({
             ))}
           </div>
         )}
-      </div>
+      </ProductList>
 
       {filteredSpaces.length > 0 ? (
         <Pagination
@@ -297,12 +299,7 @@ export function SpacesListView({
               />
             </Field>
             {createError ? (
-              <p
-                role="alert"
-                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
-              >
-                {createError}
-              </p>
+              <Notice tone="danger">{createError}</Notice>
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">

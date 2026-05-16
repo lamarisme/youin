@@ -9,6 +9,9 @@ import { useUpdateProfileMutation } from "@/lib/queries/use-workspace-mutations"
 import type { ProfileUpdates } from "@/lib/workspace/actions";
 import { cn } from "@/lib/utils";
 
+import { Notice } from "@/components/notice";
+import { ProductList } from "@/components/product-list";
+import { ProductSectionHeader } from "@/components/product-section";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -93,23 +96,16 @@ export function ProfileTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Your profile</h2>
-        <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-snug text-ink-2">
-          How teammates see you in comments and the member list.
-        </p>
-      </div>
+      <ProductSectionHeader
+        title="Your profile"
+        description="How teammates see you in comments and the member list."
+      />
 
       <div className="max-w-2xl">
         {saveError ? (
-          <p
-            role="alert"
-            className="mb-3 rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
-          >
-            {saveError}
-          </p>
+          <Notice tone="danger" className="mb-3">{saveError}</Notice>
         ) : null}
-        <div className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
+        <ProductList as="div">
           <InlineProfileRow
             field="name"
             label="Full name"
@@ -173,7 +169,7 @@ export function ProfileTab() {
             isSaving={isSaving}
             onSelect={(value) => void saveDisplayNamePreference(value)}
           />
-        </div>
+        </ProductList>
       </div>
     </div>
   );

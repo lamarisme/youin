@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 
 import { MailCheck } from "lucide-react";
 
+import { Notice } from "@/components/notice";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,9 +109,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           {error ? (
-            <p role="alert" className="rounded-md border border-mark/25 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark">
-              {error}
-            </p>
+            <Notice tone="danger">{error}</Notice>
           ) : null}
 
           <SubmitButton

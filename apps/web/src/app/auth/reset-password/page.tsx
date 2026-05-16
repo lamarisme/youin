@@ -6,57 +6,13 @@ import { type FormEvent, useEffect, useState } from "react";
 
 import { CheckCircle2 } from "lucide-react";
 
+import { Notice } from "@/components/notice";
+import { getPasswordStrength, PasswordStrength } from "@/components/password-strength";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
-
-function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
-  if (!pw) return 0;
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12 || /[!@#$%^&*]/.test(pw)) score++;
-  if (/[A-Z]/.test(pw) && /[0-9]/.test(pw)) score++;
-  return Math.min(score, 3) as 0 | 1 | 2 | 3;
-}
-
-function PasswordStrength({ score }: { score: 0 | 1 | 2 | 3 }) {
-  const labels = ["Too short", "Weak", "Fair", "Strong"] as const;
-  const colors = ["bg-paper-3", "bg-mark/60", "bg-mark", "bg-ok"] as const;
-  return (
-    <div className="flex items-center gap-2">
-      <div
-        role="meter"
-        aria-valuenow={score}
-        aria-valuemin={0}
-        aria-valuemax={3}
-        aria-label="Password strength"
-        className="flex flex-1 items-center gap-1"
-      >
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            aria-hidden
-            className={cn(
-              "h-[3px] flex-1 rounded-full transition-colors duration-200",
-              i < score ? colors[score] : "bg-paper-3",
-            )}
-          />
-        ))}
-      </div>
-      <span
-        className={cn(
-          "font-mono text-[0.625rem] uppercase tracking-wider",
-          score === 0 ? "text-ink-3" : score === 3 ? "text-ok" : "text-ink-2",
-        )}
-      >
-        {labels[score]}
-      </span>
-    </div>
-  );
-}
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -67,7 +23,7 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
-  const strength = passwordStrength(password);
+  const strength = getPasswordStrength(password);
   const passwordsMatch = confirm.length > 0 && password === confirm;
 
   useEffect(() => {
@@ -104,7 +60,7 @@ export default function ResetPasswordPage() {
         return;
       }
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard?space=all"), 1500);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } finally {
       setLoading(false);
     }
@@ -179,14 +135,10 @@ export default function ResetPasswordPage() {
           </div>
 
           {error ? (
-            <p role="alert" className="rounded-md border border-mark/25 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark">
-              {error}
-            </p>
+            <Notice tone="danger">{error}</Notice>
           ) : null}
           {success ? (
-            <p role="status" className="rounded-md border border-ok/25 bg-ok-soft px-3 py-2 text-[0.75rem] text-ok">
-              Password updated successfully.
-            </p>
+            <Notice tone="success">Password updated successfully.</Notice>
           ) : null}
 
           <SubmitButton

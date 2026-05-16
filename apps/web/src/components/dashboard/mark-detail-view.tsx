@@ -1,6 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FileText, Link2, Pencil, Tags, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +41,7 @@ import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
-import { useDashboardFilters } from "./use-dashboard-filters";
+import { markHref, spaceHref } from "@/lib/workspace/routes";
 import {
   clickByAria,
   focusElementById,
@@ -50,26 +51,25 @@ import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 
 interface MarkDetailViewProps {
   pin: PinItem;
+  backHref: string;
 }
 
 type EditingField = "title" | "page" | "description";
 
-export function MarkDetailView({ pin }: MarkDetailViewProps) {
+export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
   const workspace = useCollabStore((s) => s.workspace);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { mutate: togglePinStatus } = useTogglePinStatusMutation();
   const { mutate: togglePinPinned } = useTogglePinPinnedMutation();
   const { mutate: setMarkLabels } = useSetMarkLabelsMutation();
   const { mutateAsync: createLabel } = useCreateLabelMutation();
   const { mutateAsync: deletePin, isPending: isDeleting } = useDeletePinMutation();
   const { mutateAsync: updatePin, isPending: isSavingEdit } = useUpdatePinMutation();
-  const { update } = useDashboardFilters();
   const visiblePins = useVisibleDashboardPins();
   const space = workspace.spaces.find((s) => s.id === pin.spaceId) ?? null;
-  const spaceProjectId = space?.projectId;
-  const spaceHref = space
-    ? `/spaces?space=${encodeURIComponent(space.id)}${
-        spaceProjectId ? `&project=${encodeURIComponent(spaceProjectId)}` : ""
-      }`
+  const selectedSpaceHref = space
+    ? spaceHrefForCurrentFilters(space.code, space.projectId, searchParams)
     : undefined;
 
   const selectedIndex = visiblePins.findIndex((p) => p.id === pin.id);
@@ -190,7 +190,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     try {
       await deletePin(pin.id);
       setConfirmDelete(false);
-      update({ markId: null });
+      router.push(backHref);
     } catch {
       // toast handled by the mutation
     }
@@ -199,7 +199,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   function goAdjacent(direction: "prev" | "next") {
     if (selectedIndex < 0) return;
     const next = visiblePins[direction === "prev" ? selectedIndex - 1 : selectedIndex + 1];
-    if (next) update({ markId: next.displayKey });
+    if (next) router.push(markHref(next.displayKey, searchParams));
   }
 
   useMarkDetailShortcuts({
@@ -214,7 +214,7 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
     onOpenPriority: () => clickByAria("Mark priority"),
     onOpenSpace: () => clickByAria("Mark space"),
     onShowHelp: () => setShowHelp(true),
-    onBack: () => update({ markId: null }),
+    onBack: () => router.push(backHref),
   });
 
   return (
@@ -222,11 +222,11 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
       <MarkDetailNav
         markLabel={pin.displayKey}
         positionLabel={positionLabel}
-        spaceHref={spaceHref}
+        spaceHref={selectedSpaceHref}
         spaceName={space?.name}
         canPrev={canPrev}
         canNext={canNext}
-        onBack={() => update({ markId: null })}
+        onBack={() => router.push(backHref)}
         onPrev={() => goAdjacent("prev")}
         onNext={() => goAdjacent("next")}
         onShowHelp={() => setShowHelp(true)}
@@ -476,6 +476,16 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
       </Dialog>
     </>
   );
+}
+
+function spaceHrefForCurrentFilters(
+  code: string,
+  projectId: string | undefined,
+  searchParams: { toString: () => string },
+) {
+  const params = new URLSearchParams(searchParams.toString());
+  if (projectId) params.set("project", projectId);
+  return spaceHref(code, params);
 }
 
 function InlineEditActions({

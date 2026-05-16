@@ -2,6 +2,24 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getSupabaseEnv } from "@/lib/supabase/env";
+import { accountHref, isAccountSection, markHref } from "@/lib/workspace/routes";
+
+function cleanWorkspacePath(path: string, searchParams: URLSearchParams) {
+  const params = new URLSearchParams(searchParams.toString());
+
+  if (path === "/dashboard") {
+    const mark = params.get("mark");
+    if (mark) return markHref(mark, params);
+  }
+
+  if (path === "/account") {
+    const tab = params.get("tab");
+    if (isAccountSection(tab)) return accountHref(tab);
+  }
+
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
+}
 
 export async function updateSession(request: NextRequest) {
   const { url, key } = getSupabaseEnv();
@@ -32,7 +50,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const pathWithSearch = `${path}${request.nextUrl.search}`;
+  const cleanPathWithSearch = cleanWorkspacePath(path, request.nextUrl.searchParams);
   const isAuthRoute =
     path === "/login" || path === "/signup" || path.startsWith("/auth");
   const allowSignedInAuthFlow =
@@ -51,7 +69,8 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedRoute) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", pathWithSearch);
+    redirectUrl.search = "";
+    redirectUrl.searchParams.set("next", cleanPathWithSearch);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -59,10 +78,12 @@ export async function updateSession(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     const nextParam = request.nextUrl.searchParams.get("next");
     if (nextParam && nextParam.startsWith("/")) {
-      return NextResponse.redirect(new URL(nextParam, request.url));
+      const nextUrl = new URL(nextParam, request.url);
+      const cleanNext = cleanWorkspacePath(nextUrl.pathname, nextUrl.searchParams);
+      return NextResponse.redirect(new URL(cleanNext, request.url));
     }
     redirectUrl.pathname = "/dashboard";
-    redirectUrl.searchParams.set("space", "all");
+    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 

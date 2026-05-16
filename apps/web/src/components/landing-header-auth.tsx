@@ -42,7 +42,7 @@ export function LandingHeaderAuth() {
   if (isSignedIn) {
     return (
       <Button asChild size="sm" className="min-h-11 px-3.5 text-[0.8125rem]">
-        <Link href="/dashboard?space=all" className="inline-flex items-center gap-2">
+        <Link href="/dashboard" className="inline-flex items-center gap-2">
           {t("openDashboard")}
           <ArrowRight className="size-3.5" />
         </Link>

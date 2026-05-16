@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
-const DEFAULT_AFTER_AUTH = "/dashboard?space=all";
+const DEFAULT_AFTER_AUTH = "/dashboard";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);

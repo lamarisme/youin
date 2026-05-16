@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "Workspace",
 };
 
-const DEFAULT_AFTER_SIGN_IN = "/dashboard?space=all";
+const DEFAULT_AFTER_SIGN_IN = "/dashboard";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();

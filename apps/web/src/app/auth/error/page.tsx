@@ -18,7 +18,7 @@ const REASON_MESSAGES: Record<string, string> = {
     "This sign-in link is incomplete or was opened incorrectly. Start from sign in, or paste the full link from your email.",
 };
 
-const DEFAULT_AFTER_AUTH = "/dashboard?space=all";
+const DEFAULT_AFTER_AUTH = "/dashboard";
 
 function AuthErrorContent() {
   const searchParams = useSearchParams();

@@ -1,29 +1,38 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 
 import { PageContainer } from "@/components/page-container";
 import { useCollabStore } from "@/lib/collab-store";
+import { spaceHref, spacesHref } from "@/lib/workspace/routes";
 
 import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
 
 import { SpaceDetailView } from "./space-detail-view";
 import { SpacesListView } from "./spaces-list-view";
 
-function SpacesClientContent() {
+function SpacesClientContent({ spaceParam = null }: { spaceParam?: string | null }) {
   const spaces = useCollabStore((s) => s.workspace.spaces);
   const projects = useCollabStore((s) => s.workspace.projects);
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const selectedSpace = useMemo(() => {
+    const routeParam = spaceParam ? decodeURIComponent(spaceParam).trim().toUpperCase() : "";
     const id = searchParams.get("space");
+    if (routeParam) {
+      return spaces.find((s) => s.code.toUpperCase() === routeParam || s.id === routeParam) ?? null;
+    }
     if (!id) return null;
     return spaces.find((s) => s.id === id) ?? null;
-  }, [searchParams, spaces]);
+  }, [searchParams, spaceParam, spaces]);
+
+  useEffect(() => {
+    if (spaceParam || !selectedSpace || !searchParams.get("space")) return;
+    router.replace(spaceHref(selectedSpace.code, searchParams));
+  }, [router, searchParams, selectedSpace, spaceParam]);
 
   const selectedProjectId = useMemo(() => {
     const id = searchParams.get("project");
@@ -35,16 +44,19 @@ function SpacesClientContent() {
     (nextSpaceId: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
       if (nextSpaceId) {
-        params.set("space", nextSpaceId);
         const spaceProjectId = spaces.find((space) => space.id === nextSpaceId)?.projectId;
         if (spaceProjectId) params.set("project", spaceProjectId);
+        const nextSpace = spaces.find((space) => space.id === nextSpaceId);
+        if (nextSpace) {
+          router.push(spaceHref(nextSpace.code, params));
+          return;
+        }
       } else {
         params.delete("space");
       }
-      const query = params.toString();
-      router.push(query ? `${pathname}?${query}` : pathname);
+      router.push(spacesHref(params));
     },
-    [router, pathname, searchParams, spaces],
+    [router, searchParams, spaces],
   );
 
   const updateProjectUrl = useCallback(
@@ -54,9 +66,9 @@ function SpacesClientContent() {
       else params.delete("project");
       params.delete("space");
       const query = params.toString();
-      router.push(query ? `${pathname}?${query}` : pathname);
+      router.push(query ? `/spaces?${query}` : "/spaces");
     },
-    [router, pathname, searchParams],
+    [router, searchParams],
   );
 
   return (
@@ -74,10 +86,10 @@ function SpacesClientContent() {
   );
 }
 
-export default function SpacesClient() {
+export default function SpacesClient({ spaceParam = null }: { spaceParam?: string | null }) {
   return (
     <Suspense fallback={<WorkspaceMainSkeleton />}>
-      <SpacesClientContent />
+      <SpacesClientContent spaceParam={spaceParam} />
     </Suspense>
   );
 }

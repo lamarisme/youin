@@ -6,6 +6,9 @@ import { useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { EmptyState } from "@/components/empty-state";
+import { Notice } from "@/components/notice";
+import { ProductList, ProductListItem } from "@/components/product-list";
+import { ProductSectionHeader } from "@/components/product-section";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,12 +58,10 @@ export function LabelsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">Labels</h2>
-        <p className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2">
-          Labels appear here when you tag a mark. Use this list to remove ones you no longer need.
-        </p>
-      </div>
+      <ProductSectionHeader
+        title="Labels"
+        description="Labels appear here when you tag a mark. Use this list to remove ones you no longer need."
+      />
 
       {labels.length === 0 ? (
         <EmptyState
@@ -69,7 +70,7 @@ export function LabelsTab() {
           description="Open a mark in the dashboard and add a label. It will show up here."
           action={
             <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
-              <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
+              <Link href="/dashboard" className="inline-flex items-center gap-1.5">
                 Open dashboard
                 <ArrowRight className="size-3.5" aria-hidden />
               </Link>
@@ -77,13 +78,13 @@ export function LabelsTab() {
           }
         />
       ) : (
-        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
+        <ProductList>
           {labels.map((label) => {
             const count = usageById.get(label.id) ?? 0;
             return (
-              <li
+              <ProductListItem
                 key={label.id}
-                className="flex items-center justify-between gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-paper-3/55"
+                className="flex items-center justify-between gap-3"
               >
                 <span className="inline-flex items-center gap-2">
                   <Tag className="size-3.5 text-ink-3" aria-hidden />
@@ -102,10 +103,10 @@ export function LabelsTab() {
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
-              </li>
+              </ProductListItem>
             );
           })}
-        </ul>
+        </ProductList>
       )}
 
       <Dialog
@@ -134,12 +135,7 @@ export function LabelsTab() {
             </DialogDescription>
           </DialogHeader>
           {deleteError ? (
-            <p
-              role="alert"
-              className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
-            >
-              {deleteError}
-            </p>
+            <Notice tone="danger">{deleteError}</Notice>
           ) : null}
           <div className="flex justify-end gap-2 pt-2">
             <Button

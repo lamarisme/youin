@@ -24,6 +24,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { BrandLogo } from "@/components/brand-logo";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -461,15 +462,12 @@ function ProjectSwitcher({
               collapsed && "lg:size-8 lg:min-h-0 lg:justify-center lg:px-0 lg:py-0",
             )}
           >
-            <span
+            <BrandLogo
               className={cn(
-                "pin-dot !size-7 shrink-0 !text-[0.5625rem] transition-transform group-hover:scale-[1.03]",
-                collapsed && "lg:size-8",
+                "size-9 transition-transform group-hover:scale-[1.03]",
+                collapsed && "lg:size-10",
               )}
-              aria-hidden
-            >
-              Y
-            </span>
+            />
             <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
               <span className="block truncate text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3">
                 Project

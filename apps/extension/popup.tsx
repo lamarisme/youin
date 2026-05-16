@@ -51,6 +51,7 @@ import {
 } from "./lib/sync"
 
 const SYNC_NOW = "youin:sync-now"
+const BRAND_ICON_URL = chrome.runtime.getURL("assets/icon.svg")
 
 type AuthView = "checking" | "signedOut" | "signedIn"
 
@@ -479,13 +480,12 @@ function IndexPopup() {
     <main className="youin-popup relative flex min-w-0 w-full max-w-[300px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
       <header className="flex items-center justify-between gap-2 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="size-2 shrink-0 rounded-full bg-[color:var(--yi-ext-accent)] ring-2 ring-[color:var(--yi-ext-accent-ring-soft)]"
+          <img
+            src={BRAND_ICON_URL}
+            alt=""
+            className="size-8 shrink-0 object-contain"
             aria-hidden
           />
-          <h1 className="truncate text-[14px] font-semibold tracking-[-0.02em] text-[var(--yi-ink)]">
-            YouIn
-          </h1>
         </div>
         <div className="relative shrink-0">
           <button

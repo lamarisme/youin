@@ -1,38 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import { useCollabStore } from "@/lib/collab-store";
 
 import { AppHeader } from "@/components/app-header";
 import { PageContainer } from "@/components/page-container";
 import { cn } from "@/lib/utils";
+import { accountHref, type AccountSection } from "@/lib/workspace/routes";
 
 import { OverviewTab } from "./tabs/overview-tab";
 import { ProfileTab } from "./tabs/profile-tab";
 import { LabelsTab } from "./tabs/labels-tab";
 import { TeamTab } from "./tabs/team-tab";
 
-const ACCOUNT_SECTIONS = ["overview", "team", "labels", "profile"] as const;
-type AccountSection = (typeof ACCOUNT_SECTIONS)[number];
-
-function isAccountSection(value: string | null): value is AccountSection {
-  return ACCOUNT_SECTIONS.includes(value as AccountSection);
-}
-
-function accountHref(section: AccountSection) {
-  return section === "overview" ? "/account" : `/account?tab=${section}`;
-}
-
-export function AccountClient() {
-  const searchParams = useSearchParams();
+export function AccountClient({ section = null }: { section?: string | null }) {
   const memberCount = useCollabStore((s) => s.workspace.members.length);
   const labelCount = useCollabStore((s) => s.workspace.labels.length);
-  const requestedTab = searchParams.get("tab");
-  const activeSection: AccountSection = isAccountSection(requestedTab)
-    ? requestedTab
-    : "overview";
+  const activeSection = (section ?? "overview") as AccountSection;
 
   const sections: Array<{
     value: AccountSection;

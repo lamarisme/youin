@@ -45,7 +45,7 @@ export default function WorkspaceError({
           {t("tryAgain")}
         </Button>
         <Button asChild variant="outline" className="h-9">
-          <Link href="/dashboard?space=all">{t("backToDashboard")}</Link>
+          <Link href="/dashboard">{t("backToDashboard")}</Link>
         </Button>
       </div>
     </div>

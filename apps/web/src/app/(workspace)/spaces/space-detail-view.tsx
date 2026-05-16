@@ -25,8 +25,6 @@ import { EmptyState } from "@/components/empty-state";
 import { Field } from "@/components/field";
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
-import { Pill } from "@/components/pill";
-import { PriorityBadge } from "@/components/priority-badge";
 import { Surface } from "@/components/surface";
 import { ToolbarPanel } from "@/components/toolbar-panel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -58,6 +56,7 @@ import {
   useUpdateSpacePriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
+import { markHref } from "@/lib/workspace/routes";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { useSpaceStats } from "./use-space-stats";
@@ -250,23 +249,12 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 <h1 className="break-words text-lg font-semibold leading-tight text-ink sm:text-xl">
                   {space.name}
                 </h1>
-                {project ? (
-                  <p className="mt-1 text-[0.75rem] font-medium text-ink-3">
-                    In {project.name}
-                  </p>
-                ) : null}
                 {space.notes ? (
                   <MarkDescriptionRead
                     html={space.notes}
                     className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2"
                   />
                 ) : null}
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                  <PriorityBadge priority={space.priority} />
-                  {space.pinned ? (
-                    <Pill icon={<Bookmark className="size-3" />}>Pinned</Pill>
-                  ) : null}
-                </div>
               </div>
             </div>
             <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
@@ -403,7 +391,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   commentCountByPinId={commentCountByPinId}
                   displayNamePreference={namePref}
                   onSelectMark={(pin) => {
-                    router.push(`/dashboard?space=${space.id}&mark=${encodeURIComponent(pin.displayKey)}`);
+                    const params = new URLSearchParams();
+                    params.set("space", space.id);
+                    router.push(markHref(pin.displayKey, params));
                   }}
                   selectedIds={selectedIds}
                   onSelectionChange={handleSelectionChange}

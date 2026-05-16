@@ -1,27 +1,32 @@
 "use client";
 
 import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { findPinByMarkRouteParam } from "@/lib/workspace/mark-display-id";
+import { dashboardHref } from "@/lib/workspace/routes";
 import { useCollabStore } from "@/lib/collab-store";
 
 import { MarkDetailView } from "./mark-detail-view";
 import { TriageView } from "./triage-view";
-import { useDashboardFilters } from "./use-dashboard-filters";
 import { PageContainer } from "@/components/page-container";
 
-export function WorkspaceDashboard() {
+export function WorkspaceDashboard({ markParam = null }: { markParam?: string | null }) {
   const pins = useCollabStore((s) => s.workspace.pins);
-  const { filters } = useDashboardFilters();
+  const searchParams = useSearchParams();
 
   const selectedPin = useMemo(() => {
-    if (!filters.markId) return null;
-    return findPinByMarkRouteParam(filters.markId, pins) ?? null;
-  }, [filters.markId, pins]);
+    if (!markParam) return null;
+    return findPinByMarkRouteParam(markParam, pins) ?? null;
+  }, [markParam, pins]);
 
   return (
     <PageContainer>
-      {selectedPin ? <MarkDetailView pin={selectedPin} /> : <TriageView />}
+      {selectedPin ? (
+        <MarkDetailView pin={selectedPin} backHref={dashboardHref(searchParams)} />
+      ) : (
+        <TriageView />
+      )}
     </PageContainer>
   );
 }

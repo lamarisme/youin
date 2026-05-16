@@ -9,9 +9,11 @@ import { useShallow } from "zustand/react/shallow";
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
+import { ProductList, ProductListItem } from "@/components/product-list";
 import { useCollabStore } from "@/lib/collab-store";
 import type { DisplayNamePreference } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
+import { markHref } from "@/lib/workspace/routes";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import { PageContainer } from "@/components/page-container";
@@ -91,7 +93,7 @@ export function InboxView() {
           action={
             userId ? (
               <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
-                <Link href="/dashboard?space=all" className="inline-flex items-center gap-1.5">
+                <Link href="/dashboard" className="inline-flex items-center gap-1.5">
                   Go to dashboard
                   <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
@@ -108,7 +110,7 @@ export function InboxView() {
           className="mt-1"
         />
       ) : (
-        <ul className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1">
+        <ProductList>
           {inbox.groups.map((group) => (
             <InboxGroupRow
               key={group.pinId}
@@ -118,7 +120,7 @@ export function InboxView() {
               displayNamePreference={displayNamePreference}
             />
           ))}
-        </ul>
+        </ProductList>
       )}
     </PageContainer>
   );
@@ -141,9 +143,9 @@ function InboxGroupRow({
   const actorLabel = top.actorUsername || top.actorName;
   const rowLabel = `${group.pinDisplayKey}, ${group.pinTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt)}.`;
   return (
-    <li>
+    <ProductListItem className="p-0">
       <Link
-        href={`/dashboard?mark=${encodeURIComponent(group.pinDisplayKey)}`}
+        href={markHref(group.pinDisplayKey, new URLSearchParams())}
         aria-label={rowLabel}
         className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
@@ -182,7 +184,7 @@ function InboxGroupRow({
         </div>
         <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-ink-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
-    </li>
+    </ProductListItem>
   );
 }
 
@@ -233,20 +235,19 @@ function formatCount(count: number): string {
 
 function InboxLoadingRows() {
   return (
-    <ul
+    <ProductList
       aria-label="Loading inbox"
-      className="space-y-1 overflow-hidden rounded-md bg-paper-2 p-1"
     >
       {Array.from({ length: 4 }).map((_, index) => (
-        <li key={index} className="flex items-start gap-3 rounded-md px-4 py-3">
+        <ProductListItem key={index} interactive={false} className="flex items-start gap-3 px-4 py-3">
           <span className="mt-2 size-2 shrink-0 rounded-full bg-paper-3" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="h-3.5 w-2/3 rounded-sm bg-paper-3" />
             <div className="h-3 w-5/6 rounded-sm bg-paper-2" />
           </div>
           <div className="mt-1 h-3 w-14 rounded-sm bg-paper-2" />
-        </li>
+        </ProductListItem>
       ))}
-    </ul>
+    </ProductList>
   );
 }
