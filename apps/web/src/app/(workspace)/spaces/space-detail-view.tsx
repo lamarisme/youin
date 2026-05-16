@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Bookmark,
   CalendarDays,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { BulkActionBar } from "@/components/dashboard/bulk-action-bar";
 import { MarkTable } from "@/components/dashboard/mark-table";
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
@@ -234,16 +234,12 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   return (
     <>
       <div className="mb-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
-        >
-          <ArrowLeft className="size-3.5 shrink-0" aria-hidden />
-          All spaces
-        </Button>
+        <Breadcrumbs
+          items={[
+            { label: "Spaces", onClick: onBack },
+            { label: space.name, current: true },
+          ]}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -256,7 +252,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 </h1>
                 {project ? (
                   <p className="mt-1 text-[0.75rem] font-medium text-ink-3">
-                    {project.name}
+                    In {project.name}
                   </p>
                 ) : null}
                 {space.notes ? (
@@ -280,11 +276,11 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 onClick={() => toggleSpacePinned(space.id)}
                 className={cn(
                   "h-11 px-3 sm:h-8 sm:px-2.5",
-                  !space.pinned && "border-rule bg-paper text-ink hover:bg-paper-2",
+                  !space.pinned && "bg-paper-2 text-ink hover:bg-paper-3",
                 )}
               >
                 <Bookmark className="size-3.5" />
-                {space.pinned ? "Pinned" : "Pin"}
+                {space.pinned ? "Pinned" : "Pin space"}
               </Button>
               <FilterSelect<SpacePriority>
                 value={space.priority}
@@ -303,6 +299,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 className="h-11 px-3 text-ink-2 sm:h-8 sm:px-2.5"
               >
                 <Edit3 className="size-3.5" />
+                <span className="sr-only sm:not-sr-only">Edit</span>
               </Button>
               <Button
                 size="sm"
@@ -312,14 +309,19 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 className="h-11 px-3 text-ink-3 hover:text-mark sm:h-8 sm:px-2.5"
               >
                 <Trash2 className="size-3.5" />
+                <span className="sr-only sm:not-sr-only">Delete</span>
               </Button>
             </div>
           </div>
 
           <Surface variant="subtle" padding="sm" className="mt-4">
             <div className="flex items-center justify-between text-[0.8125rem]">
-              <span className="font-medium text-ink">{completionPct}% resolved</span>
-              <span className="text-ink-3">{stats?.total ?? 0} marks total</span>
+              <span className="font-medium text-ink">
+                {stats && stats.total > 0 ? `${completionPct}% resolved` : "No marks yet"}
+              </span>
+              <span className="text-ink-3">
+                {stats?.total ?? 0} mark{(stats?.total ?? 0) === 1 ? "" : "s"}
+              </span>
             </div>
             <div className="mt-2 flex h-2 overflow-hidden rounded-full bg-paper-3">
               {stats && stats.total > 0 ? (
@@ -350,7 +352,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           <div className="mt-5">
             <ToolbarPanel className="mb-3 py-2.5">
               <p className="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
-                Marks in this space
+                Marks
               </p>
               <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
                 <Button
@@ -369,7 +371,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-8 sm:px-2.5 sm:text-[0.75rem]"
                 >
                   <Link href={`/dashboard?space=${space.id}`}>
-                    Open in dashboard
+                    View in triage
                     <ArrowRight className="size-3" />
                   </Link>
                 </Button>
@@ -379,7 +381,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             {spacePins.length === 0 ? (
               <EmptyState
                 title="No marks in this space yet."
-                description="Capture feedback on a page to start filling this space with marks."
+                description="Create a mark here when feedback belongs to this release, project, or review thread."
                 action={
                   <Button
                     size="sm"
@@ -411,16 +413,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </div>
         </div>
 
-        <aside className="lg:border-l lg:border-rule lg:pl-6">
+        <aside className="lg:pl-4">
           <div className="space-y-4 lg:sticky lg:top-6">
             <div>
-              <p className="text-eyebrow mb-2">Details</p>
+              <p className="text-eyebrow mb-2">Space details</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-[0.8125rem]">
                   <FolderKanban className="size-3.5 text-ink-3" />
                   <span className="text-ink-2">Project</span>
                   <span className="ml-auto min-w-0 truncate font-medium text-ink">
-                    {project?.name ?? "Project"}
+                    {project?.name ?? "No project"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-[0.8125rem]">
@@ -444,7 +446,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
             {stats && stats.labelBreakdown.size > 0 ? (
               <div>
-                <p className="text-eyebrow mb-2">Labels</p>
+                <p className="text-eyebrow mb-2">Label usage</p>
                 <div className="space-y-1.5">
                   {Array.from(stats.labelBreakdown.entries()).map(([lid, count]) => {
                     const label = labelsById.get(lid);
@@ -461,7 +463,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             ) : null}
 
             <div>
-              <p className="text-eyebrow mb-2">Active members</p>
+              <p className="text-eyebrow mb-2">Workspace members</p>
               <div className="flex -space-x-1.5">
                 {workspace.members.map((m) => (
                   <Avatar key={m.id} className="size-7 border-2 border-paper" title={memberPickerLabel(m, namePref)}>
@@ -479,10 +481,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
       <Dialog open={editing} onOpenChange={(open) => !isSavingEdit && setEditing(open)}>
         <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit space</DialogTitle>
+            <DialogTitle>Edit space details</DialogTitle>
             <DialogDescription>
-              Update the name or description for{" "}
-              <span className="font-mono text-ink">{space.code}</span>.
+              Rename this space or clarify what belongs here.
             </DialogDescription>
           </DialogHeader>
           <div
@@ -508,7 +509,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 id="space-edit-notes"
                 value={editNotes}
                 onChange={setEditNotes}
-                placeholder="What this space covers… Type / for formatting"
+                placeholder="What belongs in this space? Type / for formatting."
                 minHeightClassName="min-h-[80px]"
                 disabled={isSavingEdit}
               />
@@ -548,7 +549,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           <DialogHeader>
             <DialogTitle>New mark</DialogTitle>
             <DialogDescription>
-              Creates a mark inside <span className="font-medium text-ink">{space.name}</span>.
+              Add feedback directly to <span className="font-medium text-ink">{space.name}</span>.
             </DialogDescription>
           </DialogHeader>
           <NewMarkForm
@@ -569,13 +570,13 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           <DialogHeader>
             <DialogTitle>Delete this space?</DialogTitle>
             <DialogDescription>
-              <span className="font-medium text-ink">{space.name}</span> will be permanently deleted
+              Delete <span className="font-medium text-ink">{space.name}</span>
               {stats && stats.total > 0 ? (
                 <>
-                  {" "}along with its <span className="font-medium text-ink">{stats.total} mark{stats.total === 1 ? "" : "s"}</span>
+                  {" "}and its <span className="font-medium text-ink">{stats.total} mark{stats.total === 1 ? "" : "s"}</span>
                 </>
               ) : null}
-              . This can&apos;t be undone.
+              ? This can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">

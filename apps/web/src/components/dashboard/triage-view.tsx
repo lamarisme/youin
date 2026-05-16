@@ -5,7 +5,7 @@ import { CircleDashed, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useShallow } from "zustand/react/shallow";
 
-import { AppHeader } from "@/components/app-header";
+import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect, type FilterOption } from "@/components/filter-select";
 import { Pagination } from "@/components/pagination";
@@ -248,7 +248,7 @@ export function TriageView() {
 
   return (
     <>
-      <AppHeader title="Triage" />
+      <BreadcrumbHeader items={[{ label: "Triage", current: true }]} />
 
       <FadeIn className="flex flex-wrap items-center gap-1.5 rounded-md bg-paper-2 p-1.5">
         <FilterSelect

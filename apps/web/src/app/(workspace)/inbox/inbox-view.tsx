@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 
-import { AppHeader } from "@/components/app-header";
+import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { useCollabStore } from "@/lib/collab-store";
@@ -39,26 +39,31 @@ export function InboxView() {
 
   return (
     <PageContainer>
-      <AppHeader title="Inbox">
-        {inbox.unreadCount > 0 ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
-            {formatCount(inbox.unreadCount)} new
-          </span>
-        ) : null}
-        {inbox.totalEvents > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={inbox.markAllRead}
-            disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
-            className="h-11 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
-          >
-            <CheckCheck className="size-3.5" aria-hidden />
-            {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
-          </Button>
-        ) : null}
-      </AppHeader>
+      <BreadcrumbHeader
+        items={[{ label: "Inbox", current: true }]}
+        actions={(
+          <>
+            {inbox.unreadCount > 0 ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
+                {formatCount(inbox.unreadCount)} new
+              </span>
+            ) : null}
+            {inbox.totalEvents > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={inbox.markAllRead}
+                disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
+                className="h-11 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
+              >
+                <CheckCheck className="size-3.5" aria-hidden />
+                {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
+              </Button>
+            ) : null}
+          </>
+        )}
+      />
 
       {inbox.isError ? (
         <EmptyState

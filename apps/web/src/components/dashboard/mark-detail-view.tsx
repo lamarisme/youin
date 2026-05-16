@@ -64,6 +64,13 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   const { mutateAsync: updatePin, isPending: isSavingEdit } = useUpdatePinMutation();
   const { update } = useDashboardFilters();
   const visiblePins = useVisibleDashboardPins();
+  const space = workspace.spaces.find((s) => s.id === pin.spaceId) ?? null;
+  const spaceProjectId = space?.projectId;
+  const spaceHref = space
+    ? `/spaces?space=${encodeURIComponent(space.id)}${
+        spaceProjectId ? `&project=${encodeURIComponent(spaceProjectId)}` : ""
+      }`
+    : undefined;
 
   const selectedIndex = visiblePins.findIndex((p) => p.id === pin.id);
   const canPrev = selectedIndex > 0;
@@ -213,7 +220,10 @@ export function MarkDetailView({ pin }: MarkDetailViewProps) {
   return (
     <>
       <MarkDetailNav
+        markLabel={pin.displayKey}
         positionLabel={positionLabel}
+        spaceHref={spaceHref}
+        spaceName={space?.name}
         canPrev={canPrev}
         canNext={canNext}
         onBack={() => update({ markId: null })}

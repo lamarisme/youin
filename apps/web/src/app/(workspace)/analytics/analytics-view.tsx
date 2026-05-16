@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { BarChart3 } from "lucide-react";
 
-import { AppHeader } from "@/components/app-header";
+import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { useCollabStore } from "@/lib/collab-store";
@@ -26,9 +26,10 @@ export function AnalyticsView() {
 
   return (
     <PageContainer>
-      <AppHeader title="Analytics">
-        <TimeframeFilter value={timeframe} onChange={setTimeframe} />
-      </AppHeader>
+      <BreadcrumbHeader
+        items={[{ label: "Analytics", current: true }]}
+        actions={<TimeframeFilter value={timeframe} onChange={setTimeframe} />}
+      />
 
       {totalMarks === 0 ? (
         <EmptyState

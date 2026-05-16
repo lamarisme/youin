@@ -2,11 +2,15 @@
 
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { FadeIn } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 
 interface MarkDetailNavProps {
+  markLabel: string;
   positionLabel: string;
+  spaceHref?: string;
+  spaceName?: string;
   canPrev: boolean;
   canNext: boolean;
   onBack: () => void;
@@ -16,7 +20,10 @@ interface MarkDetailNavProps {
 }
 
 export function MarkDetailNav({
+  markLabel,
   positionLabel,
+  spaceHref,
+  spaceName,
   canPrev,
   canNext,
   onBack,
@@ -27,17 +34,13 @@ export function MarkDetailNav({
   return (
     <FadeIn>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          aria-keyshortcuts="Escape"
-          className="min-h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:min-h-8 sm:px-2 sm:text-[0.8125rem]"
-        >
-          <ArrowLeft className="size-3.5" />
-          Back to triage
-        </Button>
+        <Breadcrumbs
+          items={[
+            { label: "Triage", onClick: onBack },
+            ...(spaceName ? [{ label: spaceName, href: spaceHref }] : []),
+            { label: markLabel, current: true },
+          ]}
+        />
         <div className="flex items-center gap-1">
           <span className="mr-2 text-[0.6875rem] text-ink-3">{positionLabel}</span>
           <Button

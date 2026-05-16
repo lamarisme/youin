@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { AppHeader } from "@/components/app-header";
+import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { FilterSelect } from "@/components/filter-select";
 import {
@@ -111,24 +111,27 @@ export function SpacesListView({
 
   return (
     <>
-      <AppHeader title="Spaces">
-        <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
-          {targetProject ? (
-            <>
-              <span className="max-w-40 truncate text-ink">{targetProject.name}</span>
-              <span aria-hidden className="mx-1 text-rule">/</span>
-            </>
-          ) : null}
-          <span className="font-mono text-ink">{filteredSpaces.length}</span>
-          <span>spaces</span>
-          <span aria-hidden className="mx-1 text-rule">/</span>
-          <span className="font-mono text-ink">{totalPins}</span>
-          <span>marks</span>
-          <span aria-hidden className="mx-1 text-rule">/</span>
-          <span className="font-mono text-mark">{totalOpen}</span>
-          <span>open</span>
-        </div>
-      </AppHeader>
+      <BreadcrumbHeader
+        items={[{ label: "Spaces", current: true }]}
+        actions={(
+          <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
+            {targetProject ? (
+              <>
+                <span className="max-w-40 truncate text-ink">{targetProject.name}</span>
+                <span aria-hidden className="mx-1 text-rule">/</span>
+              </>
+            ) : null}
+            <span className="font-mono text-ink">{filteredSpaces.length}</span>
+            <span>spaces</span>
+            <span aria-hidden className="mx-1 text-rule">/</span>
+            <span className="font-mono text-ink">{totalPins}</span>
+            <span>marks</span>
+            <span aria-hidden className="mx-1 text-rule">/</span>
+            <span className="font-mono text-mark">{totalOpen}</span>
+            <span>open</span>
+          </div>
+        )}
+      />
 
       <ToolbarPanel>
         <Button

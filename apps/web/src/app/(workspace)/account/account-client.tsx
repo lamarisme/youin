@@ -48,7 +48,11 @@ export function AccountClient() {
 
   return (
     <PageContainer>
-      <AppHeader title="Account" eyebrow="Settings" />
+      <AppHeader
+        title="Account"
+        eyebrow="Settings"
+        subtitle="Workspace settings, team access, labels, and profile."
+      />
 
       <div className="grid gap-4 lg:grid-cols-[13rem_minmax(0,52rem)] lg:gap-8">
         <nav
