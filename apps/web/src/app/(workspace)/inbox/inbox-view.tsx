@@ -151,7 +151,7 @@ function InboxGroupRow({
       >
         <UnreadDot active={group.unreadCount > 0} />
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-0.5">
+          <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div
               className={cn(
                 "flex min-w-0 items-baseline gap-1.5 text-[0.875rem] font-semibold group-hover:text-mark",
@@ -163,15 +163,15 @@ function InboxGroupRow({
               </span>
               <span className="min-w-0 truncate">{group.pinTitle}</span>
             </div>
-            {spaceName ? (
-              <span className="min-w-0 truncate text-[0.6875rem] text-ink-3">{spaceName}</span>
-            ) : null}
             <time
-              className="col-start-2 row-start-1 shrink-0 text-[0.6875rem] tabular-nums text-ink-3"
+              className="shrink-0 text-[0.6875rem] tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
               dateTime={group.latestAt}
             >
               {formatRelative(group.latestAt)}
             </time>
+            {spaceName ? (
+              <span className="min-w-0 truncate text-[0.6875rem] text-ink-3 sm:col-start-1 sm:row-start-2">{spaceName}</span>
+            ) : null}
           </div>
 
           <p className="truncate text-[0.8125rem] text-ink-2">

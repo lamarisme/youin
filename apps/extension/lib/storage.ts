@@ -114,6 +114,8 @@ export interface Pin {
   domSnapshot?: ElementDomSnapshot
   /** Unsynced element screenshot retained until a remote mark upload succeeds. */
   screenshotDataUrl?: string
+  /** Signed or external image URL for the uploaded mark screenshot. */
+  screenshotUrl?: string
   /** Local sync health for the popup and in-page panel. */
   syncState?: PinSyncState
   syncError?: string
@@ -187,8 +189,9 @@ function normalizeHost(value: string): string {
   const trimmed = value.trim().toLowerCase()
   if (!trimmed) return ""
   try {
-    return new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`)
-      .hostname.replace(/^www\./, "")
+    return new URL(
+      trimmed.includes("://") ? trimmed : `https://${trimmed}`
+    ).hostname.replace(/^www\./, "")
   } catch {
     return trimmed.replace(/^www\./, "").replace(/\/.*$/, "")
   }
@@ -231,7 +234,8 @@ function normalizeSyncOps(value: unknown): PinSyncOperation[] {
       out.push({ id, type: "status", status, createdAt, attempts, lastError })
     } else if (row.type === "comment" && typeof row.body === "string") {
       const body = row.body.trim().slice(0, STORAGE_LIMITS.threadBody)
-      if (body) out.push({ id, type: "comment", body, createdAt, attempts, lastError })
+      if (body)
+        out.push({ id, type: "comment", body, createdAt, attempts, lastError })
     }
   }
   return out
@@ -406,9 +410,14 @@ function migrateRawPin(raw: unknown): Pin {
     screenshotDataUrl,
     syncState,
     syncError,
+    screenshotUrl:
+      typeof p.screenshotUrl === "string" && p.screenshotUrl
+        ? p.screenshotUrl
+        : undefined,
     pendingSyncOps,
     remoteUpdatedAt:
-      typeof p.remoteUpdatedAt === "number" && Number.isFinite(p.remoteUpdatedAt)
+      typeof p.remoteUpdatedAt === "number" &&
+      Number.isFinite(p.remoteUpdatedAt)
         ? p.remoteUpdatedAt
         : undefined
   }
@@ -550,7 +559,9 @@ export async function setWidgetSettings(
   const merged: WidgetSettings = {
     corner: isWidgetCorner(patch.corner) ? patch.corner : prev.corner,
     fabVisible:
-      typeof patch.fabVisible === "boolean" ? patch.fabVisible : prev.fabVisible,
+      typeof patch.fabVisible === "boolean"
+        ? patch.fabVisible
+        : prev.fabVisible,
     captureScreenshots:
       typeof patch.captureScreenshots === "boolean"
         ? patch.captureScreenshots
@@ -635,6 +646,9 @@ function serializePinsForStorage(pins: Pin[]): unknown[] {
     if (!rest.screenshotDataUrl) {
       delete (rest as { screenshotDataUrl?: string }).screenshotDataUrl
     }
+    if (!rest.screenshotUrl) {
+      delete (rest as { screenshotUrl?: string }).screenshotUrl
+    }
     if (!rest.domSnapshot) {
       delete (rest as { domSnapshot?: ElementDomSnapshot }).domSnapshot
     }
@@ -698,7 +712,11 @@ export async function appendThreadComment(
 
 function computeSyncState(pin: Pin): PinSyncState {
   if (pin.syncError) return "failed"
-  if (!pin.remoteMarkId || pin.screenshotDataUrl || pin.pendingSyncOps?.length) {
+  if (
+    !pin.remoteMarkId ||
+    pin.screenshotDataUrl ||
+    pin.pendingSyncOps?.length
+  ) {
     return "pending"
   }
   return "synced"
@@ -706,9 +724,7 @@ function computeSyncState(pin: Pin): PinSyncState {
 
 export async function enqueuePinSyncOp(
   pinId: string,
-  op:
-    | { type: "status"; status: PinStatus }
-    | { type: "comment"; body: string }
+  op: { type: "status"; status: PinStatus } | { type: "comment"; body: string }
 ): Promise<PinSyncOperation | undefined> {
   const pins = await getPins()
   const ix = pins.findIndex((p) => p.id === pinId)

@@ -24,6 +24,7 @@ interface FilterSelectProps<TValue extends string = string> {
   placeholder?: string;
   size?: "sm" | "md";
   variant?: "boxed" | "inline";
+  disabled?: boolean;
 }
 
 export function FilterSelect<TValue extends string = string>({
@@ -36,9 +37,10 @@ export function FilterSelect<TValue extends string = string>({
   placeholder,
   size = "sm",
   variant = "boxed",
+  disabled,
 }: FilterSelectProps<TValue>) {
   return (
-    <Select value={value} onValueChange={(v) => onValueChange(v as TValue)}>
+    <Select value={value} onValueChange={(v) => onValueChange(v as TValue)} disabled={disabled}>
       <SelectTrigger
         aria-label={ariaLabel}
         className={cn(

@@ -14,6 +14,7 @@ import type { PinItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
 
 import { shortMarkLabel } from "./format-mark-event";
+import { FullImagePreview } from "./full-image-preview";
 import { formatMarkPageOrigin } from "./mark-page-label";
 
 interface MarkDetailCaptureProps {
@@ -39,15 +40,20 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
         <div className="relative px-3 pb-3">
           {cap?.screenshotUrl ? (
             <div className="mx-auto max-w-2xl overflow-hidden rounded-md bg-paper-3">
-              {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <FullImagePreview
                 src={cap.screenshotUrl}
                 alt={`Captured element for ${pin.displayKey}`}
-                loading="lazy"
-                decoding="async"
-                className="max-h-[22rem] w-full object-contain object-top"
-              />
+              >
+                {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={cap.screenshotUrl}
+                  alt={`Captured element for ${pin.displayKey}`}
+                  loading="lazy"
+                  decoding="async"
+                  className="max-h-[22rem] w-full object-contain object-top"
+                />
+              </FullImagePreview>
             </div>
           ) : (
             <p className="py-6 text-center text-[0.8125rem] text-ink-3">
@@ -126,9 +132,9 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
   );
 }
 
-function getDomSnapshotContext(snapshot: Record<string, unknown> | undefined):
-  | { outerHTML: string; nearbyText?: string }
-  | undefined {
+function getDomSnapshotContext(
+  snapshot: Record<string, unknown> | undefined,
+): { outerHTML: string; nearbyText?: string } | undefined {
   if (!snapshot) return undefined;
   const selected = snapshot.selectedElement;
   const context = snapshot.context;

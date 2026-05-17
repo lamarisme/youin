@@ -11,8 +11,8 @@ import {
   getActiveSpaceId,
   getPins,
   getSpaces,
-  markPinSyncFailure,
   markPinSynced,
+  markPinSyncFailure,
   patchPin,
   removePinSyncOp,
   savePins,
@@ -282,6 +282,7 @@ interface RemoteMark {
   updatedAt: string
   capturedAt?: string | null
   domSnapshot?: Record<string, unknown> | null
+  screenshotUrl?: string | null
   comments: RemoteComment[]
 }
 
@@ -310,7 +311,10 @@ async function uploadPinScreenshot(
     .eq("space_id", pin.spaceId)
   if (error) return { ok: false, error: error.message }
 
-  await patchPin(pin.id, { screenshotDataUrl: undefined })
+  await patchPin(pin.id, {
+    screenshotDataUrl: undefined,
+    screenshotUrl: pin.screenshotDataUrl
+  })
   await markPinSynced(pin.id)
   return { ok: true }
 }
@@ -473,6 +477,7 @@ export async function pushPinToWorkspace(
 
   const mark = (await res.json()) as CreatedRemoteMark
   let screenshotDataUrl = options?.screenshotDataUrl ?? pin.screenshotDataUrl
+  let screenshotUrl = pin.screenshotUrl
   let warning: string | undefined
 
   if (screenshotDataUrl) {
@@ -485,6 +490,7 @@ export async function pushPinToWorkspace(
       }
       const upload = await uploadPinScreenshot(screenshotPin, workspaceId)
       if (upload.ok) {
+        screenshotUrl = screenshotDataUrl
         screenshotDataUrl = undefined
       } else {
         warning = upload.error
@@ -497,6 +503,7 @@ export async function pushPinToWorkspace(
   await patchPin(pin.id, {
     remoteMarkId: mark.id,
     screenshotDataUrl,
+    screenshotUrl,
     pendingSyncOps: [],
     syncState: screenshotDataUrl ? "pending" : "synced",
     syncError: warning
@@ -607,6 +614,7 @@ function pinFromRemoteMark(mark: RemoteMark): Pin {
     updatedAt,
     outerHTMLPreview: snapshot?.selectedElement?.outerHTML?.slice(0, 400) ?? "",
     domSnapshot: snapshot,
+    screenshotUrl: mark.screenshotUrl || undefined,
     syncState: "synced",
     remoteUpdatedAt: updatedAt
   }
@@ -632,6 +640,7 @@ function mergeRemoteMark(local: Pin, mark: RemoteMark): Pin {
     title: mark.title || local.title,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
+    screenshotUrl: mark.screenshotUrl || local.screenshotUrl,
     thread: mergedThread.sort((a, b) => a.createdAt - b.createdAt),
     updatedAt: Math.max(local.updatedAt, remoteUpdatedAt),
     remoteUpdatedAt,
@@ -691,7 +700,9 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingPinsRes
 
   for (const mark of remoteMarks) {
     const existing = byRemoteId.get(mark.id)
-    next.push(existing ? mergeRemoteMark(existing, mark) : pinFromRemoteMark(mark))
+    next.push(
+      existing ? mergeRemoteMark(existing, mark) : pinFromRemoteMark(mark)
+    )
   }
 
   await savePins(next)

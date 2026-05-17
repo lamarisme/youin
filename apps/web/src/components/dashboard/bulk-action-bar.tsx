@@ -53,19 +53,22 @@ export function BulkActionBar({
       <FadeIn
         role="region"
         aria-label={`${count} marks selected`}
-        className="sticky bottom-4 z-20 mx-auto mt-3 flex w-fit max-w-full flex-wrap items-center gap-1.5 rounded-md bg-paper-2 px-2 py-1.5"
+        className="sticky bottom-3 z-20 mx-auto mt-3 grid w-full max-w-[34rem] grid-cols-[1fr_auto] items-center gap-1.5 rounded-md bg-paper-2 px-2 py-1.5 sm:bottom-4 sm:flex sm:w-fit sm:max-w-full sm:flex-wrap"
       >
-        <span className="flex items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink">
+        <span className="sr-only" aria-live="polite">
+          {busy ? "Updating selected marks." : `${count} marks selected.`}
+        </span>
+        <span className="flex min-h-11 items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink sm:min-h-0">
           <span className="text-mark">{count}</span> selected
         </span>
-        <span aria-hidden className="h-5 w-px bg-rule" />
+        <span aria-hidden className="hidden h-5 w-px bg-rule sm:block" />
         <Button
           type="button"
           size="sm"
           variant="ghost"
           disabled={busy}
           onClick={() => run(() => onSetStatus(allClosed ? "open" : "closed"))}
-          className="h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+          className="col-start-1 row-start-2 h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:text-ink sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
         >
           {allClosed ? (
             <>
@@ -88,7 +91,8 @@ export function BulkActionBar({
             ...CANONICAL_PIN_PRIORITY_OPTIONS,
           ]}
           ariaLabel="Set priority for selected marks"
-          triggerClassName="w-[150px] h-11 text-[0.9375rem] sm:h-8 sm:w-[140px] sm:text-[0.8125rem]"
+          disabled={busy}
+          triggerClassName="col-span-2 row-start-3 w-full h-11 text-[0.9375rem] sm:col-span-1 sm:row-auto sm:h-8 sm:w-[140px] sm:text-[0.8125rem]"
         />
         <Button
           type="button"
@@ -96,12 +100,12 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => setConfirmDelete(true)}
-          className="h-11 gap-1.5 px-3 text-[0.9375rem] text-mark hover:bg-mark-soft hover:text-mark sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+          className="col-start-2 row-start-2 h-11 gap-1.5 px-3 text-[0.9375rem] text-mark hover:bg-mark-soft hover:text-mark sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
         >
           <Trash2 className="size-3.5" />
           Delete
         </Button>
-        <span aria-hidden className="h-5 w-px bg-rule" />
+        <span aria-hidden className="hidden h-5 w-px bg-rule sm:block" />
         <Button
           type="button"
           size="icon"
@@ -109,7 +113,7 @@ export function BulkActionBar({
           disabled={busy}
           onClick={onClear}
           aria-label="Clear selection"
-          className="size-11 text-ink-3 hover:text-ink sm:size-8"
+          className="col-start-2 row-start-1 size-11 justify-self-end text-ink-3 hover:text-ink sm:col-auto sm:row-auto sm:size-8 sm:justify-self-auto"
         >
           <X className="size-3.5" />
         </Button>

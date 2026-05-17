@@ -1,9 +1,10 @@
 "use client";
 
 import { Check, MessageCircle, Pencil, Trash2, X } from "lucide-react";
-import { useReducer, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { Notice } from "@/components/notice";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Button } from "@/components/ui/button";
@@ -30,11 +31,15 @@ import {
   useUpdateCommentMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
+import {
+  memberDisplayParts,
+  memberPickerLabel,
+} from "@/lib/workspace/member-label";
 import { getMarkUploadUrlAction } from "@/lib/workspace/actions";
 
 import { MarkDescriptionEditor } from "./mark-description-editor";
 import { MarkDescriptionRead } from "./mark-description-read";
+import { FullImagePreview } from "./full-image-preview";
 
 type ComposerState = {
   text: string;
@@ -50,6 +55,7 @@ type ComposerAction =
   | { type: "reset" };
 
 const INITIAL: ComposerState = { text: "", image: null, submitting: false };
+const MAX_COMMENT_IMAGE_BYTES = 8 * 1024 * 1024;
 
 function reducer(state: ComposerState, action: ComposerAction): ComposerState {
   switch (action.type) {
@@ -72,16 +78,48 @@ interface CommentThreadProps {
   membersById: Map<string, TeamMember>;
 }
 
-export function CommentThread({ pin, comments, membersById }: CommentThreadProps) {
+export function CommentThread({
+  pin,
+  comments,
+  membersById,
+}: CommentThreadProps) {
   const userId = useCollabStore((s) => s.userId);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [composerError, setComposerError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { text, image, submitting } = state;
   const hasText = Boolean(markDescriptionPlainText(text));
+
+  function setImageFile(file: File | null) {
+    setComposerError(null);
+    if (!file) {
+      dispatch({ type: "set_image", value: null });
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setComposerError("Attach an image file.");
+      dispatch({ type: "set_image", value: null });
+      return;
+    }
+    if (file.size > MAX_COMMENT_IMAGE_BYTES) {
+      setComposerError("Images must be 8 MB or smaller.");
+      dispatch({ type: "set_image", value: null });
+      return;
+    }
+    dispatch({ type: "set_image", value: file });
+  }
+
+  function clearImage() {
+    dispatch({ type: "set_image", value: null });
+    setComposerError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function handleSubmit() {
     if (!hasText && !image) return;
     if (submitting) return;
+    setComposerError(null);
     dispatch({ type: "start_submit" });
     try {
       const next: PinComment[] = [];
@@ -111,9 +149,13 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
         const supabase = createSupabaseBrowserClient();
         const { error: uploadErr } = await supabase.storage
           .from("mark-images")
-          .uploadToSignedUrl(path, token, image, { contentType: image.type || undefined });
+          .uploadToSignedUrl(path, token, image, {
+            contentType: image.type || undefined,
+          });
         if (uploadErr) {
-          toast.error(actionErrorMessage(uploadErr, "Image upload failed."));
+          const message = actionErrorMessage(uploadErr, "Image upload failed.");
+          setComposerError(message);
+          toast.error(message);
           dispatch({ type: "stop_submit" });
           return;
         }
@@ -129,6 +171,7 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
       try {
         await addComments(next);
         dispatch({ type: "reset" });
+        clearImage();
       } catch {
         // toast handled by the mutation
       }
@@ -145,7 +188,9 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
       </h2>
       <div className="space-y-2">
         {comments.length === 0 ? (
-          <p className="text-[0.8125rem] text-ink-3">No comments yet. Start the conversation.</p>
+          <p className="text-[0.8125rem] text-ink-3">
+            No comments yet. Start the conversation.
+          </p>
         ) : null}
         {comments.map((comment) => (
           <CommentItem
@@ -174,11 +219,22 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
           <Input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             aria-label="Attach image to comment"
+            aria-describedby={composerError ? "comment-composer-error" : undefined}
             disabled={submitting}
-            onChange={(e) => dispatch({ type: "set_image", value: e.target.files?.[0] ?? null })}
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              setImageFile(file);
+              if (
+                file &&
+                (!file.type.startsWith("image/") || file.size > MAX_COMMENT_IMAGE_BYTES)
+              ) {
+                e.currentTarget.value = "";
+              }
+            }}
             className="h-11 max-w-[190px] text-[1rem] sm:h-8 sm:max-w-[160px] sm:text-[0.6875rem]"
           />
           <SubmitButton
@@ -193,6 +249,27 @@ export function CommentThread({ pin, comments, membersById }: CommentThreadProps
             Send
           </SubmitButton>
         </div>
+        {image ? (
+          <div className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-md bg-paper-3 px-2 py-1.5 text-[0.75rem] text-ink-2">
+            <span className="min-w-0 truncate" title={image.name}>
+              {image.name}
+            </span>
+            <button
+              type="button"
+              onClick={clearImage}
+              disabled={submitting}
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/30 disabled:pointer-events-none disabled:opacity-50"
+              aria-label="Remove attached image"
+            >
+              <X className="size-3.5" aria-hidden />
+            </button>
+          </div>
+        ) : null}
+        {composerError ? (
+          <Notice id="comment-composer-error" tone="danger" className="mt-2">
+            {composerError}
+          </Notice>
+        ) : null}
       </div>
     </div>
   );
@@ -250,20 +327,24 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
     <>
       <div className="group rounded-md bg-paper-2 p-3">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Avatar className="size-5">
               <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
                 {author?.initials ?? "?"}
               </AvatarFallback>
             </Avatar>
             <span
-              className="text-[0.75rem] font-medium text-ink"
+              className="min-w-0 truncate text-[0.75rem] font-medium text-ink"
               title={author ? memberPickerLabel(author, namePref) : undefined}
             >
-              {authorLine ? <span className="text-ink">{authorLine.primary}</span> : "Unknown"}
+              {authorLine ? (
+                <span className="text-ink">{authorLine.primary}</span>
+              ) : (
+                "Unknown"
+              )}
             </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <time
               dateTime={comment.createdAt}
               title={formatDateTime(comment.createdAt)}
@@ -272,7 +353,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
               {formatRelative(comment.createdAt)}
             </time>
             {isOwn && !editing ? (
-              <span className="ml-1 hidden gap-0.5 group-hover:inline-flex group-focus-within:inline-flex">
+              <span className="ml-1 inline-flex gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                 {comment.type === "text" ? (
                   <button
                     type="button"
@@ -359,21 +440,26 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded bg-paper-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={comment.imageUrl}
-              alt="Uploaded screenshot"
-              width={640}
-              height={280}
-              loading="lazy"
-              decoding="async"
-              className="size-full object-cover"
-            />
+            <FullImagePreview src={comment.imageUrl} alt="Uploaded screenshot">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={comment.imageUrl}
+                alt="Uploaded screenshot"
+                width={640}
+                height={280}
+                loading="lazy"
+                decoding="async"
+                className="size-full object-cover"
+              />
+            </FullImagePreview>
           </div>
         ) : null}
       </div>
 
-      <Dialog open={confirmDelete} onOpenChange={(open) => !isDeleting && setConfirmDelete(open)}>
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(open) => !isDeleting && setConfirmDelete(open)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this comment?</DialogTitle>

@@ -243,8 +243,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0">
               <div className="min-w-0">
                 <h1 className="break-words text-lg font-semibold leading-tight text-ink sm:text-xl">
                   {space.name}
@@ -257,7 +257,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 ) : null}
               </div>
             </div>
-            <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
               <Button
                 size="sm"
                 variant={space.pinned ? "default" : "outline"}
@@ -321,7 +321,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 <div className="w-full rounded-full bg-paper-3" />
               )}
             </div>
-            <div className="mt-2 flex gap-4 text-[0.6875rem]">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem]">
               <span className="flex items-center gap-1 text-ok">
                 <CheckCircle2 className="size-3" />
                 {stats?.closed ?? 0} resolved

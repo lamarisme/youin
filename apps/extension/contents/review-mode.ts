@@ -385,7 +385,7 @@ async function captureAndDispatch(target: Element) {
     if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
       try {
         elementScreenshotDataUrl = await toPng(target, {
-          pixelRatio: Math.min(3, window.devicePixelRatio || 1),
+          pixelRatio: Math.max(1, window.devicePixelRatio || 1),
           cacheBust: true
         })
       } catch {

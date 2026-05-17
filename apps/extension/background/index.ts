@@ -48,13 +48,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 async function canvasToImageDataUrl(canvas: OffscreenCanvas): Promise<string> {
-  try {
-    return await blobToDataUrl(
-      await canvas.convertToBlob({ type: "image/webp", quality: 0.84 })
-    )
-  } catch {
-    return blobToDataUrl(await canvas.convertToBlob({ type: "image/png" }))
-  }
+  return blobToDataUrl(await canvas.convertToBlob({ type: "image/png" }))
 }
 
 /** Avoid `fetch(data:...)` in the service worker — support is inconsistent; decode locally. */
@@ -145,10 +139,8 @@ chrome.runtime.onMessage.addListener(
           return
         }
 
-        const maxSide = 1400
-        const ratio = Math.min(1, maxSide / Math.max(sw, sh))
-        const outWidth = Math.max(1, Math.round(sw * ratio))
-        const outHeight = Math.max(1, Math.round(sh * ratio))
+        const outWidth = sw
+        const outHeight = sh
 
         const canvas = new OffscreenCanvas(outWidth, outHeight)
         const ctx = canvas.getContext("2d")

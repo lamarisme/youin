@@ -70,6 +70,7 @@ function asString(value: unknown): string {
 }
 
 const DOM_SNAPSHOT_LIMIT = 30000;
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
 type JsonValue =
   | string
@@ -111,7 +112,11 @@ function normalizeDomSnapshotValue(
 
 function normalizeDomSnapshotForStorage(value: unknown): JsonValue | null {
   const normalized = normalizeDomSnapshotValue(value);
-  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) {
+  if (
+    !normalized ||
+    typeof normalized !== "object" ||
+    Array.isArray(normalized)
+  ) {
     return null;
   }
 
@@ -198,6 +203,31 @@ function parseDataUrlImage(
   };
 }
 
+function isStoragePath(value: string | null | undefined): value is string {
+  if (!value) return false;
+  if (value.startsWith("data:")) return false;
+  if (value.startsWith("http://") || value.startsWith("https://")) return false;
+  if (value.startsWith("/")) return false;
+  return value.includes("/");
+}
+
+async function resolveImageUrls(
+  supabase: SupabaseClient,
+  paths: string[],
+): Promise<Map<string, string>> {
+  if (!paths.length) return new Map();
+  const unique = Array.from(new Set(paths));
+  const { data, error } = await supabase.storage
+    .from("mark-images")
+    .createSignedUrls(unique, SIGNED_URL_TTL_SECONDS);
+  if (error || !data) return new Map();
+  const out = new Map<string, string>();
+  for (const row of data) {
+    if (row.path && row.signedUrl) out.set(row.path, row.signedUrl);
+  }
+  return out;
+}
+
 export function OPTIONS(): NextResponse {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
@@ -210,7 +240,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { data: marks, error: markError } = await supabase
     .from("marks")
     .select(
-      "id,space_id,title,page,status,priority,selector,viewport,created_at,updated_at,captured_at,dom_snapshot",
+      "id,space_id,title,page,status,priority,selector,viewport,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
     )
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false })
@@ -249,6 +279,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       String(profile.full_name || profile.email || "Team"),
     ]),
   );
+  const screenshotPaths = (marks ?? [])
+    .map((mark) => mark.screenshot_url as string | null | undefined)
+    .filter(isStoragePath);
+  const signedScreenshotByPath = await resolveImageUrls(
+    supabase,
+    screenshotPaths,
+  );
   const commentsByMark = new Map<string, unknown[]>();
   for (const comment of comments ?? []) {
     const markId = comment.mark_id as string;
@@ -267,6 +304,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(
     {
       marks: (marks ?? []).map((mark) => ({
+        screenshotUrl: isStoragePath(
+          mark.screenshot_url as string | null | undefined,
+        )
+          ? signedScreenshotByPath.get(mark.screenshot_url as string) ??
+            (mark.screenshot_url as string)
+          : (mark.screenshot_url as string | null) ?? undefined,
         id: mark.id as string,
         spaceId: mark.space_id as string,
         title: String(mark.title ?? ""),
@@ -390,7 +433,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .slice(0, 20)
       : [];
   } catch (e) {
-    return jsonError(e instanceof Error ? e.message : "Comment is invalid.", 400);
+    return jsonError(
+      e instanceof Error ? e.message : "Comment is invalid.",
+      400,
+    );
   }
 
   let warning: string | undefined;
@@ -463,7 +509,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       asString(input.commentBody).trim().slice(0, 4000),
     );
   } catch (e) {
-    return jsonError(e instanceof Error ? e.message : "Comment is invalid.", 400);
+    return jsonError(
+      e instanceof Error ? e.message : "Comment is invalid.",
+      400,
+    );
   }
   if (commentBody) {
     const { error: commentError } = await supabase

@@ -14,12 +14,14 @@ interface NoticeProps {
   children: ReactNode;
   tone?: NoticeTone;
   className?: string;
+  id?: string;
   role?: "alert" | "status";
 }
 
-export function Notice({ children, tone = "info", className, role }: NoticeProps) {
+export function Notice({ children, tone = "info", className, id, role }: NoticeProps) {
   return (
     <p
+      id={id}
       role={role ?? (tone === "danger" ? "alert" : "status")}
       className={cn(
         "rounded-md border px-3 py-2 text-[0.75rem] leading-snug",
