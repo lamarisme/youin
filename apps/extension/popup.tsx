@@ -95,6 +95,27 @@ async function startInspectOnActiveTab(): Promise<{
   }
 }
 
+async function startScreenshotOnActiveTab(): Promise<{
+  ok: boolean
+  error?: string
+}> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id) return { ok: false, error: "No active tab." }
+  const url = tab.url ?? ""
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return { ok: false, error: "Open a web page to screenshot." }
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "youin:start-screenshot" })
+    return { ok: true }
+  } catch {
+    return {
+      ok: false,
+      error: "Reload the page, then try again."
+    }
+  }
+}
+
 function IndexPopup() {
   const [view, setView] = useState<AuthView>("checking")
   const [session, setSession] = useState<Session | null>(null)
@@ -290,6 +311,15 @@ function IndexPopup() {
     void (async () => {
       const r = await startInspectOnActiveTab()
       if (!r.ok) setInspectMsg(r.error ?? "Could not start inspect mode.")
+      else window.close()
+    })()
+  }
+
+  const beginScreenshot = () => {
+    setInspectMsg(null)
+    void (async () => {
+      const r = await startScreenshotOnActiveTab()
+      if (!r.ok) setInspectMsg(r.error ?? "Could not start screenshot mode.")
       else window.close()
     })()
   }
@@ -562,13 +592,22 @@ function IndexPopup() {
           </span>
         </div>
 
-        <button
-          type="button"
-          disabled={!canReviewPage || !spaceId || domainDisabled}
-          className="mt-3 flex w-full min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
-          onClick={beginInspect}>
-          Start reviewing
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!canReviewPage || !spaceId || domainDisabled}
+            className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
+            onClick={beginInspect}>
+            Inspect
+          </button>
+          <button
+            type="button"
+            disabled={!canReviewPage || !spaceId || domainDisabled}
+            className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
+            onClick={beginScreenshot}>
+            Screenshot
+          </button>
+        </div>
 
         {domainDisabled ? (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
@@ -584,7 +623,7 @@ function IndexPopup() {
           </p>
         ) : (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            Click any page element to leave feedback.
+            Inspect an element, or drag any screen area.
           </p>
         )}
 
@@ -796,7 +835,8 @@ function IndexPopup() {
                     ? `${failedSyncCount} failed`
                     : pendingSyncCount
                       ? `${pendingSyncCount} pending`
-                      : syncMsg ?? (view === "signedIn" ? "Up to date" : "Local only")}
+                      : syncMsg ??
+                        (view === "signedIn" ? "Up to date" : "Local only")}
                 </p>
               </div>
               <button

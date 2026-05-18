@@ -46,6 +46,8 @@ type ExtensionMarkPatchInput = {
   markId?: unknown;
   status?: unknown;
   commentBody?: unknown;
+  title?: unknown;
+  openingBody?: unknown;
 };
 
 type ExtensionAuthResult =
@@ -490,6 +492,19 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   if (!mark) return jsonError("Mark was not found in this workspace.", 404);
 
   const statusInput = asString(input.status);
+  const titleInput = asString(input.title).trim().slice(0, 280);
+  if (titleInput) {
+    const { error: titleError } = await supabase
+      .from("marks")
+      .update({
+        title: titleInput,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", markId)
+      .eq("workspace_id", workspaceId);
+    if (titleError) return jsonError(titleError.message, 400);
+  }
+
   if (statusInput) {
     if (!isMarkStatus(statusInput)) return jsonError("Status is invalid.", 400);
     const { error: statusError } = await supabase
@@ -524,6 +539,36 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         body: commentBody,
       });
     if (commentError) return jsonError(commentError.message, 400);
+  }
+
+  let openingBody = "";
+  try {
+    openingBody = normalizeCommentForStorage(
+      asString(input.openingBody).trim().slice(0, 4000),
+    );
+  } catch (e) {
+    return jsonError(
+      e instanceof Error ? e.message : "Opening comment is invalid.",
+      400,
+    );
+  }
+  if (openingBody) {
+    const { data: firstComment, error: firstCommentError } = await supabase
+      .from("mark_comments")
+      .select("id")
+      .eq("mark_id", markId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (firstCommentError) return jsonError(firstCommentError.message, 400);
+    if (firstComment?.id) {
+      const { error: openingError } = await supabase
+        .from("mark_comments")
+        .update({ body: openingBody })
+        .eq("id", firstComment.id as string)
+        .eq("mark_id", markId);
+      if (openingError) return jsonError(openingError.message, 400);
+    }
   }
 
   return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });

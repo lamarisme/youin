@@ -341,7 +341,12 @@ async function responseErrorMessage(
 
 async function patchRemoteMark(
   pin: Pin,
-  patch: { status?: Pin["status"]; commentBody?: string }
+  patch: {
+    status?: Pin["status"]
+    commentBody?: string
+    title?: string
+    openingBody?: string
+  }
 ): Promise<PushPinResult> {
   const session = await getSession()
   if (!session?.user?.id) {
@@ -394,6 +399,16 @@ export async function pushPinCommentToWorkspace(
   const body = commentBody.trim()
   if (!body) return { ok: true, skipped: true }
   return patchRemoteMark(pin, { commentBody: body })
+}
+
+export async function pushPinEditToWorkspace(
+  pin: Pin,
+  patch: { title: string; openingBody: string }
+): Promise<PushPinResult> {
+  const title = patch.title.trim()
+  const openingBody = patch.openingBody.trim()
+  if (!title || !openingBody) return { ok: true, skipped: true }
+  return patchRemoteMark(pin, { title, openingBody })
 }
 
 /** Insert a freshly saved local pin as a `marks` row when authenticated. */
@@ -531,7 +546,12 @@ async function syncQueuedOpsForPin(pin: Pin): Promise<{
     const result =
       op.type === "status"
         ? await patchRemoteMark(pin, { status: op.status })
-        : await patchRemoteMark(pin, { commentBody: op.body })
+        : op.type === "comment"
+          ? await patchRemoteMark(pin, { commentBody: op.body })
+          : await patchRemoteMark(pin, {
+              title: op.title,
+              openingBody: op.openingBody
+            })
 
     if (result.ok || result.skipped) {
       await removePinSyncOp(pin.id, op.id)
@@ -629,15 +649,18 @@ function mergeRemoteMark(local: Pin, mark: RemoteMark): Pin {
   const hasPendingStatus = local.pendingSyncOps?.some(
     (op) => op.type === "status"
   )
+  const hasPendingEdit = local.pendingSyncOps?.some((op) => op.type === "edit")
   const localMessageIds = new Set(local.thread.map((m) => m.id))
   const mergedThread = [...local.thread]
-  for (const msg of remoteThread(mark)) {
-    if (!localMessageIds.has(msg.id)) mergedThread.push(msg)
+  if (!hasPendingEdit) {
+    for (const msg of remoteThread(mark)) {
+      if (!localMessageIds.has(msg.id)) mergedThread.push(msg)
+    }
   }
 
   return {
     ...local,
-    title: mark.title || local.title,
+    title: hasPendingEdit ? local.title : mark.title || local.title,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
     screenshotUrl: mark.screenshotUrl || local.screenshotUrl,
@@ -734,9 +757,10 @@ export async function syncPendingPinsToWorkspace(): Promise<SyncPendingPinsResul
   const pins = await getPins()
   const pending = pins.filter(
     (pin) =>
-      (!pin.remoteMarkId && isUuidLike(pin.spaceId)) ||
-      Boolean(pin.remoteMarkId && pin.screenshotDataUrl) ||
-      Boolean(pin.remoteMarkId && pin.pendingSyncOps?.length)
+      !pin.localHiddenAt &&
+      ((!pin.remoteMarkId && isUuidLike(pin.spaceId)) ||
+        Boolean(pin.remoteMarkId && pin.screenshotDataUrl) ||
+        Boolean(pin.remoteMarkId && pin.pendingSyncOps?.length))
   )
   let synced = 0
   let failed = 0

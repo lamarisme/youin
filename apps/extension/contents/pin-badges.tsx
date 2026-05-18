@@ -14,6 +14,7 @@ import {
   EVENT_REVIEW_PAUSE
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
+import { computePinHealth, type PinHealth } from "../lib/pin-health"
 import {
   getActiveSpaceId,
   getPinsForPage,
@@ -44,51 +45,52 @@ const HIT = 44
 
 type BadgeItem = {
   pin: Pin
-  n: number
+  stackOrder: number
   left: number
   top: number
   attached: boolean
+  health: PinHealth
+  healthLabel: string
 }
 
 function sortPinsForDisplay(pins: Pin[]): Pin[] {
   return pins.slice().sort((a, b) => a.createdAt - b.createdAt)
 }
 
-function pinNumberMap(pins: Pin[]): Map<string, number> {
+function pinStackOrderMap(pins: Pin[]): Map<string, number> {
   const sorted = sortPinsForDisplay(pins)
   const m = new Map<string, number>()
   sorted.forEach((p, i) => m.set(p.id, i + 1))
   return m
 }
 
-function annotationLabel(pin: Pin, n: number): string {
+function annotationLabel(pin: Pin, healthLabel: string): string {
   const t = pin.title.trim() || "Annotation"
-  const short = t.length > 72 ? `${t.slice(0, 69)}…` : t
-  return `Open feedback ${n}: ${short}`
+  const short = t.length > 72 ? `${t.slice(0, 69)}...` : t
+  return `Open feedback: ${short}. ${healthLabel}.`
 }
 
-function computeLayout(pins: Pin[], nums: Map<string, number>): BadgeItem[] {
+function computeLayout(
+  pins: Pin[],
+  stackOrders: Map<string, number>
+): BadgeItem[] {
   const out: BadgeItem[] = []
   for (const pin of pins) {
     try {
-      const el = document.querySelector(pin.selector)
-      const r = el
-        ? el.getBoundingClientRect()
-        : new DOMRect(
-            pin.bbox.x - window.scrollX,
-            pin.bbox.y - window.scrollY,
-            pin.bbox.width,
-            pin.bbox.height
-          )
+      const health = computePinHealth(pin)
+      const r = health.rect
+      if (!r) continue
       if (r.width < 1 && r.height < 1) continue
-      const n = nums.get(pin.id) ?? 0
-      if (!n) continue
+      const stackOrder = stackOrders.get(pin.id) ?? 0
+      if (!stackOrder) continue
       out.push({
         pin,
-        n,
+        stackOrder,
         left: Math.round(r.right - HIT),
         top: Math.round(Math.max(4, r.top - 8)),
-        attached: Boolean(el)
+        attached: health.attached,
+        health: health.health,
+        healthLabel: health.label
       })
     } catch {
       continue
@@ -113,8 +115,8 @@ const PinBadges = () => {
     const spaceId = await getActiveSpaceId()
     const pins = await getPinsForPage(spaceId, location.href)
     const openPins = pins.filter((p) => p.status !== "closed")
-    const nums = pinNumberMap(openPins)
-    setItems(computeLayout(openPins, nums))
+    const stackOrders = pinStackOrderMap(openPins)
+    setItems(computeLayout(openPins, stackOrders))
   }, [])
 
   const scheduleViewportRefresh = useCallback(() => {
@@ -166,37 +168,48 @@ const PinBadges = () => {
     <div
       className="pointer-events-none fixed inset-0"
       style={{ zIndex: Z_BADGES }}>
-      {items.map(({ pin, n, left, top, attached }) => (
-        <button
-          key={pin.id}
-          type="button"
-          aria-label={`${annotationLabel(pin, n)}${attached ? "" : " (approximate position)"}`}
-          title={`${annotationLabel(pin, n)}${attached ? "" : " (approximate position)"}`}
-          className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
-          style={{
-            left,
-            top,
-            width: HIT,
-            height: HIT,
-            zIndex: Z_BADGES + n
-          }}
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
-            window.dispatchEvent(
-              new CustomEvent(EVENT_REVIEW_OPEN_PIN, {
-                detail: { pinId: pin.id, attached }
-              })
-            )
-          }}>
-          <span
-            className="flex h-6 min-w-6 select-none items-center justify-center rounded-full bg-[color:var(--yi-mark)] px-1.5 font-mono text-[10px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.55),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none"
-            aria-hidden>
-            {n}
-          </span>
-        </button>
-      ))}
+      {items.map(
+        ({ pin, stackOrder, left, top, attached, health, healthLabel }) => (
+          <button
+            key={pin.id}
+            type="button"
+            aria-label={annotationLabel(pin, healthLabel)}
+            title={annotationLabel(pin, healthLabel)}
+            className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+            style={{
+              left,
+              top,
+              width: HIT,
+              height: HIT,
+              zIndex: Z_BADGES + stackOrder
+            }}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
+              window.dispatchEvent(
+                new CustomEvent(EVENT_REVIEW_OPEN_PIN, {
+                  detail: { pinId: pin.id, attached }
+                })
+              )
+            }}>
+            <span
+              className={`relative flex h-6 w-6 select-none items-center justify-center rounded-full shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.55),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${
+                health === "attached"
+                  ? "bg-[color:var(--yi-mark)]"
+                  : health === "approximate"
+                    ? "bg-[color:var(--yi-warn)]"
+                    : health === "stale"
+                      ? "bg-[color:var(--yi-ink-3)]"
+                      : "bg-[color:var(--yi-info)]"
+              }`}
+              aria-hidden>
+              <span className="h-2 w-2 rounded-full bg-[color:var(--yi-paper)]" />
+              <span className="absolute inset-[-4px] rounded-full border border-current opacity-40" />
+            </span>
+          </button>
+        )
+      )}
     </div>
   )
 }

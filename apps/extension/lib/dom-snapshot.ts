@@ -180,6 +180,8 @@ function sanitizeClone(root: Element): Element {
         element.setAttribute("placeholder", "[redacted]")
       }
     } else if (element instanceof HTMLTextAreaElement) {
+      element.removeAttribute("value")
+      element.setAttribute("placeholder", "[redacted]")
       element.textContent = "[redacted]"
     } else if (element instanceof HTMLSelectElement) {
       element.removeAttribute("value")

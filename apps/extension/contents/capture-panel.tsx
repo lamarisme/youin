@@ -10,8 +10,9 @@ import {
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { normalizePageUrlForMatch } from "../lib/page-url"
+import { computePinHealth } from "../lib/pin-health"
 import {
-  addPin,
+  addPinWithFallback,
   appendThreadComment,
   enqueuePinSyncOp,
   getActiveProjectId,
@@ -28,7 +29,9 @@ import {
   makePinId,
   markPinSyncFailure,
   patchPin,
+  removePin,
   removePinSyncOp,
+  restorePin,
   setActiveProjectId,
   setActiveSpaceId,
   STORAGE_LIMITS,
@@ -41,6 +44,7 @@ import {
 import { WEB_APP_URL } from "../lib/supabase"
 import {
   pushPinCommentToWorkspace,
+  pushPinEditToWorkspace,
   pushPinStatusToWorkspace,
   pushPinToWorkspace
 } from "../lib/sync"
@@ -60,6 +64,10 @@ export const getStyle: PlasmoGetStyle = () => {
 const Z_PANEL = EXTENSION_LAYER.panel
 
 type PanelMode = "create" | "thread"
+
+type UndoAction =
+  | { kind: "created"; pin: Pin; message: string }
+  | { kind: "deleted"; pin: Pin; message: string }
 
 function truncateMiddle(s: string, max: number): string {
   if (s.length <= max) return s
@@ -92,12 +100,6 @@ function titleFromBody(body: string): string {
   return firstLine.length > 96 ? `${firstLine.slice(0, 93)}...` : firstLine
 }
 
-function annotationNumber(pin: Pin, pagePins: Pin[]): number {
-  const sorted = pagePins.slice().sort((a, b) => a.createdAt - b.createdAt)
-  const ix = sorted.findIndex((p) => p.id === pin.id)
-  return ix >= 0 ? ix + 1 : 0
-}
-
 function buildPinFromCapture(
   detail: ReviewCaptureDetail,
   spaceId: string,
@@ -122,10 +124,12 @@ function buildPinFromCapture(
     id: makePinId(),
     spaceId,
     url: href,
+    pageTitle: detail.pageTitle,
     origin,
     pathname,
     selector: detail.selector,
     strategy: detail.strategy,
+    captureKind: detail.captureKind ?? "element",
     bbox: detail.bbox,
     viewport: detail.viewport,
     title: titleFromBody(body).slice(0, STORAGE_LIMITS.pinTitle),
@@ -165,6 +169,76 @@ const selectCls =
 const headerCloseBtn =
   "flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
+function CommentComposer({
+  id,
+  label,
+  value,
+  placeholder,
+  rows,
+  invalid,
+  disabled,
+  submitHint = "Cmd/Ctrl Enter to send",
+  onChange,
+  onSubmit
+}: {
+  id: string
+  label: string
+  value: string
+  placeholder: string
+  rows: number
+  invalid?: boolean
+  disabled?: boolean
+  submitHint?: string
+  onChange: (value: string) => void
+  onSubmit?: () => void
+}) {
+  const trimmed = value.trim()
+  const remaining = STORAGE_LIMITS.threadBody - value.length
+  const showCount = remaining <= 400
+
+  return (
+    <label className="block" htmlFor={id}>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-label)]">
+          {label}
+        </span>
+        <span
+          className={`text-[10px] ${
+            showCount
+              ? remaining < 0
+                ? "text-[color:var(--yi-ext-danger-text)]"
+                : "text-[color:var(--yi-ext-text-muted)]"
+              : "text-[color:var(--yi-ext-text-placeholder)]"
+          }`}>
+          {showCount ? `${Math.max(0, remaining)} left` : submitHint}
+        </span>
+      </div>
+      <textarea
+        id={id}
+        value={value}
+        rows={rows}
+        maxLength={STORAGE_LIMITS.threadBody}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (!(e.metaKey || e.ctrlKey) || e.key !== "Enter") return
+          if (!trimmed || disabled || !onSubmit) return
+          e.preventDefault()
+          onSubmit()
+        }}
+        placeholder={placeholder}
+        aria-invalid={invalid ? true : undefined}
+        className="youin-input box-border min-h-[var(--composer-min-h,7rem)] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)] disabled:cursor-not-allowed disabled:opacity-60"
+        style={
+          {
+            "--composer-min-h": rows <= 3 ? "4.5rem" : "7rem"
+          } as React.CSSProperties
+        }
+      />
+    </label>
+  )
+}
+
 const CapturePanel = () => {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<PanelMode>("create")
@@ -178,6 +252,10 @@ const CapturePanel = () => {
   const [body, setBody] = useState("")
   const [priority, setPriority] = useState<PinPriority>("medium")
   const [replyDraft, setReplyDraft] = useState("")
+  const [editing, setEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState("")
+  const [editBody, setEditBody] = useState("")
+  const [undoAction, setUndoAction] = useState<UndoAction | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [fullImage, setFullImage] = useState<{
@@ -270,6 +348,9 @@ const CapturePanel = () => {
     setBody("")
     setPriority("medium")
     setReplyDraft("")
+    setEditing(false)
+    setEditTitle("")
+    setEditBody("")
     setSaveError(null)
     setFullImage(null)
     setPagePins([])
@@ -302,6 +383,8 @@ const CapturePanel = () => {
         const pin = pins.find((p) => p.id === pinId)
         if (!pin) return
         setViewingPin(pin)
+        setEditTitle(pin.title)
+        setEditBody(pin.thread[0]?.body ?? "")
         setMode("thread")
         setCapture(null)
         setReplyDraft("")
@@ -386,6 +469,13 @@ const CapturePanel = () => {
 
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
+    if (capture.captureKind === "region" && !capture.elementScreenshotDataUrl) {
+      setSaveError(
+        capture.screenshotCaptureError ??
+          "Could not capture that area. Try the screenshot again."
+      )
+      return
+    }
     if (!spaceId) {
       setSaveError("Choose or create a review space first.")
       return
@@ -395,18 +485,31 @@ const CapturePanel = () => {
     try {
       await setActiveSpaceId(spaceId)
       const pin = buildPinFromCapture(capture, spaceId, body.trim(), priority)
-      const ok = await addPin(pin)
-      if (!ok) {
+      const saved = await addPinWithFallback(pin)
+      if (!saved.ok || !saved.pin) {
         setSaveError("Couldn't save. Try again.")
         return
       }
-      const push = await pushPinToWorkspace(pin, {
-        screenshotDataUrl: capture.elementScreenshotDataUrl
+      if (saved.warning) {
+        setSaveError(saved.warning)
+        setBody("")
+      }
+      setUndoAction({
+        kind: "created",
+        pin: saved.pin,
+        message: "Feedback posted."
+      })
+      const push = await pushPinToWorkspace(saved.pin, {
+        screenshotDataUrl: saved.pin.screenshotDataUrl
       })
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
           `Saved locally. ${push.error.endsWith(".") ? push.error : `${push.error}.`} Open the extension popup to retry sync.`
         )
+        scheduleReloadPagePins(capture.url)
+        return
+      }
+      if (saved.warning) {
         scheduleReloadPagePins(capture.url)
         return
       }
@@ -477,7 +580,104 @@ const CapturePanel = () => {
     }
   }
 
-  if (!open) return null
+  const saveEdit = async () => {
+    if (!viewingPin || saving) return
+    const title = editTitle.trim().slice(0, STORAGE_LIMITS.pinTitle)
+    const openingBody = editBody.trim().slice(0, STORAGE_LIMITS.threadBody)
+    if (!title || !openingBody) {
+      setSaveError("Title and opening feedback are required.")
+      return
+    }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const thread = viewingPin.thread.length
+        ? [
+            { ...viewingPin.thread[0], body: openingBody },
+            ...viewingPin.thread.slice(1)
+          ]
+        : [
+            {
+              id: makeThreadMessageId(),
+              body: openingBody,
+              createdAt: Date.now(),
+              authorLabel: "You"
+            }
+          ]
+      await patchPin(viewingPin.id, { title, thread, updatedAt: Date.now() })
+      const op = viewingPin.remoteMarkId
+        ? await enqueuePinSyncOp(viewingPin.id, {
+            type: "edit",
+            title,
+            openingBody
+          })
+        : undefined
+      const synced = await pushPinEditToWorkspace(viewingPin, {
+        title,
+        openingBody
+      })
+      if ((synced.ok || synced.skipped) && op) {
+        await removePinSyncOp(viewingPin.id, op.id)
+      }
+      if (!synced.skipped && !synced.ok && synced.error) {
+        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
+        setSaveError(
+          `Edit saved locally. ${synced.error} Open the extension popup to retry sync.`
+        )
+      }
+      setEditing(false)
+      await reloadPin(viewingPin.id)
+      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deletePin = async () => {
+    if (!viewingPin || saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const removed = await removePin(viewingPin.id)
+      if (!removed) {
+        setSaveError("Could not delete feedback.")
+        return
+      }
+      setUndoAction({
+        kind: "deleted",
+        pin: removed,
+        message: "Feedback deleted."
+      })
+      setViewingPin(null)
+      setOpen(false)
+      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return undoAction ? (
+      <div
+        role="status"
+        className="pointer-events-auto fixed bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-panel)] px-3 py-2 font-sans text-[12px] text-[color:var(--yi-ext-text-muted)] shadow-[var(--yi-ext-shadow-panel)] ring-1 ring-[color:var(--yi-ext-border-hairline)]"
+        style={{ zIndex: Z_PANEL }}>
+        {undoAction.message}
+        <button
+          type="button"
+          className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
+          onClick={() => {
+            void (undoAction.kind === "created"
+              ? removePin(undoAction.pin.id)
+              : restorePin(undoAction.pin))
+            setUndoAction(null)
+          }}>
+          Undo
+        </button>
+      </div>
+    ) : null
+  }
 
   const projectSpaces = spaces.filter((space) => space.projectId === projectId)
   const selectProject = (id: string) => {
@@ -493,6 +693,7 @@ const CapturePanel = () => {
 
   if (mode === "create" && capture) {
     const selectorPreview = truncateMiddle(capture.selector, 56)
+    const isRegionCapture = capture.captureKind === "region"
     return (
       <>
         <div
@@ -516,7 +717,9 @@ const CapturePanel = () => {
               <p
                 id="capture-panel-desc"
                 className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                This comment will stay attached to the selected element.
+                {isRegionCapture
+                  ? "This comment will stay attached to the selected area."
+                  : "This comment will stay attached to the selected element."}
               </p>
             </div>
             <button
@@ -539,12 +742,18 @@ const CapturePanel = () => {
                     onClick={() =>
                       setFullImage({
                         src: capture.elementScreenshotDataUrl!,
-                        alt: "Captured element screenshot"
+                        alt: isRegionCapture
+                          ? "Captured area screenshot"
+                          : "Captured element screenshot"
                       })
                     }>
                     <img
                       src={capture.elementScreenshotDataUrl}
-                      alt="Captured element screenshot"
+                      alt={
+                        isRegionCapture
+                          ? "Captured area screenshot"
+                          : "Captured element screenshot"
+                      }
                       className="max-h-44 w-full object-contain object-top"
                     />
                   </button>
@@ -555,7 +764,9 @@ const CapturePanel = () => {
                       onClick={() =>
                         setFullImage({
                           src: capture.elementScreenshotDataUrl!,
-                          alt: "Captured element screenshot"
+                          alt: isRegionCapture
+                            ? "Captured area screenshot"
+                            : "Captured element screenshot"
                         })
                       }>
                       View full
@@ -563,24 +774,25 @@ const CapturePanel = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-center text-[11px] text-[color:var(--yi-ext-text-dim)]">
-                  No screenshot available for this element.
+                <p
+                  role={capture.screenshotCaptureError ? "alert" : undefined}
+                  className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5 text-[12px] leading-snug text-[color:var(--yi-ext-danger-text)]">
+                  {capture.screenshotCaptureError ??
+                    "No screenshot available for this capture."}
                 </p>
               )}
 
-              <label className="block" htmlFor="capture-body">
-                <span className={fieldLabel}>Feedback</span>
-                <textarea
-                  id="capture-body"
-                  value={body}
-                  maxLength={STORAGE_LIMITS.threadBody}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder="What should change?"
-                  rows={5}
-                  aria-invalid={saveError ? true : undefined}
-                  className="youin-input box-border min-h-[7rem] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)]"
-                />
-              </label>
+              <CommentComposer
+                id="capture-body"
+                label="Feedback"
+                value={body}
+                rows={5}
+                disabled={saving}
+                invalid={Boolean(saveError)}
+                placeholder="What should change?"
+                onChange={setBody}
+                onSubmit={() => void handleSave()}
+              />
 
               <details className="group rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)]">
                 <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
@@ -648,7 +860,7 @@ const CapturePanel = () => {
                   <p
                     title={capture.selector}
                     className="font-mono text-[10px] leading-snug text-[color:var(--yi-ext-text-placeholder)] [overflow-wrap:anywhere]">
-                    Element: {selectorPreview}
+                    {isRegionCapture ? "Area" : "Element"}: {selectorPreview}
                   </p>
                 </div>
               </details>
@@ -691,14 +903,7 @@ const CapturePanel = () => {
   }
 
   if (mode === "thread" && viewingPin) {
-    const n = annotationNumber(viewingPin, pagePins)
-    const selectorAttached = (() => {
-      try {
-        return Boolean(document.querySelector(viewingPin.selector))
-      } catch {
-        return false
-      }
-    })()
+    const health = computePinHealth(viewingPin)
     const threads = viewingPin.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -720,7 +925,7 @@ const CapturePanel = () => {
                 <h2
                   id="thread-panel-title"
                   className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-                  Feedback {n > 0 ? `#${n}` : ""}
+                  Feedback thread
                 </h2>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -739,9 +944,12 @@ const CapturePanel = () => {
                     Sync failed
                   </span>
                 ) : null}
+                <span className="rounded-full bg-[color:var(--yi-ext-surface-stat)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-text-muted)]">
+                  {health.label}
+                </span>
               </div>
               <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                Reply or resolve without leaving the page.
+                {health.description}
               </p>
             </div>
             <button
@@ -755,13 +963,57 @@ const CapturePanel = () => {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-6 pt-4 [scrollbar-gutter:stable]">
             <div className="px-3">
-              <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
-                {opener?.body ?? viewingPin.title}
-              </div>
-              {!selectorAttached ? (
+              {editing ? (
+                <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] p-3">
+                  <label className="block">
+                    <span className={fieldLabel}>Title</span>
+                    <input
+                      value={editTitle}
+                      maxLength={STORAGE_LIMITS.pinTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="youin-input box-border min-h-10 w-full rounded-[var(--yi-radius-lg)] px-3 text-[13px] text-[color:var(--yi-ext-text)]"
+                    />
+                  </label>
+                  <div className="mt-3">
+                    <CommentComposer
+                      id="thread-edit-opening"
+                      label="Opening feedback"
+                      value={editBody}
+                      rows={4}
+                      disabled={saving}
+                      placeholder="What should change?"
+                      onChange={setEditBody}
+                      onSubmit={() => void saveEdit()}
+                    />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className={btnGhost}
+                      onClick={() => {
+                        setEditing(false)
+                        setEditTitle(viewingPin.title)
+                        setEditBody(opener?.body ?? "")
+                      }}>
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || !editTitle.trim() || !editBody.trim()}
+                      className={btnPrimary}
+                      onClick={() => void saveEdit()}>
+                      Save edit
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
+                  {opener?.body ?? viewingPin.title}
+                </div>
+              )}
+              {health.health !== "attached" ? (
                 <p className="mt-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                  The original element moved. The badge is using the saved page
-                  position until the selector can attach again.
+                  {health.description}
                 </p>
               ) : null}
               {viewingPin.syncState === "failed" && viewingPin.syncError ? (
@@ -770,9 +1022,19 @@ const CapturePanel = () => {
                 </p>
               ) : null}
               {opener ? (
-                <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
-                  {opener.authorLabel} · {formatShortDate(opener.createdAt)}
-                </p>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
+                  <p>
+                    {opener.authorLabel} · {formatShortDate(opener.createdAt)}
+                  </p>
+                  {!editing ? (
+                    <button
+                      type="button"
+                      className="rounded-md px-2 py-1 font-semibold text-[color:var(--yi-ext-link)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+                      onClick={() => setEditing(true)}>
+                      Edit
+                    </button>
+                  ) : null}
+                </div>
               ) : (
                 <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
                   {formatShortDate(viewingPin.createdAt)}
@@ -833,18 +1095,18 @@ const CapturePanel = () => {
                 </ul>
               ) : null}
 
-              <label className="mt-6 block" htmlFor="thread-reply">
-                <span className={fieldLabel}>Reply</span>
-                <textarea
+              <div className="mt-6">
+                <CommentComposer
                   id="thread-reply"
+                  label="Reply"
                   value={replyDraft}
                   rows={3}
-                  maxLength={STORAGE_LIMITS.threadBody}
-                  onChange={(e) => setReplyDraft(e.target.value)}
+                  disabled={saving}
                   placeholder="Add a reply..."
-                  className="youin-input box-border min-h-[4.5rem] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2 text-[13px] text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)]"
+                  onChange={setReplyDraft}
+                  onSubmit={() => void sendReply()}
                 />
-              </label>
+              </div>
 
               <div className="mt-3 flex justify-end">
                 <button
@@ -890,6 +1152,13 @@ const CapturePanel = () => {
                   className={btnPrimary}
                   onClick={() => void setPinStatus("closed")}>
                   Mark resolved
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-mark-soft)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-mark)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
+                  onClick={() => void deletePin()}>
+                  Delete feedback
                 </button>
                 <button type="button" className={btnGhost} onClick={resume}>
                   Close

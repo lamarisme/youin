@@ -12,6 +12,17 @@ export function buildMarkDescription(pin: Pin): string {
   const selected = pin.domSnapshot?.selectedElement
   const context = pin.domSnapshot?.context
 
+  if (pin.captureKind === "region") {
+    lines.push(
+      `Screenshot region: ${Math.round(pin.bbox.width)}x${Math.round(
+        pin.bbox.height
+      )} at ${Math.round(pin.bbox.x)},${Math.round(pin.bbox.y)}`
+    )
+    if (pin.pageTitle) {
+      lines.push(`Page title: ${pin.pageTitle.slice(0, 280)}`)
+    }
+  }
+
   if (selected?.outerHTML) {
     lines.push(
       "Selected element DOM:\n```html\n" +

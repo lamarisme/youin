@@ -33,6 +33,7 @@
   },
   "manifest": {
     "permissions": [
+      "activeTab",
       "storage",
       "tabs"
     ],

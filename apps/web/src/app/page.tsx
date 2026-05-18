@@ -12,7 +12,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import Link from "next/link";
 
 type LandingNavItem = { href: string; label: string };
-type LoopStep = { num: string; title: string; body: string };
+type LoopStep = { title: string; body: string };
 type Persona = { role: string; detail: string; body: string };
 
 export default async function Home() {
@@ -112,8 +112,10 @@ export default async function Home() {
 
             <div className="annotation-rail space-y-8 lg:ml-4">
               {loopSteps.map((step) => (
-                <div key={step.num} className="grid gap-2 md:grid-cols-[120px_1fr] md:gap-6">
-                  <span className="font-display text-[2rem] font-semibold leading-none text-mark">{step.num}</span>
+                <div key={step.title} className="grid gap-3 md:grid-cols-[120px_1fr] md:gap-6">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-mark-soft text-mark ring-1 ring-mark/20 md:ml-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-mark" />
+                  </span>
                   <div>
                     <h3 className="font-display text-lg font-semibold text-ink">{step.title}</h3>
                     <p className="mt-1 max-w-[52ch] text-[0.8125rem] leading-relaxed text-ink-2">{step.body}</p>

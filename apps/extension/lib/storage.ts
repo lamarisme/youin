@@ -83,6 +83,15 @@ export type PinSyncOperation =
     }
   | {
       id: string
+      type: "edit"
+      title: string
+      openingBody: string
+      createdAt: number
+      attempts: number
+      lastError?: string
+    }
+  | {
+      id: string
       type: "comment"
       body: string
       createdAt: number
@@ -93,10 +102,14 @@ export type PinSyncOperation =
 export interface Pin {
   id: string
   spaceId: string
+  /** Distinguishes attached DOM marks from freeform screenshot rectangles. */
+  captureKind?: "element" | "region"
   /** Set after a successful insert into `marks`; avoids duplicate uploads. */
   remoteMarkId?: string
   /** Canonical normalized page URL for matching. */
   url: string
+  /** Browser tab title at capture time. */
+  pageTitle?: string
   origin: string
   pathname: string
   selector: string
@@ -122,6 +135,8 @@ export interface Pin {
   pendingSyncOps?: PinSyncOperation[]
   /** Last remote mark update applied locally, in epoch milliseconds. */
   remoteUpdatedAt?: number
+  /** Local-only hide used until remote delete exists. */
+  localHiddenAt?: number
   /** @deprecated Prefer thread; migrated on read in {@link getPins}. */
   comment?: string
 }
@@ -163,7 +178,8 @@ export const STORAGE_LIMITS = {
   projectDescription: 240,
   spaceName: 120,
   outerHTMLPreview: 400,
-  domSnapshot: 30000
+  domSnapshot: 30000,
+  screenshotDataUrl: 900000
 } as const
 
 const WIDGET_CORNERS: WidgetCorner[] = [
@@ -236,6 +252,26 @@ function normalizeSyncOps(value: unknown): PinSyncOperation[] {
       const body = row.body.trim().slice(0, STORAGE_LIMITS.threadBody)
       if (body)
         out.push({ id, type: "comment", body, createdAt, attempts, lastError })
+    } else if (row.type === "edit") {
+      const title =
+        typeof row.title === "string"
+          ? row.title.trim().slice(0, STORAGE_LIMITS.pinTitle)
+          : ""
+      const openingBody =
+        typeof row.openingBody === "string"
+          ? row.openingBody.trim().slice(0, STORAGE_LIMITS.threadBody)
+          : ""
+      if (title && openingBody) {
+        out.push({
+          id,
+          type: "edit",
+          title,
+          openingBody,
+          createdAt,
+          attempts,
+          lastError
+        })
+      }
     }
   }
   return out
@@ -362,7 +398,8 @@ function migrateRawPin(raw: unknown): Pin {
     : normalizeMarkPriority(undefined)
   const screenshotDataUrl =
     typeof p.screenshotDataUrl === "string" &&
-    p.screenshotDataUrl.startsWith("data:image/")
+    p.screenshotDataUrl.startsWith("data:image/") &&
+    p.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
       ? p.screenshotDataUrl
       : undefined
   const domSnapshot = normalizeDomSnapshot(p.domSnapshot)
@@ -383,7 +420,12 @@ function migrateRawPin(raw: unknown): Pin {
         ? p.id
         : legacyPinStableId(p, createdAt),
     spaceId: String(p.spaceId ?? ""),
+    captureKind: p.captureKind === "region" ? "region" : "element",
     url,
+    pageTitle:
+      typeof p.pageTitle === "string" && p.pageTitle
+        ? p.pageTitle.slice(0, 280)
+        : undefined,
     origin: String(p.origin ?? ""),
     pathname: String(p.pathname ?? ""),
     selector: String(p.selector ?? ""),
@@ -419,6 +461,10 @@ function migrateRawPin(raw: unknown): Pin {
       typeof p.remoteUpdatedAt === "number" &&
       Number.isFinite(p.remoteUpdatedAt)
         ? p.remoteUpdatedAt
+        : undefined,
+    localHiddenAt:
+      typeof p.localHiddenAt === "number" && Number.isFinite(p.localHiddenAt)
+        ? p.localHiddenAt
         : undefined
   }
   return remoteMarkId ? { ...base, remoteMarkId } : base
@@ -612,10 +658,26 @@ export async function getPins(): Promise<Pin[]> {
 }
 
 export async function addPin(pin: Pin): Promise<boolean> {
-  const pins = await getPins()
-  const sanitized: Pin = {
+  const result = await addPinWithFallback(pin)
+  return result.ok
+}
+
+export interface AddPinResult {
+  ok: boolean
+  pin?: Pin
+  warning?: string
+}
+
+function sanitizePinForStorage(pin: Pin): Pin {
+  const screenshotDataUrl =
+    pin.screenshotDataUrl &&
+    pin.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
+      ? pin.screenshotDataUrl
+      : undefined
+  return {
     ...pin,
     url: normalizePageUrlForMatch(pin.url) || pin.url,
+    pageTitle: pin.pageTitle?.slice(0, 280),
     title: pin.title.slice(0, STORAGE_LIMITS.pinTitle),
     status: normalizeMarkStatus(pin.status),
     priority: normalizeMarkPriority(pin.priority),
@@ -625,16 +687,47 @@ export async function addPin(pin: Pin): Promise<boolean> {
       authorLabel: m.authorLabel.slice(0, 80)
     })),
     domSnapshot: normalizeDomSnapshot(pin.domSnapshot),
+    screenshotDataUrl,
     syncState: pin.remoteMarkId ? "synced" : "pending",
     syncError: undefined,
     pendingSyncOps: normalizeSyncOps(pin.pendingSyncOps),
     outerHTMLPreview: pin.outerHTMLPreview.slice(
       0,
       STORAGE_LIMITS.outerHTMLPreview
-    )
+    ),
+    captureKind: pin.captureKind === "region" ? "region" : "element"
   }
-  const next = [...pins, sanitized]
-  return write(KEY_PINS, serializePinsForStorage(next))
+}
+
+export async function addPinWithFallback(pin: Pin): Promise<AddPinResult> {
+  const pins = await getPins()
+  const sanitized = sanitizePinForStorage(pin)
+  const attempts: Array<{ pin: Pin; warning?: string }> = [
+    { pin: sanitized },
+    {
+      pin: { ...sanitized, domSnapshot: undefined },
+      warning: "Saved without DOM context because local storage was full."
+    },
+    {
+      pin: {
+        ...sanitized,
+        domSnapshot: undefined,
+        screenshotDataUrl: undefined,
+        screenshotUrl: undefined
+      },
+      warning:
+        "Saved as text-only feedback because local screenshot storage was full."
+    }
+  ]
+
+  for (const attempt of attempts) {
+    const ok = await write(
+      KEY_PINS,
+      serializePinsForStorage([...pins, attempt.pin])
+    )
+    if (ok) return { ok: true, pin: attempt.pin, warning: attempt.warning }
+  }
+  return { ok: false }
 }
 
 /** Strip deprecated field on write */
@@ -661,6 +754,9 @@ function serializePinsForStorage(pins: Pin[]): unknown[] {
     if (!rest.remoteUpdatedAt) {
       delete (rest as { remoteUpdatedAt?: number }).remoteUpdatedAt
     }
+    if (!rest.localHiddenAt) {
+      delete (rest as { localHiddenAt?: number }).localHiddenAt
+    }
     return rest
   })
 }
@@ -679,6 +775,29 @@ export async function patchPin(
   if (ix < 0) return false
   const merged = { ...pins[ix], ...patch }
   pins[ix] = merged
+  return savePins(pins)
+}
+
+export async function removePin(pinId: string): Promise<Pin | undefined> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pinId)
+  if (ix < 0) return undefined
+  const pin = pins[ix]
+  if (pin.remoteMarkId) {
+    pins[ix] = { ...pin, localHiddenAt: Date.now(), updatedAt: Date.now() }
+  } else {
+    pins.splice(ix, 1)
+  }
+  const ok = await savePins(pins)
+  return ok ? pin : undefined
+}
+
+export async function restorePin(pin: Pin): Promise<boolean> {
+  const pins = await getPins()
+  const ix = pins.findIndex((p) => p.id === pin.id)
+  const restored = { ...pin, localHiddenAt: undefined, updatedAt: Date.now() }
+  if (ix >= 0) pins[ix] = restored
+  else pins.push(restored)
   return savePins(pins)
 }
 
@@ -724,29 +843,46 @@ function computeSyncState(pin: Pin): PinSyncState {
 
 export async function enqueuePinSyncOp(
   pinId: string,
-  op: { type: "status"; status: PinStatus } | { type: "comment"; body: string }
+  op:
+    | { type: "status"; status: PinStatus }
+    | { type: "comment"; body: string }
+    | { type: "edit"; title: string; openingBody: string }
 ): Promise<PinSyncOperation | undefined> {
   const pins = await getPins()
   const ix = pins.findIndex((p) => p.id === pinId)
   if (ix < 0) return undefined
   const now = Date.now()
-  const nextOp: PinSyncOperation =
-    op.type === "status"
-      ? {
-          id: makeSyncOpId(),
-          type: "status",
-          status: normalizeMarkStatus(op.status),
-          createdAt: now,
-          attempts: 0
-        }
-      : {
-          id: makeSyncOpId(),
-          type: "comment",
-          body: op.body.trim().slice(0, STORAGE_LIMITS.threadBody),
-          createdAt: now,
-          attempts: 0
-        }
+  let nextOp: PinSyncOperation
+  if (op.type === "status") {
+    nextOp = {
+      id: makeSyncOpId(),
+      type: "status",
+      status: normalizeMarkStatus(op.status),
+      createdAt: now,
+      attempts: 0
+    }
+  } else if (op.type === "comment") {
+    nextOp = {
+      id: makeSyncOpId(),
+      type: "comment",
+      body: op.body.trim().slice(0, STORAGE_LIMITS.threadBody),
+      createdAt: now,
+      attempts: 0
+    }
+  } else {
+    nextOp = {
+      id: makeSyncOpId(),
+      type: "edit",
+      title: op.title.trim().slice(0, STORAGE_LIMITS.pinTitle),
+      openingBody: op.openingBody.trim().slice(0, STORAGE_LIMITS.threadBody),
+      createdAt: now,
+      attempts: 0
+    }
+  }
   if (nextOp.type === "comment" && !nextOp.body) return undefined
+  if (nextOp.type === "edit" && (!nextOp.title || !nextOp.openingBody)) {
+    return undefined
+  }
   const pin = pins[ix]
   pins[ix] = {
     ...pin,
@@ -829,6 +965,7 @@ export async function getPinsForPage(
     const urlRaw = typeof p.url === "string" ? p.url : ""
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
     if (String(p.spaceId ?? "") !== spaceId) continue
+    if (typeof p.localHiddenAt === "number") continue
     matching.push(row)
   }
   const out: Pin[] = []

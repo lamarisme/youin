@@ -1,8 +1,4 @@
-import {
-  color,
-  cssVars,
-  fontFamily
-} from "@youin/design-tokens"
+import { color, cssVars, fontFamily } from "@youin/design-tokens"
 import { toPng } from "html-to-image"
 import type { PlasmoCSConfig } from "plasmo"
 
@@ -15,6 +11,7 @@ import {
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
+  EVENT_REVIEW_TOGGLE_DRAWER,
   type ReviewCaptureDetail,
   type ReviewStateDetail
 } from "../lib/events"
@@ -49,18 +46,32 @@ export const config: PlasmoCSConfig = {
 const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
 const Z_TOP = EXTENSION_LAYER.reviewOverlay
+const MIN_REGION_SIZE = 8
 
-type Mode = "inactive" | "active" | "paused"
+type Mode = "inactive" | "active" | "paused" | "region"
 
 let mode: Mode = "inactive"
 let host: HTMLDivElement | null = null
 let highlight: HTMLDivElement | null = null
+let regionDim: HTMLDivElement | null = null
+let regionBox: HTMLDivElement | null = null
 let toolbarNsEl: HTMLElement | null = null
 let toolbarCountEl: HTMLElement | null = null
+let toolbarModeEl: HTMLElement | null = null
 let cursorStyle: HTMLStyleElement | null = null
 let hoverRaf: number | null = null
 let toolbarCleanup: (() => void) | null = null
 let pendingHoverRect: {
+  left: number
+  top: number
+  width: number
+  height: number
+} | null = null
+let regionStart: {
+  x: number
+  y: number
+} | null = null
+let regionRect: {
   left: number
   top: number
   width: number
@@ -148,8 +159,29 @@ function ensureHost() {
       display: none;
       box-shadow: 0 0 0 1px color-mix(in oklch, var(--yi-paper) 78%, transparent);
     }
+    .region-dim {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      pointer-events: none;
+      background: oklch(18.4% 0.018 62 / 0.42);
+    }
+    .region-box {
+      position: fixed;
+      z-index: 1;
+      display: none;
+      box-sizing: border-box;
+      pointer-events: none;
+      border: 1.5px solid var(--yi-mark);
+      background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
+      box-shadow:
+        0 0 0 9999px oklch(18.4% 0.018 62 / 0.42),
+        0 0 0 1px color-mix(in oklch, var(--yi-paper) 82%, transparent);
+    }
     .toolbar {
       position: fixed;
+      z-index: 2;
       bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
@@ -213,6 +245,22 @@ function ensureHost() {
       background: color-mix(in oklch, var(--yi-ink) 10%, transparent);
       color: var(--yi-ink);
     }
+    .toolbar button.drawer {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
+      color: var(--yi-mark);
+      cursor: pointer;
+      font: 700 11px/1 ${fontFamily.sans};
+    }
+    .toolbar button.drawer:hover {
+      background: color-mix(in oklch, var(--yi-mark) 16%, transparent);
+    }
   `
   shadow.append(style)
 
@@ -225,21 +273,36 @@ function ensureHost() {
   toolbar.setAttribute("role", "status")
   toolbar.innerHTML = `
     <span class="dot" aria-hidden="true"></span>
-    <span>Click an element to leave feedback</span>
+    <span data-field="mode">Click an element to leave feedback</span>
     <span class="sep" aria-hidden="true">|</span>
     <span class="muted" data-field="ns"></span>
     <span class="sep" aria-hidden="true">|</span>
     <span class="counts" data-field="counts"></span>
+    <button type="button" class="drawer" aria-label="Show page feedback">List</button>
     <button type="button" class="close" aria-label="Exit inspect mode">✕</button>
   `
   toolbarNsEl = toolbar.querySelector('[data-field="ns"]')
   toolbarCountEl = toolbar.querySelector('[data-field="counts"]')
+  toolbarModeEl = toolbar.querySelector('[data-field="mode"]')
   toolbar.querySelector("button.close")?.addEventListener("click", (e) => {
     e.preventDefault()
     e.stopPropagation()
     deactivate()
   })
+  toolbar.querySelector("button.drawer")?.addEventListener("click", (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
+  })
   shadow.append(toolbar)
+
+  regionDim = document.createElement("div")
+  regionDim.className = "region-dim"
+  shadow.append(regionDim)
+
+  regionBox = document.createElement("div")
+  regionBox.className = "region-box"
+  shadow.append(regionBox)
 
   document.body.append(host)
 }
@@ -249,6 +312,9 @@ function destroyHost() {
   toolbarCleanup = null
   toolbarNsEl = null
   toolbarCountEl = null
+  toolbarModeEl = null
+  regionDim = null
+  regionBox = null
   host?.remove()
   host = null
   highlight = null
@@ -334,6 +400,38 @@ async function captureElementViaTab(
   }
 }
 
+async function captureRegionViaTab(rect: {
+  left: number
+  top: number
+  width: number
+  height: number
+}): Promise<{ dataUrl?: string; error?: string }> {
+  const prevVisibility = host?.style.visibility
+  try {
+    if (host) host.style.visibility = "hidden"
+    await waitNext2Frames()
+
+    const res = (await chrome.runtime.sendMessage({
+      type: TAB_CAPTURE_CROP,
+      rect,
+      viewport: { width: window.innerWidth, height: window.innerHeight }
+    })) as TabCaptureCropResponse | undefined
+
+    if (res?.ok === true && typeof res.dataUrl === "string") {
+      return { dataUrl: res.dataUrl }
+    }
+    return {
+      error: res?.ok === false ? res.error : "Could not capture that area."
+    }
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Could not capture that area."
+    }
+  } finally {
+    if (host) host.style.visibility = prevVisibility ?? ""
+  }
+}
+
 function flushHoverRect() {
   hoverRaf = null
   if (!highlight || !pendingHoverRect) return
@@ -397,6 +495,7 @@ async function captureAndDispatch(target: Element) {
   const detail: ReviewCaptureDetail = {
     selector: result.selector,
     strategy: result.strategy,
+    captureKind: "element",
     bbox: {
       x: Math.round(rect.left + window.scrollX),
       y: Math.round(rect.top + window.scrollY),
@@ -421,6 +520,45 @@ async function captureAndDispatch(target: Element) {
   pause()
 }
 
+async function captureRegionAndDispatch(rect: {
+  left: number
+  top: number
+  width: number
+  height: number
+}) {
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpr: window.devicePixelRatio
+  }
+  let elementScreenshotDataUrl: string | undefined
+  let screenshotCaptureError: string | undefined
+  const captureResult = await captureRegionViaTab(rect)
+  elementScreenshotDataUrl = captureResult.dataUrl
+  screenshotCaptureError = captureResult.error
+
+  const detail: ReviewCaptureDetail = {
+    captureKind: "region",
+    selector: "[screenshot region]",
+    strategy: "path",
+    bbox: {
+      x: Math.round(rect.left + window.scrollX),
+      y: Math.round(rect.top + window.scrollY),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    },
+    viewport,
+    url: location.href,
+    pageTitle: document.title,
+    outerHTML: "",
+    elementScreenshotDataUrl,
+    screenshotCaptureError
+  }
+
+  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
+  pause()
+}
+
 function onClick(e: MouseEvent) {
   const target = e.target as Element | null
   if (!target || isOwnElement(target)) return
@@ -434,6 +572,67 @@ function swallow(e: Event) {
   if (isOwnElement(e.target as Node)) return
   e.preventDefault()
   e.stopImmediatePropagation()
+}
+
+function normalizeRegionRect(
+  start: { x: number; y: number },
+  current: { x: number; y: number }
+) {
+  const left = Math.max(0, Math.min(start.x, current.x))
+  const top = Math.max(0, Math.min(start.y, current.y))
+  const right = Math.min(window.innerWidth, Math.max(start.x, current.x))
+  const bottom = Math.min(window.innerHeight, Math.max(start.y, current.y))
+  return {
+    left,
+    top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bottom - top)
+  }
+}
+
+function paintRegionRect(rect: typeof regionRect) {
+  if (!regionBox) return
+  if (!rect || rect.width < 1 || rect.height < 1) {
+    regionBox.style.display = "none"
+    return
+  }
+  regionBox.style.display = "block"
+  regionBox.style.transform = `translate(${rect.left}px, ${rect.top}px)`
+  regionBox.style.width = `${rect.width}px`
+  regionBox.style.height = `${rect.height}px`
+}
+
+function resetRegionSelection() {
+  regionStart = null
+  regionRect = null
+  paintRegionRect(null)
+}
+
+function onRegionMouseDown(e: MouseEvent) {
+  if (isOwnElement(e.target as Node)) return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  regionStart = { x: e.clientX, y: e.clientY }
+  regionRect = normalizeRegionRect(regionStart, regionStart)
+  paintRegionRect(regionRect)
+}
+
+function onRegionMouseMove(e: MouseEvent) {
+  if (!regionStart) return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  regionRect = normalizeRegionRect(regionStart, { x: e.clientX, y: e.clientY })
+  paintRegionRect(regionRect)
+}
+
+function onRegionMouseUp(e: MouseEvent) {
+  if (!regionStart) return
+  e.preventDefault()
+  e.stopImmediatePropagation()
+  const rect = normalizeRegionRect(regionStart, { x: e.clientX, y: e.clientY })
+  resetRegionSelection()
+  if (rect.width < MIN_REGION_SIZE || rect.height < MIN_REGION_SIZE) return
+  void captureRegionAndDispatch(rect)
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -466,6 +665,25 @@ function detachCaptureListeners() {
   document.removeEventListener("keydown", onKeyDown, true)
 }
 
+function attachRegionListeners() {
+  document.addEventListener("mousedown", onRegionMouseDown, true)
+  document.addEventListener("mousemove", onRegionMouseMove, true)
+  document.addEventListener("mouseup", onRegionMouseUp, true)
+  document.addEventListener("click", swallow, true)
+  document.addEventListener("contextmenu", swallow, true)
+  document.addEventListener("keydown", onKeyDown, true)
+}
+
+function detachRegionListeners() {
+  document.removeEventListener("mousedown", onRegionMouseDown, true)
+  document.removeEventListener("mousemove", onRegionMouseMove, true)
+  document.removeEventListener("mouseup", onRegionMouseUp, true)
+  document.removeEventListener("click", swallow, true)
+  document.removeEventListener("contextmenu", swallow, true)
+  document.removeEventListener("keydown", onKeyDown, true)
+  resetRegionSelection()
+}
+
 function activate() {
   if (mode === "active") return
   if (mode === "paused") {
@@ -477,6 +695,10 @@ function activate() {
     if (isHostDisabled(location.href, settings)) return
     mode = "active"
     ensureHost()
+    if (toolbarModeEl)
+      toolbarModeEl.textContent = "Click an element to leave feedback"
+    if (regionDim) regionDim.style.display = "none"
+    if (regionBox) regionBox.style.display = "none"
     toolbarCleanup?.()
     toolbarCleanup = subscribeToolbarRefresh()
     void refreshToolbarLabels()
@@ -486,19 +708,50 @@ function activate() {
   })()
 }
 
+function activateRegion() {
+  if (mode === "region") return
+  if (mode === "active") detachCaptureListeners()
+  if (mode === "paused") {
+    mode = "inactive"
+  }
+  void (async () => {
+    const settings = await getWidgetSettings()
+    if (isHostDisabled(location.href, settings)) return
+    mode = "region"
+    ensureHost()
+    if (host) host.style.display = ""
+    if (highlight) highlight.style.display = "none"
+    if (regionDim) regionDim.style.display = "block"
+    if (toolbarModeEl) toolbarModeEl.textContent = "Drag to capture an area"
+    toolbarCleanup?.()
+    toolbarCleanup = subscribeToolbarRefresh()
+    void refreshToolbarLabels()
+    applyCursorOverride()
+    attachRegionListeners()
+    emitState()
+  })()
+}
+
 function pause() {
-  if (mode !== "active") return
+  if (mode !== "active" && mode !== "region") return
   mode = "paused"
   detachCaptureListeners()
+  detachRegionListeners()
   removeCursorOverride()
   if (host) host.style.display = "none"
   if (highlight) highlight.style.display = "none"
+  if (regionDim) regionDim.style.display = "none"
+  if (regionBox) regionBox.style.display = "none"
 }
 
 function resume() {
   if (mode !== "paused") return
   mode = "active"
   if (host) host.style.display = ""
+  if (regionDim) regionDim.style.display = "none"
+  if (regionBox) regionBox.style.display = "none"
+  if (toolbarModeEl)
+    toolbarModeEl.textContent = "Click an element to leave feedback"
   void refreshToolbarLabels()
   applyCursorOverride()
   attachCaptureListeners()
@@ -508,6 +761,7 @@ function deactivate() {
   if (mode === "inactive") return
   mode = "inactive"
   detachCaptureListeners()
+  detachRegionListeners()
   removeCursorOverride()
   destroyHost()
   emitState()
@@ -538,6 +792,11 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
   const t = (msg as { type?: string }).type
   if (t === "youin:start-inspect") {
     activate()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:start-screenshot") {
+    activateRegion()
     sendResponse({ ok: true })
     return true
   }

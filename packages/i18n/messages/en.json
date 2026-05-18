@@ -156,17 +156,14 @@
       "title": "Linear-style work, mapped onto the product.",
       "steps": [
         {
-          "num": "01",
           "title": "Turn any element into a task",
           "body": "Click a button, card, modal, table row, or empty state. YouIn captures the URL, selector, viewport, browser, and screenshot automatically."
         },
         {
-          "num": "02",
           "title": "Keep the anchor alive",
           "body": "Tasks stay tied to the interface with selector, viewport, and screenshot fallbacks, so deployment drift does not turn feedback into guesswork."
         },
         {
-          "num": "03",
           "title": "Sync with your dev workflow",
           "body": "Push ready work into Linear or Jira. Developers get the task, the visual context, and the discussion thread without translating from a screenshot."
         }

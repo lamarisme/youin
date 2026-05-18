@@ -16,4 +16,8 @@ Privacy controls live in the popup settings:
 - DOM context capture can be disabled.
 - The extension can be disabled per domain.
 
+Current limitation: review UI runs in the top frame only. Same-origin iframe,
+cross-origin iframe, and Shadow DOM targeting need a separate selector and
+positioning pass after the core health/drawer/edit flows stabilize.
+
 Do not commit `apps/extension/.env`. Keep `apps/extension/.env.example` as the documented shape for local setup.

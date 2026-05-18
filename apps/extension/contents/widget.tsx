@@ -7,6 +7,7 @@ import {
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
+  EVENT_REVIEW_TOGGLE_DRAWER,
   type ReviewStateDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
@@ -138,7 +139,8 @@ function Widget() {
     }
   }, [refreshCount, refreshSettings])
 
-  if (!settings.fabVisible || isHostDisabled(location.href, settings)) return null
+  if (!settings.fabVisible || isHostDisabled(location.href, settings))
+    return null
 
   const label = active ? "Exit review" : "Review"
   const ariaLabel = active
@@ -151,33 +153,42 @@ function Widget() {
     <div
       className={`pointer-events-none fixed ${cornerClass(settings.corner)}`}
       style={{ zIndex: Z_WIDGET }}>
-      <button
-        type="button"
-        aria-pressed={active}
-        aria-label={ariaLabel}
-        className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[color:var(--yi-paper)] px-3.5 py-2 font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,box-shadow,transform] duration-150 [font-feature-settings:'ss01','cv11','tnum'] [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
-        onClick={() => {
-          window.dispatchEvent(
-            new CustomEvent(active ? EVENT_REVIEW_EXIT : EVENT_REVIEW_START)
-          )
-        }}>
-        <span
-          className={`size-2 rounded-full ${
-            active
-              ? "bg-[color:var(--yi-mark)]"
-              : "bg-[color:var(--yi-ext-text-placeholder)]"
-          }`}
-          aria-hidden
-        />
-        <span>{label}</span>
-        {openCount > 0 ? (
+      <div className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[color:var(--yi-paper)] px-3.5 py-2 font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] [font-feature-settings:'ss01','cv11','tnum']">
+        <button
+          type="button"
+          aria-pressed={active}
+          aria-label={ariaLabel}
+          className="inline-flex min-h-7 items-center gap-2 rounded-full border-0 bg-transparent p-0 text-[12px] font-semibold text-[color:var(--yi-ink)] outline-none transition-[background-color,box-shadow,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+          onClick={() => {
+            window.dispatchEvent(
+              new CustomEvent(active ? EVENT_REVIEW_EXIT : EVENT_REVIEW_START)
+            )
+          }}>
           <span
+            className={`size-2 rounded-full ${
+              active
+                ? "bg-[color:var(--yi-mark)]"
+                : "bg-[color:var(--yi-ext-text-placeholder)]"
+            }`}
+            aria-hidden
+          />
+          <span>{label}</span>
+        </button>
+        {openCount > 0 ? (
+          <button
+            type="button"
             aria-label={`${openCount} open feedback item${openCount === 1 ? "" : "s"}`}
-            className="rounded-full bg-[color:var(--yi-mark-soft)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)]">
+            title="Show page feedback"
+            className="-my-1 rounded-full border-0 bg-[color:var(--yi-mark-soft)] px-1.5 py-1 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)]"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
+            }}>
             {openCount}
-          </span>
+          </button>
         ) : null}
-      </button>
+      </div>
     </div>
   )
 }
