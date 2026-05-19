@@ -4,8 +4,8 @@ import { History } from "lucide-react";
 
 import { Surface } from "@/components/surface";
 import type { MarkEvent, TeamMember } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
 import { formatDateTime, formatRelative } from "@/lib/dates";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { formatMarkEvent } from "./format-mark-event";
@@ -16,7 +16,7 @@ interface MarkHistoryProps {
 }
 
 export function MarkHistory({ events, membersById }: MarkHistoryProps) {
-  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
+  const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   return (
     <div>
       <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">

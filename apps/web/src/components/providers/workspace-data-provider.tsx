@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useLayoutEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
-import { useCollabStore } from "@/lib/collab-store";
 import { useWorkspaceQuery } from "@/lib/queries/use-workspace";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
@@ -18,19 +16,8 @@ export function WorkspaceDataProvider({
   children: React.ReactNode;
 }) {
   const t = useTranslations("workspace.bootstrap");
-  const hydrate = useCollabStore((s) => s.hydrate);
-  const { data, isPending, isError, error, refetch, isFetching } = useWorkspaceQuery(bootstrap);
-
-  /** Prime the client store from SSR bootstrap before paint so the shell isn’t empty for a frame. */
-  useLayoutEffect(() => {
-    hydrate(bootstrap);
-  }, [bootstrap, hydrate]);
-
-  useEffect(() => {
-    if (data) {
-      hydrate(data);
-    }
-  }, [data, hydrate]);
+  const { isPending, isError, error, refetch, isFetching } =
+    useWorkspaceQuery(bootstrap);
 
   if (isPending) {
     return <WorkspaceMainSkeleton id={t("loadingAria")} />;

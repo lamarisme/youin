@@ -5,14 +5,14 @@ import { useSearchParams } from "next/navigation";
 
 import { findPinByMarkRouteParam } from "@/lib/workspace/mark-display-id";
 import { dashboardHref } from "@/lib/workspace/routes";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import { MarkDetailView } from "./mark-detail-view";
 import { TriageView } from "./triage-view";
 import { PageContainer } from "@/components/page-container";
 
 export function WorkspaceDashboard({ markParam = null }: { markParam?: string | null }) {
-  const pins = useCollabStore((s) => s.workspace.pins);
+  const pins = useWorkspaceData((s) => s.workspace.pins);
   const searchParams = useSearchParams();
 
   const selectedPin = useMemo(() => {

@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import type { PinPriority, PinStatus, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import type {
   AssigneeFilter,
@@ -42,7 +42,7 @@ interface MarkFiltersProps {
 }
 
 export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFiltersProps) {
-  const viewerId = useCollabStore((s) => s.userId);
+  const viewerId = useWorkspaceData((s) => s.userId);
   const [showMore, setShowMore] = useState(false);
   const [queryDraft, setQueryDraft] = useState(filters.q);
   const [lastSyncedQ, setLastSyncedQ] = useState(filters.q);

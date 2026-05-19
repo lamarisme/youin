@@ -6,7 +6,7 @@
   Public tables, enums, indexes, and foreign keys live in Drizzle (`src/db/schema.ts`)
   as the single source of truth. This script adds:
 
-    • mark sequence trigger
+    • cleanup for older setup-owned mark sequence trigger
     • optional mark_event_type enum toppings (harmless no-ops when already present)
     • project/space hierarchy RLS
     • profiles ↔ auth.users FK + signup trigger + RLS policies + storage
@@ -15,44 +15,12 @@
   Safe to re-run.
 */
 
--- ── 1. Marks sequence trigger (needs `marks` / `spaces` from Drizzle) ────────
-CREATE OR REPLACE FUNCTION public.marks_assign_sequence()
-RETURNS trigger
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  next_n integer;
-BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE spaces
-    SET next_mark_seq = next_mark_seq + 1
-    WHERE id = NEW.space_id
-    RETURNING next_mark_seq INTO next_n;
-    IF next_n IS NULL THEN
-      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
-    END IF;
-    NEW.seq := next_n;
-    RETURN NEW;
-  ELSIF TG_OP = 'UPDATE' AND OLD.space_id IS DISTINCT FROM NEW.space_id THEN
-    UPDATE spaces
-    SET next_mark_seq = next_mark_seq + 1
-    WHERE id = NEW.space_id
-    RETURNING next_mark_seq INTO next_n;
-    IF next_n IS NULL THEN
-      RAISE EXCEPTION 'space % not found for mark', NEW.space_id;
-    END IF;
-    NEW.seq := next_n;
-    RETURN NEW;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS marks_assign_sequence_trg ON marks;
-CREATE TRIGGER marks_assign_sequence_trg
-  BEFORE INSERT OR UPDATE OF space_id ON marks
-  FOR EACH ROW
-  EXECUTE FUNCTION public.marks_assign_sequence();
+-- ── 1. Marks sequence trigger ownership ──────────────────────────────────────
+-- Drizzle migration 0002 owns mark sequencing via public.set_mark_seq and the
+-- marks_set_seq trigger. Older versions of this setup file created a second
+-- trigger, which double-incremented sequence numbers when both were installed.
+DROP TRIGGER IF EXISTS marks_assign_sequence_trg ON public.marks;
+DROP FUNCTION IF EXISTS public.marks_assign_sequence();
 
 -- ── 2. Migration 0004-style enum toppings (idempotent) ──────────────────────
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';

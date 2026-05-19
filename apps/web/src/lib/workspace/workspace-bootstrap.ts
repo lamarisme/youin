@@ -1,4 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { eq, sql } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import { profiles, workspaceMembers } from "@/db/schema";
 
 /**
  * Upsert profile row for authenticated user so RLS and member lists have email / display name.
@@ -6,15 +10,24 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 export async function syncProfileFromUser(supabase: SupabaseClient, user: User): Promise<void> {
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const fromMeta = typeof meta.full_name === "string" ? meta.full_name.trim() : "";
-  await supabase.from("profiles").upsert(
-    {
+  void supabase;
+  const db = getDb();
+  await db
+    .insert(profiles)
+    .values({
       id: user.id,
       email: user.email ?? "",
-      full_name: fromMeta || user.email?.split("@")[0] || "Member",
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
+      fullName: fromMeta || user.email?.split("@")[0] || "Member",
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: profiles.id,
+      set: {
+        email: user.email ?? "",
+        fullName: sql`COALESCE(NULLIF(TRIM(${profiles.fullName}), ''), excluded.full_name)`,
+        updatedAt: new Date(),
+      },
+    });
 }
 
 /**
@@ -32,15 +45,15 @@ export async function syncProfileFromUser(supabase: SupabaseClient, user: User):
  */
 export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: User): Promise<string> {
   await syncProfileFromUser(supabase, user);
+  const db = getDb();
 
-  const { data: existing } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+  const [existing] = await db
+    .select({ workspaceId: workspaceMembers.workspaceId })
+    .from(workspaceMembers)
+    .where(eq(workspaceMembers.userId, user.id))
+    .limit(1);
 
-  if (existing?.workspace_id) return existing.workspace_id as string;
+  if (existing?.workspaceId) return existing.workspaceId;
 
   const { data: invitedWid, error: attachErr } = await supabase.rpc("attach_user_via_invite");
   if (attachErr) throw attachErr;

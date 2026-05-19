@@ -1,19 +1,22 @@
 "use server";
 
-import { requireSession } from "./session";
+import { and, eq } from "drizzle-orm";
+
+import { marks } from "@/db/schema";
+
+import { requireWorkspaceContext } from "./session";
 
 export async function getMarkUploadUrlAction(
   pinId: string,
   fileExtRaw: string,
 ): Promise<{ path: string; token: string; signedUrl: string }> {
-  const { supabase, workspaceId } = await requireSession();
-  const { data: mark, error } = await supabase
-    .from("marks")
-    .select("id")
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId)
-    .single();
-  if (error || !mark) throw error ?? new Error("Mark not found.");
+  const { db, supabase, workspaceId } = await requireWorkspaceContext();
+  const [mark] = await db
+    .select({ id: marks.id })
+    .from(marks)
+    .where(and(eq(marks.id, pinId), eq(marks.workspaceId, workspaceId)))
+    .limit(1);
+  if (!mark) throw new Error("Mark not found.");
 
   const ext =
     (fileExtRaw || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 8) ||

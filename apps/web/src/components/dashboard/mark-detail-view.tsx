@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { PinItem, WorkspaceLabel } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateLabelMutation,
   useDeletePinMutation,
@@ -41,6 +41,7 @@ import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
+import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markHref, spaceHref } from "@/lib/workspace/routes";
 import {
   clickByAria,
@@ -57,7 +58,7 @@ interface MarkDetailViewProps {
 type EditingField = "title" | "page" | "description";
 
 export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
-  const workspace = useCollabStore((s) => s.workspace);
+  const workspace = useWorkspaceData((s) => s.workspace);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { mutate: togglePinStatus } = useTogglePinStatusMutation();
@@ -94,7 +95,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
     () => new Map(workspace.members.map((m) => [m.id, m])),
     [workspace.members],
   );
-  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
+  const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
 
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editTitle, setEditTitle] = useState(pin.title);
@@ -419,11 +420,12 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
               onChange={(next) => setMarkLabels({ pinId: pin.id, labelIds: next })}
               onCreate={async (name): Promise<WorkspaceLabel | undefined> => {
                 try {
-                  await createLabel(name);
-                  const next = useCollabStore.getState().workspace.labels;
-                  return next.find(
-                    (l) => l.name.trim().toLowerCase() === name.trim().toLowerCase(),
-                  );
+                  const created = await createLabel(name);
+                  return {
+                    id: created.id,
+                    name: created.name,
+                    colorClass: labelColorClass(created.id),
+                  };
                 } catch {
                   return undefined;
                 }

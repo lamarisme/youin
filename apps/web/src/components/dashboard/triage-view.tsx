@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CircleDashed, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { useShallow } from "zustand/react/shallow";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
@@ -19,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { PinPriority } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreatePinMutation,
   useDeletePinMutation,
@@ -40,14 +39,13 @@ import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
 const PAGE_SIZE = 6;
 
 export function TriageView() {
-  const { workspace, workspaceId, userId, displayNamePreference } = useCollabStore(
-    useShallow((s) => ({
+  const { workspace, workspaceId, userId, displayNamePreference } =
+    useWorkspaceData((s) => ({
       workspace: s.workspace,
       workspaceId: s.workspaceId,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
-    })),
-  );
+    }));
   const { mutateAsync: createPin } = useCreatePinMutation();
   const { mutateAsync: togglePinStatus } = useTogglePinStatusMutation();
   const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();

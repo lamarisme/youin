@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowRight, Tag, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 
 import { EmptyState } from "@/components/empty-state";
 import { Notice } from "@/components/notice";
@@ -19,16 +18,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WorkspaceLabel } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useDeleteLabelMutation } from "@/lib/queries/use-workspace-mutations";
 
 export function LabelsTab() {
-  const { labels, pins } = useCollabStore(
-    useShallow((s) => ({
+  const { labels, pins } = useWorkspaceData((s) => ({
       labels: s.workspace.labels,
       pins: s.workspace.pins,
-    })),
-  );
+    }));
   const { mutateAsync: deleteLabel, isPending: isDeleting } =
     useDeleteLabelMutation();
 

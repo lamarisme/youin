@@ -1,6 +1,10 @@
 "use server";
 
-import { requireSession, revalidateWorkspaceViews } from "./session";
+import { and, eq } from "drizzle-orm";
+
+import { markLabels } from "@/db/schema";
+
+import { requireWorkspaceContext, revalidateWorkspaceViews } from "./session";
 
 export interface CreatedLabel {
   id: string;
@@ -8,26 +12,24 @@ export interface CreatedLabel {
 }
 
 export async function createLabelAction(name: string): Promise<CreatedLabel> {
-  const { supabase, workspaceId } = await requireSession();
+  const { db, workspaceId } = await requireWorkspaceContext();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Label name is required.");
-  const { data, error } = await supabase
-    .from("mark_labels")
-    .insert({ workspace_id: workspaceId, name: trimmed })
-    .select("id, name")
-    .single();
-  if (error || !data) throw error ?? new Error("Could not create label.");
+  const [data] = await db
+    .insert(markLabels)
+    .values({ workspaceId, name: trimmed })
+    .returning({ id: markLabels.id, name: markLabels.name });
+  if (!data) throw new Error("Could not create label.");
   revalidateWorkspaceViews();
   return { id: data.id as string, name: data.name as string };
 }
 
 export async function deleteLabelAction(labelId: string): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { error } = await supabase
-    .from("mark_labels")
-    .delete()
-    .eq("id", labelId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const { db, workspaceId } = await requireWorkspaceContext();
+  const [deleted] = await db
+    .delete(markLabels)
+    .where(and(eq(markLabels.id, labelId), eq(markLabels.workspaceId, workspaceId)))
+    .returning({ id: markLabels.id });
+  if (!deleted) throw new Error("Label not found.");
   revalidateWorkspaceViews();
 }

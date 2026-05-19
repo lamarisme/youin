@@ -1,11 +1,18 @@
 "use server";
 
 import { normalizeMarkPriority } from "@youin/domain";
+import { and, eq, inArray } from "drizzle-orm";
 
+import { markLabels, marks, marksToLabels, spaces, workspaceMembers } from "@/db/schema";
 import type { PinPriority } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
-import { requireSession, revalidateWorkspaceViews } from "./session";
+
+import {
+  requireWorkspaceContext,
+  revalidateWorkspaceViews,
+  withWorkspaceActor,
+} from "./session";
 
 const BAD_PAGE =
   "Page must be a full http or https URL (for example https://app.example.com/pricing).";
@@ -17,6 +24,50 @@ export interface CreatedPin {
   createdAt: string;
 }
 
+function toIso(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+async function assertLabelsInWorkspace(
+  db: ReturnType<typeof import("@/db/client").getDb>,
+  workspaceId: string,
+  labelIds: string[],
+): Promise<void> {
+  const desired = Array.from(new Set(labelIds));
+  if (!desired.length) return;
+  const rows = await db
+    .select({ id: markLabels.id })
+    .from(markLabels)
+    .where(
+      and(
+        eq(markLabels.workspaceId, workspaceId),
+        inArray(markLabels.id, desired),
+      ),
+    );
+  if (rows.length !== desired.length) {
+    throw new Error("One or more labels were not found in this workspace.");
+  }
+}
+
+async function assertAssigneeInWorkspace(
+  db: ReturnType<typeof import("@/db/client").getDb>,
+  workspaceId: string,
+  assigneeId: string | null | undefined,
+): Promise<void> {
+  if (!assigneeId) return;
+  const [member] = await db
+    .select({ userId: workspaceMembers.userId })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, assigneeId),
+      ),
+    )
+    .limit(1);
+  if (!member) throw new Error("Assignee is not a member of this workspace.");
+}
+
 export async function createPinAction(input: {
   title: string;
   description: string;
@@ -26,63 +77,71 @@ export async function createPinAction(input: {
   assigneeId?: string | null;
   priority?: PinPriority;
 }): Promise<CreatedPin> {
-  const { supabase, userId, workspaceId } = await requireSession();
+  const ctx = await requireWorkspaceContext();
   const pageNormalized = normalizeMarkPageUrl(input.page);
   if (!isValidMarkPageUrl(pageNormalized)) {
     throw new Error(BAD_PAGE);
   }
-  const { data: space, error: spaceError } = await supabase
-    .from("spaces")
-    .select("id")
-    .eq("id", input.spaceId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (spaceError) throw spaceError;
+  const [space] = await ctx.db
+    .select({ id: spaces.id })
+    .from(spaces)
+    .where(and(eq(spaces.id, input.spaceId), eq(spaces.workspaceId, ctx.workspaceId)))
+    .limit(1);
   if (!space) throw new Error("Space not found.");
-  const { data: mk, error } = await supabase
-    .from("marks")
-    .insert({
-      workspace_id: workspaceId,
-      space_id: input.spaceId,
-      title: input.title.trim(),
-      description: normalizeDescriptionForStorage(input.description),
-      page: pageNormalized,
-      status: "open",
-      priority: normalizeMarkPriority(input.priority),
-      pinned: false,
-      created_by_user_id: userId,
-      assignee_user_id: input.assigneeId ?? null,
-    })
-    .select("id, seq, created_at")
-    .single();
-  if (error || !mk) throw error ?? new Error("Failed to create mark.");
-  if (input.labelIds.length) {
-    const { error: tErr } = await supabase
-      .from("marks_to_labels")
-      .insert(
-        input.labelIds.map((labelId) => ({
-          mark_id: mk.id as string,
-          label_id: labelId,
+
+  const labelIds = Array.from(new Set(input.labelIds));
+  await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, labelIds);
+  await assertAssigneeInWorkspace(ctx.db, ctx.workspaceId, input.assigneeId);
+
+  const mk = await withWorkspaceActor(ctx, async (tx) => {
+    const [created] = await tx
+      .insert(marks)
+      .values({
+        workspaceId: ctx.workspaceId,
+        spaceId: input.spaceId,
+        title: input.title.trim(),
+        description: normalizeDescriptionForStorage(input.description),
+        page: pageNormalized,
+        status: "open",
+        priority: normalizeMarkPriority(input.priority),
+        pinned: false,
+        createdByUserId: ctx.userId,
+        assigneeUserId: input.assigneeId ?? null,
+      })
+      .returning({
+        id: marks.id,
+        seq: marks.seq,
+        createdAt: marks.createdAt,
+      });
+    if (!created) throw new Error("Failed to create mark.");
+    if (labelIds.length) {
+      await tx.insert(marksToLabels).values(
+        labelIds.map((labelId) => ({
+          markId: created.id,
+          labelId,
         })),
       );
-    if (tErr) throw tErr;
-  }
+    }
+    return created;
+  });
+
   revalidateWorkspaceViews();
   return {
-    id: mk.id as string,
+    id: mk.id,
     seq: Number(mk.seq ?? 0),
-    createdAt: mk.created_at as string,
+    createdAt: toIso(mk.createdAt),
   };
 }
 
 export async function deletePinAction(pinId: string): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { error } = await supabase
-    .from("marks")
-    .delete()
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const ctx = await requireWorkspaceContext();
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [deleted] = await tx
+      .delete(marks)
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .returning({ id: marks.id });
+    if (!deleted) throw new Error("Mark not found.");
+  });
   revalidateWorkspaceViews();
 }
 
@@ -95,73 +154,69 @@ export async function updatePinFieldsAction(
     spaceId?: string;
   },
 ): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const patch: Record<string, string> = {};
+  const ctx = await requireWorkspaceContext();
+  const patch: Partial<typeof marks.$inferInsert> = {};
   if (typeof updates.title === "string") patch.title = updates.title.trim();
-  if (typeof updates.description === "string")
+  if (typeof updates.description === "string") {
     patch.description = normalizeDescriptionForStorage(updates.description);
+  }
   if (typeof updates.page === "string") {
     const normalized = normalizeMarkPageUrl(updates.page);
-    if (!isValidMarkPageUrl(normalized)) {
-      throw new Error(BAD_PAGE);
-    }
+    if (!isValidMarkPageUrl(normalized)) throw new Error(BAD_PAGE);
     patch.page = normalized;
   }
   if (typeof updates.spaceId === "string") {
-    const { data: space, error: spaceError } = await supabase
-      .from("spaces")
-      .select("id")
-      .eq("id", updates.spaceId)
-      .eq("workspace_id", workspaceId)
-      .maybeSingle();
-    if (spaceError) throw spaceError;
+    const [space] = await ctx.db
+      .select({ id: spaces.id })
+      .from(spaces)
+      .where(and(eq(spaces.id, updates.spaceId), eq(spaces.workspaceId, ctx.workspaceId)))
+      .limit(1);
     if (!space) throw new Error("Space not found.");
-    patch.space_id = updates.spaceId;
+    patch.spaceId = updates.spaceId;
   }
   if (!Object.keys(patch).length) return;
-  const { error } = await supabase
-    .from("marks")
-    .update(patch)
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [updated] = await tx
+      .update(marks)
+      .set(patch)
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .returning({ id: marks.id });
+    if (!updated) throw new Error("Mark not found.");
+  });
   revalidateWorkspaceViews();
 }
 
 export async function togglePinStatusAction(pinId: string): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { data: row, error: rErr } = await supabase
-    .from("marks")
-    .select("status")
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId)
-    .single();
-  if (rErr || !row) throw rErr ?? new Error("Mark not found.");
-  const next = row.status === "closed" ? "open" : "closed";
-  const { error } = await supabase
-    .from("marks")
-    .update({ status: next })
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const ctx = await requireWorkspaceContext();
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [row] = await tx
+      .select({ status: marks.status })
+      .from(marks)
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .limit(1);
+    if (!row) throw new Error("Mark not found.");
+    await tx
+      .update(marks)
+      .set({ status: row.status === "closed" ? "open" : "closed" })
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)));
+  });
   revalidateWorkspaceViews();
 }
 
 export async function togglePinPinnedAction(pinId: string): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { data: row, error: rErr } = await supabase
-    .from("marks")
-    .select("pinned")
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId)
-    .single();
-  if (rErr || !row) throw rErr ?? new Error("Mark not found.");
-  const { error } = await supabase
-    .from("marks")
-    .update({ pinned: !row.pinned })
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const ctx = await requireWorkspaceContext();
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [row] = await tx
+      .select({ pinned: marks.pinned })
+      .from(marks)
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .limit(1);
+    if (!row) throw new Error("Mark not found.");
+    await tx
+      .update(marks)
+      .set({ pinned: !row.pinned })
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)));
+  });
   revalidateWorkspaceViews();
 }
 
@@ -169,13 +224,15 @@ export async function updatePinPriorityAction(
   pinId: string,
   priority: PinPriority,
 ): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { error } = await supabase
-    .from("marks")
-    .update({ priority: normalizeMarkPriority(priority) })
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const ctx = await requireWorkspaceContext();
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [updated] = await tx
+      .update(marks)
+      .set({ priority: normalizeMarkPriority(priority) })
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .returning({ id: marks.id });
+    if (!updated) throw new Error("Mark not found.");
+  });
   revalidateWorkspaceViews();
 }
 
@@ -183,13 +240,16 @@ export async function assignMarkAction(
   pinId: string,
   assigneeId: string | null,
 ): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
-  const { error } = await supabase
-    .from("marks")
-    .update({ assignee_user_id: assigneeId })
-    .eq("id", pinId)
-    .eq("workspace_id", workspaceId);
-  if (error) throw error;
+  const ctx = await requireWorkspaceContext();
+  await assertAssigneeInWorkspace(ctx.db, ctx.workspaceId, assigneeId);
+  await withWorkspaceActor(ctx, async (tx) => {
+    const [updated] = await tx
+      .update(marks)
+      .set({ assigneeUserId: assigneeId })
+      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .returning({ id: marks.id });
+    if (!updated) throw new Error("Mark not found.");
+  });
   revalidateWorkspaceViews();
 }
 
@@ -197,34 +257,39 @@ export async function setMarkLabelsAction(
   pinId: string,
   labelIds: string[],
 ): Promise<void> {
-  const { supabase } = await requireSession();
+  const ctx = await requireWorkspaceContext();
   const desired = Array.from(new Set(labelIds));
+  const [mark] = await ctx.db
+    .select({ id: marks.id })
+    .from(marks)
+    .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+    .limit(1);
+  if (!mark) throw new Error("Mark not found.");
+  await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, desired);
 
-  const { data: existingRows, error: readErr } = await supabase
-    .from("marks_to_labels")
-    .select("label_id")
-    .eq("mark_id", pinId);
-  if (readErr) throw readErr;
-  const existing = new Set(
-    (existingRows ?? []).map((r) => r.label_id as string),
-  );
+  const existingRows = await ctx.db
+    .select({ labelId: marksToLabels.labelId })
+    .from(marksToLabels)
+    .where(eq(marksToLabels.markId, pinId));
+  const existing = new Set(existingRows.map((row) => row.labelId));
 
   const toAdd = desired.filter((id) => !existing.has(id));
   const toRemove = [...existing].filter((id) => !desired.includes(id));
 
   if (toRemove.length) {
-    const { error } = await supabase
-      .from("marks_to_labels")
-      .delete()
-      .eq("mark_id", pinId)
-      .in("label_id", toRemove);
-    if (error) throw error;
+    await ctx.db
+      .delete(marksToLabels)
+      .where(
+        and(
+          eq(marksToLabels.markId, pinId),
+          inArray(marksToLabels.labelId, toRemove),
+        ),
+      );
   }
   if (toAdd.length) {
-    const { error } = await supabase
-      .from("marks_to_labels")
-      .insert(toAdd.map((labelId) => ({ mark_id: pinId, label_id: labelId })));
-    if (error) throw error;
+    await ctx.db
+      .insert(marksToLabels)
+      .values(toAdd.map((labelId) => ({ markId: pinId, labelId })));
   }
   revalidateWorkspaceViews();
 }

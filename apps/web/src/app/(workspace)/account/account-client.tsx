@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import { AppHeader } from "@/components/app-header";
 import { PageContainer } from "@/components/page-container";
@@ -15,8 +15,10 @@ import { LabelsTab } from "./tabs/labels-tab";
 import { TeamTab } from "./tabs/team-tab";
 
 export function AccountClient({ section = null }: { section?: string | null }) {
-  const memberCount = useCollabStore((s) => s.workspace.members.length);
-  const labelCount = useCollabStore((s) => s.workspace.labels.length);
+  const { memberCount, labelCount } = useWorkspaceData((s) => ({
+    memberCount: s.workspace.members.length,
+    labelCount: s.workspace.labels.length,
+  }));
   const activeSection = (section ?? "overview") as AccountSection;
 
   const sections: Array<{

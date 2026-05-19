@@ -21,7 +21,6 @@ import {
   User,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { BrandLogo } from "@/components/brand-logo";
@@ -51,7 +50,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -92,8 +91,8 @@ export function AppSidebar() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
 
-  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId } = useCollabStore(
-    useShallow((s) => ({
+  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId } =
+    useWorkspaceData((s) => ({
       profileName: s.profile.name,
       profileEmail: s.profile.email,
       displayNamePreference: s.profile.displayNamePreference,
@@ -101,8 +100,7 @@ export function AppSidebar() {
       members: s.workspace.members,
       workspaceId: s.workspaceId,
       userId: s.userId,
-    })),
-  );
+    }));
 
   const inbox = useInbox(workspaceId, userId);
   const openCommandPalette = useOpenCommandPalette();
@@ -365,14 +363,12 @@ function ProjectSwitcher({
   searchParams: { get: (name: string) => string | null; toString: () => string };
   onNavigate: (href: string) => void;
 }) {
-  const { projects, spaces, pins, workspaceName } = useCollabStore(
-    useShallow((s) => ({
+  const { projects, spaces, pins, workspaceName } = useWorkspaceData((s) => ({
       workspaceName: s.workspace.name,
       projects: s.workspace.projects,
       spaces: s.workspace.spaces,
       pins: s.workspace.pins,
-    })),
-  );
+    }));
   const { mutateAsync: createProject, isPending: isCreating } =
     useCreateProjectMutation();
   const [createOpen, setCreateOpen] = useState(false);

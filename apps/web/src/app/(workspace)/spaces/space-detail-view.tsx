@@ -42,9 +42,9 @@ import { Kbd } from "@/components/ui/kbd";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
 import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
 import { formatDate, formatDateShort } from "@/lib/dates";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreatePinMutation,
   useDeletePinMutation,
@@ -67,8 +67,11 @@ interface SpaceDetailViewProps {
 }
 
 export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
-  const workspace = useCollabStore((s) => s.workspace);
-  const userId = useCollabStore((s) => s.userId);
+  const { workspace, userId, namePref } = useWorkspaceData((s) => ({
+    workspace: s.workspace,
+    userId: s.userId,
+    namePref: s.profile.displayNamePreference,
+  }));
   const { mutateAsync: updateSpace, isPending: isSavingEdit } =
     useUpdateSpaceMutation();
   const { mutate: toggleSpacePinned } = useToggleSpacePinnedMutation();
@@ -87,7 +90,6 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const project = workspace.projects.find((p) => p.id === space.projectId) ?? null;
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
-  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
   const spacePins = useMemo(
     () => workspace.pins.filter((p) => p.spaceId === space.id),
     [workspace.pins, space.id],

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo } from "react";
 
 import { PageContainer } from "@/components/page-container";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { spaceHref, spacesHref } from "@/lib/workspace/routes";
 
 import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
@@ -14,8 +14,8 @@ import { SpaceDetailView } from "./space-detail-view";
 import { SpacesListView } from "./spaces-list-view";
 
 function SpacesClientContent({ spaceParam = null }: { spaceParam?: string | null }) {
-  const spaces = useCollabStore((s) => s.workspace.spaces);
-  const projects = useCollabStore((s) => s.workspace.projects);
+  const spaces = useWorkspaceData((s) => s.workspace.spaces);
+  const projects = useWorkspaceData((s) => s.workspace.projects);
   const router = useRouter();
   const searchParams = useSearchParams();
 

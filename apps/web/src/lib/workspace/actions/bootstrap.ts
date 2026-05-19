@@ -17,8 +17,8 @@ export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null
   try {
     const workspaceId = await ensureWorkspaceForUser(supabase, user);
     const [workspace, profile] = await Promise.all([
-      loadWorkspaceAggregate(supabase, workspaceId),
-      loadUserProfile(supabase, user.id),
+      loadWorkspaceAggregate(workspaceId, supabase),
+      loadUserProfile(user.id),
     ]);
     return {
       workspaceId,

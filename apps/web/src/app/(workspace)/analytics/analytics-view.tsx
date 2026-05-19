@@ -7,8 +7,8 @@ import { BarChart3 } from "lucide-react";
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
-import { useCollabStore } from "@/lib/collab-store";
 import { PageContainer } from "@/components/page-container";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import { ActivityHeatmap } from "./activity-heatmap";
 import { StatTile } from "./stat-tile";
@@ -17,7 +17,7 @@ import { TimeframeFilter } from "./timeframe-filter";
 import { useAnalyticsStats, type AnalyticsTimeframe } from "./use-analytics-stats";
 
 export function AnalyticsView() {
-  const workspace = useCollabStore((s) => s.workspace);
+  const workspace = useWorkspaceData((s) => s.workspace);
   const [timeframe, setTimeframe] = useState<AnalyticsTimeframe>("30d");
   const stats = useAnalyticsStats(workspace, timeframe);
 

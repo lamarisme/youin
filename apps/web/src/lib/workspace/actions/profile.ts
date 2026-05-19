@@ -1,8 +1,12 @@
 "use server";
 
+import { and, eq, ilike, ne } from "drizzle-orm";
+
+import { profiles, workspaceMembers, workspaces } from "@/db/schema";
 import type { DisplayNamePreference } from "@/lib/collab-types";
+import { assertWorkspaceOwner } from "@/lib/workspace/authz";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
-import { requireSession, revalidateWorkspaceViews } from "./session";
+import { requireWorkspaceContext, revalidateWorkspaceViews } from "./session";
 
 export interface ProfileUpdates {
   name?: string;
@@ -16,60 +20,73 @@ export interface ProfileUpdates {
 export async function updateProfileAction(
   updates: ProfileUpdates,
 ): Promise<void> {
-  const { supabase, userId } = await requireSession();
-  const patch: Record<string, string> = {};
-  if (updates.name !== undefined) patch.full_name = updates.name.trim();
+  const { db, userId } = await requireWorkspaceContext();
+  const patch: Partial<typeof profiles.$inferInsert> = {};
+  if (updates.name !== undefined) patch.fullName = updates.name.trim();
   if (updates.title !== undefined) patch.title = updates.title.trim();
   if (updates.about !== undefined) patch.about = updates.about.trim();
-  if (updates.avatarUrl !== undefined)
-    patch.avatar_url = updates.avatarUrl.trim();
-  if (updates.timezone !== undefined)
-    patch.timezone = updates.timezone.trim() || "UTC";
-  if (updates.displayNamePreference !== undefined)
-    patch.display_name_preference =
+  if (updates.avatarUrl !== undefined) patch.avatarUrl = updates.avatarUrl.trim();
+  if (updates.timezone !== undefined) patch.timezone = updates.timezone.trim() || "UTC";
+  if (updates.displayNamePreference !== undefined) {
+    patch.displayNamePreference =
       updates.displayNamePreference === "username" ? "username" : "full_name";
+  }
   if (!Object.keys(patch).length) return;
-  const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
-  if (error) throw error;
+  const [updated] = await db
+    .update(profiles)
+    .set(patch)
+    .where(eq(profiles.id, userId))
+    .returning({ id: profiles.id });
+  if (!updated) throw new Error("Profile not found.");
   revalidateWorkspaceViews();
 }
 
 export async function updateWorkspaceAction(updates: {
   name: string;
 }): Promise<void> {
-  const { supabase, workspaceId } = await requireSession();
+  const ctx = await requireWorkspaceContext();
+  assertWorkspaceOwner(ctx);
   const trimmed = updates.name.trim();
   if (!trimmed) throw new Error("Workspace name is required.");
-  const { error } = await supabase
-    .from("workspaces")
-    .update({ name: trimmed })
-    .eq("id", workspaceId);
-  if (error) throw error;
+  const [updated] = await ctx.db
+    .update(workspaces)
+    .set({ name: trimmed })
+    .where(eq(workspaces.id, ctx.workspaceId))
+    .returning({ id: workspaces.id });
+  if (!updated) throw new Error("Workspace not found.");
   revalidateWorkspaceViews();
 }
 
 export async function updateMyWorkspaceUsernameAction(
   username: string,
 ): Promise<void> {
-  const { supabase, userId, workspaceId } = await requireSession();
+  const { db, userId, workspaceId } = await requireWorkspaceContext();
   const normalized = assertValidWorkspaceUsername(username);
 
-  const { data: taken, error: findErr } = await supabase
-    .from("workspace_members")
-    .select("user_id")
-    .eq("workspace_id", workspaceId)
-    .neq("user_id", userId)
-    .ilike("username", normalized)
-    .maybeSingle();
-  if (findErr) throw findErr;
-  if (taken?.user_id)
+  const [taken] = await db
+    .select({ userId: workspaceMembers.userId })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        ne(workspaceMembers.userId, userId),
+        ilike(workspaceMembers.username, normalized),
+      ),
+    )
+    .limit(1);
+  if (taken?.userId)
     throw new Error("That username is already taken in this workspace.");
 
-  const { error } = await supabase
-    .from("workspace_members")
-    .update({ username: normalized })
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", userId);
-  if (error) throw error;
+  const [updated] = await db
+    .update(workspaceMembers)
+    .set({ username: normalized })
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, userId),
+      ),
+    )
+    .returning({ userId: workspaceMembers.userId });
+  if (!updated) throw new Error("Workspace membership not found.");
   revalidateWorkspaceViews();
 }

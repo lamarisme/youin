@@ -25,12 +25,11 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
 
 interface PaletteCommand {
@@ -90,13 +89,11 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { spaces, workspaceId, userId } = useCollabStore(
-    useShallow((s) => ({
+  const { spaces, workspaceId, userId } = useWorkspaceData((s) => ({
       spaces: s.workspace.spaces,
       workspaceId: s.workspaceId,
       userId: s.userId,
-    })),
-  );
+    }));
   const inbox = useInbox(workspaceId, userId);
 
   // G + letter uses the same destinations as sidebar and palette.

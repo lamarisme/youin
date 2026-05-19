@@ -2,27 +2,24 @@
 
 import { Check, Edit3, X } from "lucide-react";
 import { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useUpdateWorkspaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 export function OverviewTab() {
   const { workspaceName, membersCount, invitesCount, isOwner } =
-    useCollabStore(
-      useShallow((s) => ({
-        workspaceName: s.workspace.name,
-        membersCount: s.workspace.members.length,
-        invitesCount: s.workspace.invites.length,
-        isOwner:
-          s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
-      })),
-    );
+    useWorkspaceData((s) => ({
+      workspaceName: s.workspace.name,
+      membersCount: s.workspace.members.length,
+      invitesCount: s.workspace.invites.length,
+      isOwner:
+        s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
+    }));
   const { mutateAsync: updateWorkspace, isPending: isSaving } =
     useUpdateWorkspaceMutation();
 

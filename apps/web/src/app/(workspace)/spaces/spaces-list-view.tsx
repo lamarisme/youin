@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { SpacePriority } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
 import { formatDayKey } from "@/lib/dates";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateSpaceMutation } from "@/lib/queries/use-workspace-mutations";
 
 import { SpaceListItem } from "./space-list-item";
@@ -46,7 +46,7 @@ export function SpacesListView({
   onSelectProject,
   onSelectSpace,
 }: SpacesListViewProps) {
-  const workspace = useCollabStore((s) => s.workspace);
+  const workspace = useWorkspaceData((s) => s.workspace);
   const { mutateAsync: createSpace, isPending: isCreating } =
     useCreateSpaceMutation();
 

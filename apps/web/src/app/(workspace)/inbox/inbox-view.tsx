@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
-import { useShallow } from "zustand/react/shallow";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { ProductList, ProductListItem } from "@/components/product-list";
-import { useCollabStore } from "@/lib/collab-store";
 import type { DisplayNamePreference } from "@/lib/collab-types";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
 import { markHref } from "@/lib/workspace/routes";
 
@@ -20,14 +19,13 @@ import { PageContainer } from "@/components/page-container";
 import { rosterDisplayParts } from "@/lib/workspace/member-label";
 
 export function InboxView() {
-  const { workspace, workspaceId, userId, displayNamePreference } = useCollabStore(
-    useShallow((s) => ({
+  const { workspace, workspaceId, userId, displayNamePreference } =
+    useWorkspaceData((s) => ({
       workspace: s.workspace,
       workspaceId: s.workspaceId,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
-    })),
-  );
+    }));
 
   const inbox = useInbox(workspaceId, userId);
   const memberLookup = useMemo(

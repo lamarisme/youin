@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Pencil, X } from "lucide-react";
 
 import type { DisplayNamePreference } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useUpdateProfileMutation } from "@/lib/queries/use-workspace-mutations";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ function isValidHttpUrl(value: string): boolean {
 type ProfileField = "name" | "title" | "about" | "avatarUrl";
 
 export function ProfileTab() {
-  const profile = useCollabStore((s) => s.profile);
+  const profile = useWorkspaceData((s) => s.profile);
   const { mutateAsync: updateProfile, isPending: isSaving } =
     useUpdateProfileMutation();
 

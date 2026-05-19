@@ -2,7 +2,6 @@
 
 import { Trash2, UserPlus, X } from "lucide-react";
 import { useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCancelInviteMutation,
   useInviteMemberMutation,
@@ -25,16 +24,15 @@ import { cn } from "@/lib/utils";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function TeamTab() {
-  const { members, invites, userId, isOwner, displayNamePreference } = useCollabStore(
-    useShallow((s) => ({
+  const { members, invites, userId, isOwner, displayNamePreference } =
+    useWorkspaceData((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
       isOwner:
         s.workspace.members.find((m) => m.id === s.userId)?.role === "owner",
-    })),
-  );
+    }));
   const { mutateAsync: updateMyWorkspaceUsername, isPending: isSavingUsername } =
     useUpdateMyWorkspaceUsernameMutation();
   const { mutateAsync: inviteMember, isPending: isInviting } =

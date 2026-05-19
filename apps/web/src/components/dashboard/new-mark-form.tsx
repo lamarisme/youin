@@ -18,12 +18,13 @@ import { toast } from "sonner";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
-import { useCollabStore } from "@/lib/collab-store";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
 import { useCreateLabelMutation } from "@/lib/queries/use-workspace-mutations";
+import { labelColorClass } from "@/lib/workspace/label-styles";
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 
 const UNASSIGNED = "__unassigned";
@@ -107,7 +108,7 @@ export function NewMarkForm({
   targetSpaceLabel,
 }: NewMarkFormProps) {
   const { mutateAsync: createLabel } = useCreateLabelMutation();
-  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
+  const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
     ? defaultAssigneeId
     : UNASSIGNED;
@@ -181,12 +182,15 @@ export function NewMarkForm({
 
   async function handleCreateLabel(name: string): Promise<WorkspaceLabel | undefined> {
     try {
-      await createLabel(name);
+      const created = await createLabel(name);
+      return {
+        id: created.id,
+        name: created.name,
+        colorClass: labelColorClass(created.id),
+      };
     } catch {
       return undefined;
     }
-    const next = useCollabStore.getState().workspace.labels;
-    return next.find((l) => l.name.trim().toLowerCase() === name.trim().toLowerCase());
   }
 
   const grid = (

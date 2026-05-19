@@ -18,7 +18,6 @@ import {
 import { Input } from "@/components/ui/input";
 import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
-import { useCollabStore } from "@/lib/collab-store";
 import { formatDateTime, formatRelative } from "@/lib/dates";
 import {
   MARK_COMMENT_MAX_LENGTH,
@@ -30,6 +29,7 @@ import {
   useDeleteCommentMutation,
   useUpdateCommentMutation,
 } from "@/lib/queries/use-workspace-mutations";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   memberDisplayParts,
@@ -83,7 +83,7 @@ export function CommentThread({
   comments,
   membersById,
 }: CommentThreadProps) {
-  const userId = useCollabStore((s) => s.userId);
+  const userId = useWorkspaceData((s) => s.userId);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [composerError, setComposerError] = useState<string | null>(null);
@@ -282,7 +282,7 @@ interface CommentItemProps {
 }
 
 function CommentItem({ comment, author, isOwn }: CommentItemProps) {
-  const namePref = useCollabStore((s) => s.profile.displayNamePreference);
+  const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
   const { mutateAsync: deleteComment, isPending: isDeleting } =
