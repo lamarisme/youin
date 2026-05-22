@@ -79,9 +79,9 @@ export function MarkDescriptionEditor({
           id: id ?? "",
           class: cn(
             "max-h-[min(40vh,20rem)] max-w-none overflow-y-auto px-3 py-2 outline-none",
-            "text-[0.8125rem] leading-relaxed text-ink",
+            "text-ui-sm leading-relaxed text-ink",
             "focus-visible:outline-none",
-            "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-rule [&_blockquote]:pl-3",
+            "[&_blockquote]:my-2 [&_blockquote]:border-l [&_blockquote]:border-rule [&_blockquote]:pl-3",
             "[&_li]:my-0.5",
             "[&_ol]:my-2 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:pl-1",
             "[&_p]:mb-2 [&_p:last-child]:mb-0",
@@ -149,7 +149,7 @@ export function MarkDescriptionEditor({
         />
       </div>
       <div className="flex justify-end px-2 py-1">
-        <span className="tabular-nums text-[0.6875rem] text-ink-3">
+        <span className="tabular-nums text-ui-xs text-ink-3">
           {chars} / {maxLength}
         </span>
       </div>

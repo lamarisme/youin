@@ -37,20 +37,20 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
     <section className="rounded-md bg-paper-2">
       <header className="flex flex-wrap items-baseline justify-between gap-3 px-3 py-2.5">
         <div>
-          <h2 className="text-[0.875rem] font-semibold text-ink">Activity</h2>
-          <p className="text-[0.75rem] text-ink-3">Mark events per day, resolved events excluded</p>
+          <h2 className="text-ui-md font-semibold text-ink">Activity</h2>
+          <p className="text-ui-xs text-ink-3">Mark events per day, resolved events excluded</p>
         </div>
         <Legend max={data.maxCount} />
       </header>
 
       {data.cells.length === 0 ? (
-        <p className="px-4 py-8 text-center text-[0.8125rem] text-ink-3">
+        <p className="px-4 py-8 text-center text-ui-sm text-ink-3">
           No activity recorded yet.
         </p>
       ) : (
         <div className="overflow-x-auto px-4 py-3">
           <div className="flex gap-2.5" role="img" aria-label={summary}>
-            <div className="flex flex-col gap-[3px] pt-[1.125rem] text-[0.625rem] text-ink-3">
+            <div className="flex flex-col gap-[3px] pt-[1.125rem] text-ui-2xs text-ink-3">
               {DAY_LABELS.map((d, i) => (
                 <span
                   key={d}
@@ -114,7 +114,7 @@ function scaleLevel(count: number, max: number): 0 | 1 | 2 | 3 | 4 {
 
 function Legend({ max }: { max: number }) {
   return (
-    <div className="flex items-center gap-1.5 text-[0.625rem] text-ink-3">
+    <div className="flex items-center gap-1.5 text-ui-2xs text-ink-3">
       <span>Less</span>
       <span className="flex gap-[2px]">
         {[0, 1, 2, 3, 4].map((l) => (

@@ -114,7 +114,7 @@ export function OverviewTab() {
         )}
 
         {/* Inline meta chips, denser than separate cards. */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[0.8125rem] text-ink-2">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-ui-sm text-ink-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="text-ink-3">Role</span>
             <span className="font-medium text-ink">{isOwner ? "Owner" : "Member"}</span>
@@ -149,13 +149,13 @@ export function OverviewTab() {
           <SettingRow
             title="Two-factor authentication"
             description="Require a code from your phone at sign-in."
-            badge={<Badge variant="outline" className="text-[0.625rem]">Not available yet</Badge>}
+            badge={<Badge variant="outline" className="text-ui-2xs">Not available yet</Badge>}
             muted
           />
           <SettingRow
             title="Daily comment summary"
             description="One email per day with new comments on your marks."
-            badge={<Badge variant="outline" className="text-[0.625rem] text-ok">Enabled by default</Badge>}
+            badge={<Badge variant="outline" className="text-ui-2xs text-ok">Enabled by default</Badge>}
           />
         </ProductList>
       </section>
@@ -177,8 +177,8 @@ function SettingRow({
   return (
     <ProductListItem className="flex items-center justify-between gap-4">
       <div className={muted ? "opacity-70" : undefined}>
-        <p className="text-[0.8125rem] font-medium text-ink">{title}</p>
-        <p className="mt-0.5 text-[0.6875rem] text-ink-3">{description}</p>
+        <p className="text-ui-sm font-medium text-ink">{title}</p>
+        <p className="mt-0.5 text-ui-xs text-ink-3">{description}</p>
       </div>
       <div className="shrink-0">{badge}</div>
     </ProductListItem>

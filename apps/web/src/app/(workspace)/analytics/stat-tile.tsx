@@ -26,7 +26,7 @@ export function StatTile({
 
   return (
     <div className="rounded-md bg-paper-2 px-3 py-3">
-      <p className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-ink-3">
+      <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
         {label}
       </p>
       <p
@@ -37,7 +37,7 @@ export function StatTile({
       >
         {value}
       </p>
-      <div className="mt-2 flex min-h-[1rem] items-center gap-1.5 text-[0.6875rem] text-ink-3">
+      <div className="mt-2 flex min-h-[1rem] items-center gap-1.5 text-ui-xs text-ink-3">
         {delta !== null ? <DeltaBadge delta={delta} semantic={deltaSemantic} /> : null}
         {hint ? <span>{hint}</span> : null}
       </div>

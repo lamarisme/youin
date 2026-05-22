@@ -21,7 +21,7 @@ export default function ContactPage() {
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-[0.8125rem] text-ink-2 hover:text-ink"
+            className="inline-flex items-center gap-1.5 text-ui-sm text-ink-2 hover:text-ink"
           >
             <ArrowLeft className="size-3.5" />
             Back to landing
@@ -33,7 +33,7 @@ export default function ContactPage() {
         <div className="mx-auto max-w-[640px]">
           <p className="text-eyebrow mb-2">Talk to a human</p>
           <h1 className="text-editorial-md text-ink">We answer within one working day.</h1>
-          <p className="mt-4 max-w-[52ch] text-[0.9375rem] leading-relaxed text-ink-2">
+          <p className="mt-4 max-w-[52ch] text-ui-lg leading-relaxed text-ink-2">
             Pricing questions, agency volume, custom integrations, or you just want to chat about how
             you&rsquo;d use youin in your workflow — write to us directly.
           </p>
@@ -42,19 +42,19 @@ export default function ContactPage() {
             <p className="text-eyebrow mb-3">Email</p>
             <p className="font-display text-2xl font-semibold text-ink">{SUPPORT_EMAIL}</p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Button asChild className="h-11 px-5 text-[0.875rem] font-semibold">
+              <Button asChild className="h-11 px-5 text-ui-md font-semibold">
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center gap-2">
                   <Mail className="size-4" />
                   Open in mail
                 </a>
               </Button>
-              <Button variant="outline" asChild className="h-11 px-5 text-[0.875rem]">
+              <Button variant="outline" asChild className="h-11 px-5 text-ui-md">
                 <Link href="/signup">Or start a trial</Link>
               </Button>
             </div>
           </div>
 
-          <div className="mt-8 grid gap-3 text-[0.8125rem] text-ink-2 sm:grid-cols-2">
+          <div className="mt-8 grid gap-3 text-ui-sm text-ink-2 sm:grid-cols-2">
             <div className="rounded-lg border border-rule bg-paper p-4">
               <p className="text-eyebrow mb-1.5">Sales</p>
               <p>Agency volume, multi-workspace, white-label widget.</p>
@@ -69,8 +69,8 @@ export default function ContactPage() {
 
       <footer className="border-t border-rule bg-paper py-6">
         <div className="shell flex items-center justify-between">
-          <p className="font-mono text-[0.6875rem] text-ink-3">&copy; 2026 youin</p>
-          <Link href="/" className="text-[0.75rem] text-ink-3 hover:text-ink">
+          <p className="font-mono text-ui-xs text-ink-3">&copy; 2026 youin</p>
+          <Link href="/" className="text-ui-xs text-ink-3 hover:text-ink">
             Home
           </Link>
         </div>

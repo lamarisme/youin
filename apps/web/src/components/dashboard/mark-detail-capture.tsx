@@ -13,6 +13,8 @@ import {
 import type { PinItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
 
+import { MarkPin } from "@/components/mark-pin";
+
 import { shortMarkLabel } from "./format-mark-event";
 import { FullImagePreview } from "./full-image-preview";
 import { formatMarkPageOrigin } from "./mark-page-label";
@@ -30,10 +32,8 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
     <>
       <div className="mt-5 overflow-hidden rounded-lg bg-paper-2">
         <div className="flex items-center gap-2 px-3 py-2">
-          <span className="pin-dot !size-5 !text-[8px]">
-            {shortMarkLabel(pin.displayKey)}
-          </span>
-          <span className="min-w-0 flex-1 truncate text-[0.75rem] font-medium text-ink-2">
+          <MarkPin label={shortMarkLabel(pin.displayKey)} size="sm" />
+          <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
             Capture
           </span>
         </div>
@@ -56,12 +56,12 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
               </FullImagePreview>
             </div>
           ) : (
-            <p className="py-6 text-center text-[0.8125rem] text-ink-3">
+            <p className="py-6 text-center text-ui-sm text-ink-3">
               No capture snapshot saved for this mark.
             </p>
           )}
           {cap?.selector ? (
-            <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded bg-ink/85 px-2 py-0.5 font-mono text-[0.5625rem] text-paper">
+            <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded bg-ink/85 px-2 py-0.5 font-mono text-ui-2xs text-paper">
               {cap.selector}
             </div>
           ) : null}
@@ -70,7 +70,7 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
 
       {cap ? (
         <>
-          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[0.6875rem] text-ink-3">
+          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-ui-xs text-ink-3">
             {pageOrigin ? (
               <MetaCell
                 label="Origin"
@@ -112,15 +112,15 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
 
           {domContext ? (
             <div className="mt-3 overflow-hidden rounded-lg bg-paper-2">
-              <div className="flex items-center gap-2 px-3 py-2 text-[0.75rem] font-medium text-ink-2">
+              <div className="flex items-center gap-2 px-3 py-2 text-ui-xs font-medium text-ink-2">
                 <Code2 className="size-3.5 text-ink-3" aria-hidden />
                 <span>DOM context</span>
               </div>
-              <pre className="max-h-56 overflow-auto bg-paper-2 px-3 py-2 font-mono text-[0.6875rem] leading-relaxed text-ink-2 [overflow-wrap:anywhere] whitespace-pre-wrap">
+              <pre className="max-h-56 overflow-auto bg-paper-2 px-3 py-2 font-mono text-ui-xs leading-relaxed text-ink-2 [overflow-wrap:anywhere] whitespace-pre-wrap">
                 {domContext.outerHTML}
               </pre>
               {domContext.nearbyText ? (
-                <p className="px-3 py-2 text-[0.6875rem] leading-relaxed text-ink-3">
+                <p className="px-3 py-2 text-ui-xs leading-relaxed text-ink-3">
                   {domContext.nearbyText}
                 </p>
               ) : null}
@@ -182,7 +182,7 @@ function MetaCell({
         title={title ?? value}
         className={
           mono
-            ? "max-w-[18rem] truncate font-mono text-[0.6875rem] text-ink-2"
+            ? "max-w-[18rem] truncate font-mono text-ui-xs text-ink-2"
             : "max-w-[18rem] truncate text-ink-2"
         }
       >

@@ -206,7 +206,7 @@ function SlashMenuView({
       }}
     >
       {items.length === 0 ? (
-        <div className="px-2 py-1.5 text-[0.75rem] text-ink-3">No matches</div>
+        <div className="px-2 py-1.5 text-ui-xs text-ink-3">No matches</div>
       ) : (
         items.map((item, i) => {
           const Icon = item.icon;
@@ -217,7 +217,7 @@ function SlashMenuView({
               role="option"
               aria-selected={i === selectedIndex}
               className={cn(
-                "flex w-full min-w-0 items-center gap-2 px-2 py-1.5 text-left text-[0.8125rem]",
+                "flex w-full min-w-0 items-center gap-2 px-2 py-1.5 text-left text-ui-sm",
                 i === selectedIndex ? "bg-paper-2" : "hover:bg-paper-2",
               )}
               onMouseEnter={() => onHoverIndex(i)}
@@ -231,7 +231,7 @@ function SlashMenuView({
               <span className="flex min-w-0 flex-col gap-0">
                 <span className="font-medium leading-tight text-ink">{item.title}</span>
                 {item.subtext ? (
-                  <span className="text-[0.6875rem] leading-tight text-ink-3">{item.subtext}</span>
+                  <span className="text-ui-xs leading-tight text-ink-3">{item.subtext}</span>
                 ) : null}
               </span>
             </button>

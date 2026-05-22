@@ -64,7 +64,7 @@ export function SavedViewsBar({
 
   return (
     <FadeIn className="flex flex-wrap items-center gap-1.5">
-      <span className="inline-flex items-center gap-1.5 pr-1 text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
+      <span className="inline-flex items-center gap-1.5 pr-1 text-ui-xs font-medium uppercase tracking-[0.06em] text-ink-3">
         <Bookmark className="size-3" aria-hidden />
         Views
       </span>
@@ -75,7 +75,7 @@ export function SavedViewsBar({
           <span
             key={v.id}
             className={cn(
-              "group inline-flex items-center rounded-full text-[0.75rem] transition-colors",
+              "group inline-flex items-center rounded-full text-ui-xs transition-colors",
               active
                 ? "bg-mark-soft text-ink"
                 : "bg-paper-2 text-ink-2 hover:bg-paper-3 hover:text-ink",
@@ -122,7 +122,7 @@ export function SavedViewsBar({
             }}
             placeholder="View name"
             aria-label="Saved view name"
-            className="h-7 w-32 rounded-md bg-transparent px-1.5 text-[0.75rem] text-ink outline-none placeholder:text-ink-3"
+            className="h-7 w-32 rounded-md bg-transparent px-1.5 text-ui-xs text-ink outline-none placeholder:text-ink-3"
             maxLength={60}
           />
           <Button
@@ -131,7 +131,7 @@ export function SavedViewsBar({
             variant="ghost"
             onClick={commitSave}
             disabled={!draftName.trim()}
-            className="h-7 px-2 text-[0.75rem]"
+            className="h-7 px-2 text-ui-xs"
           >
             Save
           </Button>
@@ -142,7 +142,7 @@ export function SavedViewsBar({
           size="sm"
           variant="ghost"
           onClick={() => setAdding(true)}
-          className="h-8 gap-1 rounded-full px-2.5 text-[0.75rem] text-ink-3 hover:bg-paper-2 hover:text-ink"
+          className="h-8 gap-1 rounded-full px-2.5 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink"
         >
           <Plus className="size-3" aria-hidden />
           Save view

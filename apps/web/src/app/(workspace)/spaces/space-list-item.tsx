@@ -41,21 +41,21 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
             pathLength="100"
           />
         </svg>
-        <span className="absolute text-[0.625rem] font-semibold text-ink">{pct}%</span>
+        <span className="absolute text-ui-2xs font-semibold text-ink">{pct}%</span>
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
-          <p className="text-[0.875rem] font-semibold text-ink">{space.name}</p>
-          <span className="rounded bg-paper-3 px-1.5 py-px font-mono text-[0.625rem] font-medium uppercase text-ink-2">
+          <p className="text-ui-md font-semibold text-ink">{space.name}</p>
+          <span className="rounded bg-paper-3 px-1.5 py-px font-mono text-ui-2xs font-medium uppercase text-ink-2">
             {space.code}
           </span>
-          <span className="text-[0.6875rem] text-ink-3">
+          <span className="text-ui-xs text-ink-3">
             {formatDateShort(space.createdAt)}
           </span>
         </div>
         {notesPreview ? (
-          <p className="mt-0.5 truncate text-[0.8125rem] text-ink-2">{notesPreview}</p>
+          <p className="mt-0.5 truncate text-ui-sm text-ink-2">{notesPreview}</p>
         ) : null}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <PriorityBadge priority={space.priority} size="sm" />
@@ -67,12 +67,12 @@ export function SpaceListItem({ space, stats, onSelect }: SpaceListItemProps) {
         </div>
       </div>
 
-      <div className="hidden shrink-0 items-center gap-4 text-[0.75rem] sm:flex">
+      <div className="hidden shrink-0 items-center gap-4 text-ui-xs sm:flex">
         <SpaceCountBadge color="mark" icon={CircleDashed} value={stats?.open ?? 0} />
         <SpaceCountBadge color="ok" icon={CheckCircle2} value={stats?.closed ?? 0} />
         <SpaceCountBadge color="ink-3" icon={MessageCircle} value={stats?.comments ?? 0} />
       </div>
-      <div className="mt-1.5 flex shrink-0 items-center gap-3 text-[0.6875rem] sm:hidden">
+      <div className="mt-1.5 flex shrink-0 items-center gap-3 text-ui-xs sm:hidden">
         <SpaceCountBadge color="mark" icon={CircleDashed} value={stats?.open ?? 0} />
         <SpaceCountBadge color="ok" icon={CheckCircle2} value={stats?.closed ?? 0} />
         <SpaceCountBadge color="ink-3" icon={MessageCircle} value={stats?.comments ?? 0} />

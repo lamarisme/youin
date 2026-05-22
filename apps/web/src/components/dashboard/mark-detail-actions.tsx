@@ -57,7 +57,7 @@ export function MarkDetailActions({
   const projectById = new Map(projects.map((project) => [project.id, project.name]));
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[0.8125rem] text-ink-2">
+    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-ui-sm text-ink-2">
       <PropertyGroup
         label="Status"
         icon={
@@ -75,7 +75,7 @@ export function MarkDetailActions({
           aria-keyshortcuts="X"
           aria-label={pin.status === "open" ? "Resolve mark" : "Reopen mark"}
           className={cn(
-            "h-11 px-1.5 text-[0.8125rem] hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+            "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
             pin.status === "open" ? "text-mark" : "text-ok",
           )}
         >
@@ -143,7 +143,7 @@ export function MarkDetailActions({
         aria-pressed={pin.pinned}
         aria-keyshortcuts="B"
         className={cn(
-          "h-11 px-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+          "h-11 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
           pin.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
         )}
       >

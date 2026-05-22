@@ -45,8 +45,8 @@ export function FilterSelect<TValue extends string = string>({
         aria-label={ariaLabel}
         className={cn(
           size === "sm"
-            ? "h-11 text-[0.9375rem] sm:h-8 sm:text-[0.8125rem]"
-            : "h-11 text-[0.9375rem] sm:h-10 sm:text-[0.875rem]",
+            ? "h-11 text-ui-lg sm:h-8 sm:text-ui-sm"
+            : "h-11 text-ui-lg sm:h-10 sm:text-ui-md",
           variant === "inline"
             ? "border-transparent bg-transparent px-1.5 text-ink shadow-none hover:bg-paper-2 focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
             : "bg-paper-2 text-ink hover:bg-paper-3",

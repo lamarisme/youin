@@ -39,7 +39,7 @@ export function MentionPopover({
         aria-label="Mentionable teammates"
         className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg bg-paper-2 p-2 shadow-[var(--shadow-popover)] ring-1 ring-rule"
       >
-        <p className="px-2 py-1.5 text-[0.75rem] text-ink-3">No matching teammates.</p>
+        <p className="px-2 py-1.5 text-ui-xs text-ink-3">No matching teammates.</p>
       </div>
     );
   }
@@ -66,12 +66,12 @@ export function MentionPopover({
                   onSelect(m);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-[0.8125rem] transition-colors",
+                  "flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-ui-sm transition-colors",
                   active ? "bg-paper-3 text-ink" : "text-ink-2 hover:bg-paper-2",
                 )}
               >
                 <Avatar className="size-5">
-                  <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                  <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
                     {m.initials}
                   </AvatarFallback>
                 </Avatar>
@@ -85,7 +85,7 @@ export function MentionPopover({
                   {memberPickerLabel(m, displayNamePreference)}
                 </span>
                 {m.email ? (
-                  <span className="ml-auto max-w-[40%] shrink-0 truncate text-[0.6875rem] text-ink-3">
+                  <span className="ml-auto max-w-[40%] shrink-0 truncate text-ui-xs text-ink-3">
                     {m.email}
                   </span>
                 ) : null}

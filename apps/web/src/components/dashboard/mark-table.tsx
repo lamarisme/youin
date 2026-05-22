@@ -155,11 +155,11 @@ function buildColumns({
           onClick={() => onSelectMark(pin)}
           className="-mx-1 block min-w-0 rounded-md px-1 py-1 text-left outline-none transition-colors hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/35"
         >
-          <p className="truncate text-[0.8125rem] font-semibold text-ink">
+          <p className="truncate text-ui-sm font-semibold text-ink">
             {pin.title}
           </p>
           {pin.page.trim() ? (
-            <p className="mt-0.5 truncate text-[0.6875rem] text-ink-3" title={pin.page}>
+            <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={pin.page}>
               {formatMarkPageLabel(pin.page)}
             </p>
           ) : null}
@@ -198,7 +198,7 @@ function buildColumns({
             return (
               <span
                 key={lid}
-                className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2"
+                className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
               >
                 {label.name}
               </span>
@@ -226,7 +226,7 @@ function buildColumns({
           aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
         >
           <Avatar className="size-5" aria-hidden>
-            <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+            <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
               {assignee.initials}
             </AvatarFallback>
           </Avatar>
@@ -260,7 +260,7 @@ function buildColumns({
       if (count === 0) return null;
       return (
         <span
-          className="flex items-center gap-1 text-[0.625rem] text-ink-3"
+          className="flex items-center gap-1 text-ui-2xs text-ink-3"
           aria-label={`${count} comment${count === 1 ? "" : "s"}`}
         >
           <MessageCircle className="size-3" aria-hidden />
@@ -293,7 +293,7 @@ function buildColumns({
     header: "ID",
     size: 72,
     cell: ({ row }) => (
-      <span className="shrink-0 whitespace-nowrap font-mono text-[0.625rem] text-ink-3">
+      <span className="shrink-0 whitespace-nowrap font-mono text-ui-2xs text-ink-3">
         {row.original.displayKey}
       </span>
     ),
@@ -410,7 +410,7 @@ export function MarkTable({
                             ? "descending"
                             : undefined
                       }
-                      className="h-7 px-3 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3"
+                      className="h-8 bg-paper-2 px-3 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3"
                     >
                       {header.column.getCanSort() ? (
                         <button
@@ -496,7 +496,7 @@ function MobileMarkList({
   }
 
   return (
-    <ul className="space-y-1 p-1">
+    <ul>
       {pins.map((pin) => {
         const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
         const commentCount = commentCountByPinId.get(pin.id) ?? 0;
@@ -507,7 +507,7 @@ function MobileMarkList({
             key={pin.id}
             data-state={selected ? "selected" : undefined}
             className={cn(
-              "rounded-md px-3 py-3 transition-colors hover:bg-paper-3/55",
+              "px-3 py-3 transition-colors hover:bg-paper-2",
               selected && "bg-mark-soft/40 hover:bg-mark-soft/45",
             )}
           >
@@ -527,11 +527,11 @@ function MobileMarkList({
                     onClick={() => onSelectMark(pin)}
                     className="min-h-11 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
                   >
-                    <span className="block break-words text-[0.9375rem] font-semibold leading-snug text-ink">
+                    <span className="block break-words text-ui-lg font-semibold leading-snug text-ink">
                       {pin.title}
                     </span>
                     {pageLabel ? (
-                      <span className="mt-1 block truncate text-[0.75rem] text-ink-3" title={pin.page}>
+                      <span className="mt-1 block truncate text-ui-xs text-ink-3" title={pin.page}>
                         {pageLabel}
                       </span>
                     ) : null}
@@ -556,7 +556,7 @@ function MobileMarkList({
                   ) : null}
                   {commentCount > 0 ? (
                     <span
-                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-[0.6875rem] text-ink-3"
+                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs text-ink-3"
                       aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
                     >
                       <MessageCircle className="size-3" aria-hidden />
@@ -565,17 +565,17 @@ function MobileMarkList({
                   ) : null}
                   {assignee ? (
                     <span
-                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-1.5 py-0.5 text-[0.6875rem] text-ink-3"
+                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-1.5 py-0.5 text-ui-xs text-ink-3"
                       aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
                     >
                       <Avatar className="size-5" aria-hidden>
-                        <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                        <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
                           {assignee.initials}
                         </AvatarFallback>
                       </Avatar>
                     </span>
                   ) : null}
-                  <span className="font-mono text-[0.6875rem] text-ink-3">
+                  <span className="font-mono text-ui-xs text-ink-3">
                     {pin.displayKey}
                   </span>
                 </div>
@@ -588,7 +588,7 @@ function MobileMarkList({
                       return (
                         <span
                           key={lid}
-                          className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.6875rem] font-medium text-ink-2"
+                          className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-xs font-medium text-ink-2"
                         >
                           {label.name}
                         </span>
@@ -607,12 +607,12 @@ function MobileMarkList({
 
 function StatusInline({ status }: { status: PinItem["status"] }) {
   return status === "open" ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-[0.6875rem] font-medium text-mark">
+    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
       <CircleDashed className="size-3" aria-hidden />
       Open
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-[0.6875rem] font-medium text-ok">
+    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
       <CheckCircle2 className="size-3" aria-hidden />
       Resolved
     </span>

@@ -62,17 +62,17 @@ export function AccountClient({ section = null }: { section?: string | null }) {
                 )}
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-[0.8125rem] font-medium">
+                  <span className="block truncate text-ui-sm font-medium">
                     {section.label}
                   </span>
-                  <span className="hidden truncate text-[0.6875rem] text-ink-3 lg:block">
+                  <span className="hidden truncate text-ui-xs text-ink-3 lg:block">
                     {section.detail}
                   </span>
                 </span>
                 {typeof section.count === "number" ? (
                   <span
                     className={cn(
-                      "rounded bg-paper-3 px-1.5 py-px font-mono text-[0.625rem] tabular-nums",
+                      "rounded bg-paper-3 px-1.5 py-px font-mono text-ui-2xs tabular-nums",
                       active ? "text-ink-2" : "text-ink-3",
                     )}
                   >

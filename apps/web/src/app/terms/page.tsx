@@ -21,7 +21,7 @@ export default function TermsPage() {
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-[0.8125rem] text-ink-2 hover:text-ink"
+            className="inline-flex items-center gap-1.5 text-ui-sm text-ink-2 hover:text-ink"
           >
             <ArrowLeft className="size-3.5" />
             Back to landing
@@ -33,7 +33,7 @@ export default function TermsPage() {
         <div className="mx-auto max-w-[640px]">
           <p className="text-eyebrow mb-2">Terms</p>
           <h1 className="text-editorial-md text-ink">Terms of service.</h1>
-          <p className="mt-4 max-w-[60ch] text-[0.9375rem] leading-relaxed text-ink-2">
+          <p className="mt-4 max-w-[60ch] text-ui-lg leading-relaxed text-ink-2">
             These terms govern your use of youin — the Chrome extension, the dashboard, the npm
             package, and any related services we provide. We&rsquo;re finalizing the full document
             ahead of general availability.
@@ -41,24 +41,24 @@ export default function TermsPage() {
 
           <div className="mt-8 rounded-xl border border-rule bg-paper-2 p-6">
             <p className="text-eyebrow mb-3">Need the current version?</p>
-            <p className="text-[0.9375rem] leading-relaxed text-ink-2">
+            <p className="text-ui-lg leading-relaxed text-ink-2">
               Email us and we&rsquo;ll send the latest draft, including the data processing
               addendum if you&rsquo;re reviewing as a customer.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <Button asChild className="h-11 px-5 text-[0.875rem] font-semibold">
+              <Button asChild className="h-11 px-5 text-ui-md font-semibold">
                 <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-flex items-center gap-2">
                   <Mail className="size-4" />
                   {SUPPORT_EMAIL}
                 </a>
               </Button>
-              <Button variant="outline" asChild className="h-11 px-5 text-[0.875rem]">
+              <Button variant="outline" asChild className="h-11 px-5 text-ui-md">
                 <Link href="/contact">Contact form</Link>
               </Button>
             </div>
           </div>
 
-          <div className="mt-10 space-y-6 text-[0.9375rem] leading-relaxed text-ink-2">
+          <div className="mt-10 space-y-6 text-ui-lg leading-relaxed text-ink-2">
             <section>
               <h2 className="font-display text-xl font-semibold text-ink">What this will cover</h2>
               <ul className="mt-3 list-inside list-disc space-y-1.5">

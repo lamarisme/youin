@@ -187,17 +187,43 @@ function ensureHost() {
       transform: translateX(-50%);
       display: flex;
       align-items: center;
-      gap: 10px;
-      max-width: min(calc(100vw - 24px), 520px);
-      padding: 8px 10px 8px 14px;
+      gap: 8px;
+      max-width: min(calc(100vw - 24px), 640px);
+      min-height: 48px;
+      padding: 6px 7px 6px 14px;
       border-radius: 999px;
       pointer-events: auto;
-      background: color-mix(in oklch, var(--yi-paper) 82%, var(--yi-paper-2));
+      background: color-mix(in oklch, var(--yi-paper) 94%, var(--yi-paper-2));
       color: var(--yi-ink-2);
       font: 500 12px/1.2 ${fontFamily.sans};
       letter-spacing: 0;
-      border: 1px solid color-mix(in oklch, var(--yi-rule) 42%, transparent);
-      box-shadow: 0 16px 40px -28px oklch(18.4% 0.018 62 / 0.42);
+      border: 1px solid color-mix(in oklch, var(--yi-ink) 8%, transparent);
+      box-shadow:
+        0 18px 48px -32px oklch(18.4% 0.018 62 / 0.44),
+        0 1px 0 color-mix(in oklch, var(--yi-paper) 72%, transparent) inset;
+      backdrop-filter: blur(14px) saturate(1.04);
+    }
+    .toolbar .status,
+    .toolbar .meta {
+      display: inline-flex;
+      min-width: 0;
+      align-items: center;
+    }
+    .toolbar .status {
+      gap: 9px;
+      color: var(--yi-ink);
+      font-weight: 600;
+    }
+    .toolbar .mode {
+      max-width: 230px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .toolbar .meta {
+      gap: 8px;
+      padding-left: 10px;
+      border-left: 1px solid color-mix(in oklch, var(--yi-ink) 13%, transparent);
     }
     .toolbar .dot {
       width: 7px;
@@ -207,24 +233,28 @@ function ensureHost() {
       box-shadow: 0 0 0 3px color-mix(in oklch, var(--yi-mark) 11%, transparent);
       flex-shrink: 0;
     }
-    .toolbar .sep {
-      opacity: 0.35;
-      user-select: none;
-    }
     .toolbar .muted {
       color: var(--yi-ink-3);
-      max-width: 28vw;
+      max-width: min(32vw, 190px);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-weight: 650;
     }
     .toolbar .counts {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
       font-variant-numeric: tabular-nums;
       color: var(--yi-mark-bright);
+      font-weight: 700;
       white-space: nowrap;
     }
     .toolbar button.close {
-      margin-left: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -238,7 +268,7 @@ function ensureHost() {
       background: transparent;
       color: var(--yi-ink-3);
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1;
     }
     .toolbar button.close:hover {
@@ -250,16 +280,36 @@ function ensureHost() {
       align-items: center;
       justify-content: center;
       min-height: 32px;
-      padding: 0 10px;
+      padding: 0 12px;
       border: 0;
       border-radius: 999px;
       background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
-      color: var(--yi-mark);
       cursor: pointer;
       font: 700 11px/1 ${fontFamily.sans};
+      color: var(--yi-mark);
     }
     .toolbar button.drawer:hover {
       background: color-mix(in oklch, var(--yi-mark) 16%, transparent);
+    }
+    .toolbar .shortcut {
+      display: inline-flex;
+      align-items: center;
+      padding-left: 8px;
+      border-left: 1px solid color-mix(in oklch, var(--yi-ink) 13%, transparent);
+      color: var(--yi-ink-3);
+      font: 600 10px/1 ${fontFamily.sans};
+      white-space: nowrap;
+    }
+    @media (max-width: 560px) {
+      .toolbar {
+        max-width: calc(100vw - 16px);
+      }
+      .toolbar .mode {
+        max-width: 34vw;
+      }
+      .toolbar .muted {
+        display: none;
+      }
     }
   `
   shadow.append(style)
@@ -270,15 +320,19 @@ function ensureHost() {
 
   const toolbar = document.createElement("div")
   toolbar.className = "toolbar"
-  toolbar.setAttribute("role", "status")
+  toolbar.setAttribute("role", "toolbar")
+  toolbar.setAttribute("aria-label", "YouIn review controls")
   toolbar.innerHTML = `
-    <span class="dot" aria-hidden="true"></span>
-    <span data-field="mode">Click an element to leave feedback</span>
-    <span class="sep" aria-hidden="true">|</span>
-    <span class="muted" data-field="ns"></span>
-    <span class="sep" aria-hidden="true">|</span>
-    <span class="counts" data-field="counts"></span>
+    <span class="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="mode" data-field="mode">Click an element to leave feedback</span>
+    </span>
+    <span class="meta">
+      <span class="muted" data-field="ns"></span>
+      <span class="counts" data-field="counts"></span>
+    </span>
     <button type="button" class="drawer" aria-label="Show page feedback">List</button>
+    <span class="shortcut" data-field="shortcut">Alt+Shift+Y · Esc to exit</span>
     <button type="button" class="close" aria-label="Exit inspect mode">✕</button>
   `
   toolbarNsEl = toolbar.querySelector('[data-field="ns"]')
@@ -639,6 +693,10 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape") {
     e.preventDefault()
     e.stopImmediatePropagation()
+    if (mode === "region" && (regionStart || regionRect)) {
+      resetRegionSelection()
+      return
+    }
     deactivate()
   }
 }
@@ -797,6 +855,11 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
   }
   if (t === "youin:start-screenshot") {
     activateRegion()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:toggle-drawer") {
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
     sendResponse({ ok: true })
     return true
   }

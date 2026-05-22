@@ -130,7 +130,7 @@ export function LabelPicker({
           <span
             key={label.id}
             className={cn(
-              "inline-flex max-w-[16rem] items-center gap-0.5 rounded-md py-0.5 pl-2 pr-0.5 text-[0.6875rem] font-medium text-ink",
+              "inline-flex max-w-[16rem] items-center gap-0.5 rounded-md py-0.5 pl-2 pr-0.5 text-ui-xs font-medium text-ink",
               variant === "inline" ? "bg-paper-2" : "bg-paper-3",
             )}
           >
@@ -163,7 +163,7 @@ export function LabelPicker({
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-expanded={showOptions}
-          className="min-h-9 min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-[0.8125rem] text-ink placeholder:text-ink-3 focus:outline-none sm:min-h-6"
+          className="min-h-9 min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-ui-sm text-ink placeholder:text-ink-3 focus:outline-none sm:min-h-6"
         />
       </div>
 
@@ -182,7 +182,7 @@ export function LabelPicker({
                   e.preventDefault();
                   add(label.id);
                 }}
-                className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[0.8125rem] text-ink transition-colors hover:bg-paper-2"
+                className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-sm text-ink transition-colors hover:bg-paper-2"
               >
                 <span className="truncate">{label.name}</span>
                 {showEnter ? (
@@ -203,7 +203,7 @@ export function LabelPicker({
                 void handleCreate();
               }}
               disabled={creating}
-              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-[0.8125rem] text-mark transition-colors hover:bg-mark-soft disabled:opacity-60"
+              className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-sm text-mark transition-colors hover:bg-mark-soft disabled:opacity-60"
             >
               <span className="inline-flex items-center gap-1.5">
                 <Plus className="size-3.5" aria-hidden />

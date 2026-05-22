@@ -23,7 +23,7 @@ export function BreadcrumbHeader({ items, actions, className }: BreadcrumbHeader
   return (
     <div
       className={cn(
-        "flex min-h-[3rem] flex-wrap items-start justify-between gap-2 pb-1",
+        "flex min-h-[3rem] flex-wrap items-start justify-between gap-2 pb-2",
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function BreadcrumbHeader({ items, actions, className }: BreadcrumbHeader
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className={cn("min-w-0", className)}>
-      <ol className="flex min-w-0 items-center gap-1 text-[0.8125rem] text-ink-3">
+      <ol className="flex min-w-0 items-center gap-1 text-ui-sm text-ink-3">
         {items.map((item, index) => (
           <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1">
             {index > 0 ? (

@@ -21,15 +21,15 @@ export function Field({ id, label, hint, error, hero, className, children }: Fie
         className={cn(
           "block",
           hero
-            ? "font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-ink-3"
-            : "text-[0.75rem] font-medium text-ink-2",
+            ? "font-mono text-ui-xs uppercase tracking-[0.12em] text-ink-3"
+            : "text-ui-xs font-medium text-ink-2",
         )}
       >
         {label}
       </Label>
       {children}
       {error ? (
-        <p id={`${id}-error`} role="alert" className="pt-1 text-[0.6875rem] text-mark">
+        <p id={`${id}-error`} role="alert" className="pt-1 text-ui-xs text-mark">
           {error}
         </p>
       ) : hint ? (

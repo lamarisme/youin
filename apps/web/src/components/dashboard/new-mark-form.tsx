@@ -202,7 +202,7 @@ export function NewMarkForm({
           onChange={(e) => dispatch({ type: "set_title", value: e.target.value })}
           placeholder="What needs attention?"
           maxLength={180}
-          className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+          className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
           autoFocus
         />
       </Field>
@@ -218,7 +218,7 @@ export function NewMarkForm({
           }}
           placeholder="https://app.example.com/pricing"
           maxLength={300}
-          className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+          className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
         />
       </Field>
       <div className="sm:col-span-2">
@@ -235,7 +235,7 @@ export function NewMarkForm({
         </Field>
       </div>
       <div className="space-y-1.5 sm:col-span-2">
-        <Label className="block text-[0.75rem] font-medium text-ink-2">Labels</Label>
+        <Label className="block text-ui-xs font-medium text-ink-2">Labels</Label>
         <LabelPicker
           labels={labels}
           selectedIds={state.labelIds}
@@ -244,7 +244,7 @@ export function NewMarkForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="block text-[0.75rem] font-medium text-ink-2">Priority</Label>
+        <Label className="block text-ui-xs font-medium text-ink-2">Priority</Label>
         <FilterSelect<PinPriority>
           value={state.priority}
           onValueChange={(v) => dispatch({ type: "set_priority", value: v })}
@@ -255,7 +255,7 @@ export function NewMarkForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label className="block text-[0.75rem] font-medium text-ink-2">Assignee</Label>
+        <Label className="block text-ui-xs font-medium text-ink-2">Assignee</Label>
         <FilterSelect
           value={state.assigneeId}
           onValueChange={(v) => dispatch({ type: "set_assignee", value: v })}
@@ -267,7 +267,7 @@ export function NewMarkForm({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 sm:col-span-2">
-        <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3">
+        <span className="font-mono text-ui-2xs uppercase tracking-[0.14em] text-ink-3">
           Preview
         </span>
         <PriorityBadge priority={state.priority} size="sm" />
@@ -275,15 +275,15 @@ export function NewMarkForm({
           <Pill key={label.id} size="sm">{label.name}</Pill>
         ))}
         {previewAssignee && previewAssigneeParts ? (
-          <span className="inline-flex items-center gap-1 text-[0.6875rem] text-ink-2">
-            <span className="inline-flex size-4 items-center justify-center rounded-full bg-paper-3 text-[0.5625rem] font-medium text-ink-2">
+          <span className="inline-flex items-center gap-1 text-ui-xs text-ink-2">
+            <span className="inline-flex size-4 items-center justify-center rounded-full bg-paper-3 text-ui-2xs font-medium text-ink-2">
               {previewAssignee.initials}
             </span>
             <span className="text-ink-2">{previewAssigneeParts.primary}</span>
           </span>
         ) : null}
         {targetSpaceLabel ? (
-          <span className="ml-auto truncate text-[0.75rem] text-ink-3">
+          <span className="ml-auto truncate text-ui-xs text-ink-3">
             in <span className="font-medium text-ink">{targetSpaceLabel}</span>
           </span>
         ) : null}

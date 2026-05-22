@@ -188,7 +188,7 @@ export function CommentThread({
       </h2>
       <div className="space-y-2">
         {comments.length === 0 ? (
-          <p className="text-[0.8125rem] text-ink-3">
+          <p className="text-ui-sm text-ink-3">
             No comments yet. Start the conversation.
           </p>
         ) : null}
@@ -235,7 +235,7 @@ export function CommentThread({
                 e.currentTarget.value = "";
               }
             }}
-            className="h-11 max-w-[190px] text-[1rem] sm:h-8 sm:max-w-[160px] sm:text-[0.6875rem]"
+            className="h-11 max-w-[190px] text-ui-md sm:h-8 sm:max-w-[160px] sm:text-ui-xs"
           />
           <SubmitButton
             size="sm"
@@ -243,14 +243,14 @@ export function CommentThread({
             loading={submitting}
             disabled={!hasText && !image}
             loadingText="Sending..."
-            className="h-11 px-3 text-[0.9375rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+            className="h-11 px-3 text-ui-lg sm:h-8 sm:px-2.5 sm:text-ui-sm"
           >
             <MessageCircle className="size-3.5" />
             Send
           </SubmitButton>
         </div>
         {image ? (
-          <div className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-md bg-paper-3 px-2 py-1.5 text-[0.75rem] text-ink-2">
+          <div className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-md bg-paper-3 px-2 py-1.5 text-ui-xs text-ink-2">
             <span className="min-w-0 truncate" title={image.name}>
               {image.name}
             </span>
@@ -329,12 +329,12 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <Avatar className="size-5">
-              <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+              <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
                 {author?.initials ?? "?"}
               </AvatarFallback>
             </Avatar>
             <span
-              className="min-w-0 truncate text-[0.75rem] font-medium text-ink"
+              className="min-w-0 truncate text-ui-xs font-medium text-ink"
               title={author ? memberPickerLabel(author, namePref) : undefined}
             >
               {authorLine ? (
@@ -348,7 +348,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
             <time
               dateTime={comment.createdAt}
               title={formatDateTime(comment.createdAt)}
-              className="text-[0.625rem] text-ink-3"
+              className="text-ui-2xs text-ink-3"
             >
               {formatRelative(comment.createdAt)}
             </time>
@@ -414,7 +414,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                   setDraft(comment.body ?? "");
                 }}
                 disabled={isSaving}
-                className="h-7 px-2 text-[0.75rem]"
+                className="h-7 px-2 text-ui-xs"
               >
                 <X className="size-3" aria-hidden />
                 Cancel
@@ -426,7 +426,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 loading={isSaving}
                 disabled={!draftHasText || !draftChanged}
                 loadingText="Saving…"
-                className="h-7 px-2 text-[0.75rem]"
+                className="h-7 px-2 text-ui-xs"
               >
                 <Check className="size-3" aria-hidden />
                 Save
@@ -436,7 +436,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
         ) : comment.type === "text" ? (
           <MarkDescriptionRead
             html={comment.body ?? ""}
-            className="max-w-none break-words text-[0.8125rem] leading-relaxed text-ink"
+            className="max-w-none break-words text-ui-sm leading-relaxed text-ink"
           />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded bg-paper-3">
@@ -478,7 +478,8 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+              variant="mark"
+              className="h-9"
             >
               Delete
             </SubmitButton>

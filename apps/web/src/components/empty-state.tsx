@@ -29,9 +29,9 @@ export function EmptyState({
       )}
     >
       {Icon ? <Icon className="mx-auto mb-2 size-6 text-ink-3" aria-hidden /> : null}
-      <p className="text-[0.8125rem] text-ink">{title}</p>
+      <p className="text-ui-sm text-ink">{title}</p>
       {description ? (
-        <p className="mx-auto mt-1 max-w-[42ch] text-[0.75rem] leading-relaxed text-ink-3">{description}</p>
+        <p className="mx-auto mt-1 max-w-[42ch] text-ui-xs leading-relaxed text-ink-3">{description}</p>
       ) : null}
       {action ? <div className="mt-3 flex justify-center">{action}</div> : null}
     </div>

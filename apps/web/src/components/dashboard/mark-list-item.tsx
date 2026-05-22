@@ -94,15 +94,15 @@ export function MarkListItem({
         <span className="sr-only">{pin.status === "open" ? "Open." : "Resolved."}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="truncate text-[0.875rem] font-semibold text-ink group-hover/row:text-mark">{pin.title}</p>
+            <p className="truncate text-ui-md font-semibold text-ink group-hover/row:text-mark">{pin.title}</p>
             <span
-              className="hidden shrink-0 tabular-nums font-mono text-[0.625rem] text-ink-3 sm:inline"
+              className="hidden shrink-0 tabular-nums font-mono text-ui-2xs text-ink-3 sm:inline"
               aria-hidden
             >
               {pin.displayKey}
             </span>
           </div>
-          <p className="mt-0.5 text-[0.75rem] text-ink-3">
+          <p className="mt-0.5 text-ui-xs text-ink-3">
             <span className="sr-only">Page URL: </span>
             <span title={pin.page}>{pageLabel}</span>
           </p>
@@ -119,7 +119,7 @@ export function MarkListItem({
               return (
                 <span
                   key={lid}
-                  className="rounded bg-paper-3 px-1.5 py-0.5 text-[0.625rem] font-medium text-ink-2"
+                  className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
                 >
                   {label.name}
                 </span>
@@ -131,7 +131,7 @@ export function MarkListItem({
                 aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
               >
                 <Avatar className="size-5" aria-hidden>
-                  <AvatarFallback className="bg-paper-3 text-[8px] font-medium text-ink-2">
+                  <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
                     {assignee.initials}
                   </AvatarFallback>
                 </Avatar>
@@ -139,7 +139,7 @@ export function MarkListItem({
             ) : null}
             {commentCount > 0 ? (
               <span
-                className="flex items-center gap-1 text-[0.625rem] text-ink-3"
+                className="flex items-center gap-1 text-ui-2xs text-ink-3"
                 aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
               >
                 <MessageCircle className="size-3" aria-hidden />

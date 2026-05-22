@@ -254,7 +254,7 @@ function CommandPaletteDialog({
           ref={inputRef}
           autoFocus
           placeholder={t("placeholder")}
-          className="flex-1 bg-transparent text-[0.9375rem] text-ink outline-none placeholder:text-ink-3"
+          className="flex-1 bg-transparent text-ui-lg text-ink outline-none placeholder:text-ink-3"
         />
         <Kbd>
           esc
@@ -262,7 +262,7 @@ function CommandPaletteDialog({
       </div>
 
       <Command.List className="max-h-[60vh] overflow-y-auto py-1.5">
-        <Command.Empty className="px-4 py-6 text-center text-[0.8125rem] text-ink-3">
+        <Command.Empty className="px-4 py-6 text-center text-ui-sm text-ink-3">
           {t("empty")}
         </Command.Empty>
 
@@ -273,7 +273,7 @@ function CommandPaletteDialog({
             <Command.Group
               key={groupId}
               heading={t(`groups.${groupId}`)}
-              className="py-1 [&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1.5 [&_[cmdk-group-heading]]:text-[0.625rem] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-ink-3"
+              className="py-1 [&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-1.5 [&_[cmdk-group-heading]]:text-ui-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-ink-3"
             >
               {items.map((cmd) => {
                 const Icon = cmd.icon;
@@ -283,7 +283,7 @@ function CommandPaletteDialog({
                     value={`${cmd.title} ${cmd.subtitle ?? ""} ${(cmd.keywords ?? []).join(" ")}`}
                     onSelect={() => onSelect(cmd.id)}
                     className={cn(
-                      "mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[0.875rem] transition-colors",
+                      "mx-1.5 flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-ui-md transition-colors",
                       "data-[selected=true]:bg-paper-3 data-[selected=true]:text-ink",
                       "text-ink-2",
                     )}
@@ -294,7 +294,7 @@ function CommandPaletteDialog({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{cmd.title}</span>
                       {cmd.subtitle ? (
-                        <span className="block truncate text-[0.75rem] text-ink-3">
+                        <span className="block truncate text-ui-xs text-ink-3">
                           {cmd.subtitle}
                         </span>
                       ) : null}
@@ -312,7 +312,7 @@ function CommandPaletteDialog({
         })}
       </Command.List>
 
-      <div className="flex items-center justify-between px-3.5 py-2 text-[0.6875rem] text-ink-3">
+      <div className="flex items-center justify-between px-3.5 py-2 text-ui-xs text-ink-3">
         <span className="flex items-center gap-1.5">
           <Kbd>↑↓</Kbd>
           {t("footerNavigate")}

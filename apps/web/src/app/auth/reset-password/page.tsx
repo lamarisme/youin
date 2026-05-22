@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
     <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
         <h2 className="font-display text-xl font-semibold text-ink">Set a new password</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
+        <p className="mt-1 text-ui-sm text-ink-2">
           {success
             ? "Password updated. Taking you to the dashboard."
             : "Pick something memorable. At least 8 characters."}
@@ -82,8 +82,8 @@ export default function ResetPasswordPage() {
           <div className="flex items-start gap-3 rounded-md border border-mark/25 bg-mark-soft px-3 py-2.5">
             <div className="mt-0.5 size-4 shrink-0 rounded-full border-2 border-mark" />
             <div>
-              <p className="text-[0.8125rem] font-medium text-mark">Link expired</p>
-              <p className="mt-0.5 text-[0.75rem] text-ink-2">
+              <p className="text-ui-sm font-medium text-mark">Link expired</p>
+              <p className="mt-0.5 text-ui-xs text-ink-2">
                 This reset link has expired or already been used. Request a new one to continue.
               </p>
             </div>
@@ -95,13 +95,13 @@ export default function ResetPasswordPage() {
       ) : (
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-[0.75rem] font-medium text-ink-2">
+            <Label htmlFor="password" className="text-ui-xs font-medium text-ink-2">
               New password
             </Label>
             <PasswordInput
               id="password"
               placeholder="At least 8 characters"
-              className="h-9 bg-paper text-[0.8125rem]"
+              className="h-9 bg-paper text-ui-sm"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -113,13 +113,13 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="confirm" className="text-[0.75rem] font-medium text-ink-2">
+            <Label htmlFor="confirm" className="text-ui-xs font-medium text-ink-2">
               Confirm new password
             </Label>
             <PasswordInput
               id="confirm"
               placeholder="Type it again"
-              className="h-9 bg-paper text-[0.8125rem]"
+              className="h-9 bg-paper text-ui-sm"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
@@ -127,7 +127,7 @@ export default function ResetPasswordPage() {
               autoComplete="new-password"
             />
             {confirm.length > 0 && passwordsMatch && (
-              <p className="flex items-center gap-1 text-[0.6875rem] text-ok">
+              <p className="flex items-center gap-1 text-ui-xs text-ok">
                 <CheckCircle2 className="size-3" />
                 Passwords match
               </p>
@@ -153,7 +153,7 @@ export default function ResetPasswordPage() {
         </form>
       )}
 
-      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-ui-sm text-ink-2">
         <Link href="/login" className="font-medium text-ink hover:text-mark">
           Back to sign in
         </Link>

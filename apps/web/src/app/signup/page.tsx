@@ -208,14 +208,14 @@ function SignUpPageContent() {
         <header className="mt-4">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-eyebrow">{current.eyebrow}</p>
-            <span className="rounded-full border border-info/25 bg-info-soft px-2 py-0.5 text-[0.6875rem] font-medium text-info">
+            <span className="rounded-full border border-info/25 bg-info-soft px-2 py-0.5 text-ui-xs font-medium text-info">
               Free beta
             </span>
           </div>
           <h1 className="mt-2 text-[1.25rem] font-semibold leading-tight text-ink sm:text-[1.5rem]">
             {current.title}
           </h1>
-          <p className="mt-1.5 max-w-[44ch] text-[0.8125rem] leading-relaxed text-ink-2">
+          <p className="mt-1.5 max-w-[44ch] text-ui-sm leading-relaxed text-ink-2">
             {current.subtitle}
           </p>
         </header>
@@ -248,7 +248,7 @@ function SignUpPageContent() {
 
                   <div className="flex items-center gap-3">
                     <span className="h-px flex-1 bg-rule" aria-hidden />
-                    <span className="text-[0.6875rem] text-ink-3">or use email</span>
+                    <span className="text-ui-xs text-ink-3">or use email</span>
                     <span className="h-px flex-1 bg-rule" aria-hidden />
                   </div>
                 </>
@@ -264,7 +264,7 @@ function SignUpPageContent() {
                   autoComplete="email"
                   aria-invalid={Boolean(emailFieldError) || undefined}
                   aria-describedby={emailFieldError ? "email-error" : undefined}
-                  className="h-10 bg-paper text-[0.875rem]"
+                  className="h-10 bg-paper text-ui-md"
                   autoFocus
                 />
               </Field>
@@ -279,7 +279,7 @@ function SignUpPageContent() {
                   onCheckedChange={(checked) => setAgreedToTerms(Boolean(checked))}
                   className="mt-[3px]"
                 />
-                <span className="text-[0.8125rem] leading-relaxed text-ink-2">
+                <span className="text-ui-sm leading-relaxed text-ink-2">
                   I agree to the{" "}
                   <a href="/terms" className="text-ink underline-offset-2 hover:underline">
                     Terms of Service
@@ -304,7 +304,7 @@ function SignUpPageContent() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Mira Klein"
                   autoComplete="name"
-                  className="h-10 bg-paper text-[0.875rem]"
+                  className="h-10 bg-paper text-ui-md"
                   autoFocus
                 />
               </Field>
@@ -314,13 +314,13 @@ function SignUpPageContent() {
                 label="Workspace username"
                 error={usernameFieldError}
                 hint={
-                  <p className="text-[0.6875rem] text-ink-3">
+                  <p className="text-ui-xs text-ink-3">
                     Lowercase letters, numbers, and underscores.
                   </p>
                 }
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[0.875rem] text-ink-3">@</span>
+                  <span className="text-ui-md text-ink-3">@</span>
                   <Input
                     id="username"
                     value={username}
@@ -334,7 +334,7 @@ function SignUpPageContent() {
                     maxLength={32}
                     aria-invalid={Boolean(usernameFieldError) || undefined}
                     aria-describedby={usernameFieldError ? "username-error" : undefined}
-                    className="h-10 bg-paper text-[0.875rem]"
+                    className="h-10 bg-paper text-ui-md"
                   />
                 </div>
               </Field>
@@ -355,7 +355,7 @@ function SignUpPageContent() {
                   autoComplete="new-password"
                   aria-invalid={Boolean(passwordFieldError) || undefined}
                   aria-describedby={passwordFieldError ? "password-error" : undefined}
-                  className="h-10 bg-paper text-[0.875rem]"
+                  className="h-10 bg-paper text-ui-md"
                 />
               </Field>
             </fieldset>
@@ -369,7 +369,7 @@ function SignUpPageContent() {
                 id="workspace"
                 label="Workspace name"
                 hint={
-                  <p className="text-[0.6875rem] text-ink-3">
+                  <p className="text-ui-xs text-ink-3">
                     Visible to anyone you invite. Use your team or studio name.
                   </p>
                 }
@@ -382,7 +382,7 @@ function SignUpPageContent() {
                     setWorkspaceName(e.target.value);
                   }}
                   placeholder="Acme Studio"
-                  className="h-10 bg-paper text-[0.875rem] font-medium"
+                  className="h-10 bg-paper text-ui-md font-medium"
                   autoFocus
                 />
               </Field>
@@ -391,7 +391,7 @@ function SignUpPageContent() {
                 id="space"
                 label="First space"
                 hint={
-                  <p className="text-[0.6875rem] text-ink-3">
+                  <p className="text-ui-xs text-ink-3">
                     Optional. Spaces scope reviews to a release, project, or sprint.
                   </p>
                 }
@@ -401,7 +401,7 @@ function SignUpPageContent() {
                   value={firstSpaceName}
                   onChange={(e) => setFirstSpaceName(e.target.value)}
                   placeholder="General"
-                  className="h-10 bg-paper text-[0.875rem]"
+                  className="h-10 bg-paper text-ui-md"
                 />
               </Field>
             </fieldset>
@@ -425,7 +425,7 @@ function SignUpPageContent() {
               <button
                 type="button"
                 onClick={goBack}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-[0.8125rem] text-ink-2 transition-colors hover:text-ink"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-ui-sm text-ink-2 transition-colors hover:text-ink"
               >
                 <ArrowLeft className="size-3.5" />
                 Back
@@ -433,7 +433,7 @@ function SignUpPageContent() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex min-h-9 items-center text-[0.8125rem] text-ink-2 transition-colors hover:text-ink"
+                className="inline-flex min-h-9 items-center text-ui-sm text-ink-2 transition-colors hover:text-ink"
               >
                 I already have an account
               </Link>
@@ -453,7 +453,7 @@ function SignUpPageContent() {
       </div>
 
       {/* Footer */}
-      <p className="text-center text-[0.6875rem] text-ink-3">
+      <p className="text-center text-ui-xs text-ink-3">
         Each screen is intentionally small. Invite reviewers after you land in the app.
       </p>
     </div>

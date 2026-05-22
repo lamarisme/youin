@@ -37,7 +37,7 @@ export function PasswordStrength({ score }: { score: PasswordStrengthScore }) {
       </div>
       <span
         className={cn(
-          "font-mono text-[0.625rem] uppercase tracking-wider",
+          "font-mono text-ui-2xs uppercase tracking-wider",
           score === 0 ? "text-ink-3" : score === 3 ? "text-ok" : "text-ink-2",
         )}
       >

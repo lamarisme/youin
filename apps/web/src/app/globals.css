@@ -6,9 +6,18 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-display-family), ui-sans-serif, system-ui, sans-serif;
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-ui-2xs: var(--yi-font-ui-2xs);
+  --text-ui-xs: var(--yi-font-ui-xs);
+  --text-ui-sm: var(--yi-font-ui-sm);
+  --text-ui-md: var(--yi-font-ui-md);
+  --text-ui-lg: var(--yi-font-ui-lg);
+  --text-title-sm: var(--yi-font-title-sm);
+  --text-title-md: var(--yi-font-title-md);
+  --text-title-lg: var(--yi-font-title-lg);
 
   --color-paper: var(--yi-paper);
   --color-paper-2: var(--yi-paper-2);
@@ -29,6 +38,10 @@
   --color-warn-soft: var(--yi-warn-soft);
   --color-info: var(--yi-info);
   --color-info-soft: var(--yi-info-soft);
+  --color-mark-ink: var(--yi-mark-ink);
+  --color-destructive-token: var(--yi-destructive);
+  --color-destructive-soft: var(--yi-destructive-soft);
+  --color-focus-ring: var(--yi-focus-ring);
 
   --radius-pill: 999px;
   --shadow-hairline: var(--yi-shadow-hairline);
@@ -62,9 +75,9 @@
   color-scheme: light;
   --ease-out-quart: var(--yi-ease-out-quart);
   --ease-out-expo: var(--yi-ease-out-expo);
-  --card: var(--yi-paper-2);
+  --card: var(--yi-paper-elevated);
   --card-foreground: var(--yi-ink);
-  --popover: var(--yi-paper-2);
+  --popover: var(--yi-paper-elevated);
   --popover-foreground: var(--yi-ink);
   --primary: var(--yi-ink);
   --primary-foreground: var(--yi-paper);
@@ -74,17 +87,17 @@
   --muted-foreground: var(--yi-ink-3);
   --accent: var(--yi-paper-3);
   --accent-foreground: var(--yi-ink);
-  --destructive: var(--yi-mark);
+  --destructive: var(--yi-destructive);
   --border: var(--yi-rule);
   --input: var(--yi-paper-3);
-  --ring: var(--yi-mark);
+  --ring: var(--yi-focus-ring);
   --chart-1: var(--yi-mark);
   --chart-2: var(--yi-info);
   --chart-3: var(--yi-ok);
   --chart-4: var(--yi-warn);
   --chart-5: var(--yi-ink-3);
   --radius: var(--yi-radius-lg);
-  --sidebar: var(--yi-paper);
+  --sidebar: var(--yi-paper-2);
   --sidebar-foreground: var(--yi-ink);
   --sidebar-primary: var(--yi-mark);
   --sidebar-primary-foreground: var(--yi-paper);
@@ -100,9 +113,9 @@
   color-scheme: dark;
   --background: var(--yi-paper);
   --foreground: var(--yi-ink);
-  --card: var(--yi-paper-2);
+  --card: var(--yi-paper-elevated);
   --card-foreground: var(--yi-ink);
-  --popover: var(--yi-paper-2);
+  --popover: var(--yi-paper-elevated);
   --popover-foreground: var(--yi-ink);
   --primary: var(--yi-ink);
   --primary-foreground: var(--yi-paper);
@@ -112,16 +125,16 @@
   --muted-foreground: var(--yi-ink-3);
   --accent: var(--yi-paper-3);
   --accent-foreground: var(--yi-ink);
-  --destructive: var(--yi-mark);
+  --destructive: var(--yi-destructive);
   --border: var(--yi-rule);
   --input: var(--yi-paper-3);
-  --ring: var(--yi-mark);
+  --ring: var(--yi-focus-ring);
   --chart-1: var(--yi-mark);
   --chart-2: var(--yi-info);
   --chart-3: var(--yi-ok);
   --chart-4: var(--yi-warn);
   --chart-5: var(--yi-ink-3);
-  --sidebar: var(--yi-paper);
+  --sidebar: var(--yi-paper-2);
   --sidebar-foreground: var(--yi-ink);
   --sidebar-primary: var(--yi-mark);
   --sidebar-primary-foreground: var(--yi-paper);
@@ -142,8 +155,7 @@
 
   body {
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv05", "cv11";
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-ui-sm leading-[var(--yi-leading-ui-normal)];
   }
 
   ::selection {
@@ -177,7 +189,7 @@
   textarea:focus-visible,
   select:focus-visible,
   [tabindex]:focus-visible {
-    outline: 2px solid var(--color-mark);
+    outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
   }
 
@@ -208,6 +220,16 @@
     letter-spacing: 0;
   }
 
+  .text-editorial-hero {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(3rem, 8vw, 7rem);
+    line-height: 0.9;
+    letter-spacing: 0;
+    text-wrap: balance;
+    max-width: 14ch;
+  }
+
   .text-editorial-md {
     font-family: var(--font-display);
     font-weight: 600;
@@ -218,19 +240,62 @@
 
   .text-eyebrow {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
+    font-size: var(--yi-font-ui-xs);
     font-weight: 500;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--color-ink-3);
   }
 
+  .text-ui-2xs {
+    font-size: var(--yi-font-ui-2xs);
+    line-height: var(--yi-leading-ui-tight);
+  }
+
+  .text-ui-xs {
+    font-size: var(--yi-font-ui-xs);
+    line-height: var(--yi-leading-ui-snug);
+  }
+
+  .text-ui-sm {
+    font-size: var(--yi-font-ui-sm);
+    line-height: var(--yi-leading-ui-normal);
+  }
+
+  .text-ui-md {
+    font-size: var(--yi-font-ui-md);
+    line-height: var(--yi-leading-ui-normal);
+  }
+
+  .text-ui-lg {
+    font-size: var(--yi-font-ui-lg);
+    line-height: var(--yi-leading-ui-relaxed);
+  }
+
+  .text-title-sm {
+    font-size: var(--yi-font-title-sm);
+    line-height: var(--yi-leading-title);
+    font-weight: 600;
+  }
+
+  .text-title-md {
+    font-size: var(--yi-font-title-md);
+    line-height: var(--yi-leading-title);
+    font-weight: 600;
+  }
+
+  .text-title-lg {
+    font-size: var(--yi-font-title-lg);
+    line-height: var(--yi-leading-title);
+    font-weight: 600;
+  }
+
   .bg-paper-grain {
     background-color: var(--color-paper);
     background-image:
-      linear-gradient(to bottom, oklch(from var(--yi-paper-elevated) l c h / 0.72), transparent 18rem),
-      radial-gradient(oklch(from var(--yi-ink) l c h / 0.035) 0.5px, transparent 0.5px);
-    background-size: auto, 6px 6px;
+      linear-gradient(to bottom, oklch(from var(--yi-paper-2) l c h / 0.7), transparent 18rem),
+      radial-gradient(oklch(from var(--yi-ink) l c h / 0.01) 0.5px, transparent 0.5px);
+    background-size: auto, 7px 7px;
   }
 
   .pin-dot {
@@ -250,7 +315,7 @@
     box-shadow: 0 0 0 3px var(--pin-ring), var(--shadow-mark);
   }
 
-  .pin-dot::after {
+  .pin-dot--pulse::after {
     content: "";
     position: absolute;
     inset: -5px;
@@ -300,7 +365,7 @@
   }
 
   .surface-elevated {
-    background: var(--color-paper-2);
+    background: var(--color-paper-elevated);
     box-shadow: none;
   }
 
@@ -444,7 +509,7 @@
       scroll-behavior: auto !important;
     }
 
-    .pin-dot::after {
+    .pin-dot--pulse::after {
       animation: none;
     }
 

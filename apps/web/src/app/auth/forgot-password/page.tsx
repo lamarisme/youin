@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
     <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
         <h2 className="font-display text-xl font-semibold text-ink">Reset your password</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
+        <p className="mt-1 text-ui-sm text-ink-2">
           {sent
             ? "Check your inbox for a link to set a new password. The link expires in one hour."
             : "Enter the email tied to your workspace. We'll send a link to set a new password."}
@@ -58,8 +58,8 @@ export default function ForgotPasswordPage() {
           <div className="flex items-start gap-3 rounded-md border border-ok/25 bg-ok-soft px-3 py-2.5">
             <MailCheck className="mt-0.5 size-4 shrink-0 text-ok" />
             <div>
-              <p className="text-[0.8125rem] font-medium text-ok">Email sent</p>
-              <p className="mt-0.5 text-[0.75rem] text-ink-2">
+              <p className="text-ui-sm font-medium text-ok">Email sent</p>
+              <p className="mt-0.5 text-ui-xs text-ink-2">
                 Sent to <span className="font-medium text-ink">{email.trim()}</span>. Check spam if it doesn&apos;t arrive within a minute.
               </p>
             </div>
@@ -92,14 +92,14 @@ export default function ForgotPasswordPage() {
       ) : (
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-[0.75rem] font-medium text-ink-2">
+            <Label htmlFor="email" className="text-ui-xs font-medium text-ink-2">
               Email
             </Label>
             <Input
               id="email"
               type="email"
               placeholder="you@agency.com"
-              className="h-9 bg-paper text-[0.8125rem]"
+              className="h-9 bg-paper text-ui-sm"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -124,7 +124,7 @@ export default function ForgotPasswordPage() {
         </form>
       )}
 
-      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-ui-sm text-ink-2">
         Remembered it?{" "}
         <Link href="/login" className="font-medium text-ink hover:text-mark">
           Back to sign in

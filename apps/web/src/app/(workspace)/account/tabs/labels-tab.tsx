@@ -85,8 +85,8 @@ export function LabelsTab() {
               >
                 <span className="inline-flex items-center gap-2">
                   <Tag className="size-3.5 text-ink-3" aria-hidden />
-                  <span className="text-[0.8125rem] font-medium text-ink">{label.name}</span>
-                  <span className="font-mono text-[0.6875rem] text-ink-3 tabular-nums">
+                  <span className="text-ui-sm font-medium text-ink">{label.name}</span>
+                  <span className="font-mono text-ui-xs text-ink-3 tabular-nums">
                     {count} mark{count === 1 ? "" : "s"}
                   </span>
                 </span>
@@ -150,7 +150,8 @@ export function LabelsTab() {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+              variant="mark"
+              className="h-9"
             >
               Delete label
             </SubmitButton>

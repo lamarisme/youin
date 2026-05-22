@@ -25,7 +25,7 @@ export function MarkHistory({ events, membersById }: MarkHistoryProps) {
       </h2>
       <div className="space-y-2">
         {events.length === 0 ? (
-          <p className="text-[0.8125rem] text-ink-3">No history yet.</p>
+          <p className="text-ui-sm text-ink-3">No history yet.</p>
         ) : null}
         {events.map((event) => {
           const actor = membersById.get(event.actorId);
@@ -40,7 +40,7 @@ export function MarkHistory({ events, membersById }: MarkHistoryProps) {
             <Surface key={event.id} padding="sm">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span
-                  className="text-[0.75rem] font-medium text-ink"
+                  className="text-ui-xs font-medium text-ink"
                   title={actor ? memberPickerLabel(actor, namePref) : undefined}
                 >
                   {actorParts ? (
@@ -52,12 +52,12 @@ export function MarkHistory({ events, membersById }: MarkHistoryProps) {
                 <time
                   dateTime={event.createdAt}
                   title={formatDateTime(event.createdAt)}
-                  className="text-[0.625rem] text-ink-3"
+                  className="text-ui-2xs text-ink-3"
                 >
                   {formatRelative(event.createdAt)}
                 </time>
               </div>
-              <p className="text-[0.75rem] leading-relaxed text-ink-2">{description}</p>
+              <p className="text-ui-xs leading-relaxed text-ink-2">{description}</p>
             </Surface>
           );
         })}

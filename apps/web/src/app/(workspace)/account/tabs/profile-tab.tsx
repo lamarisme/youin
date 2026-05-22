@@ -213,7 +213,7 @@ function InlineProfileRow({
   if (active) {
     return (
       <div className="grid gap-1 rounded-md px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4">
-        <label htmlFor={id} className="pt-1.5 text-[0.75rem] font-medium text-ink-2">
+        <label htmlFor={id} className="pt-1.5 text-ui-xs font-medium text-ink-2">
           {label}
         </label>
         <div className="min-w-0 space-y-1.5">
@@ -226,7 +226,7 @@ function InlineProfileRow({
               maxLength={400}
               aria-invalid={Boolean(error) || undefined}
               aria-describedby={error ? `${id}-error` : undefined}
-              className="min-h-[88px] resize-y rounded-none border-transparent bg-transparent px-0 py-1 text-[0.8125rem] leading-relaxed shadow-none focus-visible:border-transparent focus-visible:ring-0"
+              className="min-h-[88px] resize-y rounded-none border-transparent bg-transparent px-0 py-1 text-ui-sm leading-relaxed shadow-none focus-visible:border-transparent focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Escape") onCancel();
                 if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -247,7 +247,7 @@ function InlineProfileRow({
               aria-invalid={Boolean(error) || undefined}
               aria-describedby={error ? `${id}-error` : undefined}
               className={cn(
-                "h-8 rounded-none border-transparent bg-transparent px-0 py-0 text-[0.8125rem] shadow-none focus-visible:border-transparent focus-visible:ring-0",
+                "h-8 rounded-none border-transparent bg-transparent px-0 py-0 text-ui-sm shadow-none focus-visible:border-transparent focus-visible:ring-0",
                 field === "avatarUrl" && "font-mono",
               )}
               onKeyDown={(e) => {
@@ -257,7 +257,7 @@ function InlineProfileRow({
             />
           )}
           {error ? (
-            <p id={`${id}-error`} role="alert" className="text-[0.6875rem] text-mark">
+            <p id={`${id}-error`} role="alert" className="text-ui-xs text-mark">
               {error}
             </p>
           ) : null}
@@ -279,12 +279,12 @@ function InlineProfileRow({
       onClick={() => onEdit(field)}
       className="group grid w-full gap-1 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-paper-3/55 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4"
     >
-      <span className="text-[0.75rem] font-medium text-ink-2">{label}</span>
+      <span className="text-ui-xs font-medium text-ink-2">{label}</span>
       <span
         className={cn(
-          "min-w-0 whitespace-pre-wrap break-words text-[0.8125rem] leading-relaxed text-ink",
+          "min-w-0 whitespace-pre-wrap break-words text-ui-sm leading-relaxed text-ink",
           !value.trim() && "text-ink-3",
-          field === "avatarUrl" && value.trim() && "font-mono text-[0.75rem]",
+          field === "avatarUrl" && value.trim() && "font-mono text-ui-xs",
         )}
       >
         {displayed}
@@ -308,8 +308,8 @@ function NamePreferenceRow({
   return (
     <div className="grid gap-2 rounded-md px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
       <div>
-        <p className="text-[0.75rem] font-medium text-ink-2">Names in workspace</p>
-        <p className="mt-0.5 text-[0.6875rem] leading-snug text-ink-3">
+        <p className="text-ui-xs font-medium text-ink-2">Names in workspace</p>
+        <p className="mt-0.5 text-ui-xs leading-snug text-ink-3">
           Mentions still insert the exact @username.
         </p>
       </div>
@@ -359,8 +359,8 @@ function NamePrefButton({
           : "border-transparent bg-transparent text-ink-2 hover:bg-paper-3",
       )}
     >
-      <span className="block text-[0.8125rem] font-medium">{title}</span>
-      <span className="mt-0.5 block text-[0.6875rem] text-ink-3">
+      <span className="block text-ui-sm font-medium">{title}</span>
+      <span className="mt-0.5 block text-ui-xs text-ink-3">
         {description}
       </span>
     </button>

@@ -254,7 +254,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 {space.notes ? (
                   <MarkDescriptionRead
                     html={space.notes}
-                    className="mt-1 max-w-[58ch] text-[0.8125rem] leading-snug text-ink-2"
+                    className="mt-1 max-w-[58ch] text-ui-sm leading-snug text-ink-2"
                   />
                 ) : null}
               </div>
@@ -305,7 +305,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
           </div>
 
           <Surface variant="subtle" padding="sm" className="mt-4">
-            <div className="flex items-center justify-between text-[0.8125rem]">
+            <div className="flex items-center justify-between text-ui-sm">
               <span className="font-medium text-ink">
                 {stats && stats.total > 0 ? `${completionPct}% resolved` : "No marks yet"}
               </span>
@@ -323,7 +323,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 <div className="w-full rounded-full bg-paper-3" />
               )}
             </div>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.6875rem]">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ui-xs">
               <span className="flex items-center gap-1 text-ok">
                 <CheckCircle2 className="size-3" />
                 {stats?.closed ?? 0} resolved
@@ -341,7 +341,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
 
           <div className="mt-5">
             <ToolbarPanel className="mb-3 py-2.5">
-              <p className="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-ink-3">
+              <p className="text-ui-xs font-medium uppercase tracking-[0.06em] text-ink-3">
                 Marks
               </p>
               <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
@@ -349,7 +349,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   size="sm"
                   variant="outline"
                   onClick={() => setShowNew(true)}
-                  className="h-11 gap-1.5 bg-paper-2 px-3 text-[0.875rem] text-ink hover:bg-paper-3 hover:text-ink sm:h-8 sm:text-[0.75rem]"
+                  className="h-11 gap-1.5 bg-paper-2 px-3 text-ui-md text-ink hover:bg-paper-3 hover:text-ink sm:h-8 sm:text-ui-xs"
                 >
                   <Plus className="size-3.5" />
                   New mark
@@ -358,7 +358,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   size="sm"
                   variant="ghost"
                   asChild
-                  className="h-11 gap-1 px-3 text-[0.875rem] text-ink-3 sm:h-8 sm:px-2.5 sm:text-[0.75rem]"
+                  className="h-11 gap-1 px-3 text-ui-md text-ink-3 sm:h-8 sm:px-2.5 sm:text-ui-xs"
                 >
                   <Link href={`/dashboard?space=${space.id}`}>
                     View in triage
@@ -377,7 +377,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                     size="sm"
                     variant="outline"
                     onClick={() => setShowNew(true)}
-                    className="h-11 px-3 text-[0.875rem] sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+                    className="h-11 px-3 text-ui-md sm:h-8 sm:px-2.5 sm:text-ui-sm"
                   >
                     <Plus className="size-3.5" />
                     New mark
@@ -410,14 +410,14 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             <div>
               <p className="text-eyebrow mb-2">Space details</p>
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-[0.8125rem]">
+                <div className="flex items-center gap-2 text-ui-sm">
                   <FolderKanban className="size-3.5 text-ink-3" />
                   <span className="text-ink-2">Project</span>
                   <span className="ml-auto min-w-0 truncate font-medium text-ink">
                     {project?.name ?? "No project"}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-[0.8125rem]">
+                <div className="flex items-center gap-2 text-ui-sm">
                   <CalendarDays className="size-3.5 text-ink-3" />
                   <span className="text-ink-2">Created</span>
                   <span className="ml-auto font-medium text-ink">
@@ -425,7 +425,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   </span>
                 </div>
                 {stats?.lastActivity ? (
-                  <div className="flex items-center gap-2 text-[0.8125rem]">
+                  <div className="flex items-center gap-2 text-ui-sm">
                     <MessageCircle className="size-3.5 text-ink-3" />
                     <span className="text-ink-2">Last activity</span>
                     <span className="ml-auto font-medium text-ink">
@@ -444,9 +444,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                     const label = labelsById.get(lid);
                     if (!label) return null;
                     return (
-                      <div key={lid} className="flex items-center justify-between text-[0.8125rem]">
+                      <div key={lid} className="flex items-center justify-between text-ui-sm">
                         <span className="text-ink-2">{label.name}</span>
-                        <span className="font-mono text-[0.75rem] text-ink">{count}</span>
+                        <span className="font-mono text-ui-xs text-ink">{count}</span>
                       </div>
                     );
                   })}
@@ -492,7 +492,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                 id="space-edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
                 autoFocus
               />
             </Field>
@@ -507,7 +507,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               />
             </Field>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+              <p className="hidden items-center gap-1.5 text-ui-xs text-ink-3 sm:flex">
                 <Kbd className="min-w-[1.25rem] py-px text-ink-2">⌘</Kbd>
                 <Kbd className="min-w-[1.25rem] py-px text-ink-2">Enter</Kbd>
                 <span>to save</span>
@@ -584,7 +584,8 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-9"
+              variant="mark"
+              className="h-11 sm:h-9"
             >
               Delete space
             </SubmitButton>

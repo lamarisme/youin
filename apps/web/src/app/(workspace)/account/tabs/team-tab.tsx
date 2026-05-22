@@ -121,16 +121,16 @@ export function TeamTab() {
 
         {me ? (
           <div>
-            <Label htmlFor="workspace-username" className="text-[0.75rem] font-medium text-ink-2">
+            <Label htmlFor="workspace-username" className="text-ui-xs font-medium text-ink-2">
               Your @username
             </Label>
-            <p className="mt-0.5 text-[0.6875rem] text-ink-3">
+            <p className="mt-0.5 text-ui-xs text-ink-3">
               Used in @mentions and to assign marks. Letters, numbers, and underscores only, and unique here.
             </p>
             <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1 rounded-md transition-colors hover:bg-paper-3 focus-within:bg-paper-3">
                 <span
-                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-[0.8125rem] text-ink-3"
+                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-ui-sm text-ink-3"
                   aria-hidden
                 >
                   @
@@ -148,7 +148,7 @@ export function TeamTab() {
                   maxLength={32}
                   aria-invalid={Boolean(usernameFieldError) || undefined}
                   aria-describedby={usernameFieldError ? "workspace-username-error" : undefined}
-                  className="h-11 rounded-none border-transparent bg-transparent pl-7 font-mono text-[0.9375rem] shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
+                  className="h-11 rounded-none border-transparent bg-transparent pl-7 font-mono text-ui-lg shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-9 sm:text-ui-sm"
                 />
               </div>
               <SubmitButton
@@ -171,7 +171,7 @@ export function TeamTab() {
               <p
                 id="workspace-username-error"
                 role="alert"
-                className="mt-1.5 text-[0.6875rem] text-mark"
+                className="mt-1.5 text-ui-xs text-mark"
               >
                 {usernameFieldError}
               </p>
@@ -180,10 +180,10 @@ export function TeamTab() {
         ) : null}
 
         <div>
-          <Label htmlFor="invite-email" className="text-[0.75rem] font-medium text-ink-2">
+          <Label htmlFor="invite-email" className="text-ui-xs font-medium text-ink-2">
             Invite a teammate
           </Label>
-          <p className="mt-0.5 text-[0.6875rem] text-ink-3">
+          <p className="mt-0.5 text-ui-xs text-ink-3">
             They&apos;ll get an email invite and join as a member with full access.
           </p>
           <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row">
@@ -201,7 +201,7 @@ export function TeamTab() {
               aria-describedby={
                 inviteFieldError || inviteError ? "invite-email-error" : undefined
               }
-              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-[0.9375rem] shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-9 sm:text-[0.8125rem]"
+              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-ui-lg shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-9 sm:text-ui-sm"
               onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
             />
             <SubmitButton
@@ -219,7 +219,7 @@ export function TeamTab() {
             <p
               id="invite-email-error"
               role="alert"
-              className="mt-1.5 text-[0.6875rem] text-mark"
+              className="mt-1.5 text-ui-xs text-mark"
             >
               {inviteFieldError ?? inviteError}
             </p>
@@ -234,7 +234,7 @@ export function TeamTab() {
             Members <span className="text-ink-3">({members.length})</span>
           </p>
           {invites.length > 0 ? (
-            <p className="text-[0.6875rem] text-ink-3">
+            <p className="text-ui-xs text-ink-3">
               {invites.length} pending invite{invites.length === 1 ? "" : "s"}
             </p>
           ) : null}
@@ -250,12 +250,12 @@ export function TeamTab() {
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar className="size-7 shrink-0">
-                  <AvatarFallback className="bg-paper-3 text-[10px] font-medium text-ink-2">
+                  <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
                     {member.initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-x-1.5 text-[0.8125rem] font-medium text-ink">
+                  <p className="flex flex-wrap items-center gap-x-1.5 text-ui-sm font-medium text-ink">
                     <span
                       className={cn(
                         "truncate",
@@ -265,14 +265,14 @@ export function TeamTab() {
                       {parts.primary}
                     </span>
                     {member.id === userId ? (
-                      <span className="text-[0.6875rem] font-normal text-ink-3">(you)</span>
+                      <span className="text-ui-xs font-normal text-ink-3">(you)</span>
                     ) : null}
                   </p>
-                  <p className="truncate text-[0.6875rem] text-ink-3">{member.email}</p>
+                  <p className="truncate text-ui-xs text-ink-3">{member.email}</p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <Badge variant="outline" className="text-[0.625rem] capitalize">
+                <Badge variant="outline" className="text-ui-2xs capitalize">
                   {member.role}
                 </Badge>
                 {isOwner && member.id !== userId && member.role !== "owner" ? (
@@ -299,10 +299,10 @@ export function TeamTab() {
             {invites.map((inv) => (
               <ProductListItem
                 key={inv.id}
-                className="flex items-center justify-between gap-3 py-2 text-[0.8125rem] hover:bg-paper-3/45"
+                className="flex items-center justify-between gap-3 py-2 text-ui-sm hover:bg-paper-3/45"
               >
                 <span className="inline-flex min-w-0 items-center gap-2 text-ink-2">
-                  <span className="text-[0.625rem] uppercase tracking-wider text-ink-3">
+                  <span className="text-ui-2xs uppercase tracking-wider text-ink-3">
                     Invited
                   </span>
                   <span className="truncate">{inv.email}</span>

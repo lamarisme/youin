@@ -160,7 +160,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
   }
 
   const presetBtn =
-    "h-11 shrink-0 gap-1.5 rounded-full px-3 text-[0.8125rem] font-normal shadow-none transition-colors duration-150 sm:h-8 sm:px-2.5 sm:text-[0.75rem]";
+    "h-11 shrink-0 gap-1.5 rounded-full px-3 text-ui-sm font-normal shadow-none transition-colors duration-150 sm:h-8 sm:px-2.5 sm:text-ui-xs";
   const presetActive =
     "bg-mark-soft/70 text-ink hover:bg-mark-soft hover:text-ink dark:bg-mark-soft/30 dark:hover:bg-mark-soft/45";
   const presetIdle =
@@ -185,7 +185,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             }}
             placeholder="Search marks"
             aria-label="Search marks by title, description, or page"
-            className="h-11 rounded-md bg-paper-2 pl-8 pr-8 text-[0.9375rem] shadow-none sm:h-8 sm:text-[0.8125rem]"
+            className="h-11 rounded-md bg-paper-2 pl-8 pr-8 text-ui-lg shadow-none sm:h-8 sm:text-ui-sm"
           />
           {queryDraft ? (
             <button
@@ -224,7 +224,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
           aria-expanded={showMore}
           aria-controls="more-filters-panel"
           className={cn(
-            "h-11 gap-1.5 rounded-md px-3 text-[0.9375rem] font-normal text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-[0.8125rem]",
+            "h-11 gap-1.5 rounded-md px-3 text-ui-lg font-normal text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-ui-sm",
             showMore && "bg-paper-3/50 text-ink",
           )}
         >
@@ -242,7 +242,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             )}
           />
         </Button>
-        <span className="ml-auto text-[0.75rem] tabular-nums text-ink-3">
+        <span className="ml-auto text-ui-xs tabular-nums text-ink-3">
           {visibleCount} mark{visibleCount === 1 ? "" : "s"}
         </span>
       </div>
@@ -306,7 +306,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
               key={f.key}
               asChild
               variant="outline"
-              className="h-auto gap-1 rounded-md bg-paper-2 py-1 pr-1 pl-2.5 text-[0.6875rem] font-normal text-ink-2 shadow-none hover:bg-paper-3 hover:text-ink"
+              className="h-auto gap-1 rounded-md bg-paper-2 py-1 pr-1 pl-2.5 text-ui-xs font-normal text-ink-2 shadow-none hover:bg-paper-3 hover:text-ink"
             >
               <button
                 type="button"
@@ -327,7 +327,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             type="button"
             variant="ghost"
             onClick={clearAll}
-            className="h-11 px-2 text-[0.6875rem] font-medium text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2"
+            className="h-11 px-2 text-ui-xs font-medium text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2"
           >
             Clear all
           </Button>

@@ -13,8 +13,8 @@ const VARIANT_CLASS: Record<PillVariant, string> = {
 };
 
 const SIZE_CLASS: Record<PillSize, string> = {
-  sm: "px-1.5 py-0.5 text-[0.625rem]",
-  md: "px-2 py-0.5 text-[0.6875rem]",
+  sm: "px-1.5 py-0.5 text-ui-2xs",
+  md: "px-2 py-0.5 text-ui-xs",
 };
 
 interface PillProps extends React.HTMLAttributes<HTMLSpanElement> {

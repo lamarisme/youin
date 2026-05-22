@@ -1,45 +1,61 @@
 /*
  * Youin Design Tokens — CSS custom properties
  *
- * This file is the CSS export of @youin/design-tokens.
- * It is imported by the web app's globals.css via:
- *   @import "@youin/design-tokens/css";
- *
- * And can be used by the extension via the JS helper `cssVars()`.
- *
  * ⚠️  Edit the canonical values in src/index.ts first, then keep this CSS
  *     export in sync. The web app imports this file directly.
  */
 
 :root {
-  /* ── Paper (inspection surfaces with a faint warm technical cast) ── */
-  --yi-paper:      oklch(98.3% 0.006 78);
-  --yi-paper-2:    oklch(96.4% 0.008 78);
-  --yi-paper-3:    oklch(93.5% 0.011 78);
-  --yi-paper-elevated: oklch(97.4% 0.007 78);
+  /* ── Paper ── */
+  --yi-paper:      oklch(98.7% 0.003 78);
+  --yi-paper-2:    oklch(96.4% 0.004 78);
+  --yi-paper-3:    oklch(93.8% 0.005 78);
+  --yi-paper-elevated: oklch(99.2% 0.002 78);
 
-  /* ── Ink (foreground) ── */
-  --yi-ink:        oklch(18.4% 0.018 62);
-  --yi-ink-hover:  oklch(24% 0.02 62);
-  --yi-ink-2:      oklch(42% 0.016 62);
-  --yi-ink-3:      oklch(56% 0.013 62);
+  /* ── Ink ── */
+  --yi-ink:        oklch(18.8% 0.01 62);
+  --yi-ink-hover:  oklch(23% 0.012 62);
+  --yi-ink-2:      oklch(42% 0.009 62);
+  --yi-ink-3:      oklch(57% 0.007 62);
 
-  /* ── Rule (borders / dividers) ── */
-  --yi-rule:       oklch(87.2% 0.012 78);
-  --yi-rule-strong: oklch(79.8% 0.016 78);
+  /* ── Rule (visible hairlines) ── */
+  --yi-rule:       oklch(88.6% 0.005 78 / 0.55);
+  --yi-rule-strong: oklch(80.8% 0.007 78 / 0.72);
 
-  /* ── Mark (brand accent) ── */
-  --yi-mark:       oklch(52.5% 0.205 24);
-  --yi-mark-bright: oklch(59.5% 0.215 24);
-  --yi-mark-soft:  oklch(94.4% 0.045 24);
+  /* ── Mark ── */
+  --yi-mark:       oklch(53.5% 0.19 24);
+  --yi-mark-bright: oklch(59% 0.2 24);
+  --yi-mark-soft:  oklch(95.8% 0.032 24);
+  --yi-mark-ink:   oklch(42% 0.14 24);
+
+  /* ── Destructive (not brand mark) ── */
+  --yi-destructive: oklch(48% 0.16 28);
+  --yi-destructive-soft: oklch(96% 0.03 28);
 
   /* ── Semantic ── */
   --yi-ok:         oklch(51% 0.12 154);
   --yi-ok-soft:    oklch(95.4% 0.03 154);
   --yi-warn:       oklch(65% 0.13 82);
   --yi-warn-soft:  oklch(95.2% 0.045 82);
-  --yi-info:       oklch(55% 0.11 236);
-  --yi-info-soft:  oklch(95.2% 0.026 236);
+  --yi-info:       oklch(48% 0.04 62);
+  --yi-info-soft:  oklch(95.5% 0.012 62);
+
+  --yi-focus-ring: oklch(53.5% 0.19 24 / 0.35);
+
+  /* ── Typography scale ── */
+  --yi-font-ui-2xs: 0.5625rem;
+  --yi-font-ui-xs: 0.6875rem;
+  --yi-font-ui-sm: 0.8125rem;
+  --yi-font-ui-md: 0.875rem;
+  --yi-font-ui-lg: 0.9375rem;
+  --yi-font-title-sm: 1rem;
+  --yi-font-title-md: 1.125rem;
+  --yi-font-title-lg: 1.25rem;
+  --yi-leading-ui-tight: 1.2;
+  --yi-leading-ui-snug: 1.35;
+  --yi-leading-ui-normal: 1.5;
+  --yi-leading-ui-relaxed: 1.65;
+  --yi-leading-title: 1.25;
 
   /* ── Spacing ── */
   --yi-space-2xs:  0.25rem;
@@ -64,6 +80,11 @@
   --yi-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --yi-ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* ── Motion ── */
+  --yi-duration-fast: 150ms;
+  --yi-duration-normal: 200ms;
+  --yi-duration-slow: 250ms;
+
   /* ── Elevation ── */
   --yi-shadow-hairline: none;
   --yi-shadow-panel: none;
@@ -72,27 +93,33 @@
 }
 
 .dark {
-  --yi-paper:      oklch(15.4% 0.018 62);
-  --yi-paper-2:    oklch(18.6% 0.02 62);
-  --yi-paper-3:    oklch(22.8% 0.022 62);
-  --yi-paper-elevated: oklch(19.8% 0.02 62);
+  --yi-paper:      oklch(13.5% 0.018 62);
+  --yi-paper-2:    oklch(17.2% 0.02 62);
+  --yi-paper-3:    oklch(22.5% 0.022 62);
+  --yi-paper-elevated: oklch(15.8% 0.02 62);
 
   --yi-ink:        oklch(91.8% 0.008 78);
   --yi-ink-hover:  oklch(84% 0.01 78);
   --yi-ink-2:      oklch(70% 0.012 78);
   --yi-ink-3:      oklch(56% 0.014 78);
 
-  --yi-rule:       oklch(26% 0.024 62);
-  --yi-rule-strong: oklch(33% 0.027 62);
+  --yi-rule:       oklch(28% 0.024 62 / 0.65);
+  --yi-rule-strong: oklch(36% 0.027 62 / 0.85);
 
   --yi-mark:       oklch(63% 0.21 24);
   --yi-mark-bright: oklch(69% 0.22 24);
   --yi-mark-soft:  oklch(25.5% 0.075 24);
+  --yi-mark-ink:   oklch(78% 0.12 24);
+
+  --yi-destructive: oklch(62% 0.17 28);
+  --yi-destructive-soft: oklch(24% 0.06 28);
 
   --yi-ok:         oklch(64% 0.13 154);
   --yi-ok-soft:    oklch(25.5% 0.05 154);
   --yi-warn:       oklch(73% 0.135 82);
   --yi-warn-soft:  oklch(27.5% 0.06 82);
-  --yi-info:       oklch(67% 0.11 236);
-  --yi-info-soft:  oklch(25.5% 0.05 236);
+  --yi-info:       oklch(68% 0.04 78);
+  --yi-info-soft:  oklch(24% 0.02 62);
+
+  --yi-focus-ring: oklch(63% 0.21 24 / 0.4);
 }

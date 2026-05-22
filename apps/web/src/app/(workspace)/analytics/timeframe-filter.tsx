@@ -62,7 +62,7 @@ export function TimeframeFilter({ value, onChange }: TimeframeFilterProps) {
               }
             }}
             className={cn(
-              "min-h-11 rounded-md px-3 py-1 text-[0.8125rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 sm:min-h-8 sm:px-2.5 sm:text-[0.75rem]",
+              "min-h-11 rounded-md px-3 py-1 text-ui-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 sm:min-h-8 sm:px-2.5 sm:text-ui-xs",
               active
                 ? "bg-paper-3 text-ink"
                 : "text-ink-3 hover:text-ink",

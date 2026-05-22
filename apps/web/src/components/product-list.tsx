@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 type ProductListTone = "default" | "subtle";
 
 const TONE_CLASS: Record<ProductListTone, string> = {
-  default: "bg-paper-2",
+  default: "bg-paper-elevated",
   subtle: "bg-paper-2/60",
 };
 
@@ -23,7 +23,7 @@ export function ProductList({
   const Comp = as ?? "ul";
   return (
     <Comp
-      className={cn("space-y-1 overflow-hidden rounded-md p-1", TONE_CLASS[tone], className)}
+      className={cn("space-y-0 overflow-hidden rounded-md", TONE_CLASS[tone], className)}
       {...props}
     />
   );
@@ -37,8 +37,8 @@ export function ProductListItem({
   return (
     <li
       className={cn(
-        "rounded-md px-3 py-2.5",
-        interactive && "transition-colors hover:bg-paper-3/55",
+        "px-3 py-2.5",
+        interactive && "transition-colors hover:bg-paper-2",
         className,
       )}
       {...props}

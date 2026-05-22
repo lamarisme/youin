@@ -129,7 +129,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-paper px-3 py-3 transition-colors duration-150 ease-out",
+        "flex flex-col bg-paper-2 px-3 py-3 transition-colors duration-150 ease-out",
         "lg:sticky lg:top-0 lg:z-10 lg:h-screen",
         collapsed ? "lg:w-[52px] lg:px-2 lg:py-3" : "lg:w-56 lg:px-3 lg:py-4",
       )}
@@ -191,7 +191,7 @@ export function AppSidebar() {
                 onClick={openCommandPalette}
                 aria-label={tSide("openCommandPalette")}
                 className={cn(
-                  "hidden size-8 w-full items-center justify-center rounded-md bg-paper-2 text-ink-3 transition-colors lg:flex",
+                  "hidden size-8 w-full items-center justify-center rounded-md bg-paper text-ink-3 transition-colors lg:flex",
                   "hover:bg-paper-3 hover:text-ink",
                   "focus-visible:ring-2 focus-visible:ring-mark/40",
                 )}
@@ -201,7 +201,7 @@ export function AppSidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">
               {tSide("searchShortcut")}
-              <kbd className="ml-1.5 rounded bg-paper-3 px-1 py-0.5 font-mono text-[0.625rem]">
+              <kbd className="ml-1.5 rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs">
                 ⌘K
               </kbd>
             </TooltipContent>
@@ -212,18 +212,18 @@ export function AppSidebar() {
             onClick={openCommandPalette}
             aria-label={tSide("openCommandPalette")}
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md bg-paper-2 px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
-              "hover:bg-paper-3",
+              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md bg-paper px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
+              "hover:bg-paper-elevated",
               "focus-visible:ring-2 focus-visible:ring-mark/40",
             )}
           >
             <Search className="size-[1rem] shrink-0 text-ink-3" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink-3">{tSide("searchOrJump")}</span>
+            <span className="min-w-0 flex-1 truncate text-ui-sm text-ink-3">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
-              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
+              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
                 ⌘
               </kbd>
-              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3">
+              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
                 K
               </kbd>
             </span>
@@ -257,7 +257,7 @@ export function AppSidebar() {
                     className={cn(
                       "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
                       isActive
-                        ? "bg-paper-3 text-ink"
+                        ? "bg-paper-elevated text-ink"
                         : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                     )}
@@ -266,7 +266,7 @@ export function AppSidebar() {
                     {showInboxBadge && (
                       <span
                         aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                        className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1rem] h-4 items-center justify-center rounded-full bg-mark px-1 text-[0.5625rem] font-semibold tabular-nums text-paper leading-none"
+                        className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1rem] h-4 items-center justify-center rounded-full bg-mark px-1 text-ui-2xs font-semibold tabular-nums text-paper leading-none"
                       >
                         {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
                       </span>
@@ -275,7 +275,7 @@ export function AppSidebar() {
                 </TooltipTrigger>
                 <TooltipContent side="right" className="flex items-center gap-1.5">
                   {tNav(item.labelKey)}
-                  <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-[0.625rem] text-ink-3">
+                  <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs text-ink-3">
                     G {item.shortcut}
                   </kbd>
                 </TooltipContent>
@@ -289,12 +289,12 @@ export function AppSidebar() {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-[0.9375rem] transition-colors",
+                "group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-lg transition-colors",
                 "lg:flex lg:w-full lg:min-h-8 lg:gap-2 lg:px-2",
-                "lg:text-[0.8125rem]",
+                "lg:text-ui-sm",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
                 isActive
-                  ? "bg-paper-3 font-medium text-ink"
+                  ? "bg-paper-elevated font-medium text-ink"
                   : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
               )}
             >
@@ -303,12 +303,12 @@ export function AppSidebar() {
               {showInboxBadge ? (
                 <span
                   aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark px-1.5 text-[0.625rem] font-semibold tabular-nums text-paper"
+                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark px-1.5 text-ui-2xs font-semibold tabular-nums text-paper"
                 >
                   {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
                 </span>
               ) : (
-                <kbd className="hidden lg:inline text-[0.625rem] text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+                <kbd className="hidden lg:inline text-ui-2xs text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
                   G {item.shortcut}
                 </kbd>
               )}
@@ -465,10 +465,10 @@ function ProjectSwitcher({
               )}
             />
             <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <span className="block truncate text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3">
+              <span className="block truncate text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
                 Project
               </span>
-              <span className="block truncate text-[0.8125rem] font-semibold leading-tight text-ink">
+              <span className="block truncate text-ui-sm font-semibold leading-tight text-ink">
                 {switcherLabel}
               </span>
             </span>
@@ -508,7 +508,7 @@ function ProjectSwitcher({
                 />
                 <div className="min-w-0">
                   <p className="truncate">{project.name}</p>
-                  <p className="text-[0.6875rem] text-muted-foreground">
+                  <p className="text-ui-xs text-muted-foreground">
                     {stats?.spaces ?? 0} spaces · {stats?.marks ?? 0} marks
                   </p>
                 </div>
@@ -561,7 +561,7 @@ function ProjectSwitcher({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Website QA"
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
                 autoFocus
               />
             </Field>
@@ -571,13 +571,13 @@ function ProjectSwitcher({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="What this project is collecting"
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
               />
             </Field>
             {error ? (
               <p
                 role="alert"
-                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-[0.75rem] text-mark"
+                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-ui-xs text-mark"
               >
                 {error}
               </p>
@@ -638,7 +638,7 @@ function MobileAccountMenu({
           )}
         >
           <Avatar className="size-8">
-            <AvatarFallback className="bg-paper-3 text-[10px] font-medium text-ink">
+            <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -691,15 +691,15 @@ function DesktopAccountMenu({
               "flex size-9 items-center justify-center rounded-md transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
               accountActive
-                ? "bg-paper-3 text-ink"
+                ? "bg-paper-elevated text-ink"
                 : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
             )}
           >
             <Avatar className="size-7">
               <AvatarFallback
                 className={cn(
-                  "text-[10px] font-medium text-ink",
-                  accountActive ? "bg-paper-3" : "bg-paper-2",
+                  "text-ui-2xs font-medium text-ink",
+                  accountActive ? "bg-paper-elevated" : "bg-paper",
                 )}
               >
                 {initials}
@@ -719,16 +719,16 @@ function DesktopAccountMenu({
             <Avatar className="size-7">
               <AvatarFallback
                 className={cn(
-                  "text-[10px] font-medium text-ink",
-                  accountActive ? "bg-paper-3" : "bg-paper-2",
+                  "text-ui-2xs font-medium text-ink",
+                  accountActive ? "bg-paper-elevated" : "bg-paper",
                 )}
               >
                 {initials}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.8125rem] font-medium text-ink">{displayName}</p>
-              <p className="truncate text-[0.6875rem] text-ink-3">{workspaceLabel}</p>
+              <p className="truncate text-ui-sm font-medium text-ink">{displayName}</p>
+              <p className="truncate text-ui-xs text-ink-3">{workspaceLabel}</p>
             </div>
             <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />
           </button>

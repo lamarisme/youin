@@ -267,7 +267,7 @@ export function TriageView() {
             size="sm"
             variant="outline"
             onClick={() => setShowNew(true)}
-            className="h-11 gap-1.5 bg-paper-3 px-3 text-[0.875rem] text-ink hover:bg-paper-3/80 sm:h-9 sm:text-[0.8125rem]"
+            className="h-11 gap-1.5 bg-paper-3 px-3 text-ui-md text-ink hover:bg-paper-3/80 sm:h-9 sm:text-ui-sm"
           >
             <Plus className="size-3.5 shrink-0 opacity-80" />
             New mark
@@ -315,7 +315,7 @@ export function TriageView() {
         </DialogContent>
       </Dialog>
 
-      <div className="overflow-hidden rounded-md bg-paper-2">
+      <div className="overflow-hidden rounded-md bg-paper-elevated">
         {visiblePins.length === 0 ? (
           <EmptyState
             variant="plain"
@@ -333,7 +333,7 @@ export function TriageView() {
                   Clear filters
                 </Button>
               ) : (
-                <Button type="button" size="sm" className="h-9 bg-mark text-paper hover:bg-mark-bright" onClick={() => setShowNew(true)}>
+                <Button type="button" variant="mark" size="sm" className="h-9" onClick={() => setShowNew(true)}>
                   <Plus className="size-3.5" aria-hidden />
                   New mark
                 </Button>

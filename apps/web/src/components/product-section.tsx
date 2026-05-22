@@ -22,10 +22,10 @@ export function ProductSectionHeader({
       <div className="min-w-0">
         {eyebrow ? <p className="text-eyebrow">{eyebrow}</p> : null}
         {title ? (
-          <h2 className="text-[0.9375rem] font-semibold leading-tight text-ink">{title}</h2>
+          <h2 className="text-ui-lg font-semibold leading-tight text-ink">{title}</h2>
         ) : null}
         {description ? (
-          <p className="mt-1 max-w-[62ch] text-[0.8125rem] leading-snug text-ink-2">
+          <p className="mt-1 max-w-[62ch] text-ui-sm leading-snug text-ink-2">
             {description}
           </p>
         ) : null}

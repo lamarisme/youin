@@ -28,9 +28,9 @@ export default function WorkspaceError({
         <span>{t("eyebrow")}</span>
       </div>
       <h1 className="text-xl font-semibold text-ink sm:text-2xl">{t("title")}</h1>
-      <p className="max-w-[58ch] text-[0.875rem] leading-relaxed text-ink-2">{t("body")}</p>
+      <p className="max-w-[58ch] text-ui-md leading-relaxed text-ink-2">{t("body")}</p>
       {error.digest ? (
-        <p className="font-mono text-[0.6875rem] text-ink-3">
+        <p className="font-mono text-ui-xs text-ink-3">
           {t("referenceLabel")}{" "}
           <span className="text-ink-2">{error.digest}</span>
         </p>
@@ -39,7 +39,8 @@ export default function WorkspaceError({
         <Button
           type="button"
           onClick={reset}
-          className="h-9 gap-2 bg-mark text-paper hover:bg-mark-bright"
+          variant="mark"
+          className="h-9 gap-2"
         >
           <RotateCcw className="size-3.5" aria-hidden />
           {t("tryAgain")}

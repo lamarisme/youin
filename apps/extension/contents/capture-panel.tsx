@@ -1,7 +1,9 @@
 import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
+import { t } from "@youin/i18n/t"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { getSession } from "../lib/auth"
 import {
   EVENT_REVIEW_CAPTURE,
   EVENT_REVIEW_OPEN_PIN,
@@ -46,7 +48,8 @@ import {
   pushPinCommentToWorkspace,
   pushPinEditToWorkspace,
   pushPinStatusToWorkspace,
-  pushPinToWorkspace
+  pushPinToWorkspace,
+  syncPendingPinsToWorkspace
 } from "../lib/sync"
 
 export const config: PlasmoCSConfig = {
@@ -169,6 +172,19 @@ const selectCls =
 const headerCloseBtn =
   "flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
+const threadBadge =
+  "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold leading-none whitespace-nowrap"
+
+function threadHealthBadgeClass(label: string): string {
+  if (label === "Attached")
+    return "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+  if (label === "Approximate")
+    return "bg-[color:var(--yi-warn-soft)] text-[color:var(--yi-warn)]"
+  if (label === "Stale")
+    return "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
+  return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
+}
+
 function CommentComposer({
   id,
   label,
@@ -258,17 +274,35 @@ const CapturePanel = () => {
   const [undoAction, setUndoAction] = useState<UndoAction | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveWarning, setSaveWarning] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isSignedIn, setIsSignedIn] = useState(false)
   const [fullImage, setFullImage] = useState<{
     src: string
     alt: string
   } | null>(null)
 
+  const panelRef = useRef<HTMLDivElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
   const refreshPinsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
 
   useEffect(() => {
+    void getSession().then((session) => setIsSignedIn(Boolean(session?.user?.id)))
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
+      if (area !== "local") return
+      if (changes["youin:supabase-auth"]) {
+        void getSession().then((session) =>
+          setIsSignedIn(Boolean(session?.user?.id))
+        )
+      }
+    }
+    chrome.storage.onChanged.addListener(onStorage)
     return () => {
+      chrome.storage.onChanged.removeListener(onStorage)
       if (refreshPinsDebounceRef.current != null) {
         clearTimeout(refreshPinsDebounceRef.current)
       }
@@ -352,8 +386,11 @@ const CapturePanel = () => {
     setEditTitle("")
     setEditBody("")
     setSaveError(null)
+    setSaveWarning(null)
+    setConfirmDelete(false)
     setFullImage(null)
     setPagePins([])
+    previousFocusRef.current?.focus?.()
     window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
   }, [])
 
@@ -366,7 +403,9 @@ const CapturePanel = () => {
       setBody("")
       setPriority("medium")
       setSaveError(null)
+      setSaveWarning(null)
       void loadSpaces()
+      previousFocusRef.current = document.activeElement as HTMLElement
       setOpen(true)
       void reloadPagePins(detail.url)
     }
@@ -389,6 +428,9 @@ const CapturePanel = () => {
         setCapture(null)
         setReplyDraft("")
         setSaveError(null)
+        setSaveWarning(null)
+        setConfirmDelete(false)
+        previousFocusRef.current = document.activeElement as HTMLElement
         setOpen(true)
         void reloadPagePins(pin.url, pin.spaceId)
       })()
@@ -467,44 +509,71 @@ const CapturePanel = () => {
     return () => cancelAnimationFrame(raf)
   }, [open, mode])
 
+  useEffect(() => {
+    if (!open) return
+    const root = panelRef.current
+    if (!root) return
+    const focusables = root.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusables.length) return
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    const onTab = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    root.addEventListener("keydown", onTab)
+    return () => root.removeEventListener("keydown", onTab)
+  }, [open, mode, editing, confirmDelete, saveError, saveWarning])
+
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
     if (capture.captureKind === "region" && !capture.elementScreenshotDataUrl) {
       setSaveError(
         capture.screenshotCaptureError ??
-          "Could not capture that area. Try the screenshot again."
+          t("extension.panel.regionCaptureFailed")
       )
       return
     }
     if (!spaceId) {
-      setSaveError("Choose or create a review space first.")
+      setSaveError(t("extension.panel.chooseSpaceFirst"))
       return
     }
     setSaving(true)
     setSaveError(null)
+    setSaveWarning(null)
     try {
       await setActiveSpaceId(spaceId)
       const pin = buildPinFromCapture(capture, spaceId, body.trim(), priority)
       const saved = await addPinWithFallback(pin)
       if (!saved.ok || !saved.pin) {
-        setSaveError("Couldn't save. Try again.")
+        setSaveError(t("extension.panel.couldNotSave"))
         return
       }
       if (saved.warning) {
-        setSaveError(saved.warning)
+        setSaveWarning(saved.warning)
         setBody("")
       }
       setUndoAction({
         kind: "created",
         pin: saved.pin,
-        message: "Feedback posted."
+        message: saved.warning
+          ? t("extension.panel.savedWithLimitations")
+          : t("extension.panel.feedbackPosted")
       })
       const push = await pushPinToWorkspace(saved.pin, {
         screenshotDataUrl: saved.pin.screenshotDataUrl
       })
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
-          `Saved locally. ${push.error.endsWith(".") ? push.error : `${push.error}.`} Open the extension popup to retry sync.`
+          t("extension.panel.savedLocallySync", { error: push.error })
         )
         scheduleReloadPagePins(capture.url)
         return
@@ -516,8 +585,31 @@ const CapturePanel = () => {
       resume()
     } catch (e) {
       setSaveError(
-        e instanceof Error ? e.message : "Something went wrong. Try again."
+        e instanceof Error ? e.message : t("extension.capture.genericError")
       )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const retryPinSync = async () => {
+    if (!viewingPin || saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const push = await pushPinToWorkspace(viewingPin, {
+        screenshotDataUrl: viewingPin.screenshotDataUrl
+      })
+      if (!push.skipped && !push.ok) {
+        await syncPendingPinsToWorkspace()
+        await reloadPin(viewingPin.id)
+        const refreshed = (await getPins()).find((p) => p.id === viewingPin.id)
+        if (refreshed?.syncState === "failed") {
+          setSaveError(refreshed.syncError ?? t("extension.panel.syncFailed"))
+        }
+      } else {
+        await reloadPin(viewingPin.id)
+      }
     } finally {
       setSaving(false)
     }
@@ -635,21 +727,26 @@ const CapturePanel = () => {
 
   const deletePin = async () => {
     if (!viewingPin || saving) return
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
     setSaving(true)
     setSaveError(null)
     try {
       const removed = await removePin(viewingPin.id)
       if (!removed) {
-        setSaveError("Could not delete feedback.")
+        setSaveError(t("extension.panel.couldNotDelete"))
         return
       }
       setUndoAction({
         kind: "deleted",
         pin: removed,
-        message: "Feedback deleted."
+        message: t("extension.panel.feedbackDeleted")
       })
       setViewingPin(null)
       setOpen(false)
+      setConfirmDelete(false)
       scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
       window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
     } finally {
@@ -689,7 +786,7 @@ const CapturePanel = () => {
   }
 
   const panelSurface =
-    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] [box-shadow:var(--yi-ext-shadow-panel),inset_1px_0_0_var(--yi-ext-border-hairline)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
+    "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "create" && capture) {
     const selectorPreview = truncateMiddle(capture.selector, 56)
@@ -697,13 +794,16 @@ const CapturePanel = () => {
     return (
       <>
         <div
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="capture-panel-title"
           aria-describedby={
             saveError
               ? "capture-panel-desc capture-panel-error"
-              : "capture-panel-desc"
+              : saveWarning
+                ? "capture-panel-desc capture-panel-warning"
+                : "capture-panel-desc"
           }
           style={{ zIndex: Z_PANEL }}
           className={panelSurface}>
@@ -784,15 +884,50 @@ const CapturePanel = () => {
 
               <CommentComposer
                 id="capture-body"
-                label="Feedback"
+                label={t("extension.panel.feedback")}
                 value={body}
                 rows={5}
                 disabled={saving}
                 invalid={Boolean(saveError)}
-                placeholder="What should change?"
+                placeholder={t("extension.panel.whatShouldChange")}
                 onChange={setBody}
                 onSubmit={() => void handleSave()}
               />
+
+              {pagePins.filter((pin) => pin.status !== "closed").length > 0 ? (
+                <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+                    {t("extension.panel.otherOnPage", {
+                      count: pagePins.filter((pin) => pin.status !== "closed")
+                        .length
+                    })}
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {pagePins
+                      .filter((pin) => pin.status !== "closed")
+                      .slice(0, 5)
+                      .map((pin) => (
+                        <li key={pin.id}>
+                          <button
+                            type="button"
+                            className="w-full truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-[11px] text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                            onClick={() => {
+                              setViewingPin(pin)
+                              setEditTitle(pin.title)
+                              setEditBody(pin.thread[0]?.body ?? "")
+                              setMode("thread")
+                              setCapture(null)
+                              setReplyDraft("")
+                              setSaveError(null)
+                              setSaveWarning(null)
+                            }}>
+                            {pin.title}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              ) : null}
 
               <details className="group rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)]">
                 <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
@@ -865,6 +1000,16 @@ const CapturePanel = () => {
                 </div>
               </details>
 
+              {saveWarning ? (
+                <p
+                  id="capture-panel-warning"
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-warn-soft)] bg-[color:var(--yi-warn-soft)] px-3 py-2.5 text-[12px] leading-snug text-[color:var(--yi-warn)]">
+                  {saveWarning}
+                </p>
+              ) : null}
+
               {saveError ? (
                 <p
                   id="capture-panel-error"
@@ -877,7 +1022,7 @@ const CapturePanel = () => {
 
               <div className="flex gap-2">
                 <button type="button" className={btnGhost} onClick={resume}>
-                  Cancel
+                  {t("extension.panel.cancel")}
                 </button>
                 <button
                   type="button"
@@ -885,11 +1030,18 @@ const CapturePanel = () => {
                   aria-busy={saving}
                   className={btnPrimary}
                   onClick={() => void handleSave()}>
-                  {saving ? "Posting…" : "Post feedback"}
+                  {saving
+                    ? t("extension.panel.posting")
+                    : t("extension.panel.postFeedback")}
                 </button>
               </div>
               <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-                After posting, review mode resumes.
+                {t("extension.panel.afterPostResume")}
+                <span className="mt-0.5 block">
+                  {isSignedIn
+                    ? t("extension.panel.willSync")
+                    : t("extension.panel.savedOnDevice")}
+                </span>
               </p>
             </div>
           </div>
@@ -914,21 +1066,24 @@ const CapturePanel = () => {
     return (
       <>
         <div
+          ref={panelRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="thread-panel-title"
           style={{ zIndex: Z_PANEL }}
           className={panelSurface}>
-          <header className="flex shrink-0 items-start justify-between gap-2 px-4 pb-3 pt-5">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+          <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-3 pt-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center">
                 <h2
                   id="thread-panel-title"
-                  className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
+                  className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
                   Feedback thread
                 </h2>
+              </div>
+              <div className="mt-2 flex max-w-full flex-wrap items-center gap-1.5">
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  className={`${threadBadge} ${
                     viewingPin.status === "closed"
                       ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
                       : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
@@ -936,15 +1091,18 @@ const CapturePanel = () => {
                   {viewingPin.status === "closed" ? "Resolved" : "Open"}
                 </span>
                 {viewingPin.syncState === "pending" ? (
-                  <span className="rounded-full bg-[color:var(--yi-ext-surface-stat)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-text-muted)]">
+                  <span
+                    className={`${threadBadge} bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]`}>
                     Pending
                   </span>
                 ) : viewingPin.syncState === "failed" ? (
-                  <span className="rounded-full bg-[color:var(--yi-ext-danger-bg)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-danger-text)]">
+                  <span
+                    className={`${threadBadge} bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]`}>
                     Sync failed
                   </span>
                 ) : null}
-                <span className="rounded-full bg-[color:var(--yi-ext-surface-stat)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-text-muted)]">
+                <span
+                  className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
                   {health.label}
                 </span>
               </div>
@@ -1016,10 +1174,23 @@ const CapturePanel = () => {
                   {health.description}
                 </p>
               ) : null}
-              {viewingPin.syncState === "failed" && viewingPin.syncError ? (
-                <p className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]">
-                  {viewingPin.syncError}
-                </p>
+              {viewingPin.syncState === "failed" ? (
+                <div className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2">
+                  {viewingPin.syncError ? (
+                    <p className="text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]">
+                      {viewingPin.syncError}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={saving}
+                    className="mt-2 inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+                    onClick={() => void retryPinSync()}>
+                    {saving
+                      ? t("extension.panel.syncing")
+                      : t("extension.panel.retrySync")}
+                  </button>
+                </div>
               ) : null}
               {opener ? (
                 <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
@@ -1144,24 +1315,43 @@ const CapturePanel = () => {
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
-                  Open dashboard
+                  {t("extension.panel.openDashboard")}
                 </a>
-                <button
-                  type="button"
-                  disabled={saving || viewingPin.status === "closed"}
-                  className={btnPrimary}
-                  onClick={() => void setPinStatus("closed")}>
-                  Mark resolved
-                </button>
-                <button
-                  type="button"
-                  disabled={saving}
-                  className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-mark-soft)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-mark)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
-                  onClick={() => void deletePin()}>
-                  Delete feedback
-                </button>
+                {confirmDelete ? (
+                  <div className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-3">
+                    <p className="text-[12px] font-semibold text-[color:var(--yi-ext-danger-text)]">
+                      {t("extension.panel.confirmDeleteTitle")}
+                    </p>
+                    <p className="mt-1 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                      {t("extension.panel.confirmDeleteBody")}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className={btnGhost}
+                        onClick={() => setConfirmDelete(false)}>
+                        {t("extension.panel.keepFeedback")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        className="flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-mark)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-50"
+                        onClick={() => void deletePin()}>
+                        {t("extension.panel.confirmDelete")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-mark-soft)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-mark)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
+                    onClick={() => void deletePin()}>
+                    {t("extension.panel.deleteFeedback")}
+                  </button>
+                )}
                 <button type="button" className={btnGhost} onClick={resume}>
-                  Close
+                  {t("extension.panel.close")}
                 </button>
               </div>
 
@@ -1193,6 +1383,19 @@ function FullImageOverlay({
   image: { src: string; alt: string } | null
   onClose: () => void
 }) {
+  useEffect(() => {
+    if (!image) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
+  }, [image, onClose])
+
   if (!image) return null
   return (
     <div

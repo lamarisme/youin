@@ -44,7 +44,7 @@ export function InboxView() {
         actions={(
           <>
             {inbox.unreadCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-[0.75rem] font-medium tabular-nums text-mark">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-ui-xs font-medium tabular-nums text-mark">
                 {formatCount(inbox.unreadCount)} new
               </span>
             ) : null}
@@ -55,7 +55,7 @@ export function InboxView() {
                 size="sm"
                 onClick={inbox.markAllRead}
                 disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
-                className="h-11 gap-1.5 text-[0.8125rem] text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
+                className="h-11 gap-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
               >
                 <CheckCheck className="size-3.5" aria-hidden />
                 {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
@@ -97,7 +97,7 @@ export function InboxView() {
                 </Link>
               </Button>
             ) : (
-              <Button asChild size="sm" className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-8">
+              <Button asChild variant="mark" size="sm" className="h-11 sm:h-8">
                 <Link href="/login?next=%2Finbox" className="inline-flex items-center gap-1.5">
                   Sign in
                   <ArrowRight className="size-3.5" aria-hidden />
@@ -152,27 +152,27 @@ function InboxGroupRow({
           <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div
               className={cn(
-                "flex min-w-0 items-baseline gap-1.5 text-[0.875rem] font-semibold group-hover:text-mark",
+                "flex min-w-0 items-baseline gap-1.5 text-ui-md font-semibold group-hover:text-mark",
                 group.unreadCount > 0 ? "text-ink" : "text-ink-2",
               )}
             >
-              <span className="shrink-0 font-mono text-[0.6875rem] font-medium text-ink-3">
+              <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
                 {group.pinDisplayKey}
               </span>
               <span className="min-w-0 truncate">{group.pinTitle}</span>
             </div>
             <time
-              className="shrink-0 text-[0.6875rem] tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
+              className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
               dateTime={group.latestAt}
             >
               {formatRelative(group.latestAt)}
             </time>
             {spaceName ? (
-              <span className="min-w-0 truncate text-[0.6875rem] text-ink-3 sm:col-start-1 sm:row-start-2">{spaceName}</span>
+              <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{spaceName}</span>
             ) : null}
           </div>
 
-          <p className="truncate text-[0.8125rem] text-ink-2">
+          <p className="truncate text-ui-sm text-ink-2">
             <ActorChip event={top} preference={displayNamePreference} />{" "}
             {eventSummary}
             {extras > 0 ? (
@@ -211,7 +211,7 @@ function ActorChip({
   const parts = rosterDisplayParts(event.actorName, event.actorUsername, preference);
   return (
     <span className="inline-flex items-center gap-1.5 align-baseline">
-      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-[0.625rem] font-semibold text-ink-2">
+      <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-ui-2xs font-semibold text-ink-2">
         {event.actorInitials}
       </span>
       <span className="min-w-0 truncate font-medium text-ink" title={parts.primary}>

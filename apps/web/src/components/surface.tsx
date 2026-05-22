@@ -6,7 +6,7 @@ type SurfaceVariant = "default" | "subtle" | "flush";
 type SurfacePadding = "none" | "sm" | "md" | "lg";
 
 const VARIANT_CLASS: Record<SurfaceVariant, string> = {
-  default: "bg-paper-2",
+  default: "bg-paper-elevated",
   subtle: "bg-paper-3/70",
   flush: "bg-transparent",
 };

@@ -116,7 +116,7 @@ export function SpacesListView({
       <BreadcrumbHeader
         items={[{ label: "Spaces", current: true }]}
         actions={(
-          <div className="flex items-center gap-1.5 text-[0.8125rem] text-ink-2 tabular-nums">
+          <div className="flex items-center gap-1.5 text-ui-sm text-ink-2 tabular-nums">
             {targetProject ? (
               <>
                 <span className="max-w-40 truncate text-ink">{targetProject.name}</span>
@@ -141,7 +141,7 @@ export function SpacesListView({
           size="sm"
           onClick={() => setShowCreate(true)}
           disabled={!targetProject}
-          className="h-11 gap-1.5 bg-paper-3 px-3 text-[0.875rem] text-ink hover:bg-paper-3/80 sm:h-9 sm:text-[0.8125rem]"
+          className="h-11 gap-1.5 bg-paper-3 px-3 text-ui-md text-ink hover:bg-paper-3/80 sm:h-9 sm:text-ui-sm"
         >
           <Plus className="size-3.5" />
           New space
@@ -167,7 +167,7 @@ export function SpacesListView({
             ariaLabel="Filter spaces by pinned state"
             triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px] h-11 sm:h-9"
           />
-          <span className="text-[0.75rem] tabular-nums text-ink-3">{filteredSpaces.length} spaces</span>
+          <span className="text-ui-xs tabular-nums text-ink-3">{filteredSpaces.length} spaces</span>
         </div>
       </ToolbarPanel>
 
@@ -204,7 +204,8 @@ export function SpacesListView({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-11 bg-mark text-paper hover:bg-mark-bright sm:h-8"
+                  variant="mark"
+                  className="h-11 sm:h-8"
                   onClick={() => setShowCreate(true)}
                   disabled={!targetProject}
                 >
@@ -274,7 +275,7 @@ export function SpacesListView({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={todayName}
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
                 autoFocus
                 onKeyDown={(e) => e.key === "Enter" && !e.metaKey && !e.ctrlKey && handleCreate()}
               />
@@ -282,10 +283,10 @@ export function SpacesListView({
                 <button
                   type="button"
                   onClick={() => setNewName(todayName)}
-                  className="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] text-ink-3 transition-colors hover:text-mark"
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-ui-xs text-ink-3 transition-colors hover:text-mark"
                 >
                   Use today&apos;s date{" "}
-                  <span className="font-mono text-[0.625rem] text-ink-2">{todayName}</span>
+                  <span className="font-mono text-ui-2xs text-ink-2">{todayName}</span>
                 </button>
               ) : null}
             </Field>
@@ -295,14 +296,14 @@ export function SpacesListView({
                 value={newNotes}
                 onChange={(e) => setNewNotes(e.target.value)}
                 placeholder="What this space covers"
-                className="h-11 bg-paper text-[0.9375rem] sm:h-9 sm:text-[0.8125rem]"
+                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
               />
             </Field>
             {createError ? (
               <Notice tone="danger">{createError}</Notice>
             ) : null}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+              <p className="hidden items-center gap-1.5 text-ui-xs text-ink-3 sm:flex">
                 <Kbd className="min-w-[1.25rem] py-px text-ink-2">
                   ⌘
                 </Kbd>

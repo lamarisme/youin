@@ -41,7 +41,7 @@ function AuthErrorContent() {
           <AlertTriangle className="size-5 text-mark" />
         </div>
         <h2 className="font-display text-xl font-semibold text-ink">Something went wrong</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">{message}</p>
+        <p className="mt-1 text-ui-sm text-ink-2">{message}</p>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -53,7 +53,7 @@ function AuthErrorContent() {
         </Button>
       </div>
 
-      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-ui-sm text-ink-2">
         Need an account?{" "}
         <Link href="/signup" className="font-medium text-ink hover:text-mark">
           Create one

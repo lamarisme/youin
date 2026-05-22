@@ -17,7 +17,6 @@ import {
   type MigrationResult
 } from "./lib/migrate"
 import {
-  addProject,
   addSpace,
   getActiveProjectId,
   getActiveSpaceId,
@@ -43,7 +42,6 @@ import {
 } from "./lib/storage"
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
 import {
-  createRemoteWorkspaceProject,
   createRemoteWorkspaceSpace,
   syncPendingPinsToWorkspace,
   syncWorkspaceFromRemote,
@@ -111,9 +109,29 @@ async function startScreenshotOnActiveTab(): Promise<{
   } catch {
     return {
       ok: false,
-      error: "Reload the page, then try again."
+      error: t("extension.popup.reloadPageHint")
     }
   }
+}
+
+async function openDrawerOnActiveTab(): Promise<{ ok: boolean; error?: string }> {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id) return { ok: false, error: "No active tab." }
+  const url = tab.url ?? ""
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return { ok: false, error: t("extension.popup.openWebsite") }
+  }
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "youin:toggle-drawer" })
+    return { ok: true }
+  } catch {
+    return { ok: false, error: t("extension.popup.openDrawerFailed") }
+  }
+}
+
+type SyncActivity = {
+  syncing: boolean
+  migrating: boolean
 }
 
 function IndexPopup() {
@@ -130,10 +148,6 @@ function IndexPopup() {
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
   const [inspectMsg, setInspectMsg] = useState<string | null>(null)
-  const [creatingProject, setCreatingProject] = useState(false)
-  const [newProjectName, setNewProjectName] = useState("")
-  const [newProjectDescription, setNewProjectDescription] = useState("")
-  const [projectErr, setProjectErr] = useState<string | null>(null)
   const [creatingSpace, setCreatingSpace] = useState(false)
   const [newSpaceName, setNewSpaceName] = useState("")
   const [spaceErr, setSpaceErr] = useState<string | null>(null)
@@ -148,8 +162,16 @@ function IndexPopup() {
   const [failedSyncCount, setFailedSyncCount] = useState(0)
   const [syncingNow, setSyncingNow] = useState(false)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [syncActivity, setSyncActivity] = useState<SyncActivity>({
+    syncing: false,
+    migrating: false
+  })
+  const [workspaceMissing, setWorkspaceMissing] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const gearRef = useRef<HTMLButtonElement>(null)
+  const menuItemRefs = useRef<(HTMLButtonElement | HTMLAnchorElement | null)[]>(
+    []
+  )
 
   const refreshCounts = useCallback(async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -271,16 +293,44 @@ function IndexPopup() {
 
   useEffect(() => {
     if (!menuOpen) return
+    menuItemRefs.current[0]?.focus()
+    const items = () =>
+      menuItemRefs.current.filter(
+        (node): node is HTMLButtonElement | HTMLAnchorElement => node != null
+      )
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return
-      e.preventDefault()
-      setMenuOpen(false)
-      gearRef.current?.focus()
+      if (e.key === "Escape") {
+        e.preventDefault()
+        setMenuOpen(false)
+        gearRef.current?.focus()
+        return
+      }
+      const menuItems = items()
+      if (!menuItems.length) return
+      const currentIndex = menuItems.findIndex((node) => node === document.activeElement)
+      if (e.key === "ArrowDown") {
+        e.preventDefault()
+        const next = menuItems[(currentIndex + 1) % menuItems.length]
+        next?.focus()
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        const next =
+          menuItems[
+            (currentIndex <= 0 ? menuItems.length : currentIndex) - 1
+          ]
+        next?.focus()
+      } else if (e.key === "Home") {
+        e.preventDefault()
+        menuItems[0]?.focus()
+      } else if (e.key === "End") {
+        e.preventDefault()
+        menuItems[menuItems.length - 1]?.focus()
+      }
     }
     const onMouseDown = (e: MouseEvent) => {
-      const t = e.target as Node
-      if (menuRef.current?.contains(t)) return
-      if (gearRef.current?.contains(t)) return
+      const target = e.target as Node
+      if (menuRef.current?.contains(target)) return
+      if (gearRef.current?.contains(target)) return
       setMenuOpen(false)
     }
     document.addEventListener("keydown", onKey, true)
@@ -289,17 +339,21 @@ function IndexPopup() {
       document.removeEventListener("keydown", onKey, true)
       document.removeEventListener("mousedown", onMouseDown, true)
     }
-  }, [menuOpen])
+  }, [menuOpen, view])
 
   useEffect(() => {
     if (view !== "signedIn") {
       setWorkspaceLabel("Local")
+      setWorkspaceMissing(false)
       return
     }
     let cancelled = false
     void (async () => {
       const label = await fetchWorkspaceLabel()
-      if (!cancelled) setWorkspaceLabel(label?.trim() || "Workspace")
+      if (!cancelled) {
+        setWorkspaceMissing(label === null)
+        setWorkspaceLabel(label?.trim() || t("common.workspaceFallback"))
+      }
     })()
     return () => {
       cancelled = true
@@ -323,6 +377,35 @@ function IndexPopup() {
       else window.close()
     })()
   }
+
+  const openPageFeedback = () => {
+    setInspectMsg(null)
+    void (async () => {
+      const r = await openDrawerOnActiveTab()
+      if (!r.ok) setInspectMsg(r.error ?? t("extension.popup.openDrawerFailed"))
+      else window.close()
+    })()
+  }
+
+  const isSyncingBadge =
+    syncingNow || syncActivity.syncing || syncActivity.migrating
+  const badgeLabel =
+    view === "signedOut"
+      ? t("extension.popup.badgeLocal")
+      : isSyncingBadge
+        ? t("extension.popup.badgeSyncing")
+        : t("extension.popup.badgeSynced")
+  const badgeAria =
+    view === "signedOut"
+      ? t("extension.popup.badgeLocalAria")
+      : isSyncingBadge
+        ? t("extension.popup.badgeSyncingAria")
+        : t("extension.popup.badgeSyncedAria")
+  const syncButtonLabel = syncingNow
+    ? t("extension.popup.syncing")
+    : failedSyncCount > 0
+      ? t("extension.popup.retrySync")
+      : t("extension.popup.syncNow")
 
   const runManualSync = () => {
     setSyncingNow(true)
@@ -388,61 +471,6 @@ function IndexPopup() {
     void setActiveSpaceId(id)
   }
 
-  const submitNewProject = () => {
-    const name = newProjectName.trim().slice(0, STORAGE_LIMITS.projectName)
-    const description = newProjectDescription
-      .trim()
-      .slice(0, STORAGE_LIMITS.projectDescription)
-    if (!name) {
-      setCreatingProject(false)
-      setProjectErr(null)
-      return
-    }
-    void (async () => {
-      const sess = await getSession()
-      if (sess?.user?.id) {
-        const created = await createRemoteWorkspaceProject(
-          sess.user.id,
-          name,
-          description
-        )
-        if (!created.ok || !created.projectId) {
-          setProjectErr(
-            created.error ?? "Could not create project. Try the web app."
-          )
-          return
-        }
-        await syncWorkspaceFromRemote(sess.user.id)
-        await setActiveProjectId(created.projectId)
-        await refreshSpaces()
-        setNewProjectName("")
-        setNewProjectDescription("")
-        setCreatingProject(false)
-        setProjectErr(null)
-        return
-      }
-
-      const slug =
-        name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "") || "project"
-      const id = `${slug}-${Date.now().toString(36)}`
-      const next: Project = { id, name, description, createdAt: Date.now() }
-      const added = await addProject(next)
-      if (!added) {
-        setProjectErr("Couldn't save project.")
-        return
-      }
-      await setActiveProjectId(id)
-      await refreshSpaces()
-      setNewProjectName("")
-      setNewProjectDescription("")
-      setCreatingProject(false)
-      setProjectErr(null)
-    })()
-  }
-
   const submitNewSpace = () => {
     const name = newSpaceName.trim().slice(0, STORAGE_LIMITS.spaceName)
     if (!name) {
@@ -451,7 +479,7 @@ function IndexPopup() {
       return
     }
     if (!projectId) {
-      setSpaceErr("Choose or create a project first.")
+      setSpaceErr("Choose a project first.")
       return
     }
     void (async () => {
@@ -499,15 +527,35 @@ function IndexPopup() {
 
   if (view === "checking") {
     return (
-      <main className="youin-popup flex min-w-0 w-full max-w-[320px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
-        Preparing review...
+      <main
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        className="youin-popup flex min-w-0 w-full max-w-[320px] flex-col items-center justify-center bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
+        {t("extension.popup.preparingReview")}
       </main>
     )
   }
 
   return (
     <main className="youin-popup relative flex min-w-0 w-full max-w-[320px] flex-col gap-0 bg-[var(--yi-paper)] px-0 py-0 font-sans text-[12px] font-medium leading-[1.45] text-[var(--yi-ink-2)] antialiased [overflow-wrap:anywhere]">
-      <header className="flex items-center justify-between gap-3 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+      {view === "signedOut" && showAuth ? (
+        <div className="absolute inset-0 z-20 flex flex-col bg-[var(--yi-paper)]">
+          <header className="flex items-center justify-between gap-3 bg-[color:var(--yi-paper-2)] px-4 py-3">
+            <YouInMark />
+            <button
+              type="button"
+              className="min-h-8 rounded-md border-0 bg-transparent px-2 text-[11px] font-medium text-[color:var(--yi-ext-accent)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              onClick={() => setShowAuth(false)}>
+              {t("extension.popup.closeSignIn")}
+            </button>
+          </header>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <SignInBlock onClose={() => setShowAuth(false)} />
+          </div>
+        </div>
+      ) : null}
+      <header className="flex items-center justify-between gap-3 bg-[color:var(--yi-paper-2)] px-4 py-3">
         <div className="flex min-w-0 items-center">
           <YouInMark />
         </div>
@@ -518,7 +566,7 @@ function IndexPopup() {
             className="flex size-8 items-center justify-center rounded-md bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             aria-controls="youin-popup-account-menu"
             aria-expanded={menuOpen}
-            aria-label="Account and settings"
+            aria-label={t("extension.popup.accountMenuAria")}
             onClick={() => setMenuOpen((v) => !v)}>
             <SettingsIcon />
           </button>
@@ -528,13 +576,18 @@ function IndexPopup() {
               id="youin-popup-account-menu"
               role="menu"
               aria-label="Account"
-              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-lg bg-[color:var(--yi-ext-menu-bg)] py-1 shadow-[var(--yi-shadow-popover)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-md bg-[color:var(--yi-paper-elevated)] py-1 shadow-[var(--yi-shadow-popover)]">
               {view === "signedIn" ? (
                 <>
-                  <p className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                  <p
+                    className="max-w-[14rem] truncate px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]"
+                    title={session?.user?.email ?? undefined}>
                     {session?.user?.email ?? ""}
                   </p>
                   <button
+                    ref={(node) => {
+                      menuItemRefs.current[0] = node
+                    }}
                     type="button"
                     role="menuitem"
                     className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
@@ -542,11 +595,14 @@ function IndexPopup() {
                       setMenuOpen(false)
                       void signOut()
                     }}>
-                    Sign out
+                    {t("extension.popup.signOut")}
                   </button>
                 </>
               ) : (
                 <button
+                  ref={(node) => {
+                    menuItemRefs.current[0] = node
+                  }}
                   type="button"
                   role="menuitem"
                   className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
@@ -554,17 +610,20 @@ function IndexPopup() {
                     setMenuOpen(false)
                     setShowAuth(true)
                   }}>
-                  Sign in…
+                  {t("extension.popup.signInMenu")}
                 </button>
               )}
               <a
+                ref={(node) => {
+                  menuItemRefs.current[1] = node
+                }}
                 role="menuitem"
                 href={`${WEB_APP_URL}/dashboard?space=all`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-between gap-3 px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                 onClick={() => setMenuOpen(false)}>
-                <span>Web app</span>
+                <span>{t("extension.popup.webApp")}</span>
                 <ExternalLinkIcon />
               </a>
             </div>
@@ -576,19 +635,22 @@ function IndexPopup() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              Review session
+              {t("extension.popup.reviewSession")}
             </p>
             <h2 className="mt-1 truncate text-[16px] font-semibold leading-tight text-[color:var(--yi-ink)]">
               {pageLabel}
             </h2>
           </div>
           <span
-            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
+            aria-label={badgeAria}
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ring-1 ${
               view === "signedIn"
-                ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
-                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+                ? isSyncingBadge
+                  ? "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)] ring-[color:var(--yi-ext-border-hairline)]"
+                  : "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)] ring-[color:var(--yi-ok-soft)]"
+                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)] ring-[color:var(--yi-ext-danger-border)]"
             }`}>
-            {view === "signedIn" ? "Synced" : "Local"}
+            {badgeLabel}
           </span>
         </div>
 
@@ -598,24 +660,26 @@ function IndexPopup() {
             disabled={!canReviewPage || !spaceId || domainDisabled}
             className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={beginInspect}>
-            Inspect
+            {t("extension.popup.inspect")}
           </button>
           <button
             type="button"
             disabled={!canReviewPage || !spaceId || domainDisabled}
             className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={beginScreenshot}>
-            Screenshot
+            {t("extension.popup.screenshot")}
           </button>
         </div>
 
         {domainDisabled ? (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            YouIn is disabled on this site.
+            {t("extension.popup.disabledOnSite")}
           </p>
         ) : !spaceId ? (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            Create a space in this project before reviewing.
+            {view === "signedIn" && !projectSpaces.length
+              ? t("extension.popup.setupSpaceBody")
+              : t("extension.popup.noSpaceSelected")}
           </p>
         ) : inspectMsg ? (
           <p className="mt-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
@@ -623,18 +687,19 @@ function IndexPopup() {
           </p>
         ) : (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            Inspect an element, or drag any screen area.
+            {t("extension.popup.inspectHint")}
+            <span className="mt-0.5 block">{t("extension.popup.shortcutHint")}</span>
           </p>
         )}
 
-        <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg bg-[color:var(--yi-ext-surface-stat)]">
+        <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-md bg-[color:var(--yi-paper-elevated)]">
           <button
             type="button"
-            disabled={!canReviewPage || !spaceId || domainDisabled}
+            disabled={!canReviewPage || domainDisabled}
             className="min-h-[58px] border-0 bg-transparent px-3 py-2 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-            onClick={beginInspect}>
+            onClick={openPageFeedback}>
             <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              Open
+              {t("extension.popup.open")}
             </span>
             <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-mark)]">
               {openCount}
@@ -642,7 +707,7 @@ function IndexPopup() {
           </button>
           <div className="min-h-[58px] px-3 py-2 text-left">
             <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              Resolved
+              {t("extension.popup.resolved")}
             </span>
             <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
               {resolvedCount}
@@ -651,18 +716,18 @@ function IndexPopup() {
         </div>
       </section>
 
-      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
+      <section className="bg-[color:var(--yi-paper-2)] px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              Destination
+              {t("extension.popup.destination")}
             </p>
             <p className="mt-0.5 truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
               {activeProjectName}
             </p>
             <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
               {projectSpaces.find((space) => space.id === spaceId)?.name ??
-                "No space selected"}
+                t("extension.popup.noSpaceLabel")}
             </p>
           </div>
           <a
@@ -676,8 +741,8 @@ function IndexPopup() {
           </a>
         </div>
 
-        <div className="mt-3 rounded-lg bg-[color:var(--yi-ext-surface-stat)] p-2">
-          <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] gap-1">
+        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2">
+          <div>
             <label className="min-w-0">
               <span className="sr-only">Project</span>
               <select
@@ -691,52 +756,7 @@ function IndexPopup() {
                 ))}
               </select>
             </label>
-            <button
-              type="button"
-              title="New project"
-              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-              onClick={() => {
-                setCreatingProject((c) => !c)
-                setProjectErr(null)
-              }}>
-              <PlusIcon />
-            </button>
           </div>
-          {creatingProject ? (
-            <div className="mt-2 flex flex-col gap-1">
-              {projectErr ? (
-                <p className="text-[11px] text-[color:var(--yi-ext-danger-text)]">
-                  {projectErr}
-                </p>
-              ) : null}
-              <input
-                value={newProjectName}
-                maxLength={STORAGE_LIMITS.projectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitNewProject()
-                }}
-                placeholder="Website QA"
-                className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
-              />
-              <input
-                value={newProjectDescription}
-                maxLength={STORAGE_LIMITS.projectDescription}
-                onChange={(e) => setNewProjectDescription(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitNewProject()
-                }}
-                placeholder="What this project collects"
-                className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
-              />
-              <button
-                type="button"
-                className="min-h-8 rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
-                onClick={() => submitNewProject()}>
-                Create project
-              </button>
-            </div>
-          ) : null}
 
           <div className="mt-1 grid grid-cols-[minmax(0,1fr)_2.25rem] gap-1">
             <label className="min-w-0">
@@ -754,7 +774,8 @@ function IndexPopup() {
             </label>
             <button
               type="button"
-              title="New review space"
+              title={t("extension.popup.newReviewSpace")}
+              aria-label={t("extension.popup.newReviewSpaceAria")}
               className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
               onClick={() => {
                 setCreatingSpace((c) => !c)
@@ -777,50 +798,90 @@ function IndexPopup() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") submitNewSpace()
                 }}
-                placeholder="Client homepage review"
+                placeholder={t("extension.popup.spaceNamePlaceholder")}
                 className="youin-input rounded-md px-2 py-1.5 text-[12px] text-[color:var(--yi-ext-text)]"
               />
               <button
                 type="button"
                 className="min-h-8 rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
                 onClick={() => submitNewSpace()}>
-                Create space
+                {t("extension.popup.createSpace")}
               </button>
             </div>
           ) : null}
         </div>
       </section>
 
+      {view === "signedIn" && workspaceMissing ? (
+        <div className="px-4 py-2">
+          <div className="rounded-md border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5">
+            <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
+              {t("extension.popup.noWorkspaceTitle")}
+            </p>
+            <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.popup.noWorkspaceBody")}
+            </p>
+            <a
+              href={`${WEB_APP_URL}/dashboard`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex min-h-9 items-center text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:underline">
+              {t("extension.popup.openWebApp")}
+            </a>
+          </div>
+        </div>
+      ) : null}
+
+      {view === "signedIn" && !workspaceMissing && !projectSpaces.length ? (
+        <div className="px-4 py-2">
+          <div className="rounded-md border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] px-3 py-2.5">
+            <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
+              {t("extension.popup.setupSpaceTitle")}
+            </p>
+            <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.popup.setupSpaceBody")}
+            </p>
+            <a
+              href={`${WEB_APP_URL}/dashboard`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex min-h-9 items-center text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline hover:underline">
+              {t("extension.popup.openWebApp")}
+            </a>
+          </div>
+        </div>
+      ) : null}
+
       {view === "signedOut" && !showAuth ? (
-        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2.5">
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-[color:var(--yi-mark-soft)] px-3 py-2">
+        <div className="px-4 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-mark-soft)] px-3 py-2">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
-                Local feedback
+                {t("extension.popup.localFeedback")}
               </p>
               <p className="truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
-                Sign in to share it.
+                {t("extension.popup.localFeedbackHint")}
               </p>
             </div>
             <button
               type="button"
               className="inline-flex min-h-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
               onClick={() => setShowAuth(true)}>
-              Sign in
+              {t("extension.popup.signIn")}
             </button>
           </div>
         </div>
       ) : null}
 
-      <section className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2">
-        <details className="group rounded-lg bg-transparent open:bg-[color:var(--yi-ext-surface-stat)]">
-          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
-            <span>Options</span>
+      <section className="px-4 py-2">
+        <details className="group rounded-md bg-transparent open:bg-[color:var(--yi-paper-2)]">
+          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
+            <span>{t("extension.popup.options")}</span>
             <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:hidden">
-              Capture, sync, widget
+              {t("extension.popup.optionsSummary")}
             </span>
             <span className="hidden text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:inline">
-              Hide
+              {t("extension.popup.optionsHide")}
             </span>
           </summary>
 
@@ -828,15 +889,21 @@ function IndexPopup() {
             <div className="flex items-center justify-between gap-3 pt-2">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-                  Sync
+                  {t("extension.popup.sync")}
                 </p>
                 <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
                   {failedSyncCount
-                    ? `${failedSyncCount} failed`
+                    ? t("extension.popup.syncFailedCount", {
+                        count: failedSyncCount
+                      })
                     : pendingSyncCount
-                      ? `${pendingSyncCount} pending`
+                      ? t("extension.popup.syncPendingCount", {
+                          count: pendingSyncCount
+                        })
                       : syncMsg ??
-                        (view === "signedIn" ? "Up to date" : "Local only")}
+                        (view === "signedIn"
+                          ? t("extension.popup.syncUpToDate")
+                          : t("extension.popup.syncLocalOnly"))}
                 </p>
               </div>
               <button
@@ -844,13 +911,13 @@ function IndexPopup() {
                 disabled={syncingNow || view !== "signedIn"}
                 className="min-h-8 shrink-0 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                 onClick={runManualSync}>
-                {syncingNow ? "Syncing" : "Retry"}
+                {syncButtonLabel}
               </button>
             </div>
 
-            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-lg bg-[color:var(--yi-ext-surface-low)]">
+            <div className="mt-2 rounded-md bg-[color:var(--yi-paper-elevated)]">
               <ToggleRow
-                label="Floating review button"
+                label={t("extension.popup.floatingReviewButton")}
                 checked={floatingControl}
                 onChange={(next) => {
                   setFloatingControl(next)
@@ -858,7 +925,7 @@ function IndexPopup() {
                 }}
               />
               <ToggleRow
-                label="Element screenshots"
+                label={t("extension.popup.elementScreenshots")}
                 checked={captureScreenshots}
                 onChange={(next) => {
                   setCaptureScreenshots(next)
@@ -866,7 +933,7 @@ function IndexPopup() {
                 }}
               />
               <ToggleRow
-                label="DOM context"
+                label={t("extension.popup.domContext")}
                 checked={captureDomSnapshots}
                 onChange={(next) => {
                   setCaptureDomSnapshots(next)
@@ -877,7 +944,7 @@ function IndexPopup() {
 
             <label className="mt-2 block">
               <span className="mb-1 block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-                Widget corner
+                {t("extension.popup.widgetCorner")}
               </span>
               <select
                 value={widgetCorner}
@@ -895,9 +962,11 @@ function IndexPopup() {
             </label>
 
             {currentHost ? (
-              <div className="mt-2 rounded-lg bg-[color:var(--yi-ext-surface-low)]">
+              <div className="mt-2 rounded-md bg-[color:var(--yi-paper-elevated)]">
                 <ToggleRow
-                  label={`Disable on ${currentHost}`}
+                  label={t("extension.popup.disableOnHost", {
+                    host: currentHost
+                  })}
                   checked={domainDisabled}
                   onChange={toggleCurrentDomain}
                 />
@@ -907,13 +976,12 @@ function IndexPopup() {
         </details>
       </section>
 
-      {view === "signedOut" && showAuth ? (
-        <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
-          <SignInBlock onClose={() => setShowAuth(false)} />
-        </div>
+      {view === "signedIn" ? (
+        <SignedInBlock
+          session={session}
+          onSyncActivityChange={setSyncActivity}
+        />
       ) : null}
-
-      {view === "signedIn" ? <SignedInBlock session={session} /> : null}
     </main>
   )
 }
@@ -922,7 +990,30 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [waitingGoogle, setWaitingGoogle] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!waitingGoogle) return
+    const offAuth = onAuthChange((session) => {
+      if (session) {
+        setWaitingGoogle(false)
+        onClose()
+      }
+    })
+    const offStorage = onSessionStorageChange(() => {
+      void getSession().then((session) => {
+        if (session) {
+          setWaitingGoogle(false)
+          onClose()
+        }
+      })
+    })
+    return () => {
+      offAuth()
+      offStorage()
+    }
+  }, [waitingGoogle, onClose])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -936,6 +1027,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
 
   function handleGoogle() {
     setError(null)
+    setWaitingGoogle(true)
     const url = new URL("/auth/extension-bridge", WEB_APP_URL)
     url.searchParams.set("ext", chrome.runtime.id)
     url.searchParams.set("provider", "google")
@@ -946,20 +1038,24 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
     <section>
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-[12px] font-semibold text-[var(--yi-ink)]">
-          Sign in
+          {t("extension.popup.signIn")}
         </h2>
-        <button
-          type="button"
-          className="min-h-7 rounded-md border-0 bg-transparent px-2 text-[11px] font-medium text-[color:var(--yi-ext-accent)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-          onClick={onClose}>
-          Close
-        </button>
       </div>
+
+      {waitingGoogle ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mb-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+          {t("extension.popup.waitingGoogle")}
+        </p>
+      ) : null}
 
       <button
         type="button"
         onClick={handleGoogle}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12px] font-medium text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+        disabled={waitingGoogle}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12px] font-medium text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:cursor-not-allowed disabled:opacity-60"
         aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         Continue with Google
@@ -1030,14 +1126,14 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
           target="_blank"
           rel="noreferrer"
           className="rounded-md px-1 font-medium text-[color:var(--yi-ext-link)] no-underline outline-none hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
-          Create account
+          {t("extension.popup.createAccount")}
         </a>
         <a
           href={`${WEB_APP_URL}/login?mode=reset`}
           target="_blank"
           rel="noreferrer"
           className="rounded-md px-1 text-[color:var(--yi-ext-text-muted)] no-underline outline-none hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
-          Forgot password?
+          {t("extension.popup.forgotPassword")}
         </a>
       </div>
     </section>
@@ -1071,7 +1167,13 @@ function ToggleRow({
   )
 }
 
-function SignedInBlock({ session }: { session: Session | null }) {
+function SignedInBlock({
+  session,
+  onSyncActivityChange
+}: {
+  session: Session | null
+  onSyncActivityChange?: (activity: SyncActivity) => void
+}) {
   const userId = session?.user?.id
   const [syncingDb, setSyncingDb] = useState(false)
   const [migrating, setMigrating] = useState(false)
@@ -1079,6 +1181,30 @@ function SignedInBlock({ session }: { session: Session | null }) {
     MigrationResult | { error: string } | null
   >(null)
   const [migrationDismissed, setMigrationDismissed] = useState(false)
+
+  useEffect(() => {
+    onSyncActivityChange?.({ syncing: syncingDb, migrating })
+  }, [syncingDb, migrating, onSyncActivityChange])
+
+  const runMigration = useCallback(async () => {
+    if (!userId) return
+    setMigrating(true)
+    setMigrationStatus(null)
+    try {
+      const r = await migrateLocalDataToWorkspace(userId)
+      if (r.ok) await syncPendingPinsToWorkspace()
+      setMigrationStatus(r)
+    } catch (e) {
+      setMigrationStatus({
+        error:
+          e instanceof Error
+            ? e.message
+            : t("extension.popup.migrationFailed")
+      })
+    } finally {
+      setMigrating(false)
+    }
+  }, [userId])
 
   useEffect(() => {
     if (!userId) return
@@ -1118,18 +1244,24 @@ function SignedInBlock({ session }: { session: Session | null }) {
 
   if (syncingDb || migrating) {
     return (
-      <p className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2 text-[10px] text-[color:var(--yi-ext-text-dim)]">
-        Syncing feedback…
+      <p
+        role="status"
+        aria-live="polite"
+        className="px-4 py-2 text-[10px] text-[color:var(--yi-ext-text-dim)]">
+        {migrating
+          ? t("extension.popup.importingFeedback")
+          : t("extension.popup.syncingWorkspace")}
       </p>
     )
   }
 
   if (migrationStatus && !migrationDismissed) {
     return (
-      <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-4 py-2">
+      <div className="px-4 py-2">
         <MigrationBanner
           status={migrationStatus}
           onDismiss={() => setMigrationDismissed(true)}
+          onRetry={() => void runMigration()}
         />
       </div>
     )
@@ -1140,23 +1272,33 @@ function SignedInBlock({ session }: { session: Session | null }) {
 
 function MigrationBanner({
   status,
-  onDismiss
+  onDismiss,
+  onRetry
 }: {
   status: MigrationResult | { error: string }
   onDismiss: () => void
+  onRetry: () => void
 }) {
   if ("error" in status && status.error) {
     return (
       <div
         role="alert"
         className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
-        Import failed: {status.error}
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="ms-2 underline underline-offset-2">
-          Dismiss
-        </button>
+        {t("extension.popup.migrationImportFailed", { error: status.error })}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold underline underline-offset-2">
+            {t("extension.popup.migrationTryAgain")}
+          </button>
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold underline underline-offset-2">
+            {t("extension.popup.migrationDismiss")}
+          </button>
+        </div>
       </div>
     )
   }
@@ -1164,21 +1306,24 @@ function MigrationBanner({
   if (r.pinsImported === 0 && r.spacesCreated === 0 && r.spacesMatched === 0) {
     return null
   }
+  const spacesPart =
+    r.spacesCreated > 0
+      ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
+      : r.spacesMatched > 0
+        ? ` into ${r.spacesMatched} existing space${r.spacesMatched === 1 ? "" : "s"}`
+        : ""
   return (
     <div className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-      Imported {r.pinsImported} feedback item{r.pinsImported === 1 ? "" : "s"}
-      {r.spacesCreated > 0
-        ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
-        : ""}
-      {r.spacesMatched > 0
-        ? `${r.spacesCreated > 0 ? " and" : " into"} ${r.spacesMatched} existing space${r.spacesMatched === 1 ? "" : "s"}`
-        : ""}
-      .
+      {t("extension.popup.migrationSuccess", {
+        count: r.pinsImported,
+        plural: r.pinsImported === 1 ? "" : "s",
+        spaces: spacesPart
+      })}
       <button
         type="button"
         onClick={onDismiss}
-        className="ms-2 font-medium text-[color:var(--yi-ext-accent)] underline underline-offset-2">
-        Dismiss
+        className="ms-2 inline-flex min-h-9 items-center font-medium text-[color:var(--yi-ext-accent)] underline underline-offset-2">
+        {t("extension.popup.migrationDismiss")}
       </button>
     </div>
   )

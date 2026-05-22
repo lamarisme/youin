@@ -20,9 +20,9 @@ export function MarkDescriptionRead({ html, className }: MarkDescriptionReadProp
   return (
     <div
       className={cn(
-        "mark-description-read max-w-[65ch] break-words text-[1rem] leading-relaxed text-ink-2",
+        "mark-description-read max-w-[65ch] break-words text-ui-md leading-relaxed text-ink-2",
         "[&_a]:text-mark [&_a]:underline [&_a]:underline-offset-2",
-        "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-rule [&_blockquote]:pl-3 [&_blockquote]:text-ink-2",
+        "[&_blockquote]:my-2 [&_blockquote]:border-l [&_blockquote]:border-rule [&_blockquote]:pl-3 [&_blockquote]:text-ink-2",
         "[&_code]:rounded-md [&_code]:bg-paper-3 [&_code]:px-1.5 [&_code]:py-px [&_code]:font-mono [&_code]:text-[0.875em] [&_code]:text-ink",
         "[&_em]:italic [&_i]:italic",
         "[&_li]:my-0.5",

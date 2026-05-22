@@ -24,6 +24,33 @@ declare global {
   }
 }
 
+function pingExtension(extensionId: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const chromeRuntime = window.chrome?.runtime
+    if (!chromeRuntime?.sendMessage) {
+      resolve(false)
+      return
+    }
+    try {
+      chromeRuntime.sendMessage(extensionId, { type: "youin:ping" }, (response) => {
+        if (chromeRuntime.lastError) {
+          resolve(false)
+          return
+        }
+        resolve(
+          Boolean(
+            response &&
+              typeof response === "object" &&
+              (response as { ok?: boolean }).ok
+          )
+        )
+      })
+    } catch {
+      resolve(false)
+    }
+  })
+}
+
 function BridgeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,6 +70,16 @@ function BridgeContent() {
     }
     let cancelled = false;
     void (async () => {
+      const reachable = await pingExtension(extensionId)
+      if (cancelled) return
+      if (!reachable) {
+        setStatus("error")
+        setMessage(
+          "Could not reach the extension. Make sure it is installed and enabled, then try again from the popup.",
+        )
+        return
+      }
+
       const supabase = createClient();
       const { data, error } = await supabase.auth.getSession();
       if (cancelled) return;
@@ -100,7 +137,7 @@ function BridgeContent() {
       <h2 className="font-display text-xl font-semibold text-ink">
         Connect youin extension
       </h2>
-      <p className="mt-1 text-[0.8125rem] text-ink-2">
+      <p className="mt-1 text-ui-sm text-ink-2">
         {displayStatus === "checking" && "Checking your session…"}
         {displayStatus === "needs-login" && "Sign in to your youin account to finish connecting the extension."}
         {displayStatus === "sending" && "Sending your session to the extension…"}
@@ -111,7 +148,7 @@ function BridgeContent() {
       {displayMessage ? (
         <p
           role="alert"
-          className={`mt-4 rounded-md border px-3 py-2 text-[0.75rem] ${
+          className={`mt-4 rounded-md border px-3 py-2 text-ui-xs ${
             displayStatus === "error"
               ? "border-mark/25 bg-mark-soft text-mark"
               : "border-rule bg-paper text-ink-2"

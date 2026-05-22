@@ -12,7 +12,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full border-separate border-spacing-y-0.5 caption-bottom text-sm", className)}
+        className={cn("w-full border-collapse caption-bottom text-sm", className)}
         {...props}
       />
     </div>
@@ -83,7 +83,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "bg-transparent p-3 align-middle whitespace-nowrap transition-colors first:rounded-l-md last:rounded-r-md group-hover/row:bg-paper-3/55 [&:has([role=checkbox])]:pr-0",
+        "bg-transparent p-3 align-middle whitespace-nowrap transition-colors group-hover/row:bg-paper-2 [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

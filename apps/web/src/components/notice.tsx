@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 type NoticeTone = "danger" | "success" | "info";
 
 const TONE_CLASS: Record<NoticeTone, string> = {
-  danger: "border-mark/30 bg-mark-soft text-mark",
+  danger: "border-destructive/30 bg-destructive-soft text-destructive",
   success: "border-ok/25 bg-ok-soft text-ok",
   info: "border-rule bg-paper text-ink-2",
 };
@@ -24,7 +24,7 @@ export function Notice({ children, tone = "info", className, id, role }: NoticeP
       id={id}
       role={role ?? (tone === "danger" ? "alert" : "status")}
       className={cn(
-        "rounded-md border px-3 py-2 text-[0.75rem] leading-snug",
+        "rounded-md border px-3 py-2 text-ui-xs leading-snug",
         TONE_CLASS[tone],
         className,
       )}

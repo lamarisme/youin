@@ -78,7 +78,7 @@ function LoginPageContent() {
     <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
         <h2 className="font-display text-xl font-semibold text-ink">Sign in</h2>
-        <p className="mt-1 text-[0.8125rem] text-ink-2">
+        <p className="mt-1 text-ui-sm text-ink-2">
           Enter your workspace credentials to continue.
         </p>
       </div>
@@ -97,20 +97,20 @@ function LoginPageContent() {
 
       <div className="mb-5 flex items-center gap-3">
         <span className="h-px flex-1 bg-rule" aria-hidden />
-        <span className="text-[0.6875rem] text-ink-3">or</span>
+        <span className="text-ui-xs text-ink-3">or</span>
         <span className="h-px flex-1 bg-rule" aria-hidden />
       </div>
 
       <form className="space-y-5" onSubmit={handleSignIn}>
         <div className="space-y-1.5">
-          <Label htmlFor="email" className="text-[0.75rem] font-medium text-ink-2">
+          <Label htmlFor="email" className="text-ui-xs font-medium text-ink-2">
             Email
           </Label>
           <Input
             id="email"
             type="email"
             placeholder="you@agency.com"
-            className="h-9 bg-paper text-[0.8125rem]"
+            className="h-9 bg-paper text-ui-sm"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -121,12 +121,12 @@ function LoginPageContent() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-[0.75rem] font-medium text-ink-2">
+            <Label htmlFor="password" className="text-ui-xs font-medium text-ink-2">
               Password
             </Label>
             <Link
               href="/auth/forgot-password"
-              className="text-[0.75rem] text-ink-3 hover:text-ink"
+              className="text-ui-xs text-ink-3 hover:text-ink"
             >
               Forgot password?
             </Link>
@@ -134,7 +134,7 @@ function LoginPageContent() {
           <PasswordInput
             id="password"
             placeholder="Enter your password"
-            className="h-9 bg-paper text-[0.8125rem]"
+            className="h-9 bg-paper text-ui-sm"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -157,7 +157,7 @@ function LoginPageContent() {
         </SubmitButton>
       </form>
 
-      <p className="mt-7 text-center text-[0.8125rem] text-ink-2">
+      <p className="mt-7 text-center text-ui-sm text-ink-2">
         New to youin?{" "}
         <Link href="/signup" className="font-medium text-ink hover:text-mark">
           Create account

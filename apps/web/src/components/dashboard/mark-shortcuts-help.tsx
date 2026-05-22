@@ -73,14 +73,14 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
         <div className="space-y-4">
           {GROUPS.map((group) => (
             <section key={group.heading}>
-              <p className="mb-1.5 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-ink-3">
+              <p className="mb-1.5 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
                 {group.heading}
               </p>
               <dl className="space-y-1 rounded-md bg-paper-2 p-1">
                 {group.rows.map((row) => (
                   <div
                     key={row.label}
-                    className="flex items-center justify-between gap-3 rounded px-2 py-1.5 text-[0.8125rem]"
+                    className="flex items-center justify-between gap-3 rounded px-2 py-1.5 text-ui-sm"
                   >
                     <dt className="text-ink-2">{row.label}</dt>
                     <dd className="flex shrink-0 items-center gap-1">
@@ -95,7 +95,7 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
           ))}
         </div>
 
-        <p className="text-[0.6875rem] text-ink-3">
+        <p className="text-ui-xs text-ink-3">
           Press <Kbd className="min-w-[1.25rem]">?</Kbd> any time on the mark page to see this list.
         </p>
       </DialogContent>

@@ -237,7 +237,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
         <div className="min-w-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[0.6875rem] font-semibold text-mark">
+              <span className="font-mono text-ui-xs font-semibold text-mark">
                 {pin.displayKey}
               </span>
             </div>
@@ -308,7 +308,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                     maxLength={300}
                     autoFocus
                     aria-invalid={pageInvalid || undefined}
-                    className="h-11 rounded-md border-transparent bg-transparent px-1 py-0 font-mono text-[0.8125rem] shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
+                    className="h-11 rounded-md border-transparent bg-transparent px-1 py-0 font-mono text-ui-sm shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
                   />
                   <InlineEditActions
                     field="page"
@@ -324,7 +324,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                   onClick={() => startEdit("page")}
                   className="group flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md text-left outline-none hover:text-ink focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
                 >
-                  <span className="min-w-0 truncate font-mono text-[0.75rem] text-ink-2">
+                  <span className="min-w-0 truncate font-mono text-ui-xs text-ink-2">
                     {pin.page}
                   </span>
                   <Pencil
@@ -399,7 +399,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
             <button
               type="button"
               onClick={() => startEdit("description")}
-              className="mt-5 flex min-h-11 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-[0.8125rem] text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
+              className="mt-5 flex min-h-11 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-ui-sm text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
             >
               <span>Add notes</span>
               <Pencil className="size-3.5" aria-hidden />
@@ -469,7 +469,8 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              className="h-9 bg-mark text-paper hover:bg-mark-bright"
+              variant="destructive"
+              className="h-9"
             >
               Delete mark
             </SubmitButton>

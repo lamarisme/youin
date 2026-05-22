@@ -28,14 +28,15 @@ export function WorkspaceDataProvider({
       <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center gap-5 px-4 py-[var(--page-y)]">
         <div className="max-w-sm text-center">
           <p className="font-display text-lg font-semibold text-ink">{t("title")}</p>
-          <p className="mt-2 text-[0.8125rem] text-ink-2">
+          <p className="mt-2 text-ui-sm text-ink-2">
             {error instanceof Error ? error.message : t("bodyFallback")}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           <Button
             type="button"
-            className="h-9 gap-2 bg-mark text-paper hover:bg-mark-bright"
+            variant="mark"
+            className="h-9 gap-2"
             disabled={isFetching}
             onClick={() => void refetch()}
           >

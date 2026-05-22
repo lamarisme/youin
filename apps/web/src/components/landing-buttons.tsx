@@ -19,12 +19,13 @@ export function LandingPrimaryButton({
 
   return (
     <Button
+      variant="mark"
       size={compact ? "sm" : "lg"}
       asChild
       className={
         compact
-          ? "min-h-11 bg-mark px-3.5 text-[0.8125rem] text-paper hover:bg-mark-bright"
-          : "min-h-11 bg-mark px-5 text-[0.875rem] font-semibold text-paper hover:bg-mark-bright"
+          ? "min-h-11 px-3.5 font-semibold"
+          : "min-h-11 px-5 font-semibold"
       }
     >
       <a href={href} className="inline-flex items-center gap-2">
@@ -44,7 +45,7 @@ export function SecondaryCtaButton({
 }) {
   const Arrow = isAnchorHref(href) ? ArrowDown : ArrowRight;
   return (
-    <Button size="lg" variant="outline" asChild className="min-h-11 px-5 text-[0.875rem]">
+    <Button size="lg" variant="outline" asChild className="min-h-11 px-5 text-ui-md">
       <a href={href} className="inline-flex items-center gap-2">
         <span>{children}</span>
         <Arrow className="size-4" />

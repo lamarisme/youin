@@ -1,3 +1,7 @@
+/**
+ * @deprecated Product UI uses Surface + pane/row patterns. Reserve Card for
+ * auth and rare marketing blocks only — do not use in dashboard or workspace routes.
+ */
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -38,7 +42,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "text-base leading-snug font-semibold tracking-[-0.005em] group-data-[size=sm]/card:text-sm",
+        "text-base leading-snug font-semibold tracking-normal group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}

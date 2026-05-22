@@ -11,12 +11,12 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-20 bg-paper/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
         <div className="shell flex items-center justify-between py-3.5">
           <Link href="/" aria-label="youin home" className="flex min-h-11 items-center gap-2.5">
             <BrandLogo />
           </Link>
-          <p className="hidden min-h-11 items-center font-mono text-[0.6875rem] text-ink-3 sm:inline-flex">
+          <p className="hidden min-h-11 items-center font-mono text-ui-xs text-ink-3 sm:inline-flex">
             {t("workspaceAccess")}
           </p>
         </div>
@@ -31,7 +31,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
             </h1>
           </div>
 
-          <p className="max-w-[46ch] text-[0.9375rem] leading-relaxed text-ink-2">{t("lead")}</p>
+          <p className="max-w-[46ch] text-ui-lg leading-relaxed text-ink-2">{t("lead")}</p>
 
           <div className="w-full max-w-[34rem] rounded-lg bg-paper-2 p-2.5">
             <div className="grid gap-2 sm:grid-cols-3">
@@ -41,7 +41,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          <ul className="space-y-1 text-[0.8125rem] leading-relaxed text-ink-2">
+          <ul className="space-y-1 text-ui-sm leading-relaxed text-ink-2">
             <li>{t("bullet1")}</li>
             <li>{t("bullet2")}</li>
             <li>{t("bullet3")}</li>
@@ -58,7 +58,7 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
 
 function BetaPoint({ label }: { label: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 rounded-md bg-paper-elevated px-3 py-2 text-[0.8125rem] font-medium text-ink shadow-[var(--shadow-hairline)]">
+    <div className="flex min-w-0 items-center gap-2 rounded-md bg-paper-elevated px-3 py-2 text-ui-sm font-medium text-ink shadow-[var(--shadow-hairline)]">
       <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok">
         <Check className="size-3" aria-hidden />
       </span>

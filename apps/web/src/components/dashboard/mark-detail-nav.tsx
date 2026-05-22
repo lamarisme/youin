@@ -42,7 +42,7 @@ export function MarkDetailNav({
           ]}
         />
         <div className="flex items-center gap-1">
-          <span className="mr-2 text-[0.6875rem] text-ink-3">{positionLabel}</span>
+          <span className="mr-2 text-ui-xs text-ink-3">{positionLabel}</span>
           <Button
             type="button"
             size="sm"
@@ -76,7 +76,7 @@ export function MarkDetailNav({
             aria-keyshortcuts="?"
             className="h-11 px-2.5 text-ink-3 hover:text-ink sm:h-8 sm:px-2"
           >
-            <span className="font-mono text-[0.75rem]">?</span>
+            <span className="font-mono text-ui-xs">?</span>
           </Button>
         </div>
       </div>

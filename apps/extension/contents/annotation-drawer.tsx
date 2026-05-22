@@ -1,5 +1,6 @@
 import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
+import { t } from "@youin/i18n/t"
 import { useCallback, useEffect, useState } from "react"
 
 import {
@@ -71,12 +72,18 @@ function PinRow({
   pin,
   onOpen,
   onStatus,
-  onDelete
+  onDelete,
+  pendingDeleteId,
+  onConfirmDelete,
+  onCancelDelete
 }: {
   pin: Pin
   onOpen: (pin: Pin) => void
   onStatus: (pin: Pin, status: Pin["status"]) => void
   onDelete: (pin: Pin) => void
+  pendingDeleteId: string | null
+  onConfirmDelete: (pin: Pin) => void
+  onCancelDelete: () => void
 }) {
   const health = computePinHealth(pin)
   const image = pin.screenshotUrl ?? pin.screenshotDataUrl
@@ -121,20 +128,44 @@ function PinRow({
         </span>
       </button>
       <div className="flex items-center justify-end gap-1 border-t border-[color:var(--yi-ext-border-hairline)] px-2 py-1.5">
-        <button
-          type="button"
-          className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-hover)]"
-          onClick={() =>
-            onStatus(pin, pin.status === "closed" ? "open" : "closed")
-          }>
-          {pin.status === "closed" ? "Reopen" : "Resolve"}
-        </button>
-        <button
-          type="button"
-          className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
-          onClick={() => onDelete(pin)}>
-          Delete
-        </button>
+        {pendingDeleteId === pin.id ? (
+          <div className="flex w-full flex-wrap items-center justify-end gap-1">
+            <span className="me-auto text-[10px] text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.drawer.confirmDeleteTitle")}
+            </span>
+            <button
+              type="button"
+              className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+              onClick={onCancelDelete}>
+              {t("extension.drawer.cancel")}
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
+              onClick={() => onConfirmDelete(pin)}>
+              {t("extension.drawer.confirmDelete")}
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+              onClick={() =>
+                onStatus(pin, pin.status === "closed" ? "open" : "closed")
+              }>
+              {pin.status === "closed"
+                ? t("extension.drawer.reopen")
+                : t("extension.drawer.resolve")}
+            </button>
+            <button
+              type="button"
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
+              onClick={() => onDelete(pin)}>
+              {t("extension.drawer.delete")}
+            </button>
+          </>
+        )}
       </div>
     </li>
   )
@@ -145,6 +176,7 @@ const AnnotationDrawer = () => {
   const [pins, setPins] = useState<Pin[]>([])
   const [disabled, setDisabled] = useState(false)
   const [undoPin, setUndoPin] = useState<Pin | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     const settings = await getWidgetSettings()
@@ -161,12 +193,26 @@ const AnnotationDrawer = () => {
   useEffect(() => {
     const onToggle = () => {
       setOpen((value) => !value)
+      setPendingDeleteId(null)
       void refresh()
     }
     window.addEventListener(EVENT_REVIEW_TOGGLE_DRAWER, onToggle)
     return () =>
       window.removeEventListener(EVENT_REVIEW_TOGGLE_DRAWER, onToggle)
   }, [refresh])
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        setOpen(false)
+        setPendingDeleteId(null)
+      }
+    }
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
+  }, [open])
 
   useEffect(() => {
     void refresh()
@@ -225,8 +271,12 @@ const AnnotationDrawer = () => {
     })()
   }
   const onDelete = (pin: Pin) => {
+    setPendingDeleteId(pin.id)
+  }
+  const onConfirmDelete = (pin: Pin) => {
     void removePin(pin.id).then((removed) => {
       if (removed) setUndoPin(removed)
+      setPendingDeleteId(null)
       void refresh()
     })
   }
@@ -241,16 +291,19 @@ const AnnotationDrawer = () => {
       <header className="flex items-start justify-between gap-3 border-b border-[color:var(--yi-ext-border-hairline)] px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-[13px] font-semibold text-[color:var(--yi-ext-text-title)]">
-            Page feedback
+            {t("extension.drawer.pageFeedback")}
           </h2>
           <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
-            {openPins.length} open · {resolvedPins.length} resolved
+            {t("extension.drawer.openResolved", {
+              open: openPins.length,
+              resolved: resolvedPins.length
+            })}
           </p>
         </div>
         <button
           type="button"
           className="min-h-8 min-w-8 rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-hover)]"
-          aria-label="Close page feedback"
+          aria-label={t("extension.drawer.close")}
           onClick={() => setOpen(false)}>
           ✕
         </button>
@@ -258,30 +311,39 @@ const AnnotationDrawer = () => {
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-gutter:stable]">
         {pins.length === 0 ? (
           <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-6 text-center text-[12px] text-[color:var(--yi-ext-text-muted)]">
-            No feedback on this page yet.
+            {t("extension.drawer.empty")}
           </p>
         ) : (
           <div className="space-y-4">
             <section>
               <h3 className="mb-2 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-                Open
+                {t("extension.drawer.openSection")}
               </h3>
-              <ul className="space-y-2">
-                {openPins.map((pin) => (
-                  <PinRow
-                    key={pin.id}
-                    pin={pin}
-                    onOpen={onOpenPin}
-                    onStatus={onStatus}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </ul>
+              {openPins.length === 0 ? (
+                <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-4 text-center text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                  {t("extension.drawer.noOpenFeedback")}
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {openPins.map((pin) => (
+                    <PinRow
+                      key={pin.id}
+                      pin={pin}
+                      onOpen={onOpenPin}
+                      onStatus={onStatus}
+                      onDelete={onDelete}
+                      pendingDeleteId={pendingDeleteId}
+                      onConfirmDelete={onConfirmDelete}
+                      onCancelDelete={() => setPendingDeleteId(null)}
+                    />
+                  ))}
+                </ul>
+              )}
             </section>
             {resolvedPins.length ? (
               <section>
                 <h3 className="mb-2 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-                  Resolved
+                  {t("extension.drawer.resolvedSection")}
                 </h3>
                 <ul className="space-y-2">
                   {resolvedPins.map((pin) => (
@@ -291,6 +353,9 @@ const AnnotationDrawer = () => {
                       onOpen={onOpenPin}
                       onStatus={onStatus}
                       onDelete={onDelete}
+                      pendingDeleteId={pendingDeleteId}
+                      onConfirmDelete={onConfirmDelete}
+                      onCancelDelete={() => setPendingDeleteId(null)}
                     />
                   ))}
                 </ul>
@@ -301,7 +366,7 @@ const AnnotationDrawer = () => {
       </div>
       {undoPin ? (
         <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
-          Feedback deleted.
+          {t("extension.drawer.deleted")}
           <button
             type="button"
             className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
@@ -309,7 +374,7 @@ const AnnotationDrawer = () => {
               void restorePin(undoPin).then(refresh)
               setUndoPin(null)
             }}>
-            Undo
+            {t("extension.drawer.undo")}
           </button>
         </div>
       ) : null}

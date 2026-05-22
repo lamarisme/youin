@@ -58,7 +58,7 @@ export function BulkActionBar({
         <span className="sr-only" aria-live="polite">
           {busy ? "Updating selected marks." : `${count} marks selected.`}
         </span>
-        <span className="flex min-h-11 items-center gap-1.5 pl-1 pr-2 text-[0.8125rem] font-medium tabular-nums text-ink sm:min-h-0">
+        <span className="flex min-h-11 items-center gap-1.5 pl-1 pr-2 text-ui-sm font-medium tabular-nums text-ink sm:min-h-0">
           <span className="text-mark">{count}</span> selected
         </span>
         <span aria-hidden className="hidden h-5 w-px bg-rule sm:block" />
@@ -68,7 +68,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => run(() => onSetStatus(allClosed ? "open" : "closed"))}
-          className="col-start-1 row-start-2 h-11 gap-1.5 px-3 text-[0.9375rem] text-ink-2 hover:text-ink sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+          className="col-start-1 row-start-2 h-11 gap-1.5 px-3 text-ui-lg text-ink-2 hover:text-ink sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-ui-sm"
         >
           {allClosed ? (
             <>
@@ -92,7 +92,7 @@ export function BulkActionBar({
           ]}
           ariaLabel="Set priority for selected marks"
           disabled={busy}
-          triggerClassName="col-span-2 row-start-3 w-full h-11 text-[0.9375rem] sm:col-span-1 sm:row-auto sm:h-8 sm:w-[140px] sm:text-[0.8125rem]"
+          triggerClassName="col-span-2 row-start-3 w-full h-11 text-ui-lg sm:col-span-1 sm:row-auto sm:h-8 sm:w-[140px] sm:text-ui-sm"
         />
         <Button
           type="button"
@@ -100,7 +100,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => setConfirmDelete(true)}
-          className="col-start-2 row-start-2 h-11 gap-1.5 px-3 text-[0.9375rem] text-mark hover:bg-mark-soft hover:text-mark sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-[0.8125rem]"
+          className="col-start-2 row-start-2 h-11 gap-1.5 px-3 text-ui-lg text-mark hover:bg-mark-soft hover:text-mark sm:col-auto sm:row-auto sm:h-8 sm:px-2.5 sm:text-ui-sm"
         >
           <Trash2 className="size-3.5" />
           Delete
@@ -141,7 +141,7 @@ export function BulkActionBar({
                 await run(onDelete);
                 setConfirmDelete(false);
               }}
-              className="bg-mark text-paper hover:bg-mark-bright"
+              variant="mark"
             >
               {`Delete ${count === 1 ? "mark" : `${count} marks`}`}
             </SubmitButton>

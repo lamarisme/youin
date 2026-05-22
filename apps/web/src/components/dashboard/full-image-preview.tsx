@@ -42,7 +42,7 @@ export function FullImagePreview({
           type="button"
           size="sm"
           variant="secondary"
-          className="absolute right-2 top-2 h-7 gap-1 rounded-md bg-paper/90 px-2 text-[0.6875rem] shadow-sm opacity-0 transition-opacity hover:bg-paper focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute right-2 top-2 h-7 gap-1 rounded-md bg-paper/90 px-2 text-ui-xs shadow-sm opacity-0 transition-opacity hover:bg-paper focus-visible:opacity-100 group-hover:opacity-100"
           onClick={() => setOpen(true)}
         >
           <Maximize2 className="size-3" aria-hidden />

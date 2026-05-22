@@ -10,7 +10,7 @@ function Kbd({
   return (
     <kbd
       className={cn(
-        "rounded bg-paper-3 px-1.5 py-0.5 font-mono text-[0.625rem] text-ink-3",
+        "rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3",
         "inline-flex items-center justify-center",
         className,
       )}
@@ -28,7 +28,7 @@ function KeyboardHint({
   action: string;
 }) {
   return (
-    <p className="hidden items-center gap-1.5 text-[0.6875rem] text-ink-3 sm:flex">
+    <p className="hidden items-center gap-1.5 text-ui-xs text-ink-3 sm:flex">
       {keys.map((key, i) => (
         <Kbd key={i}>{key}</Kbd>
       ))}
