@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import Link from "next/link";
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandLockup } from "@/components/brand-lockup";
 import { FadeIn } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 
@@ -15,8 +15,8 @@ export default function NotFound() {
     <div className="flex min-h-screen flex-col bg-paper bg-paper-grain text-ink">
       <header className="border-b border-rule bg-paper/95">
         <div className="shell flex items-center justify-between py-[var(--space-md)]">
-          <Link href="/" aria-label="youin home" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
-            <BrandLogo />
+          <Link href="/" aria-label="youin home" className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
+            <BrandLockup />
           </Link>
           <nav className="flex items-center gap-2 md:gap-3">
             <Button variant="ghost" size="sm" asChild className="h-8 text-ui-sm text-ink-2 hover:text-ink">

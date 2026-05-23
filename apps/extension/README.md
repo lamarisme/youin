@@ -1,4 +1,76 @@
-# YouIn Chrome Extension
+# Youin Chrome Extension
+
+The extension is a Plasmo app that adds Youin review tools to live web pages. It handles popup auth, review mode, page capture, in-page badges, local persistence, Supabase sync, and migration of older local pins after sign-in.
+
+## Local Setup
+
+From the repository root:
+
+```bash
+corepack enable
+pnpm install
+cp apps/extension/.env.example apps/extension/.env
+```
+
+Set these variables in `apps/extension/.env`:
+
+```bash
+PLASMO_PUBLIC_SUPABASE_URL=
+PLASMO_PUBLIC_SUPABASE_KEY=
+PLASMO_PUBLIC_WEB_APP_URL=http://localhost:3000
+```
+
+Use the same development Supabase project as the web app. Keep `apps/extension/.env` out of commits.
+
+## Run
+
+Start the web app first when testing sign-in:
+
+```bash
+pnpm dev:web
+```
+
+Then start the extension:
+
+```bash
+pnpm dev:extension
+```
+
+Load the development build in Chrome:
+
+1. Open `chrome://extensions`.
+2. Enable Developer Mode.
+3. Click Load unpacked.
+4. Select `apps/extension/build/chrome-mv3-dev`.
+
+If the extension does not refresh after a change, reload it from `chrome://extensions` and refresh the page being reviewed.
+
+## Scripts
+
+```bash
+pnpm --filter @youin/extension dev
+pnpm --filter @youin/extension build
+pnpm --filter @youin/extension package
+```
+
+Run `build` before opening a PR that changes extension runtime code. Run `package` when preparing a browser-store bundle.
+
+## Structure
+
+| Path | Purpose |
+| --- | --- |
+| `popup.tsx` | Popup UI, auth states, and entry points into review mode. |
+| `background/index.ts` | Background service worker and OAuth bridge receiver. |
+| `contents/review-mode.ts` | Content-script review mode orchestration. |
+| `contents/widget.tsx` | Floating review widget. |
+| `contents/annotation-drawer.tsx` | In-page feedback drawer. |
+| `contents/capture-panel.tsx` | Capture and comment UI. |
+| `contents/pin-badges.tsx` | Feedback badge rendering. |
+| `lib/auth.ts` | Extension auth helpers and cross-context session detection. |
+| `lib/supabase.ts` | Supabase client using Chrome storage. |
+| `lib/migrate.ts` | One-shot local data migration after sign-in. |
+| `lib/storage.ts` | Local persistence and workspace mirrors. |
+| `lib/sync.ts` | Sync queue behavior. |
 
 ## Permissions
 
@@ -16,8 +88,12 @@ Privacy controls live in the popup settings:
 - DOM context capture can be disabled.
 - The extension can be disabled per domain.
 
-Current limitation: review UI runs in the top frame only. Same-origin iframe,
-cross-origin iframe, and Shadow DOM targeting need a separate selector and
-positioning pass after the core health/drawer/edit flows stabilize.
+Current limitation: review UI runs in the top frame only. Same-origin iframe, cross-origin iframe, and Shadow DOM targeting need a separate selector and positioning pass after the core health, drawer, and edit flows stabilize.
 
-Do not commit `apps/extension/.env`. Keep `apps/extension/.env.example` as the documented shape for local setup.
+## Review Checklist
+
+- Test popup sign-in and sign-out.
+- Test review mode on at least one HTTP or HTTPS page.
+- Confirm captured marks sync to the web app workspace.
+- Confirm disabled screenshot or DOM-context settings are respected if those areas changed.
+- Reload the unpacked extension after manifest, background, or content-script changes.

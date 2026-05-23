@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Mail } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandLockup } from "@/components/brand-lockup";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
@@ -16,8 +16,8 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-paper text-ink">
       <header className="border-b border-rule">
         <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center gap-2.5">
-            <BrandLogo />
+          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+            <BrandLockup />
           </Link>
           <Link
             href="/"

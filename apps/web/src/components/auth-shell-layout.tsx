@@ -4,7 +4,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { Check } from "lucide-react";
 
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandLockup } from "@/components/brand-lockup";
 
 export async function AuthShellLayout({ children }: { children: ReactNode }) {
   const t = await getTranslations("authShell");
@@ -13,8 +13,8 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
         <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center gap-2.5">
-            <BrandLogo />
+          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+            <BrandLockup />
           </Link>
           <p className="hidden min-h-11 items-center font-mono text-ui-xs text-ink-3 sm:inline-flex">
             {t("workspaceAccess")}

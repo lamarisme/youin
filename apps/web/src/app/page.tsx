@@ -11,7 +11,7 @@ import {
 import { LandingLoopScene } from "@/components/landing-loop-scene";
 import { LandingPinNote } from "@/components/landing-pin-note";
 import { LandingProductStage } from "@/components/landing-product-stage";
-import { BrandLogo } from "@/components/brand-logo";
+import { BrandLockup } from "@/components/brand-lockup";
 import Link from "next/link";
 
 type LandingNavItem = { href: string; label: string };
@@ -46,8 +46,8 @@ export default async function Home() {
       </a>
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
         <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center gap-2.5">
-            <BrandLogo />
+          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+            <BrandLockup />
           </Link>
           <nav aria-label="Primary" className="hidden items-center gap-5 text-ui-sm text-ink-2 md:flex">
             {navItems.map((item) => (
