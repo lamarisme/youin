@@ -1,9 +1,10 @@
+import { t } from "@youin/i18n/t"
 import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
-import { t } from "@youin/i18n/t"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getSession } from "../lib/auth"
+import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_CAPTURE,
   EVENT_REVIEW_OPEN_PIN,
@@ -76,6 +77,11 @@ function truncateMiddle(s: string, max: number): string {
   if (s.length <= max) return s
   const half = Math.floor((max - 1) / 2)
   return `${s.slice(0, half)}…${s.slice(s.length - half)}`
+}
+
+function truncateEnd(s: string, max: number): string {
+  if (s.length <= max) return s
+  return `${s.slice(0, Math.max(0, max - 1))}…`
 }
 
 function formatShortDate(ts: number): string {
@@ -175,6 +181,21 @@ const headerCloseBtn =
 const threadBadge =
   "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold leading-none whitespace-nowrap"
 
+const SENSITIVE_DISPLAY_ATTR_RE =
+  /(?:token|secret|password|passwd|pwd|auth|session|cookie|csrf|jwt|key|credential|private)/i
+const DISPLAY_EMAIL_RE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi
+const DISPLAY_TOKEN_RE =
+  /\b(?:sk-[A-Za-z0-9_-]{20,}|[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}|[A-Fa-f0-9]{32,})\b/g
+
+type DomStrategy = ReviewCaptureDetail["strategy"]
+
+interface DomPreviewNode {
+  parentLabel?: string
+  selectedLabel: string
+  childLabels: string[]
+  hiddenChildCount: number
+}
+
 function threadHealthBadgeClass(label: string): string {
   if (label === "Attached")
     return "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
@@ -183,6 +204,254 @@ function threadHealthBadgeClass(label: string): string {
   if (label === "Stale")
     return "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
   return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
+}
+
+function confidenceForStrategy(strategy: DomStrategy): {
+  label: string
+  className: string
+  description: string
+} {
+  if (strategy === "test-id" || strategy === "id") {
+    return {
+      label: "Stable",
+      className: "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]",
+      description: "Unique stable attribute"
+    }
+  }
+  if (strategy === "aria") {
+    return {
+      label: "Readable",
+      className: "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]",
+      description: "Unique accessibility attribute"
+    }
+  }
+  return {
+    label: "Fragile",
+    className: "bg-[color:var(--yi-warn-soft)] text-[color:var(--yi-warn)]",
+    description: "Generated DOM path"
+  }
+}
+
+function sanitizeDisplayAttribute(name: string, value: string): string {
+  if (
+    SENSITIVE_DISPLAY_ATTR_RE.test(name) ||
+    name.toLowerCase().startsWith("on")
+  ) {
+    return "[redacted]"
+  }
+  return truncateEnd(
+    value
+      .replace(DISPLAY_EMAIL_RE, "[redacted-email]")
+      .replace(DISPLAY_TOKEN_RE, "[redacted-token]")
+      .replace(/\s+/g, " ")
+      .trim(),
+    64
+  )
+}
+
+function attrsFromElement(el: Element | null): Record<string, string> {
+  if (!el) return {}
+  const attrs: Record<string, string> = {}
+  for (const attr of Array.from(el.attributes)) {
+    attrs[attr.name] = sanitizeDisplayAttribute(attr.name, attr.value)
+  }
+  return attrs
+}
+
+function parseFirstElement(html?: string): Element | null {
+  if (!html?.trim()) return null
+  const template = document.createElement("template")
+  template.innerHTML = html.trim()
+  return template.content.firstElementChild
+}
+
+function labelFromParts(
+  tagName: string,
+  attrs: Record<string, string>
+): string {
+  const tag = tagName.toLowerCase() || "element"
+  const id = attrs.id && attrs.id !== "[redacted]" ? `#${attrs.id}` : ""
+  const className = attrs.class ?? attrs.className ?? ""
+  const classes =
+    className && className !== "[redacted]"
+      ? `.${className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join(".")}`
+      : ""
+  return truncateEnd(`${tag}${id}${classes}`, 72)
+}
+
+function labelFromElement(el: Element): string {
+  return labelFromParts(el.tagName.toLowerCase(), attrsFromElement(el))
+}
+
+function snapshotAttributes(
+  snapshot?: ElementDomSnapshot
+): Record<string, string> {
+  if (!snapshot) return {}
+  const attrs = { ...snapshot.selectedElement.attributes }
+  if (snapshot.selectedElement.id && !attrs.id)
+    attrs.id = snapshot.selectedElement.id
+  if (snapshot.selectedElement.className && !attrs.class) {
+    attrs.class = snapshot.selectedElement.className
+  }
+  if (snapshot.selectedElement.role && !attrs.role)
+    attrs.role = snapshot.selectedElement.role
+  if (snapshot.selectedElement.ariaLabel && !attrs["aria-label"]) {
+    attrs["aria-label"] = snapshot.selectedElement.ariaLabel
+  }
+  return attrs
+}
+
+function prioritizedAttributeEntries(
+  attrs: Record<string, string>
+): Array<[string, string]> {
+  const priority = ["id", "class", "role", "aria-label", "type", "name", "href"]
+  const entries = Object.entries(attrs)
+    .filter(([name]) => !name.toLowerCase().startsWith("style"))
+    .map(
+      ([name, value]) =>
+        [name, sanitizeDisplayAttribute(name, value)] as [string, string]
+    )
+  const score = (name: string) => {
+    const index = priority.indexOf(name)
+    if (index >= 0) return index
+    if (name.startsWith("data-")) return priority.length
+    return priority.length + 1
+  }
+  return entries
+    .sort((a, b) => score(a[0]) - score(b[0]) || a[0].localeCompare(b[0]))
+    .slice(0, 8)
+}
+
+function buildDomPreviewNode(
+  snapshot?: ElementDomSnapshot,
+  outerHTML?: string
+): DomPreviewNode | null {
+  const parsed = parseFirstElement(
+    snapshot?.selectedElement.outerHTML ?? outerHTML
+  )
+  const attrs = snapshot
+    ? snapshotAttributes(snapshot)
+    : attrsFromElement(parsed)
+  const selectedLabel = snapshot
+    ? labelFromParts(snapshot.selectedElement.tagName, attrs)
+    : parsed
+      ? labelFromElement(parsed)
+      : ""
+  if (!selectedLabel) return null
+
+  const childLabels = parsed
+    ? Array.from(parsed.children)
+        .slice(0, 5)
+        .map((child) => labelFromElement(child))
+    : []
+  const hiddenChildCount = parsed
+    ? Math.max(0, parsed.children.length - childLabels.length)
+    : 0
+  const ancestors = snapshot?.context?.ancestorPath ?? []
+  const parentLabel =
+    ancestors.length >= 2 ? ancestors[ancestors.length - 2] : undefined
+  return { parentLabel, selectedLabel, childLabels, hiddenChildCount }
+}
+
+function breadcrumbParts(
+  snapshot: ElementDomSnapshot | undefined,
+  selector: string
+): string[] {
+  const fromSnapshot = snapshot?.context?.ancestorPath?.filter(Boolean)
+  if (fromSnapshot?.length) return fromSnapshot.slice(-6)
+  return selector
+    .split(">")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(-5)
+}
+
+function flashSelection(selector: string, bbox?: Pin["bbox"]): boolean {
+  let element: Element | null = null
+  try {
+    element = selector ? document.querySelector(selector) : null
+  } catch {
+    element = null
+  }
+
+  if (element) {
+    element.scrollIntoView({
+      block: "center",
+      inline: "center",
+      behavior: "smooth"
+    })
+  } else if (bbox && bbox.width > 0 && bbox.height > 0) {
+    window.scrollTo({
+      left: Math.max(0, bbox.x - window.innerWidth / 2),
+      top: Math.max(0, bbox.y - window.innerHeight / 2),
+      behavior: "smooth"
+    })
+  } else {
+    return false
+  }
+
+  window.setTimeout(() => {
+    const rect = element
+      ? element.getBoundingClientRect()
+      : bbox
+        ? new DOMRect(
+            bbox.x - window.scrollX,
+            bbox.y - window.scrollY,
+            bbox.width,
+            bbox.height
+          )
+        : null
+    if (!rect || rect.width < 1 || rect.height < 1) return
+    const marker = document.createElement("div")
+    Object.assign(marker.style, {
+      position: "fixed",
+      left: `${Math.max(0, rect.left)}px`,
+      top: `${Math.max(0, rect.top)}px`,
+      width: `${Math.max(1, rect.width)}px`,
+      height: `${Math.max(1, rect.height)}px`,
+      boxSizing: "border-box",
+      border: "2px solid oklch(53.5% 0.19 24)",
+      borderRadius: "6px",
+      background: "oklch(53.5% 0.19 24 / 0.08)",
+      boxShadow: "0 0 0 9999px oklch(18.4% 0.018 62 / 0.16)",
+      pointerEvents: "none",
+      zIndex: String(Z_PANEL - 1),
+      transition: "opacity 220ms ease"
+    })
+    document.body.append(marker)
+    window.setTimeout(() => {
+      marker.style.opacity = "0"
+      window.setTimeout(() => marker.remove(), 240)
+    }, 1050)
+  }, 220)
+
+  return true
+}
+
+async function copyTextToClipboard(value: string): Promise<void> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value)
+      return
+    }
+  } catch {
+    /* fall back to a transient textarea below */
+  }
+
+  const textarea = document.createElement("textarea")
+  textarea.value = value
+  textarea.setAttribute("readonly", "true")
+  Object.assign(textarea.style, {
+    position: "fixed",
+    left: "-9999px",
+    top: "0",
+    opacity: "0"
+  })
+  document.body.append(textarea)
+  textarea.select()
+  const copied = document.execCommand("copy")
+  textarea.remove()
+  if (!copied) throw new Error("Copy failed")
 }
 
 function CommentComposer({
@@ -255,6 +524,174 @@ function CommentComposer({
   )
 }
 
+function DomContextPreview({
+  snapshot,
+  selector,
+  strategy,
+  bbox,
+  outerHTML
+}: {
+  snapshot?: ElementDomSnapshot
+  selector: string
+  strategy: DomStrategy
+  bbox?: Pin["bbox"]
+  outerHTML?: string
+}) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
+    "idle"
+  )
+  const [highlightState, setHighlightState] = useState<
+    "idle" | "found" | "missing"
+  >("idle")
+  const node = buildDomPreviewNode(snapshot, outerHTML)
+  const attrs = prioritizedAttributeEntries(
+    snapshot
+      ? snapshotAttributes(snapshot)
+      : attrsFromElement(parseFirstElement(outerHTML))
+  )
+  const confidence = confidenceForStrategy(strategy)
+  const breadcrumb = breadcrumbParts(snapshot, selector)
+
+  if (!node && !breadcrumb.length) return null
+
+  const copySelector = async () => {
+    try {
+      await copyTextToClipboard(selector)
+      setCopyState("copied")
+    } catch {
+      setCopyState("failed")
+    }
+    window.setTimeout(() => setCopyState("idle"), 1400)
+  }
+
+  const highlightSelected = () => {
+    const found = flashSelection(selector, bbox)
+    setHighlightState(found ? "found" : "missing")
+    window.setTimeout(() => setHighlightState("idle"), 1400)
+  }
+
+  return (
+    <details className="group rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+      <summary className="flex min-h-10 cursor-pointer select-none items-center justify-between gap-3 rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          <span>DOM context</span>
+          <span
+            className={`hidden h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold group-open:inline-flex ${confidence.className}`}
+            title={confidence.description}>
+            {confidence.label}
+          </span>
+        </span>
+        <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-placeholder)] group-open:hidden">
+          Show
+        </span>
+      </summary>
+
+      <div className="flex flex-col gap-3 px-3 pb-3 pt-2">
+        {breadcrumb.length ? (
+          <div>
+            <span className={fieldLabel}>Breadcrumb</span>
+            <div className="flex flex-wrap items-center gap-1 text-[10px] leading-relaxed text-[color:var(--yi-ext-text-muted)]">
+              {breadcrumb.map((part, index) => (
+                <span
+                  key={`${part}-${index}`}
+                  className="inline-flex min-w-0 items-center gap-1">
+                  {index > 0 ? (
+                    <span className="text-[color:var(--yi-ext-text-placeholder)]">
+                      /
+                    </span>
+                  ) : null}
+                  <code className="max-w-[14rem] truncate rounded bg-[color:var(--yi-ext-surface-panel)] px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--yi-ext-text-soft)]">
+                    {part}
+                  </code>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {node ? (
+          <div>
+            <span className={fieldLabel}>Element tree</span>
+            <div className="rounded-md bg-[color:var(--yi-ext-surface-panel)] px-2.5 py-2 font-mono text-[10px] leading-relaxed text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+              {node.parentLabel ? (
+                <div className="truncate text-[color:var(--yi-ext-text-muted)]">
+                  {node.parentLabel}
+                </div>
+              ) : null}
+              <div className="truncate font-semibold text-[color:var(--yi-ext-text-title)]">
+                {node.parentLabel ? "└─ " : ""}
+                {node.selectedLabel}
+              </div>
+              {node.childLabels.map((label, index) => (
+                <div
+                  key={`${label}-${index}`}
+                  className="truncate pl-4 text-[color:var(--yi-ext-text-muted)]">
+                  └─ {label}
+                </div>
+              ))}
+              {node.hiddenChildCount > 0 ? (
+                <div className="pl-4 text-[color:var(--yi-ext-text-placeholder)]">
+                  └─ +{node.hiddenChildCount} more
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {attrs.length ? (
+          <div>
+            <span className={fieldLabel}>Key attributes</span>
+            <div className="flex flex-wrap gap-1.5">
+              {attrs.map(([name, value]) => (
+                <code
+                  key={name}
+                  className="max-w-full rounded bg-[color:var(--yi-ext-surface-panel)] px-1.5 py-1 font-mono text-[10px] leading-none text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
+                  {name}="{value}"
+                </code>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div>
+          <span className={fieldLabel}>Selector</span>
+          <p
+            title={selector}
+            className="rounded-md bg-[color:var(--yi-ext-surface-panel)] px-2.5 py-2 font-mono text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
+            {selector}
+          </p>
+          <p className="mt-1 text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
+            {confidence.description}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="min-h-9 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-panel)] px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            onClick={() => void copySelector()}>
+            {copyState === "copied"
+              ? "Copied"
+              : copyState === "failed"
+                ? "Copy failed"
+                : "Copy selector"}
+          </button>
+          <button
+            type="button"
+            className="min-h-9 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-panel)] px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            onClick={highlightSelected}>
+            {highlightState === "found"
+              ? "Highlighted"
+              : highlightState === "missing"
+                ? "Not found"
+                : "Highlight"}
+          </button>
+        </div>
+      </div>
+    </details>
+  )
+}
+
 const CapturePanel = () => {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<PanelMode>("create")
@@ -289,7 +726,9 @@ const CapturePanel = () => {
   )
 
   useEffect(() => {
-    void getSession().then((session) => setIsSignedIn(Boolean(session?.user?.id)))
+    void getSession().then((session) =>
+      setIsSignedIn(Boolean(session?.user?.id))
+    )
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
@@ -789,7 +1228,6 @@ const CapturePanel = () => {
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "create" && capture) {
-    const selectorPreview = truncateMiddle(capture.selector, 56)
     const isRegionCapture = capture.captureKind === "region"
     return (
       <>
@@ -882,6 +1320,16 @@ const CapturePanel = () => {
                 </p>
               )}
 
+              {!isRegionCapture ? (
+                <DomContextPreview
+                  snapshot={capture.domSnapshot}
+                  selector={capture.selector}
+                  strategy={capture.strategy}
+                  bbox={capture.bbox}
+                  outerHTML={capture.outerHTML}
+                />
+              ) : null}
+
               <CommentComposer
                 id="capture-body"
                 label={t("extension.panel.feedback")}
@@ -933,7 +1381,7 @@ const CapturePanel = () => {
                 <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
                   <span>Options</span>
                   <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-placeholder)] group-open:hidden">
-                    Space, priority, selector
+                    Project, space, priority
                   </span>
                 </summary>
                 <div className="flex flex-col gap-4 px-3 pb-3 pt-2">
@@ -991,12 +1439,6 @@ const CapturePanel = () => {
                       <option value="critical">Urgent</option>
                     </select>
                   </div>
-
-                  <p
-                    title={capture.selector}
-                    className="font-mono text-[10px] leading-snug text-[color:var(--yi-ext-text-placeholder)] [overflow-wrap:anywhere]">
-                    {isRegionCapture ? "Area" : "Element"}: {selectorPreview}
-                  </p>
                 </div>
               </details>
 
@@ -1243,6 +1685,18 @@ const CapturePanel = () => {
                       View full
                     </button>
                   </div>
+                </div>
+              ) : null}
+
+              {viewingPin.captureKind !== "region" ? (
+                <div className="mt-4">
+                  <DomContextPreview
+                    snapshot={viewingPin.domSnapshot}
+                    selector={viewingPin.selector}
+                    strategy={viewingPin.strategy}
+                    bbox={viewingPin.bbox}
+                    outerHTML={viewingPin.outerHTMLPreview}
+                  />
                 </div>
               ) : null}
 
