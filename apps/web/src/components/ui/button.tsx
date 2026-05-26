@@ -10,7 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-ink text-paper hover:bg-ink-hover",
+          "bg-primary text-primary-foreground hover:bg-mark-bright",
         mark:
           "bg-mark text-paper hover:bg-mark-bright",
         outline:

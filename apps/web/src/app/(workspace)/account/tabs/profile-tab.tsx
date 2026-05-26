@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Notice } from "@/components/notice";
 import { ProductList } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -391,15 +392,17 @@ function InlineProfileActions({
       >
         <X className="size-3.5" aria-hidden />
       </button>
-      <button
+      <Button
         type="button"
+        variant="mark"
+        size="icon"
         onClick={onSave}
         disabled={disabled}
-        className="inline-flex size-8 items-center justify-center rounded-md bg-ink text-paper transition-colors hover:bg-ink-2 disabled:pointer-events-none disabled:opacity-50"
+        className="size-8"
         aria-label={`Save ${label.toLowerCase()}`}
       >
         <Check className="size-3.5" aria-hidden />
-      </button>
+      </Button>
     </div>
   );
 }

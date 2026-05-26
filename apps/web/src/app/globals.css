@@ -79,7 +79,7 @@
   --card-foreground: var(--yi-ink);
   --popover: var(--yi-paper-elevated);
   --popover-foreground: var(--yi-ink);
-  --primary: var(--yi-ink);
+  --primary: var(--yi-mark);
   --primary-foreground: var(--yi-paper);
   --secondary: var(--yi-paper-2);
   --secondary-foreground: var(--yi-ink);
@@ -117,7 +117,7 @@
   --card-foreground: var(--yi-ink);
   --popover: var(--yi-paper-elevated);
   --popover-foreground: var(--yi-ink);
-  --primary: var(--yi-ink);
+  --primary: var(--yi-mark);
   --primary-foreground: var(--yi-paper);
   --secondary: var(--yi-paper-3);
   --secondary-foreground: var(--yi-ink);

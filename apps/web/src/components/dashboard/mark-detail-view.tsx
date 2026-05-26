@@ -515,15 +515,17 @@ function InlineEditActions({
       >
         <X className="size-3.5" aria-hidden />
       </button>
-      <button
+      <Button
         type="button"
+        variant="mark"
+        size="icon"
         onClick={() => onSave(field)}
         disabled={saving || disabled}
-        className="inline-flex size-11 items-center justify-center rounded-md bg-ink text-paper transition-colors hover:bg-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 disabled:pointer-events-none disabled:opacity-50 sm:size-8"
+        className="size-11 sm:size-8"
         aria-label={`Save ${field}`}
       >
         <Check className="size-3.5" aria-hidden />
-      </button>
+      </Button>
     </div>
   );
 }
