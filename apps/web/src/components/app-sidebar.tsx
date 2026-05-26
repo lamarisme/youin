@@ -501,13 +501,8 @@ function ProjectSwitcher({
           side={collapsed ? "right" : "bottom"}
           className="w-64"
         >
-          <DropdownMenuLabel>
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate">{workspaceName || "Workspace"}</span>
-              <span className="truncate font-normal text-muted-foreground">
-                {switcherMeta}
-              </span>
-            </div>
+          <DropdownMenuLabel className="truncate">
+            {workspaceName || "Workspace"}
           </DropdownMenuLabel>
           {projects.map((project) => {
             const stats = projectStats.get(project.id);
