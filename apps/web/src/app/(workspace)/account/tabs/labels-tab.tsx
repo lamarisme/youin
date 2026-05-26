@@ -22,9 +22,9 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useDeleteLabelMutation } from "@/lib/queries/use-workspace-mutations";
 
 export function LabelsTab() {
-  const { labels, pins } = useWorkspaceData((s) => ({
+  const { labels, marks } = useWorkspaceData((s) => ({
       labels: s.workspace.labels,
-      pins: s.workspace.pins,
+      marks: s.workspace.marks,
     }));
   const { mutateAsync: deleteLabel, isPending: isDeleting } =
     useDeleteLabelMutation();
@@ -34,11 +34,11 @@ export function LabelsTab() {
 
   const usageById = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const pin of pins) {
-      for (const lid of pin.labelIds) counts.set(lid, (counts.get(lid) ?? 0) + 1);
+    for (const mark of marks) {
+      for (const lid of mark.labelIds) counts.set(lid, (counts.get(lid) ?? 0) + 1);
     }
     return counts;
-  }, [pins]);
+  }, [marks]);
 
   async function handleDelete() {
     if (!pending || isDeleting) return;

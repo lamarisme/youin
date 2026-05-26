@@ -5,30 +5,30 @@ import { useCallback, useEffect, useState } from "react"
 
 import {
   EVENT_LOCATION_CHANGE,
-  EVENT_REVIEW_OPEN_PIN,
+  EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_TOGGLE_DRAWER
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computePinHealth, scrollPinIntoView } from "../lib/pin-health"
+import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
 import {
-  enqueuePinSyncOp,
+  enqueueMarkSyncOp,
   getActiveSpaceId,
-  getPinsForPage,
+  getMarksForPage,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_SPACES,
   KEY_WIDGET_SETTINGS,
-  markPinSyncFailure,
-  patchPin,
-  removePin,
-  removePinSyncOp,
-  restorePin,
-  type Pin
+  markSyncFailure,
+  patchMark,
+  removeMark,
+  removeMarkSyncOp,
+  restoreMark,
+  type Mark
 } from "../lib/storage"
-import { pushPinStatusToWorkspace } from "../lib/sync"
+import { pushMarkStatusToWorkspace } from "../lib/sync"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -54,8 +54,8 @@ function timeAgo(ts: number): string {
   return `${Math.floor(hours / 24)}d`
 }
 
-function preview(pin: Pin): string {
-  return pin.thread[0]?.body || pin.title || "Untitled feedback"
+function preview(mark: Mark): string {
+  return mark.thread[0]?.body || mark.title || "Untitled feedback"
 }
 
 function healthClass(label: string): string {
@@ -68,37 +68,37 @@ function healthClass(label: string): string {
   return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
 }
 
-function PinRow({
-  pin,
+function MarkRow({
+  mark,
   onOpen,
   onStatus,
   onDelete,
-  pendingDeleteId,
+  pendingDeleteMarkId,
   onConfirmDelete,
   onCancelDelete
 }: {
-  pin: Pin
-  onOpen: (pin: Pin) => void
-  onStatus: (pin: Pin, status: Pin["status"]) => void
-  onDelete: (pin: Pin) => void
-  pendingDeleteId: string | null
-  onConfirmDelete: (pin: Pin) => void
+  mark: Mark
+  onOpen: (mark: Mark) => void
+  onStatus: (mark: Mark, status: Mark["status"]) => void
+  onDelete: (mark: Mark) => void
+  pendingDeleteMarkId: string | null
+  onConfirmDelete: (mark: Mark) => void
   onCancelDelete: () => void
 }) {
-  const health = computePinHealth(pin)
-  const image = pin.screenshotUrl ?? pin.screenshotDataUrl
+  const health = computeMarkHealth(mark)
+  const image = mark.screenshotUrl ?? mark.screenshotDataUrl
   return (
     <li className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
       <button
         type="button"
         className="grid w-full grid-cols-[minmax(0,1fr)_48px] gap-3 border-0 bg-transparent p-3 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-        onClick={() => onOpen(pin)}>
+        onClick={() => onOpen(mark)}>
         <span className="min-w-0">
           <span className="block truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-title)]">
-            {pin.title}
+            {mark.title}
           </span>
           <span className="mt-1 line-clamp-2 block text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-            {preview(pin)}
+            {preview(mark)}
           </span>
           <span className="mt-2 flex flex-wrap items-center gap-1.5">
             <span
@@ -106,14 +106,14 @@ function PinRow({
               {health.label}
             </span>
             <span className="rounded-full bg-[color:var(--yi-ext-surface-stat)] px-2 py-0.5 text-[10px] font-semibold text-[color:var(--yi-ext-text-muted)]">
-              {pin.syncState === "failed"
+              {mark.syncState === "failed"
                 ? "Sync failed"
-                : pin.syncState === "pending"
+                : mark.syncState === "pending"
                   ? "Pending"
                   : "Synced"}
             </span>
             <span className="text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-              {timeAgo(pin.updatedAt)}
+              {timeAgo(mark.updatedAt)}
             </span>
           </span>
         </span>
@@ -128,7 +128,7 @@ function PinRow({
         </span>
       </button>
       <div className="flex items-center justify-end gap-1 border-t border-[color:var(--yi-ext-border-hairline)] px-2 py-1.5">
-        {pendingDeleteId === pin.id ? (
+        {pendingDeleteMarkId === mark.id ? (
           <div className="flex w-full flex-wrap items-center justify-end gap-1">
             <span className="me-auto text-[10px] text-[color:var(--yi-ext-text-muted)]">
               {t("extension.drawer.confirmDeleteTitle")}
@@ -142,7 +142,7 @@ function PinRow({
             <button
               type="button"
               className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
-              onClick={() => onConfirmDelete(pin)}>
+              onClick={() => onConfirmDelete(mark)}>
               {t("extension.drawer.confirmDelete")}
             </button>
           </div>
@@ -152,16 +152,16 @@ function PinRow({
               type="button"
               className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] hover:bg-[color:var(--yi-ext-surface-hover)]"
               onClick={() =>
-                onStatus(pin, pin.status === "closed" ? "open" : "closed")
+                onStatus(mark, mark.status === "closed" ? "open" : "closed")
               }>
-              {pin.status === "closed"
+              {mark.status === "closed"
                 ? t("extension.drawer.reopen")
                 : t("extension.drawer.resolve")}
             </button>
             <button
               type="button"
               className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
-              onClick={() => onDelete(pin)}>
+              onClick={() => onDelete(mark)}>
               {t("extension.drawer.delete")}
             </button>
           </>
@@ -173,21 +173,21 @@ function PinRow({
 
 const AnnotationDrawer = () => {
   const [open, setOpen] = useState(false)
-  const [pins, setPins] = useState<Pin[]>([])
+  const [marks, setMarks] = useState<Mark[]>([])
   const [disabled, setDisabled] = useState(false)
-  const [undoPin, setUndoPin] = useState<Pin | null>(null)
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [undoMark, setUndoMark] = useState<Mark | null>(null)
+  const [pendingDeleteMarkId, setPendingDeleteId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     const settings = await getWidgetSettings()
     const hostDisabled = isHostDisabled(location.href, settings)
     setDisabled(hostDisabled)
     if (hostDisabled) {
-      setPins([])
+      setMarks([])
       return
     }
     const spaceId = await getActiveSpaceId()
-    setPins(await getPinsForPage(spaceId, location.href))
+    setMarks(await getMarksForPage(spaceId, location.href))
   }, [])
 
   useEffect(() => {
@@ -221,7 +221,7 @@ const AnnotationDrawer = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
-        changes[KEY_PINS] ||
+        changes[KEY_MARKS] ||
         changes[KEY_ACTIVE_SPACE] ||
         changes[KEY_SPACES] ||
         changes[KEY_WIDGET_SETTINGS]
@@ -243,39 +243,39 @@ const AnnotationDrawer = () => {
 
   if (!open || disabled) return null
 
-  const openPins = pins.filter((pin) => pin.status !== "closed")
-  const resolvedPins = pins.filter((pin) => pin.status === "closed")
-  const onOpenPin = (pin: Pin) => {
-    scrollPinIntoView(pin)
+  const openMarks = marks.filter((mark) => mark.status !== "closed")
+  const resolvedMarks = marks.filter((mark) => mark.status === "closed")
+  const onOpenMark = (mark: Mark) => {
+    scrollMarkIntoView(mark)
     window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
     window.dispatchEvent(
-      new CustomEvent(EVENT_REVIEW_OPEN_PIN, {
-        detail: { pinId: pin.id, attached: computePinHealth(pin).attached }
+      new CustomEvent(EVENT_REVIEW_OPEN_MARK, {
+        detail: { markId: mark.id, attached: computeMarkHealth(mark).attached }
       })
     )
   }
-  const onStatus = (pin: Pin, status: Pin["status"]) => {
+  const onStatus = (mark: Mark, status: Mark["status"]) => {
     void (async () => {
-      await patchPin(pin.id, { status, updatedAt: Date.now() })
-      const op = pin.remoteMarkId
-        ? await enqueuePinSyncOp(pin.id, { type: "status", status })
+      await patchMark(mark.id, { status, updatedAt: Date.now() })
+      const op = mark.remoteMarkId
+        ? await enqueueMarkSyncOp(mark.id, { type: "status", status })
         : undefined
-      const synced = await pushPinStatusToWorkspace(pin, status)
+      const synced = await pushMarkStatusToWorkspace(mark, status)
       if ((synced.ok || synced.skipped) && op) {
-        await removePinSyncOp(pin.id, op.id)
+        await removeMarkSyncOp(mark.id, op.id)
       }
       if (!synced.skipped && !synced.ok && synced.error && op) {
-        await markPinSyncFailure(pin.id, synced.error, op.id)
+        await markSyncFailure(mark.id, synced.error, op.id)
       }
       await refresh()
     })()
   }
-  const onDelete = (pin: Pin) => {
-    setPendingDeleteId(pin.id)
+  const onDelete = (mark: Mark) => {
+    setPendingDeleteId(mark.id)
   }
-  const onConfirmDelete = (pin: Pin) => {
-    void removePin(pin.id).then((removed) => {
-      if (removed) setUndoPin(removed)
+  const onConfirmDelete = (mark: Mark) => {
+    void removeMark(mark.id).then((removed) => {
+      if (removed) setUndoMark(removed)
       setPendingDeleteId(null)
       void refresh()
     })
@@ -295,8 +295,8 @@ const AnnotationDrawer = () => {
           </h2>
           <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
             {t("extension.drawer.openResolved", {
-              open: openPins.length,
-              resolved: resolvedPins.length
+              open: openMarks.length,
+              resolved: resolvedMarks.length
             })}
           </p>
         </div>
@@ -309,7 +309,7 @@ const AnnotationDrawer = () => {
         </button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-gutter:stable]">
-        {pins.length === 0 ? (
+        {marks.length === 0 ? (
           <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-6 text-center text-[12px] text-[color:var(--yi-ext-text-muted)]">
             {t("extension.drawer.empty")}
           </p>
@@ -319,20 +319,20 @@ const AnnotationDrawer = () => {
               <h3 className="mb-2 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
                 {t("extension.drawer.openSection")}
               </h3>
-              {openPins.length === 0 ? (
+              {openMarks.length === 0 ? (
                 <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-4 text-center text-[11px] text-[color:var(--yi-ext-text-muted)]">
                   {t("extension.drawer.noOpenFeedback")}
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {openPins.map((pin) => (
-                    <PinRow
-                      key={pin.id}
-                      pin={pin}
-                      onOpen={onOpenPin}
+                  {openMarks.map((mark) => (
+                    <MarkRow
+                      key={mark.id}
+                      mark={mark}
+                      onOpen={onOpenMark}
                       onStatus={onStatus}
                       onDelete={onDelete}
-                      pendingDeleteId={pendingDeleteId}
+                      pendingDeleteMarkId={pendingDeleteMarkId}
                       onConfirmDelete={onConfirmDelete}
                       onCancelDelete={() => setPendingDeleteId(null)}
                     />
@@ -340,20 +340,20 @@ const AnnotationDrawer = () => {
                 </ul>
               )}
             </section>
-            {resolvedPins.length ? (
+            {resolvedMarks.length ? (
               <section>
                 <h3 className="mb-2 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
                   {t("extension.drawer.resolvedSection")}
                 </h3>
                 <ul className="space-y-2">
-                  {resolvedPins.map((pin) => (
-                    <PinRow
-                      key={pin.id}
-                      pin={pin}
-                      onOpen={onOpenPin}
+                  {resolvedMarks.map((mark) => (
+                    <MarkRow
+                      key={mark.id}
+                      mark={mark}
+                      onOpen={onOpenMark}
                       onStatus={onStatus}
                       onDelete={onDelete}
-                      pendingDeleteId={pendingDeleteId}
+                      pendingDeleteMarkId={pendingDeleteMarkId}
                       onConfirmDelete={onConfirmDelete}
                       onCancelDelete={() => setPendingDeleteId(null)}
                     />
@@ -364,15 +364,15 @@ const AnnotationDrawer = () => {
           </div>
         )}
       </div>
-      {undoPin ? (
+      {undoMark ? (
         <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
           {t("extension.drawer.deleted")}
           <button
             type="button"
             className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
             onClick={() => {
-              void restorePin(undoPin).then(refresh)
-              setUndoPin(null)
+              void restoreMark(undoMark).then(refresh)
+              setUndoMark(null)
             }}>
             {t("extension.drawer.undo")}
           </button>

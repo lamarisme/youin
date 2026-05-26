@@ -1,6 +1,6 @@
 import type { FilterOption } from "@/components/filter-select";
 import type { PinnedFilter, PriorityFilter, SortMode, StatusFilter } from "@/components/dashboard/use-dashboard-filters";
-import type { PinPriority, SpacePriority } from "@/lib/collab-types";
+import type { MarkPriority, SpacePriority } from "@/lib/collab-types";
 
 export const DASHBOARD_STATUS_FILTER_OPTIONS: ReadonlyArray<FilterOption<StatusFilter>> = [
   { value: "all", label: "All statuses" },
@@ -30,7 +30,7 @@ export const MARK_SORT_OPTIONS: ReadonlyArray<FilterOption<SortMode>> = [
 ];
 
 /** Mark detail: severity low → critical (read flow). */
-export const PIN_PRIORITY_OPTIONS_TRIAGE: ReadonlyArray<FilterOption<PinPriority>> = [
+export const PIN_PRIORITY_OPTIONS_TRIAGE: ReadonlyArray<FilterOption<MarkPriority>> = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
   { value: "high", label: "High" },
@@ -38,14 +38,14 @@ export const PIN_PRIORITY_OPTIONS_TRIAGE: ReadonlyArray<FilterOption<PinPriority
 ];
 
 /** Forms and space editor: critical first (action-first ordering). */
-export const CANONICAL_PIN_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<PinPriority>> = [
+export const CANONICAL_PIN_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<MarkPriority>> = [
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
 
-export const NEW_MARK_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<PinPriority>> = [
+export const NEW_MARK_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<MarkPriority>> = [
   { value: "critical", label: "Critical priority" },
   { value: "high", label: "High priority" },
   { value: "medium", label: "Medium priority" },

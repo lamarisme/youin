@@ -12,14 +12,14 @@ import {
   workspaceMembers,
 } from "@/db/schema";
 import type { MarkEventType } from "@/lib/collab-types";
-import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
+import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { requireWorkspaceContext } from "./session";
 
 export interface InboxEvent {
   id: string;
-  pinId: string;
-  pinTitle: string;
+  markId: string;
+  markTitle: string;
   spaceId: string;
   actorId: string;
   actorName: string;
@@ -33,9 +33,9 @@ export interface InboxEvent {
 }
 
 export interface InboxGroup {
-  pinId: string;
-  pinDisplayKey: string;
-  pinTitle: string;
+  markId: string;
+  markDisplayKey: string;
+  markTitle: string;
   spaceId: string;
   events: InboxEvent[];
   latestAt: string;
@@ -49,7 +49,7 @@ export interface InboxSnapshot {
   lastReadAt: string;
 }
 
-type PinRow = {
+type MarkRow = {
   id: string;
   title: string | null;
   spaceId: string;
@@ -152,11 +152,11 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
     .from(marks)
     .where(and(eq(marks.workspaceId, workspaceId), inArray(marks.id, markIds)));
 
-  const pinRows = marksForInbox as PinRow[];
-  const validPinIds = unique(pinRows.map((m) => m.id));
-  if (validPinIds.length === 0) return emptyInbox(lastReadAt);
+  const markRows = marksForInbox as MarkRow[];
+  const validMarkIds = unique(markRows.map((m) => m.id));
+  if (validMarkIds.length === 0) return emptyInbox(lastReadAt);
 
-  const spaceIds = unique(pinRows.map((m) => m.spaceId));
+  const spaceIds = unique(markRows.map((m) => m.spaceId));
   const [events, spaceRows] = await Promise.all([
     db
       .select({
@@ -172,7 +172,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
       .where(
         and(
           eq(markEvents.workspaceId, workspaceId),
-          inArray(markEvents.markId, validPinIds),
+          inArray(markEvents.markId, validMarkIds),
           ne(markEvents.actorUserId, userId),
         ),
       )
@@ -213,7 +213,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
       .where(inArray(profiles.id, actorIds)),
   ]);
 
-  const pinById = new Map(pinRows.map((m) => [m.id, m]));
+  const markById = new Map(markRows.map((m) => [m.id, m]));
   const spaceCodeById = new Map(
     (spaceRows as SpaceRow[]).map((s) => [s.id, s.code?.trim() || "UNKN"]),
   );
@@ -222,17 +222,17 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
 
   const inboxEvents: InboxEvent[] = [];
   for (const e of eventRows) {
-    const pin = pinById.get(e.markId);
-    if (!pin) continue;
+    const mark = markById.get(e.markId);
+    if (!mark) continue;
     const member = memberById.get(e.actorUserId);
     const profile = profileById.get(e.actorUserId);
     const fallbackName = profile?.email?.split("@")[0] ?? "Unknown";
     const actorName = profile?.fullName?.trim() || fallbackName;
     inboxEvents.push({
       id: e.id,
-      pinId: e.markId,
-      pinTitle: pin.title?.trim() || "(untitled)",
-      spaceId: pin.spaceId,
+      markId: e.markId,
+      markTitle: mark.title?.trim() || "(untitled)",
+      spaceId: mark.spaceId,
       actorId: e.actorUserId,
       actorName,
       actorUsername: member?.username?.trim() ?? "",
@@ -247,19 +247,19 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
 
   const groupMap = new Map<string, InboxGroup>();
   for (const ev of inboxEvents) {
-    const existing = groupMap.get(ev.pinId);
+    const existing = groupMap.get(ev.markId);
     if (existing) {
       existing.events.push(ev);
       if (ev.createdAt > existing.latestAt) existing.latestAt = ev.createdAt;
       if (ev.unread) existing.unreadCount += 1;
       continue;
     }
-    const pin = pinById.get(ev.pinId);
+    const mark = markById.get(ev.markId);
     const code = spaceCodeById.get(ev.spaceId) ?? "UNKN";
-    groupMap.set(ev.pinId, {
-      pinId: ev.pinId,
-      pinDisplayKey: formatPinDisplayKey(code, pin?.seq ?? 0),
-      pinTitle: ev.pinTitle,
+    groupMap.set(ev.markId, {
+      markId: ev.markId,
+      markDisplayKey: formatMarkDisplayKey(code, mark?.seq ?? 0),
+      markTitle: ev.markTitle,
       spaceId: ev.spaceId,
       events: [ev],
       latestAt: ev.createdAt,

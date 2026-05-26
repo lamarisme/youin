@@ -12,16 +12,16 @@ export {
 } from "./spaces";
 
 export {
-  createPinAction,
-  deletePinAction,
-  updatePinFieldsAction,
-  togglePinStatusAction,
-  togglePinPinnedAction,
-  updatePinPriorityAction,
+  createMarkAction,
+  deleteMarkAction,
+  updateMarkFieldsAction,
+  toggleMarkStatusAction,
+  toggleMarkPinnedAction,
+  updateMarkPriorityAction,
   assignMarkAction,
   setMarkLabelsAction,
-  type CreatedPin,
-} from "./pins";
+  type CreatedMark,
+} from "./marks";
 
 export {
   addMarkCommentsAction,

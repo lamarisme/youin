@@ -378,11 +378,11 @@ function ProjectSwitcher({
   searchParams: { get: (name: string) => string | null; toString: () => string };
   onNavigate: (href: string) => void;
 }) {
-  const { projects, spaces, pins, workspaceName } = useWorkspaceData((s) => ({
+  const { projects, spaces, marks, workspaceName } = useWorkspaceData((s) => ({
       workspaceName: s.workspace.name,
       projects: s.workspace.projects,
       spaces: s.workspace.spaces,
-      pins: s.workspace.pins,
+      marks: s.workspace.marks,
     }));
   const { mutateAsync: createProject, isPending: isCreating } =
     useCreateProjectMutation();
@@ -402,13 +402,13 @@ function ProjectSwitcher({
       const stats = map.get(space.projectId);
       if (stats) stats.spaces += 1;
     }
-    for (const pin of pins) {
-      const projectId = spaceById.get(pin.spaceId)?.projectId;
+    for (const mark of marks) {
+      const projectId = spaceById.get(mark.spaceId)?.projectId;
       const stats = projectId ? map.get(projectId) : null;
       if (stats) stats.marks += 1;
     }
     return map;
-  }, [pins, projects, spaceById, spaces]);
+  }, [marks, projects, spaceById, spaces]);
 
   const urlProjectId = searchParams.get("project");
   const urlSpaceId = searchParams.get("space");

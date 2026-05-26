@@ -16,24 +16,24 @@ import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
 import type {
   DisplayNamePreference,
-  PinItem,
-  PinPriority,
+  MarkItem,
+  MarkPriority,
   WorkspaceProject,
   TeamMember,
   WorkspaceSpace,
 } from "@/lib/collab-types";
 import {
   useAssignMarkMutation,
-  useTogglePinPinnedMutation,
-  useTogglePinStatusMutation,
-  useUpdatePinMutation,
-  useUpdatePinPriorityMutation,
+  useToggleMarkPinnedMutation,
+  useToggleMarkStatusMutation,
+  useUpdateMarkMutation,
+  useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
 interface MarkDetailActionsProps {
-  pin: PinItem;
+  mark: MarkItem;
   members: TeamMember[];
   projects?: WorkspaceProject[];
   spaces: WorkspaceSpace[];
@@ -42,18 +42,18 @@ interface MarkDetailActionsProps {
 }
 
 export function MarkDetailActions({
-  pin,
+  mark,
   members,
   projects = [],
   spaces,
   displayNamePreference,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
-  const { mutate: togglePinStatus } = useTogglePinStatusMutation();
-  const { mutate: togglePinPinned } = useTogglePinPinnedMutation();
-  const { mutate: updatePinPriority } = useUpdatePinPriorityMutation();
+  const { mutate: toggleMarkStatus } = useToggleMarkStatusMutation();
+  const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
+  const { mutate: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutate: assignMark } = useAssignMarkMutation();
-  const { mutate: updatePin } = useUpdatePinMutation();
+  const { mutate: updateMark } = useUpdateMarkMutation();
   const projectById = new Map(projects.map((project) => [project.id, project.name]));
 
   return (
@@ -61,7 +61,7 @@ export function MarkDetailActions({
       <PropertyGroup
         label="Status"
         icon={
-          pin.status === "open" ? (
+          mark.status === "open" ? (
             <CircleDashed className="size-3.5" aria-hidden />
           ) : (
             <CheckCircle2 className="size-3.5" aria-hidden />
@@ -71,22 +71,22 @@ export function MarkDetailActions({
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => togglePinStatus(pin.id)}
+          onClick={() => toggleMarkStatus(mark.id)}
           aria-keyshortcuts="X"
-          aria-label={pin.status === "open" ? "Resolve mark" : "Reopen mark"}
+          aria-label={mark.status === "open" ? "Resolve mark" : "Reopen mark"}
           className={cn(
             "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
-            pin.status === "open" ? "text-mark" : "text-ok",
+            mark.status === "open" ? "text-mark" : "text-ok",
           )}
         >
-          {pin.status === "open" ? "Open" : "Resolved"}
+          {mark.status === "open" ? "Open" : "Resolved"}
         </Button>
       </PropertyGroup>
 
       <PropertyGroup label="Priority" icon={<Flag className="size-3.5" aria-hidden />}>
-        <FilterSelect<PinPriority>
-          value={pin.priority}
-          onValueChange={(v) => updatePinPriority({ pinId: pin.id, priority: v })}
+        <FilterSelect<MarkPriority>
+          value={mark.priority}
+          onValueChange={(v) => updateMarkPriority({ markId: mark.id, priority: v })}
           options={PIN_PRIORITY_OPTIONS_TRIAGE}
           ariaLabel="Mark priority"
           triggerClassName="h-11 w-[104px] sm:h-8"
@@ -96,10 +96,10 @@ export function MarkDetailActions({
 
       <PropertyGroup label="Assignee" icon={<UserRound className="size-3.5" aria-hidden />}>
         <FilterSelect
-          value={pin.assigneeId ?? "__unassigned"}
+          value={mark.assigneeId ?? "__unassigned"}
           onValueChange={(v) =>
             assignMark({
-              pinId: pin.id,
+              markId: mark.id,
               assigneeId: v === "__unassigned" ? null : v,
             })
           }
@@ -118,10 +118,10 @@ export function MarkDetailActions({
 
       <PropertyGroup label="Space" icon={<Folder className="size-3.5" aria-hidden />}>
         <FilterSelect
-          value={pin.spaceId}
+          value={mark.spaceId}
           onValueChange={(v) => {
-            if (v === pin.spaceId) return;
-            updatePin({ pinId: pin.id, updates: { spaceId: v } });
+            if (v === mark.spaceId) return;
+            updateMark({ markId: mark.id, updates: { spaceId: v } });
           }}
           options={spaces.map((s) => {
             const projectName = projectById.get(s.projectId);
@@ -139,21 +139,21 @@ export function MarkDetailActions({
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => togglePinPinned(pin.id)}
-        aria-pressed={pin.pinned}
+        onClick={() => toggleMarkPinned(mark.id)}
+        aria-pressed={mark.pinned}
         aria-keyshortcuts="B"
         className={cn(
           "h-11 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
-          pin.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
+          mark.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
         )}
       >
         <Bookmark
           className={cn(
             "size-3 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            pin.pinned && "-rotate-6 scale-110",
+            mark.pinned && "-rotate-6 scale-110",
           )}
         />
-        {pin.pinned ? "Pinned" : "Pin"}
+        {mark.pinned ? "Pinned" : "Pin"}
       </Button>
 
       <Button

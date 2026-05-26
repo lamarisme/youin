@@ -1,4 +1,4 @@
-import type { Pin } from "./storage"
+import type { Mark } from "./storage"
 
 function escapePlainTextHtml(value: string): string {
   return value
@@ -7,19 +7,19 @@ function escapePlainTextHtml(value: string): string {
     .replace(/>/g, "&gt;")
 }
 
-export function buildMarkDescription(pin: Pin): string {
+export function buildMarkDescription(mark: Mark): string {
   const lines: string[] = []
-  const selected = pin.domSnapshot?.selectedElement
-  const context = pin.domSnapshot?.context
+  const selected = mark.domSnapshot?.selectedElement
+  const context = mark.domSnapshot?.context
 
-  if (pin.captureKind === "region") {
+  if (mark.captureKind === "region") {
     lines.push(
-      `Screenshot region: ${Math.round(pin.bbox.width)}x${Math.round(
-        pin.bbox.height
-      )} at ${Math.round(pin.bbox.x)},${Math.round(pin.bbox.y)}`
+      `Screenshot region: ${Math.round(mark.bbox.width)}x${Math.round(
+        mark.bbox.height
+      )} at ${Math.round(mark.bbox.x)},${Math.round(mark.bbox.y)}`
     )
-    if (pin.pageTitle) {
-      lines.push(`Page title: ${pin.pageTitle.slice(0, 280)}`)
+    if (mark.pageTitle) {
+      lines.push(`Page title: ${mark.pageTitle.slice(0, 280)}`)
     }
   }
 
@@ -29,10 +29,10 @@ export function buildMarkDescription(pin: Pin): string {
         escapePlainTextHtml(selected.outerHTML.slice(0, 1500)) +
         "\n```"
     )
-  } else if (pin.outerHTMLPreview) {
+  } else if (mark.outerHTMLPreview) {
     lines.push(
       "Selected element DOM:\n```html\n" +
-        escapePlainTextHtml(pin.outerHTMLPreview) +
+        escapePlainTextHtml(mark.outerHTMLPreview) +
         "\n```"
     )
   }
@@ -41,12 +41,12 @@ export function buildMarkDescription(pin: Pin): string {
     lines.push(`Nearby text: ${context.nearbyText.slice(0, 500)}`)
   }
 
-  if (pin.selector) {
-    lines.push(`Selector: \`${pin.selector}\` (${pin.strategy})`)
+  if (mark.selector) {
+    lines.push(`Selector: \`${mark.selector}\` (${mark.strategy})`)
   }
-  if (pin.viewport) {
+  if (mark.viewport) {
     lines.push(
-      `Viewport: ${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`
+      `Viewport: ${mark.viewport.width}x${mark.viewport.height}@${mark.viewport.dpr}`
     )
   }
   return lines.join("\n\n")

@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { PinComment, PinItem, TeamMember } from "@/lib/collab-types";
+import type { MarkComment, MarkItem, TeamMember } from "@/lib/collab-types";
 import { actionErrorMessage } from "@/lib/action-error";
 import { formatDateTime, formatRelative } from "@/lib/dates";
 import {
@@ -73,13 +73,13 @@ function reducer(state: ComposerState, action: ComposerAction): ComposerState {
 }
 
 interface CommentThreadProps {
-  pin: PinItem;
-  comments: PinComment[];
+  mark: MarkItem;
+  comments: MarkComment[];
   membersById: Map<string, TeamMember>;
 }
 
 export function CommentThread({
-  pin,
+  mark,
   comments,
   membersById,
 }: CommentThreadProps) {
@@ -122,7 +122,7 @@ export function CommentThread({
     setComposerError(null);
     dispatch({ type: "start_submit" });
     try {
-      const next: PinComment[] = [];
+      const next: MarkComment[] = [];
       let body = "";
       if (hasText) {
         try {
@@ -136,7 +136,7 @@ export function CommentThread({
       if (body) {
         next.push({
           id: `c_${Date.now()}_txt`,
-          pinId: pin.id,
+          markId: mark.id,
           authorId: userId || "unknown",
           createdAt: new Date().toISOString(),
           type: "text",
@@ -145,7 +145,7 @@ export function CommentThread({
       }
       if (image) {
         const ext = image.name.split(".").pop() ?? "png";
-        const { path, token } = await getMarkUploadUrlAction(pin.id, ext);
+        const { path, token } = await getMarkUploadUrlAction(mark.id, ext);
         const supabase = createSupabaseBrowserClient();
         const { error: uploadErr } = await supabase.storage
           .from("mark-images")
@@ -161,7 +161,7 @@ export function CommentThread({
         }
         next.push({
           id: `c_${Date.now()}_img`,
-          pinId: pin.id,
+          markId: mark.id,
           authorId: userId || "unknown",
           createdAt: new Date().toISOString(),
           type: "image",
@@ -276,7 +276,7 @@ export function CommentThread({
 }
 
 interface CommentItemProps {
-  comment: PinComment;
+  comment: MarkComment;
   author?: TeamMember;
   isOwn: boolean;
 }

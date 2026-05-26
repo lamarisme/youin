@@ -41,17 +41,17 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
-import type { PinPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
+import type { MarkPriority, SpacePriority, WorkspaceSpace } from "@/lib/collab-types";
 import { formatDate, formatDateShort } from "@/lib/dates";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
-  useCreatePinMutation,
-  useDeletePinMutation,
+  useCreateMarkMutation,
+  useDeleteMarkMutation,
   useDeleteSpaceMutation,
-  useTogglePinStatusMutation,
+  useToggleMarkStatusMutation,
   useToggleSpacePinnedMutation,
-  useUpdatePinPriorityMutation,
+  useUpdateMarkPriorityMutation,
   useUpdateSpaceMutation,
   useUpdateSpacePriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
@@ -78,10 +78,10 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const { mutate: updateSpacePriority } = useUpdateSpacePriorityMutation();
   const { mutateAsync: deleteSpace, isPending: isDeleting } =
     useDeleteSpaceMutation();
-  const { mutateAsync: createPin } = useCreatePinMutation();
-  const { mutateAsync: togglePinStatus } = useTogglePinStatusMutation();
-  const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();
-  const { mutateAsync: deletePin } = useDeletePinMutation();
+  const { mutateAsync: createMark } = useCreateMarkMutation();
+  const { mutateAsync: toggleMarkStatus } = useToggleMarkStatusMutation();
+  const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
+  const { mutateAsync: deleteMark } = useDeleteMarkMutation();
 
   const router = useRouter();
 
@@ -90,13 +90,13 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const project = workspace.projects.find((p) => p.id === space.projectId) ?? null;
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
-  const spacePins = useMemo(
-    () => workspace.pins.filter((p) => p.spaceId === space.id),
-    [workspace.pins, space.id],
+  const spaceMarks = useMemo(
+    () => workspace.marks.filter((p) => p.spaceId === space.id),
+    [workspace.marks, space.id],
   );
-  const commentCountByPinId = useMemo(() => {
+  const commentCountByMarkId = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of workspace.comments) counts.set(c.pinId, (counts.get(c.pinId) ?? 0) + 1);
+    for (const c of workspace.comments) counts.set(c.markId, (counts.get(c.markId) ?? 0) + 1);
     return counts;
   }, [workspace.comments]);
   const completionPct = stats && stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
@@ -108,12 +108,12 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
-  const selectedPins = useMemo(
-    () => spacePins.filter((p) => selectedIds.has(p.id)),
-    [spacePins, selectedIds],
+  const selectedMarks = useMemo(
+    () => spaceMarks.filter((p) => selectedIds.has(p.id)),
+    [spaceMarks, selectedIds],
   );
   const allSelectedClosed =
-    selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
+    selectedMarks.length > 0 && selectedMarks.every((p) => p.status === "closed");
 
   function startEdit() {
     setEditName(space.name);
@@ -153,16 +153,16 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     }
   }
 
-  async function handleCreatePin(input: {
+  async function handleCreateMark(input: {
     title: string;
     page: string;
     description: string;
     labelIds: string[];
-    priority: PinPriority;
+    priority: MarkPriority;
     assigneeId: string | null;
   }) {
     try {
-      await createPin({
+      await createMark({
         title: input.title,
         description: input.description,
         page: input.page,
@@ -184,13 +184,13 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   }
 
   async function handleBulkSetStatus(target: "open" | "closed") {
-    const targets = selectedPins.filter((p) => p.status !== target);
+    const targets = selectedMarks.filter((p) => p.status !== target);
     if (targets.length === 0) {
       setSelectedIds(new Set());
       return;
     }
     const results = await Promise.allSettled(
-      targets.map((p) => togglePinStatus(p.id)),
+      targets.map((p) => toggleMarkStatus(p.id)),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
@@ -201,14 +201,14 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
     }
   }
 
-  async function handleBulkSetPriority(priority: PinPriority) {
-    const targets = selectedPins.filter((p) => p.priority !== priority);
+  async function handleBulkSetPriority(priority: MarkPriority) {
+    const targets = selectedMarks.filter((p) => p.priority !== priority);
     if (targets.length === 0) {
       toast.success("Already set.");
       return;
     }
     const results = await Promise.allSettled(
-      targets.map((p) => updatePinPriority({ pinId: p.id, priority })),
+      targets.map((p) => updateMarkPriority({ markId: p.id, priority })),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
@@ -220,9 +220,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   }
 
   async function handleBulkDelete() {
-    const ids = selectedPins.map((p) => p.id);
+    const ids = selectedMarks.map((p) => p.id);
     if (ids.length === 0) return;
-    const results = await Promise.allSettled(ids.map((id) => deletePin(id)));
+    const results = await Promise.allSettled(ids.map((id) => deleteMark(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
     if (failed === 0) {
@@ -368,7 +368,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
               </div>
             </ToolbarPanel>
 
-            {spacePins.length === 0 ? (
+            {spaceMarks.length === 0 ? (
               <EmptyState
                 title="No marks in this space yet."
                 description="Create a mark here when feedback belongs to this release, project, or review thread."
@@ -387,15 +387,15 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             ) : (
               <div className="overflow-hidden rounded-md bg-paper-2">
                 <MarkTable
-                  pins={spacePins}
+                  marks={spaceMarks}
                   membersById={membersById}
                   labelsById={labelsById}
-                  commentCountByPinId={commentCountByPinId}
+                  commentCountByMarkId={commentCountByMarkId}
                   displayNamePreference={namePref}
-                  onSelectMark={(pin) => {
+                  onSelectMark={(mark) => {
                     const params = new URLSearchParams();
                     params.set("space", space.id);
-                    router.push(markHref(pin.displayKey, params));
+                    router.push(markHref(mark.displayKey, params));
                   }}
                   selectedIds={selectedIds}
                   onSelectionChange={handleSelectionChange}
@@ -551,7 +551,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
             open={showNew}
             variant="plain"
             targetSpaceLabel={space.name}
-            onSubmit={handleCreatePin}
+            onSubmit={handleCreateMark}
             onCancel={() => setShowNew(false)}
           />
         </DialogContent>
@@ -593,9 +593,9 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
         </DialogContent>
       </Dialog>
 
-      {selectedPins.length > 0 ? (
+      {selectedMarks.length > 0 ? (
         <BulkActionBar
-          count={selectedPins.length}
+          count={selectedMarks.length}
           allClosed={allSelectedClosed}
           onSetStatus={handleBulkSetStatus}
           onSetPriority={handleBulkSetPriority}

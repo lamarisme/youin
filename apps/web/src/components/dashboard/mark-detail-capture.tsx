@@ -10,7 +10,7 @@ import {
   PanelTop,
 } from "lucide-react";
 
-import type { PinItem } from "@/lib/collab-types";
+import type { MarkItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
 
 import { MarkPin } from "@/components/mark-pin";
@@ -20,19 +20,19 @@ import { FullImagePreview } from "./full-image-preview";
 import { formatMarkPageOrigin } from "./mark-page-label";
 
 interface MarkDetailCaptureProps {
-  pin: PinItem;
+  mark: MarkItem;
 }
 
-export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
-  const cap = pin.capture;
-  const pageOrigin = formatMarkPageOrigin(pin.page);
+export function MarkDetailCapture({ mark }: MarkDetailCaptureProps) {
+  const cap = mark.capture;
+  const pageOrigin = formatMarkPageOrigin(mark.page);
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
 
   return (
     <>
       <div className="mt-5 overflow-hidden rounded-lg bg-paper-2">
         <div className="flex items-center gap-2 px-3 py-2">
-          <MarkPin label={shortMarkLabel(pin.displayKey)} size="sm" />
+          <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
           <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
             Capture
           </span>
@@ -42,13 +42,13 @@ export function MarkDetailCapture({ pin }: MarkDetailCaptureProps) {
             <div className="mx-auto max-w-2xl overflow-hidden rounded-md bg-paper-3">
               <FullImagePreview
                 src={cap.screenshotUrl}
-                alt={`Captured element for ${pin.displayKey}`}
+                alt={`Captured element for ${mark.displayKey}`}
               >
                 {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={cap.screenshotUrl}
-                  alt={`Captured element for ${pin.displayKey}`}
+                  alt={`Captured element for ${mark.displayKey}`}
                   loading="lazy"
                   decoding="async"
                   className="max-h-[22rem] w-full object-contain object-top"

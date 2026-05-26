@@ -3,7 +3,7 @@
 
 import { getSession, setSessionFromBridge } from "../lib/auth"
 import {
-  syncPendingPinsToWorkspace,
+  syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
 } from "../lib/sync"
@@ -72,7 +72,7 @@ async function runBackgroundSync(): Promise<SyncNowResponse> {
   if (!session?.user?.id) return { ok: true }
   const workspace = await syncWorkspaceFromRemote(session.user.id)
   if (!workspace.ok) return { ok: false, error: workspace.error }
-  const push = await syncPendingPinsToWorkspace()
+  const push = await syncPendingMarksToWorkspace()
   const pull = await syncWorkspaceMarksFromRemote()
   return {
     ok: push.ok && pull.ok,

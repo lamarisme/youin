@@ -17,13 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PinPriority } from "@/lib/collab-types";
+import type { MarkPriority } from "@/lib/collab-types";
 
 interface BulkActionBarProps {
   count: number;
   allClosed: boolean;
   onSetStatus: (status: "open" | "closed") => Promise<void> | void;
-  onSetPriority: (priority: PinPriority) => Promise<void> | void;
+  onSetPriority: (priority: MarkPriority) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onClear: () => void;
 }
@@ -80,7 +80,7 @@ export function BulkActionBar({
             </>
           )}
         </Button>
-        <FilterSelect<PinPriority | "__placeholder">
+        <FilterSelect<MarkPriority | "__placeholder">
           value="__placeholder"
           onValueChange={(v) => {
             if (v === "__placeholder") return;

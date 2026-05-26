@@ -15,15 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { PinItem, WorkspaceLabel } from "@/lib/collab-types";
+import type { MarkItem, WorkspaceLabel } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateLabelMutation,
-  useDeletePinMutation,
+  useDeleteMarkMutation,
   useSetMarkLabelsMutation,
-  useTogglePinPinnedMutation,
-  useTogglePinStatusMutation,
-  useUpdatePinMutation,
+  useToggleMarkPinnedMutation,
+  useToggleMarkStatusMutation,
+  useUpdateMarkMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import {
@@ -48,47 +48,47 @@ import {
   focusElementById,
   useMarkDetailShortcuts,
 } from "./use-mark-detail-shortcuts";
-import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
+import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 interface MarkDetailViewProps {
-  pin: PinItem;
+  mark: MarkItem;
   backHref: string;
 }
 
 type EditingField = "title" | "page" | "description";
 
-export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
+export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
   const workspace = useWorkspaceData((s) => s.workspace);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { mutate: togglePinStatus } = useTogglePinStatusMutation();
-  const { mutate: togglePinPinned } = useTogglePinPinnedMutation();
+  const { mutate: toggleMarkStatus } = useToggleMarkStatusMutation();
+  const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
   const { mutate: setMarkLabels } = useSetMarkLabelsMutation();
   const { mutateAsync: createLabel } = useCreateLabelMutation();
-  const { mutateAsync: deletePin, isPending: isDeleting } = useDeletePinMutation();
-  const { mutateAsync: updatePin, isPending: isSavingEdit } = useUpdatePinMutation();
-  const visiblePins = useVisibleDashboardPins();
-  const space = workspace.spaces.find((s) => s.id === pin.spaceId) ?? null;
+  const { mutateAsync: deleteMark, isPending: isDeleting } = useDeleteMarkMutation();
+  const { mutateAsync: updateMark, isPending: isSavingEdit } = useUpdateMarkMutation();
+  const visibleMarks = useVisibleDashboardMarks();
+  const space = workspace.spaces.find((s) => s.id === mark.spaceId) ?? null;
   const selectedSpaceHref = space
     ? spaceHrefForCurrentFilters(space.code, space.projectId, searchParams)
     : undefined;
 
-  const selectedIndex = visiblePins.findIndex((p) => p.id === pin.id);
+  const selectedIndex = visibleMarks.findIndex((p) => p.id === mark.id);
   const canPrev = selectedIndex > 0;
-  const canNext = selectedIndex >= 0 && selectedIndex < visiblePins.length - 1;
+  const canNext = selectedIndex >= 0 && selectedIndex < visibleMarks.length - 1;
   const positionLabel =
-    selectedIndex >= 0 ? `${selectedIndex + 1} of ${visiblePins.length}` : "Mark view";
+    selectedIndex >= 0 ? `${selectedIndex + 1} of ${visibleMarks.length}` : "Mark view";
 
   const comments = useMemo(
-    () => workspace.comments.filter((c) => c.pinId === pin.id),
-    [workspace.comments, pin.id],
+    () => workspace.comments.filter((c) => c.markId === mark.id),
+    [workspace.comments, mark.id],
   );
   const events = useMemo(
     () =>
       workspace.markEvents
-        .filter((e) => e.pinId === pin.id)
+        .filter((e) => e.markId === mark.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-    [workspace.markEvents, pin.id],
+    [workspace.markEvents, mark.id],
   );
 
   const membersById = useMemo(
@@ -98,25 +98,25 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
 
   const [editingField, setEditingField] = useState<EditingField | null>(null);
-  const [editTitle, setEditTitle] = useState(pin.title);
-  const [editDescription, setEditDescription] = useState(pin.description);
-  const [editPage, setEditPage] = useState(pin.page);
+  const [editTitle, setEditTitle] = useState(mark.title);
+  const [editDescription, setEditDescription] = useState(mark.description);
+  const [editPage, setEditPage] = useState(mark.page);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const isEditing = editingField !== null;
 
   function startEdit(field: EditingField = "title") {
-    setEditTitle(pin.title);
-    setEditDescription(pin.description);
-    setEditPage(pin.page);
+    setEditTitle(mark.title);
+    setEditDescription(mark.description);
+    setEditPage(mark.page);
     setEditingField(field);
   }
 
   function cancelEdit() {
     setEditingField(null);
-    setEditTitle(pin.title);
-    setEditDescription(pin.description);
-    setEditPage(pin.page);
+    setEditTitle(mark.title);
+    setEditDescription(mark.description);
+    setEditPage(mark.page);
   }
 
   async function saveEdit(field = editingField) {
@@ -128,8 +128,8 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
           toast.error("Title can't be empty.");
           return;
         }
-        if (title !== pin.title) {
-          await updatePin({ pinId: pin.id, updates: { title } });
+        if (title !== mark.title) {
+          await updateMark({ markId: mark.id, updates: { title } });
         }
       }
       if (field === "page") {
@@ -138,8 +138,8 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
           toast.error("Page must be a full http or https URL.");
           return;
         }
-        if (normalizedPage !== pin.page) {
-          await updatePin({ pinId: pin.id, updates: { page: normalizedPage } });
+        if (normalizedPage !== mark.page) {
+          await updateMark({ markId: mark.id, updates: { page: normalizedPage } });
         }
       }
       if (field === "description") {
@@ -150,9 +150,9 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
           toast.error(e instanceof Error ? e.message : "Description is invalid.");
           return;
         }
-        if (descriptionNorm !== pin.description) {
-          await updatePin({
-            pinId: pin.id,
+        if (descriptionNorm !== mark.description) {
+          await updateMark({
+            markId: mark.id,
             updates: { description: descriptionNorm },
           });
         }
@@ -189,7 +189,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
   async function handleDelete() {
     if (isDeleting) return;
     try {
-      await deletePin(pin.id);
+      await deleteMark(mark.id);
       setConfirmDelete(false);
       router.push(backHref);
     } catch {
@@ -199,7 +199,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
 
   function goAdjacent(direction: "prev" | "next") {
     if (selectedIndex < 0) return;
-    const next = visiblePins[direction === "prev" ? selectedIndex - 1 : selectedIndex + 1];
+    const next = visibleMarks[direction === "prev" ? selectedIndex - 1 : selectedIndex + 1];
     if (next) router.push(markHref(next.displayKey, searchParams));
   }
 
@@ -208,8 +208,8 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
     onNext: () => goAdjacent("next"),
     onPrev: () => goAdjacent("prev"),
     onEdit: () => startEdit(),
-    onToggleStatus: () => togglePinStatus(pin.id),
-    onTogglePinned: () => togglePinPinned(pin.id),
+    onToggleStatus: () => toggleMarkStatus(mark.id),
+    onTogglePinned: () => toggleMarkPinned(mark.id),
     onFocusComment: () => focusElementById("comment-composer"),
     onOpenAssignee: () => clickByAria("Mark assignee"),
     onOpenPriority: () => clickByAria("Mark priority"),
@@ -221,7 +221,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
   return (
     <>
       <MarkDetailNav
-        markLabel={pin.displayKey}
+        markLabel={mark.displayKey}
         positionLabel={positionLabel}
         spaceHref={selectedSpaceHref}
         spaceName={space?.name}
@@ -233,12 +233,12 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
         onShowHelp={() => setShowHelp(true)}
       />
 
-      <FadeIn key={pin.id} delay={0.08} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <FadeIn key={mark.id} delay={0.08} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-ui-xs font-semibold text-mark">
-                {pin.displayKey}
+                {mark.displayKey}
               </span>
             </div>
             {editingField === "title" ? (
@@ -268,7 +268,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                   onClick={() => startEdit("title")}
                   className="group flex max-w-full items-start gap-1.5 rounded-md text-left outline-none transition-colors hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
                 >
-                  <span className="break-words">{pin.title}</span>
+                  <span className="break-words">{mark.title}</span>
                   <span className="mt-0.5 hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
                     <Pencil className="size-3.5" aria-hidden />
                   </span>
@@ -276,7 +276,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
               </h1>
             )}
             <MarkDetailActions
-              pin={pin}
+              mark={mark}
               members={workspace.members}
               projects={workspace.projects}
               spaces={workspace.spaces}
@@ -325,7 +325,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                   className="group flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md text-left outline-none hover:text-ink focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
                 >
                   <span className="min-w-0 truncate font-mono text-ui-xs text-ink-2">
-                    {pin.page}
+                    {mark.page}
                   </span>
                   <Pencil
                     className="hidden size-3.5 shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:block"
@@ -334,14 +334,14 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                 </button>
               )}
               <MarkPageOpenButton
-                page={pin.page}
+                page={mark.page}
                 appearance="icon"
                 className="size-11 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 sm:size-8"
               />
             </div>
           </div>
 
-          <MarkDetailCapture pin={pin} />
+          <MarkDetailCapture mark={mark} />
 
           {editingField === "description" ? (
             <div className="mt-5">
@@ -363,7 +363,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
               </div>
               <div onKeyDown={(e) => handleEditKeyDown(e, "description")}>
                 <MarkDescriptionEditor
-                  key={`${pin.id}-inline-description`}
+                  key={`${mark.id}-inline-description`}
                   value={editDescription}
                   onChange={setEditDescription}
                   placeholder="Describe what should change…"
@@ -373,7 +373,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                 />
               </div>
             </div>
-          ) : pin.description ? (
+          ) : mark.description ? (
             <div className="mt-5">
               <div className="mb-2 grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2">
                 <span
@@ -393,7 +393,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
                   <Pencil className="size-3.5" aria-hidden />
                 </button>
               </div>
-              <MarkDescriptionRead html={pin.description} />
+              <MarkDescriptionRead html={mark.description} />
             </div>
           ) : (
             <button
@@ -416,8 +416,8 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
             </span>
             <LabelPicker
               labels={workspace.labels}
-              selectedIds={pin.labelIds}
-              onChange={(next) => setMarkLabels({ pinId: pin.id, labelIds: next })}
+              selectedIds={mark.labelIds}
+              onChange={(next) => setMarkLabels({ markId: mark.id, labelIds: next })}
               onCreate={async (name): Promise<WorkspaceLabel | undefined> => {
                 try {
                   const created = await createLabel(name);
@@ -438,7 +438,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
 
         <div className="min-w-0">
           <div className="space-y-4 lg:sticky lg:top-4">
-            <CommentThread pin={pin} comments={comments} membersById={membersById} />
+            <CommentThread mark={mark} comments={comments} membersById={membersById} />
             <MarkHistory events={events} membersById={membersById} />
           </div>
         </div>
@@ -452,7 +452,7 @@ export function MarkDetailView({ pin, backHref }: MarkDetailViewProps) {
           <DialogHeader>
             <DialogTitle>Delete this mark?</DialogTitle>
             <DialogDescription>
-              <span className="font-medium text-ink">{pin.title}</span> and all its comments and
+              <span className="font-medium text-ink">{mark.title}</span> and all its comments and
               history will be permanently deleted. This can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>

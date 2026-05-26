@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/table";
 import type {
   DisplayNamePreference,
-  PinItem,
+  MarkItem,
   TeamMember,
   WorkspaceLabel,
 } from "@/lib/collab-types";
@@ -45,13 +45,13 @@ import { formatMarkPageLabel } from "./mark-page-label";
 // ─── Props ──────────────────────────────────────────────────────────────
 
 export interface MarkTableProps {
-  pins: PinItem[];
+  marks: MarkItem[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
-  commentCountByPinId: Map<string, number>;
+  commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   /** Called when a mark title is opened. */
-  onSelectMark: (pin: PinItem) => void;
+  onSelectMark: (mark: MarkItem) => void;
   /** If provided, enables row checkboxes. */
   selectedIds?: Set<string>;
   /** Fires with the full next selection set (replaces per-id toggle). */
@@ -74,19 +74,19 @@ const PRIORITY_ORDER: Record<string, number> = {
 function buildColumns({
   membersById,
   labelsById,
-  commentCountByPinId,
+  commentCountByMarkId,
   displayNamePreference,
   selectable,
   onSelectMark,
 }: {
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
-  commentCountByPinId: Map<string, number>;
+  commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
-  onSelectMark: (pin: PinItem) => void;
-}): ColumnDef<PinItem>[] {
-  const cols: ColumnDef<PinItem>[] = [];
+  onSelectMark: (mark: MarkItem) => void;
+}): ColumnDef<MarkItem>[] {
+  const cols: ColumnDef<MarkItem>[] = [];
 
   // ── Checkbox column ───────
   if (selectable) {
@@ -148,19 +148,19 @@ function buildColumns({
     header: "Title",
     size: 999, // flexible
     cell: ({ row }) => {
-      const pin = row.original;
+      const mark = row.original;
       return (
         <button
           type="button"
-          onClick={() => onSelectMark(pin)}
+          onClick={() => onSelectMark(mark)}
           className="-mx-1 block min-w-0 rounded-md px-1 py-1 text-left outline-none transition-colors hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/35"
         >
           <p className="truncate text-ui-sm font-semibold text-ink">
-            {pin.title}
+            {mark.title}
           </p>
-          {pin.page.trim() ? (
-            <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={pin.page}>
-              {formatMarkPageLabel(pin.page)}
+          {mark.page.trim() ? (
+            <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={mark.page}>
+              {formatMarkPageLabel(mark.page)}
             </p>
           ) : null}
         </button>
@@ -188,11 +188,11 @@ function buildColumns({
     size: 140,
     enableSorting: false,
     cell: ({ row }) => {
-      const pin = row.original;
-      if (pin.labelIds.length === 0) return null;
+      const mark = row.original;
+      if (mark.labelIds.length === 0) return null;
       return (
         <div className="flex flex-wrap gap-1">
-          {pin.labelIds.map((lid) => {
+          {mark.labelIds.map((lid) => {
             const label = labelsById.get(lid);
             if (!label) return null;
             return (
@@ -256,7 +256,7 @@ function buildColumns({
     size: 44,
     enableSorting: false,
     cell: ({ row }) => {
-      const count = commentCountByPinId.get(row.original.id) ?? 0;
+      const count = commentCountByMarkId.get(row.original.id) ?? 0;
       if (count === 0) return null;
       return (
         <span
@@ -305,10 +305,10 @@ function buildColumns({
 // ─── Component ──────────────────────────────────────────────────────────
 
 export function MarkTable({
-  pins,
+  marks,
   membersById,
   labelsById,
-  commentCountByPinId,
+  commentCountByMarkId,
   displayNamePreference,
   onSelectMark,
   selectedIds,
@@ -322,28 +322,28 @@ export function MarkTable({
       buildColumns({
         membersById,
         labelsById,
-        commentCountByPinId,
+        commentCountByMarkId,
         displayNamePreference,
         selectable,
         onSelectMark,
       }),
-    [membersById, labelsById, commentCountByPinId, displayNamePreference, selectable, onSelectMark],
+    [membersById, labelsById, commentCountByMarkId, displayNamePreference, selectable, onSelectMark],
   );
 
-  // Map Set<string> → TanStack RowSelectionState keyed by pin.id
+  // Map Set<string> → TanStack RowSelectionState keyed by mark.id
   const rowSelection: RowSelectionState = useMemo(() => {
     if (!selectedIds) return {};
     const state: RowSelectionState = {};
-    for (const pin of pins) {
-      if (selectedIds.has(pin.id)) state[pin.id] = true;
+    for (const mark of marks) {
+      if (selectedIds.has(mark.id)) state[mark.id] = true;
     }
     return state;
-  }, [selectedIds, pins]);
+  }, [selectedIds, marks]);
 
   // TanStack Table intentionally returns imperative helpers that React Compiler skips.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: pins,
+    data: marks,
     columns,
     getCoreRowModel: getCoreRowModel(),
     ...(sortable ? { getSortedRowModel: getSortedRowModel() } : {}),
@@ -354,7 +354,7 @@ export function MarkTable({
         typeof updaterOrValue === "function"
           ? updaterOrValue(rowSelection)
           : updaterOrValue;
-      // Keys in `next` are pin IDs (from getRowId)
+      // Keys in `next` are mark IDs (from getRowId)
       const nextIds = new Set<string>();
       for (const [id, selected] of Object.entries(next)) {
         if (selected) nextIds.add(id);
@@ -371,10 +371,10 @@ export function MarkTable({
     <>
       <div className="md:hidden">
         <MobileMarkList
-          pins={pins}
+          marks={marks}
           membersById={membersById}
           labelsById={labelsById}
-          commentCountByPinId={commentCountByPinId}
+          commentCountByMarkId={commentCountByMarkId}
           displayNamePreference={displayNamePreference}
           selectable={selectable}
           selectedIds={selectedIds}
@@ -467,44 +467,44 @@ export function MarkTable({
 }
 
 function MobileMarkList({
-  pins,
+  marks,
   membersById,
   labelsById,
-  commentCountByPinId,
+  commentCountByMarkId,
   displayNamePreference,
   selectable,
   selectedIds,
   onSelectionChange,
   onSelectMark,
 }: {
-  pins: PinItem[];
+  marks: MarkItem[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
-  commentCountByPinId: Map<string, number>;
+  commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
-  onSelectMark: (pin: PinItem) => void;
+  onSelectMark: (mark: MarkItem) => void;
 }) {
-  function toggleSelection(pinId: string, checked: boolean) {
+  function toggleSelection(markId: string, checked: boolean) {
     if (!onSelectionChange || !selectedIds) return;
     const next = new Set(selectedIds);
-    if (checked) next.add(pinId);
-    else next.delete(pinId);
+    if (checked) next.add(markId);
+    else next.delete(markId);
     onSelectionChange(next);
   }
 
   return (
     <ul>
-      {pins.map((pin) => {
-        const assignee = pin.assigneeId ? membersById.get(pin.assigneeId) : undefined;
-        const commentCount = commentCountByPinId.get(pin.id) ?? 0;
-        const selected = selectedIds?.has(pin.id) ?? false;
-        const pageLabel = pin.page.trim() ? formatMarkPageLabel(pin.page) : null;
+      {marks.map((mark) => {
+        const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
+        const commentCount = commentCountByMarkId.get(mark.id) ?? 0;
+        const selected = selectedIds?.has(mark.id) ?? false;
+        const pageLabel = mark.page.trim() ? formatMarkPageLabel(mark.page) : null;
         return (
           <li
-            key={pin.id}
+            key={mark.id}
             data-state={selected ? "selected" : undefined}
             className={cn(
               "px-3 py-3 transition-colors hover:bg-paper-2",
@@ -515,8 +515,8 @@ function MobileMarkList({
               {selectable ? (
                 <Checkbox
                   checked={selected}
-                  onCheckedChange={(value) => toggleSelection(pin.id, !!value)}
-                  aria-label={selected ? `Deselect ${pin.title}` : `Select ${pin.title}`}
+                  onCheckedChange={(value) => toggleSelection(mark.id, !!value)}
+                  aria-label={selected ? `Deselect ${mark.title}` : `Select ${mark.title}`}
                   className="mt-1 size-5"
                 />
               ) : null}
@@ -524,21 +524,21 @@ function MobileMarkList({
                 <div className="flex items-start justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => onSelectMark(pin)}
+                    onClick={() => onSelectMark(mark)}
                     className="min-h-11 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
                   >
                     <span className="block break-words text-ui-lg font-semibold leading-snug text-ink">
-                      {pin.title}
+                      {mark.title}
                     </span>
                     {pageLabel ? (
-                      <span className="mt-1 block truncate text-ui-xs text-ink-3" title={pin.page}>
+                      <span className="mt-1 block truncate text-ui-xs text-ink-3" title={mark.page}>
                         {pageLabel}
                       </span>
                     ) : null}
                   </button>
-                  {pin.page.trim() ? (
+                  {mark.page.trim() ? (
                     <MarkPageOpenButton
-                      page={pin.page}
+                      page={mark.page}
                       appearance="icon"
                       stopPropagation
                       className="mt-0.5"
@@ -547,9 +547,9 @@ function MobileMarkList({
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <StatusInline status={pin.status} />
-                  <PriorityBadge priority={pin.priority} size="sm" />
-                  {pin.pinned ? (
+                  <StatusInline status={mark.status} />
+                  <PriorityBadge priority={mark.priority} size="sm" />
+                  {mark.pinned ? (
                     <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
                       Pinned
                     </Pill>
@@ -576,13 +576,13 @@ function MobileMarkList({
                     </span>
                   ) : null}
                   <span className="font-mono text-ui-xs text-ink-3">
-                    {pin.displayKey}
+                    {mark.displayKey}
                   </span>
                 </div>
 
-                {pin.labelIds.length > 0 ? (
+                {mark.labelIds.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {pin.labelIds.map((lid) => {
+                    {mark.labelIds.map((lid) => {
                       const label = labelsById.get(lid);
                       if (!label) return null;
                       return (
@@ -605,7 +605,7 @@ function MobileMarkList({
   );
 }
 
-function StatusInline({ status }: { status: PinItem["status"] }) {
+function StatusInline({ status }: { status: MarkItem["status"] }) {
   return status === "open" ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
       <CircleDashed className="size-3" aria-hidden />

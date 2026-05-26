@@ -82,8 +82,8 @@ export function SpacesListView({
     [filteredSpaces, displayPage],
   );
 
-  const totalPins = workspace.pins.length;
-  const totalOpen = workspace.pins.filter((p) => p.status === "open").length;
+  const totalMarks = workspace.marks.length;
+  const totalOpen = workspace.marks.filter((p) => p.status === "open").length;
   const filtersActive = priorityFilter !== "all" || pinnedFilter !== "all";
 
   async function handleCreate() {
@@ -126,7 +126,7 @@ export function SpacesListView({
             <span className="font-mono text-ink">{filteredSpaces.length}</span>
             <span>spaces</span>
             <span aria-hidden className="mx-1 text-rule">/</span>
-            <span className="font-mono text-ink">{totalPins}</span>
+            <span className="font-mono text-ink">{totalMarks}</span>
             <span>marks</span>
             <span aria-hidden className="mx-1 text-rule">/</span>
             <span className="font-mono text-mark">{totalOpen}</span>

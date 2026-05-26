@@ -13,12 +13,12 @@ import {
 import { EXTENSION_LAYER } from "../lib/layers"
 import {
   getActiveSpaceId,
-  getPinsForPage,
+  getMarksForPage,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
   type WidgetCorner,
@@ -74,8 +74,8 @@ function Widget() {
 
   const refreshCount = useCallback(async () => {
     const spaceId = await getActiveSpaceId()
-    const pins = await getPinsForPage(spaceId, location.href)
-    setOpenCount(pins.filter((p) => p.status !== "closed").length)
+    const marks = await getMarksForPage(spaceId, location.href)
+    setOpenCount(marks.filter((p) => p.status !== "closed").length)
   }, [])
 
   const refreshSettings = useCallback(async () => {
@@ -110,7 +110,7 @@ function Widget() {
       if (area !== "local") return
       void refreshSettings()
       if (
-        changes[KEY_PINS] ||
+        changes[KEY_MARKS] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT] ||
         changes[KEY_ACTIVE_SPACE] ||

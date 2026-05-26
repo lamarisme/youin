@@ -8,10 +8,10 @@ import {
   useQueryState,
 } from "nuqs";
 
-import type { PinPriority, PinStatus } from "@/lib/collab-types";
+import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
 
-export type StatusFilter = "all" | PinStatus;
-export type PriorityFilter = "all" | PinPriority;
+export type StatusFilter = "all" | MarkStatus;
+export type PriorityFilter = "all" | MarkPriority;
 export type PinnedFilter = "all" | "pinned" | "unpinned";
 export type SortMode = "recent" | "oldest" | "priority" | "status";
 export type AssigneeFilter = "all" | "me" | "unassigned";

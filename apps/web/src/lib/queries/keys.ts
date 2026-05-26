@@ -8,8 +8,8 @@ export const workspaceKeys = {
     workspaceId && userId
       ? ([...workspaceKeys.all, "inbox", workspaceId, userId] as const)
       : ([...workspaceKeys.all, "inbox"] as const),
-  pins: (spaceId?: string) =>
+  marks: (spaceId?: string) =>
     spaceId
-      ? ([...workspaceKeys.all, "pins", spaceId] as const)
-      : ([...workspaceKeys.all, "pins"] as const),
+      ? ([...workspaceKeys.all, "marks", spaceId] as const)
+      : ([...workspaceKeys.all, "marks"] as const),
 } as const;

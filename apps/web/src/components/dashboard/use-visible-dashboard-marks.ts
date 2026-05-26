@@ -4,13 +4,13 @@ import { useMemo } from "react";
 
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
-import { filterPinsByDashboardFilters } from "./pin-filter-utils";
+import { filterMarksByDashboardFilters } from "./mark-filter-utils";
 import { useDashboardFilters } from "./use-dashboard-filters";
 
-/** Pins visible under the current dashboard URL filters (space, status, priority, pinned, label, assignee). */
-export function useVisibleDashboardPins() {
-  const { pins, spaces, userId } = useWorkspaceData((s) => ({
-    pins: s.workspace.pins,
+/** Marks visible under the current dashboard URL filters (space, status, priority, pinned, label, assignee). */
+export function useVisibleDashboardMarks() {
+  const { marks, spaces, userId } = useWorkspaceData((s) => ({
+    marks: s.workspace.marks,
     spaces: s.workspace.spaces,
     userId: s.userId,
   }));
@@ -24,11 +24,11 @@ export function useVisibleDashboardPins() {
       const activeProjectId =
         selectedSpaceProjectId ??
         (filters.projectId === "all" ? spaces[0]?.projectId : filters.projectId);
-      const projectPins = activeProjectId
-        ? pins.filter((pin) => spaceProjectById.get(pin.spaceId) === activeProjectId)
+      const projectMarks = activeProjectId
+        ? marks.filter((mark) => spaceProjectById.get(mark.spaceId) === activeProjectId)
         : [];
-      return filterPinsByDashboardFilters(
-        projectPins,
+      return filterMarksByDashboardFilters(
+        projectMarks,
         {
           spaceId: filters.spaceId,
           status: filters.status,
@@ -43,7 +43,7 @@ export function useVisibleDashboardPins() {
       );
     },
     [
-      pins,
+      marks,
       spaces,
       userId,
       filters.projectId,

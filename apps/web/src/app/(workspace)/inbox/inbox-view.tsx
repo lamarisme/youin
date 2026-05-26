@@ -111,7 +111,7 @@ export function InboxView() {
         <ProductList>
           {inbox.groups.map((group) => (
             <InboxGroupRow
-              key={group.pinId}
+              key={group.markId}
               group={group}
               spaceName={spaceLookup.get(group.spaceId) ?? null}
               members={memberLookup}
@@ -139,11 +139,11 @@ function InboxGroupRow({
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
   const actorLabel = top.actorUsername || top.actorName;
-  const rowLabel = `${group.pinDisplayKey}, ${group.pinTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt)}.`;
+  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt)}.`;
   return (
     <ProductListItem className="p-0">
       <Link
-        href={markHref(group.pinDisplayKey, new URLSearchParams())}
+        href={markHref(group.markDisplayKey, new URLSearchParams())}
         aria-label={rowLabel}
         className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
@@ -157,9 +157,9 @@ function InboxGroupRow({
               )}
             >
               <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
-                {group.pinDisplayKey}
+                {group.markDisplayKey}
               </span>
-              <span className="min-w-0 truncate">{group.pinTitle}</span>
+              <span className="min-w-0 truncate">{group.markTitle}</span>
             </div>
             <time
               className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"

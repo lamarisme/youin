@@ -1,9 +1,9 @@
-import type { PinItem } from "@/lib/collab-types";
+import type { MarkItem } from "@/lib/collab-types";
 
 /** UUID from URL (any version), case-insensitive. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function formatPinDisplayKey(spaceCode: string, seq: number): string {
+export function formatMarkDisplayKey(spaceCode: string, seq: number): string {
   return `${spaceCode.toUpperCase()}-${seq}`;
 }
 
@@ -20,11 +20,11 @@ export function parseMarkRouteParam(raw: string | null): { kind: "uuid"; id: str
   return { kind: "key", code: m[1].toUpperCase(), seq };
 }
 
-export function findPinByMarkRouteParam(param: string | null, pins: PinItem[]): PinItem | undefined {
+export function findMarkByRouteParam(param: string | null, marks: MarkItem[]): MarkItem | undefined {
   const parsed = parseMarkRouteParam(param);
   if (!parsed) return undefined;
-  if (parsed.kind === "uuid") return pins.find((p) => p.id === parsed.id);
-  return pins.find(
+  if (parsed.kind === "uuid") return marks.find((p) => p.id === parsed.id);
+  return marks.find(
     (p) => p.spaceCode.toUpperCase() === parsed.code && p.seq === parsed.seq,
   );
 }

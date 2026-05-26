@@ -4,7 +4,7 @@ export const EVENT_REVIEW_STATE = "youin:review:state"
 export const EVENT_REVIEW_CAPTURE = "youin:review:capture"
 export const EVENT_REVIEW_RESUME = "youin:review:resume"
 export const EVENT_REVIEW_PAUSE = "youin:review:pause"
-export const EVENT_REVIEW_OPEN_PIN = "youin:review:open-pin"
+export const EVENT_REVIEW_OPEN_MARK = "youin:review:open-mark"
 export const EVENT_REVIEW_TOGGLE_DRAWER = "youin:review:toggle-drawer"
 export const EVENT_LOCATION_CHANGE = "youin:location-change"
 
@@ -12,8 +12,8 @@ export interface ReviewStateDetail {
   active: boolean
 }
 
-export interface OpenPinDetail {
-  pinId: string
+export interface OpenMarkDetail {
+  markId: string
   attached?: boolean
 }
 

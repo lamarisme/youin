@@ -10,21 +10,21 @@ import {
 
 import {
   EVENT_LOCATION_CHANGE,
-  EVENT_REVIEW_OPEN_PIN,
+  EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_PAUSE
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computePinHealth, type PinHealth } from "../lib/pin-health"
+import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
 import {
   getActiveSpaceId,
-  getPinsForPage,
+  getMarksForPage,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_SPACES,
   KEY_WIDGET_SETTINGS,
-  type Pin
+  type Mark
 } from "../lib/storage"
 
 export const config: PlasmoCSConfig = {
@@ -44,47 +44,47 @@ const Z_BADGES = EXTENSION_LAYER.badges
 const HIT = 44
 
 type BadgeItem = {
-  pin: Pin
+  mark: Mark
   stackOrder: number
   left: number
   top: number
   attached: boolean
-  health: PinHealth
+  health: MarkHealth
   healthLabel: string
 }
 
-function sortPinsForDisplay(pins: Pin[]): Pin[] {
-  return pins.slice().sort((a, b) => a.createdAt - b.createdAt)
+function sortMarksForDisplay(marks: Mark[]): Mark[] {
+  return marks.slice().sort((a, b) => a.createdAt - b.createdAt)
 }
 
-function pinStackOrderMap(pins: Pin[]): Map<string, number> {
-  const sorted = sortPinsForDisplay(pins)
+function markStackOrderMap(marks: Mark[]): Map<string, number> {
+  const sorted = sortMarksForDisplay(marks)
   const m = new Map<string, number>()
   sorted.forEach((p, i) => m.set(p.id, i + 1))
   return m
 }
 
-function annotationLabel(pin: Pin, healthLabel: string): string {
-  const t = pin.title.trim() || "Annotation"
+function annotationLabel(mark: Mark, healthLabel: string): string {
+  const t = mark.title.trim() || "Annotation"
   const short = t.length > 72 ? `${t.slice(0, 69)}...` : t
   return `Open feedback: ${short}. ${healthLabel}.`
 }
 
 function computeLayout(
-  pins: Pin[],
+  marks: Mark[],
   stackOrders: Map<string, number>
 ): BadgeItem[] {
   const out: BadgeItem[] = []
-  for (const pin of pins) {
+  for (const mark of marks) {
     try {
-      const health = computePinHealth(pin)
+      const health = computeMarkHealth(mark)
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
-      const stackOrder = stackOrders.get(pin.id) ?? 0
+      const stackOrder = stackOrders.get(mark.id) ?? 0
       if (!stackOrder) continue
       out.push({
-        pin,
+        mark,
         stackOrder,
         left: Math.round(r.right - HIT),
         top: Math.round(Math.max(4, r.top - 8)),
@@ -113,10 +113,10 @@ const PinBadges = () => {
       return
     }
     const spaceId = await getActiveSpaceId()
-    const pins = await getPinsForPage(spaceId, location.href)
-    const openPins = pins.filter((p) => p.status !== "closed")
-    const stackOrders = pinStackOrderMap(openPins)
-    setItems(computeLayout(openPins, stackOrders))
+    const marks = await getMarksForPage(spaceId, location.href)
+    const openMarks = marks.filter((p) => p.status !== "closed")
+    const stackOrders = markStackOrderMap(openMarks)
+    setItems(computeLayout(openMarks, stackOrders))
   }, [])
 
   const scheduleViewportRefresh = useCallback(() => {
@@ -134,7 +134,7 @@ const PinBadges = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
-        changes[KEY_PINS] ||
+        changes[KEY_MARKS] ||
         changes[KEY_ACTIVE_SPACE] ||
         changes[KEY_SPACES] ||
         changes[KEY_WIDGET_SETTINGS]
@@ -169,12 +169,12 @@ const PinBadges = () => {
       className="pointer-events-none fixed inset-0"
       style={{ zIndex: Z_BADGES }}>
       {items.map(
-        ({ pin, stackOrder, left, top, attached, health, healthLabel }) => (
+        ({ mark, stackOrder, left, top, attached, health, healthLabel }) => (
           <button
-            key={pin.id}
+            key={mark.id}
             type="button"
-            aria-label={annotationLabel(pin, healthLabel)}
-            title={annotationLabel(pin, healthLabel)}
+            aria-label={annotationLabel(mark, healthLabel)}
+            title={annotationLabel(mark, healthLabel)}
             className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
             style={{
               left,
@@ -188,8 +188,8 @@ const PinBadges = () => {
               e.stopPropagation()
               window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
               window.dispatchEvent(
-                new CustomEvent(EVENT_REVIEW_OPEN_PIN, {
-                  detail: { pinId: pin.id, attached }
+                new CustomEvent(EVENT_REVIEW_OPEN_MARK, {
+                  detail: { markId: mark.id, attached }
                 })
               )
             }}>

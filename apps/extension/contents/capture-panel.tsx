@@ -7,50 +7,50 @@ import { getSession } from "../lib/auth"
 import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_CAPTURE,
-  EVENT_REVIEW_OPEN_PIN,
+  EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_RESUME,
   type ReviewCaptureDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { normalizePageUrlForMatch } from "../lib/page-url"
-import { computePinHealth } from "../lib/pin-health"
+import { computeMarkHealth } from "../lib/mark-health"
 import {
-  addPinWithFallback,
+  addMarkWithFallback,
   appendThreadComment,
-  enqueuePinSyncOp,
+  enqueueMarkSyncOp,
   getActiveProjectId,
   getActiveSpaceId,
-  getPins,
-  getPinsForPage,
+  getMarks,
+  getMarksForPage,
   getProjects,
   getSpaces,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
-  makePinId,
-  markPinSyncFailure,
-  patchPin,
-  removePin,
-  removePinSyncOp,
-  restorePin,
+  makeMarkId,
+  markSyncFailure,
+  patchMark,
+  removeMark,
+  removeMarkSyncOp,
+  restoreMark,
   setActiveProjectId,
   setActiveSpaceId,
   STORAGE_LIMITS,
-  type Pin,
-  type PinPriority,
-  type PinStatus,
+  type Mark,
+  type MarkPriority,
+  type MarkStatus,
   type Project,
   type Space
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
 import {
-  pushPinCommentToWorkspace,
-  pushPinEditToWorkspace,
-  pushPinStatusToWorkspace,
-  pushPinToWorkspace,
-  syncPendingPinsToWorkspace
+  pushMarkCommentToWorkspace,
+  pushMarkEditToWorkspace,
+  pushMarkStatusToWorkspace,
+  pushMarkToWorkspace,
+  syncPendingMarksToWorkspace
 } from "../lib/sync"
 
 export const config: PlasmoCSConfig = {
@@ -70,8 +70,8 @@ const Z_PANEL = EXTENSION_LAYER.panel
 type PanelMode = "create" | "thread"
 
 type UndoAction =
-  | { kind: "created"; pin: Pin; message: string }
-  | { kind: "deleted"; pin: Pin; message: string }
+  | { kind: "created"; mark: Mark; message: string }
+  | { kind: "deleted"; mark: Mark; message: string }
 
 function truncateMiddle(s: string, max: number): string {
   if (s.length <= max) return s
@@ -109,12 +109,12 @@ function titleFromBody(body: string): string {
   return firstLine.length > 96 ? `${firstLine.slice(0, 93)}...` : firstLine
 }
 
-function buildPinFromCapture(
+function buildMarkFromCapture(
   detail: ReviewCaptureDetail,
   spaceId: string,
   body: string,
-  priority: PinPriority
-): Pin {
+  priority: MarkPriority
+): Mark {
   const raw = normalizePageUrlForMatch(detail.url) || detail.url
   let origin = ""
   let pathname = ""
@@ -130,7 +130,7 @@ function buildPinFromCapture(
   }
   const now = Date.now()
   return {
-    id: makePinId(),
+    id: makeMarkId(),
     spaceId,
     url: href,
     pageTitle: detail.pageTitle,
@@ -141,7 +141,7 @@ function buildPinFromCapture(
     captureKind: detail.captureKind ?? "element",
     bbox: detail.bbox,
     viewport: detail.viewport,
-    title: titleFromBody(body).slice(0, STORAGE_LIMITS.pinTitle),
+    title: titleFromBody(body).slice(0, STORAGE_LIMITS.markTitle),
     thread: [
       {
         id: makeThreadMessageId(),
@@ -366,7 +366,7 @@ function breadcrumbParts(
     .slice(-5)
 }
 
-function flashSelection(selector: string, bbox?: Pin["bbox"]): boolean {
+function flashSelection(selector: string, bbox?: Mark["bbox"]): boolean {
   let element: Element | null = null
   try {
     element = selector ? document.querySelector(selector) : null
@@ -534,7 +534,7 @@ function DomContextPreview({
   snapshot?: ElementDomSnapshot
   selector: string
   strategy: DomStrategy
-  bbox?: Pin["bbox"]
+  bbox?: Mark["bbox"]
   outerHTML?: string
 }) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
@@ -696,14 +696,14 @@ const CapturePanel = () => {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<PanelMode>("create")
   const [capture, setCapture] = useState<ReviewCaptureDetail | null>(null)
-  const [viewingPin, setViewingPin] = useState<Pin | null>(null)
-  const [pagePins, setPagePins] = useState<Pin[]>([])
+  const [viewingMark, setViewingMark] = useState<Mark | null>(null)
+  const [pageMarks, setPageMarks] = useState<Mark[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
   const [spaces, setSpaces] = useState<Space[]>([])
   const [spaceId, setSpaceId] = useState<string>("")
   const [body, setBody] = useState("")
-  const [priority, setPriority] = useState<PinPriority>("medium")
+  const [priority, setPriority] = useState<MarkPriority>("medium")
   const [replyDraft, setReplyDraft] = useState("")
   const [editing, setEditing] = useState(false)
   const [editTitle, setEditTitle] = useState("")
@@ -721,7 +721,7 @@ const CapturePanel = () => {
 
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
-  const refreshPinsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+  const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
 
@@ -742,38 +742,38 @@ const CapturePanel = () => {
     chrome.storage.onChanged.addListener(onStorage)
     return () => {
       chrome.storage.onChanged.removeListener(onStorage)
-      if (refreshPinsDebounceRef.current != null) {
-        clearTimeout(refreshPinsDebounceRef.current)
+      if (refreshMarksDebounceRef.current != null) {
+        clearTimeout(refreshMarksDebounceRef.current)
       }
     }
   }, [])
 
-  const reloadPin = useCallback(async (pinId: string) => {
-    const pins = await getPins()
-    const pin = pins.find((p) => p.id === pinId)
-    if (pin) setViewingPin(pin)
+  const reloadMark = useCallback(async (markId: string) => {
+    const marks = await getMarks()
+    const mark = marks.find((p) => p.id === markId)
+    if (mark) setViewingMark(mark)
   }, [])
 
-  const reloadPagePins = useCallback(
+  const reloadPageMarks = useCallback(
     async (pageUrl: string, sidOpt?: string) => {
       const sid = sidOpt ?? (await getActiveSpaceId())
-      const pins = await getPinsForPage(sid, pageUrl)
-      setPagePins(pins)
+      const marks = await getMarksForPage(sid, pageUrl)
+      setPageMarks(marks)
     },
     []
   )
 
-  const scheduleReloadPagePins = useCallback(
+  const scheduleReloadPageMarks = useCallback(
     (pageUrl: string, sidOpt?: string) => {
-      if (refreshPinsDebounceRef.current != null) {
-        clearTimeout(refreshPinsDebounceRef.current)
+      if (refreshMarksDebounceRef.current != null) {
+        clearTimeout(refreshMarksDebounceRef.current)
       }
-      refreshPinsDebounceRef.current = setTimeout(() => {
-        refreshPinsDebounceRef.current = null
-        void reloadPagePins(pageUrl, sidOpt)
+      refreshMarksDebounceRef.current = setTimeout(() => {
+        refreshMarksDebounceRef.current = null
+        void reloadPageMarks(pageUrl, sidOpt)
       }, 100)
     },
-    [reloadPagePins]
+    [reloadPageMarks]
   )
 
   const loadSpaces = useCallback(async () => {
@@ -810,14 +810,14 @@ const CapturePanel = () => {
   }, [])
 
   const resume = useCallback(() => {
-    if (refreshPinsDebounceRef.current != null) {
-      clearTimeout(refreshPinsDebounceRef.current)
-      refreshPinsDebounceRef.current = null
+    if (refreshMarksDebounceRef.current != null) {
+      clearTimeout(refreshMarksDebounceRef.current)
+      refreshMarksDebounceRef.current = null
     }
     setOpen(false)
     setMode("create")
     setCapture(null)
-    setViewingPin(null)
+    setViewingMark(null)
     setBody("")
     setPriority("medium")
     setReplyDraft("")
@@ -828,7 +828,7 @@ const CapturePanel = () => {
     setSaveWarning(null)
     setConfirmDelete(false)
     setFullImage(null)
-    setPagePins([])
+    setPageMarks([])
     previousFocusRef.current?.focus?.()
     window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
   }, [])
@@ -838,7 +838,7 @@ const CapturePanel = () => {
       const detail = (e as CustomEvent<ReviewCaptureDetail>).detail
       setCapture(detail)
       setMode("create")
-      setViewingPin(null)
+      setViewingMark(null)
       setBody("")
       setPriority("medium")
       setSaveError(null)
@@ -846,23 +846,23 @@ const CapturePanel = () => {
       void loadSpaces()
       previousFocusRef.current = document.activeElement as HTMLElement
       setOpen(true)
-      void reloadPagePins(detail.url)
+      void reloadPageMarks(detail.url)
     }
     window.addEventListener(EVENT_REVIEW_CAPTURE, onCap)
     return () => window.removeEventListener(EVENT_REVIEW_CAPTURE, onCap)
-  }, [loadSpaces, reloadPagePins])
+  }, [loadSpaces, reloadPageMarks])
 
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const { pinId } = (e as CustomEvent<{ pinId: string }>).detail
+      const { markId } = (e as CustomEvent<{ markId: string }>).detail
       void (async () => {
         await loadSpaces()
-        const pins = await getPins()
-        const pin = pins.find((p) => p.id === pinId)
-        if (!pin) return
-        setViewingPin(pin)
-        setEditTitle(pin.title)
-        setEditBody(pin.thread[0]?.body ?? "")
+        const marks = await getMarks()
+        const mark = marks.find((p) => p.id === markId)
+        if (!mark) return
+        setViewingMark(mark)
+        setEditTitle(mark.title)
+        setEditBody(mark.thread[0]?.body ?? "")
         setMode("thread")
         setCapture(null)
         setReplyDraft("")
@@ -871,15 +871,15 @@ const CapturePanel = () => {
         setConfirmDelete(false)
         previousFocusRef.current = document.activeElement as HTMLElement
         setOpen(true)
-        void reloadPagePins(pin.url, pin.spaceId)
+        void reloadPageMarks(mark.url, mark.spaceId)
       })()
     }
-    window.addEventListener(EVENT_REVIEW_OPEN_PIN, onOpen)
-    return () => window.removeEventListener(EVENT_REVIEW_OPEN_PIN, onOpen)
-  }, [loadSpaces, reloadPagePins])
+    window.addEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
+    return () => window.removeEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
+  }, [loadSpaces, reloadPageMarks])
 
   useEffect(() => {
-    if (!open || !viewingPin) return
+    if (!open || !viewingMark) return
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
@@ -892,14 +892,14 @@ const CapturePanel = () => {
       ) {
         void loadSpaces()
       }
-      if (changes[KEY_PINS]) {
-        void reloadPin(viewingPin.id)
-        scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      if (changes[KEY_MARKS]) {
+        void reloadMark(viewingMark.id)
+        scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
       }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, viewingPin, loadSpaces, reloadPin, scheduleReloadPagePins])
+  }, [open, viewingMark, loadSpaces, reloadMark, scheduleReloadPageMarks])
 
   useEffect(() => {
     if (!open || !capture || mode !== "create") return
@@ -915,17 +915,17 @@ const CapturePanel = () => {
       ) {
         void loadSpaces()
       }
-      if (changes[KEY_PINS]) scheduleReloadPagePins(capture.url)
+      if (changes[KEY_MARKS]) scheduleReloadPageMarks(capture.url)
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, capture, mode, loadSpaces, scheduleReloadPagePins])
+  }, [open, capture, mode, loadSpaces, scheduleReloadPageMarks])
 
   useEffect(() => {
     if (
       !open ||
       (mode === "create" && !capture) ||
-      (mode === "thread" && !viewingPin)
+      (mode === "thread" && !viewingMark)
     )
       return
     if (saving) return
@@ -937,7 +937,7 @@ const CapturePanel = () => {
     }
     window.addEventListener("keydown", onKey, true)
     return () => window.removeEventListener("keydown", onKey, true)
-  }, [open, capture, viewingPin, mode, saving, resume])
+  }, [open, capture, viewingMark, mode, saving, resume])
 
   useEffect(() => {
     if (!open) return
@@ -990,9 +990,9 @@ const CapturePanel = () => {
     setSaveWarning(null)
     try {
       await setActiveSpaceId(spaceId)
-      const pin = buildPinFromCapture(capture, spaceId, body.trim(), priority)
-      const saved = await addPinWithFallback(pin)
-      if (!saved.ok || !saved.pin) {
+      const mark = buildMarkFromCapture(capture, spaceId, body.trim(), priority)
+      const saved = await addMarkWithFallback(mark)
+      if (!saved.ok || !saved.mark) {
         setSaveError(t("extension.panel.couldNotSave"))
         return
       }
@@ -1002,23 +1002,23 @@ const CapturePanel = () => {
       }
       setUndoAction({
         kind: "created",
-        pin: saved.pin,
+        mark: saved.mark,
         message: saved.warning
           ? t("extension.panel.savedWithLimitations")
           : t("extension.panel.feedbackPosted")
       })
-      const push = await pushPinToWorkspace(saved.pin, {
-        screenshotDataUrl: saved.pin.screenshotDataUrl
+      const push = await pushMarkToWorkspace(saved.mark, {
+        screenshotDataUrl: saved.mark.screenshotDataUrl
       })
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
           t("extension.panel.savedLocallySync", { error: push.error })
         )
-        scheduleReloadPagePins(capture.url)
+        scheduleReloadPageMarks(capture.url)
         return
       }
       if (saved.warning) {
-        scheduleReloadPagePins(capture.url)
+        scheduleReloadPageMarks(capture.url)
         return
       }
       resume()
@@ -1031,23 +1031,23 @@ const CapturePanel = () => {
     }
   }
 
-  const retryPinSync = async () => {
-    if (!viewingPin || saving) return
+  const retryMarkSync = async () => {
+    if (!viewingMark || saving) return
     setSaving(true)
     setSaveError(null)
     try {
-      const push = await pushPinToWorkspace(viewingPin, {
-        screenshotDataUrl: viewingPin.screenshotDataUrl
+      const push = await pushMarkToWorkspace(viewingMark, {
+        screenshotDataUrl: viewingMark.screenshotDataUrl
       })
       if (!push.skipped && !push.ok) {
-        await syncPendingPinsToWorkspace()
-        await reloadPin(viewingPin.id)
-        const refreshed = (await getPins()).find((p) => p.id === viewingPin.id)
+        await syncPendingMarksToWorkspace()
+        await reloadMark(viewingMark.id)
+        const refreshed = (await getMarks()).find((p) => p.id === viewingMark.id)
         if (refreshed?.syncState === "failed") {
           setSaveError(refreshed.syncError ?? t("extension.panel.syncFailed"))
         }
       } else {
-        await reloadPin(viewingPin.id)
+        await reloadMark(viewingMark.id)
       }
     } finally {
       setSaving(false)
@@ -1055,65 +1055,65 @@ const CapturePanel = () => {
   }
 
   const sendReply = async () => {
-    if (!viewingPin || !replyDraft.trim() || saving) return
+    if (!viewingMark || !replyDraft.trim() || saving) return
     const body = replyDraft.trim()
     setSaving(true)
     setSaveError(null)
     try {
-      const next = await appendThreadComment(viewingPin.id, body, "You")
+      const next = await appendThreadComment(viewingMark.id, body, "You")
       if (!next) {
         setSaveError("Could not add reply.")
         return
       }
       setReplyDraft("")
-      const op = viewingPin.remoteMarkId
-        ? await enqueuePinSyncOp(viewingPin.id, { type: "comment", body })
+      const op = viewingMark.remoteMarkId
+        ? await enqueueMarkSyncOp(viewingMark.id, { type: "comment", body })
         : undefined
-      const synced = await pushPinCommentToWorkspace(viewingPin, body)
+      const synced = await pushMarkCommentToWorkspace(viewingMark, body)
       if ((synced.ok || synced.skipped) && op) {
-        await removePinSyncOp(viewingPin.id, op.id)
+        await removeMarkSyncOp(viewingMark.id, op.id)
       }
       if (!synced.skipped && !synced.ok && synced.error) {
-        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
+        if (op) await markSyncFailure(viewingMark.id, synced.error, op.id)
         setSaveError(
           `Reply saved locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
-      await reloadPin(viewingPin.id)
+      await reloadMark(viewingMark.id)
     } finally {
       setSaving(false)
     }
   }
 
-  const setPinStatus = async (status: PinStatus) => {
-    if (!viewingPin || saving) return
+  const setMarkStatus = async (status: MarkStatus) => {
+    if (!viewingMark || saving) return
     setSaving(true)
     setSaveError(null)
     try {
-      await patchPin(viewingPin.id, { status, updatedAt: Date.now() })
-      const op = viewingPin.remoteMarkId
-        ? await enqueuePinSyncOp(viewingPin.id, { type: "status", status })
+      await patchMark(viewingMark.id, { status, updatedAt: Date.now() })
+      const op = viewingMark.remoteMarkId
+        ? await enqueueMarkSyncOp(viewingMark.id, { type: "status", status })
         : undefined
-      const synced = await pushPinStatusToWorkspace(viewingPin, status)
+      const synced = await pushMarkStatusToWorkspace(viewingMark, status)
       if ((synced.ok || synced.skipped) && op) {
-        await removePinSyncOp(viewingPin.id, op.id)
+        await removeMarkSyncOp(viewingMark.id, op.id)
       }
       if (!synced.skipped && !synced.ok && synced.error) {
-        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
+        if (op) await markSyncFailure(viewingMark.id, synced.error, op.id)
         setSaveError(
           `Status updated locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
-      await reloadPin(viewingPin.id)
-      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      await reloadMark(viewingMark.id)
+      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
     } finally {
       setSaving(false)
     }
   }
 
   const saveEdit = async () => {
-    if (!viewingPin || saving) return
-    const title = editTitle.trim().slice(0, STORAGE_LIMITS.pinTitle)
+    if (!viewingMark || saving) return
+    const title = editTitle.trim().slice(0, STORAGE_LIMITS.markTitle)
     const openingBody = editBody.trim().slice(0, STORAGE_LIMITS.threadBody)
     if (!title || !openingBody) {
       setSaveError("Title and opening feedback are required.")
@@ -1122,10 +1122,10 @@ const CapturePanel = () => {
     setSaving(true)
     setSaveError(null)
     try {
-      const thread = viewingPin.thread.length
+      const thread = viewingMark.thread.length
         ? [
-            { ...viewingPin.thread[0], body: openingBody },
-            ...viewingPin.thread.slice(1)
+            { ...viewingMark.thread[0], body: openingBody },
+            ...viewingMark.thread.slice(1)
           ]
         : [
             {
@@ -1135,37 +1135,37 @@ const CapturePanel = () => {
               authorLabel: "You"
             }
           ]
-      await patchPin(viewingPin.id, { title, thread, updatedAt: Date.now() })
-      const op = viewingPin.remoteMarkId
-        ? await enqueuePinSyncOp(viewingPin.id, {
+      await patchMark(viewingMark.id, { title, thread, updatedAt: Date.now() })
+      const op = viewingMark.remoteMarkId
+        ? await enqueueMarkSyncOp(viewingMark.id, {
             type: "edit",
             title,
             openingBody
           })
         : undefined
-      const synced = await pushPinEditToWorkspace(viewingPin, {
+      const synced = await pushMarkEditToWorkspace(viewingMark, {
         title,
         openingBody
       })
       if ((synced.ok || synced.skipped) && op) {
-        await removePinSyncOp(viewingPin.id, op.id)
+        await removeMarkSyncOp(viewingMark.id, op.id)
       }
       if (!synced.skipped && !synced.ok && synced.error) {
-        if (op) await markPinSyncFailure(viewingPin.id, synced.error, op.id)
+        if (op) await markSyncFailure(viewingMark.id, synced.error, op.id)
         setSaveError(
           `Edit saved locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
       setEditing(false)
-      await reloadPin(viewingPin.id)
-      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      await reloadMark(viewingMark.id)
+      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
     } finally {
       setSaving(false)
     }
   }
 
-  const deletePin = async () => {
-    if (!viewingPin || saving) return
+  const deleteMark = async () => {
+    if (!viewingMark || saving) return
     if (!confirmDelete) {
       setConfirmDelete(true)
       return
@@ -1173,20 +1173,20 @@ const CapturePanel = () => {
     setSaving(true)
     setSaveError(null)
     try {
-      const removed = await removePin(viewingPin.id)
+      const removed = await removeMark(viewingMark.id)
       if (!removed) {
         setSaveError(t("extension.panel.couldNotDelete"))
         return
       }
       setUndoAction({
         kind: "deleted",
-        pin: removed,
+        mark: removed,
         message: t("extension.panel.feedbackDeleted")
       })
-      setViewingPin(null)
+      setViewingMark(null)
       setOpen(false)
       setConfirmDelete(false)
-      scheduleReloadPagePins(viewingPin.url, viewingPin.spaceId)
+      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
       window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
     } finally {
       setSaving(false)
@@ -1205,8 +1205,8 @@ const CapturePanel = () => {
           className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
           onClick={() => {
             void (undoAction.kind === "created"
-              ? removePin(undoAction.pin.id)
-              : restorePin(undoAction.pin))
+              ? removeMark(undoAction.mark.id)
+              : restoreMark(undoAction.mark))
             setUndoAction(null)
           }}>
           Undo
@@ -1342,34 +1342,34 @@ const CapturePanel = () => {
                 onSubmit={() => void handleSave()}
               />
 
-              {pagePins.filter((pin) => pin.status !== "closed").length > 0 ? (
+              {pageMarks.filter((mark) => mark.status !== "closed").length > 0 ? (
                 <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2.5">
                   <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
                     {t("extension.panel.otherOnPage", {
-                      count: pagePins.filter((pin) => pin.status !== "closed")
+                      count: pageMarks.filter((mark) => mark.status !== "closed")
                         .length
                     })}
                   </p>
                   <ul className="mt-2 space-y-1">
-                    {pagePins
-                      .filter((pin) => pin.status !== "closed")
+                    {pageMarks
+                      .filter((mark) => mark.status !== "closed")
                       .slice(0, 5)
-                      .map((pin) => (
-                        <li key={pin.id}>
+                      .map((mark) => (
+                        <li key={mark.id}>
                           <button
                             type="button"
                             className="w-full truncate rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-[11px] text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                             onClick={() => {
-                              setViewingPin(pin)
-                              setEditTitle(pin.title)
-                              setEditBody(pin.thread[0]?.body ?? "")
+                              setViewingMark(mark)
+                              setEditTitle(mark.title)
+                              setEditBody(mark.thread[0]?.body ?? "")
                               setMode("thread")
                               setCapture(null)
                               setReplyDraft("")
                               setSaveError(null)
                               setSaveWarning(null)
                             }}>
-                            {pin.title}
+                            {mark.title}
                           </button>
                         </li>
                       ))}
@@ -1431,7 +1431,7 @@ const CapturePanel = () => {
                       className={selectCls}
                       value={priority}
                       onChange={(e) =>
-                        setPriority(e.target.value as PinPriority)
+                        setPriority(e.target.value as MarkPriority)
                       }>
                       <option value="low">Low</option>
                       <option value="medium">Normal</option>
@@ -1496,14 +1496,14 @@ const CapturePanel = () => {
     )
   }
 
-  if (mode === "thread" && viewingPin) {
-    const health = computePinHealth(viewingPin)
-    const threads = viewingPin.thread
+  if (mode === "thread" && viewingMark) {
+    const health = computeMarkHealth(viewingMark)
+    const threads = viewingMark.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
     const opener = threads[0]
     const screenshotSrc =
-      viewingPin.screenshotUrl ?? viewingPin.screenshotDataUrl
+      viewingMark.screenshotUrl ?? viewingMark.screenshotDataUrl
 
     return (
       <>
@@ -1526,18 +1526,18 @@ const CapturePanel = () => {
               <div className="mt-2 flex max-w-full flex-wrap items-center gap-1.5">
                 <span
                   className={`${threadBadge} ${
-                    viewingPin.status === "closed"
+                    viewingMark.status === "closed"
                       ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
                       : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
                   }`}>
-                  {viewingPin.status === "closed" ? "Resolved" : "Open"}
+                  {viewingMark.status === "closed" ? "Resolved" : "Open"}
                 </span>
-                {viewingPin.syncState === "pending" ? (
+                {viewingMark.syncState === "pending" ? (
                   <span
                     className={`${threadBadge} bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]`}>
                     Pending
                   </span>
-                ) : viewingPin.syncState === "failed" ? (
+                ) : viewingMark.syncState === "failed" ? (
                   <span
                     className={`${threadBadge} bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]`}>
                     Sync failed
@@ -1569,7 +1569,7 @@ const CapturePanel = () => {
                     <span className={fieldLabel}>Title</span>
                     <input
                       value={editTitle}
-                      maxLength={STORAGE_LIMITS.pinTitle}
+                      maxLength={STORAGE_LIMITS.markTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       className="youin-input box-border min-h-10 w-full rounded-[var(--yi-radius-lg)] px-3 text-[13px] text-[color:var(--yi-ext-text)]"
                     />
@@ -1592,7 +1592,7 @@ const CapturePanel = () => {
                       className={btnGhost}
                       onClick={() => {
                         setEditing(false)
-                        setEditTitle(viewingPin.title)
+                        setEditTitle(viewingMark.title)
                         setEditBody(opener?.body ?? "")
                       }}>
                       Cancel
@@ -1608,7 +1608,7 @@ const CapturePanel = () => {
                 </div>
               ) : (
                 <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-quote)] px-3 py-3 text-[13px] leading-relaxed text-[color:var(--yi-ext-text-soft)] ring-1 ring-[color:var(--yi-ext-border-hairline)] [overflow-wrap:anywhere]">
-                  {opener?.body ?? viewingPin.title}
+                  {opener?.body ?? viewingMark.title}
                 </div>
               )}
               {health.health !== "attached" ? (
@@ -1616,18 +1616,18 @@ const CapturePanel = () => {
                   {health.description}
                 </p>
               ) : null}
-              {viewingPin.syncState === "failed" ? (
+              {viewingMark.syncState === "failed" ? (
                 <div className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2">
-                  {viewingPin.syncError ? (
+                  {viewingMark.syncError ? (
                     <p className="text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]">
-                      {viewingPin.syncError}
+                      {viewingMark.syncError}
                     </p>
                   ) : null}
                   <button
                     type="button"
                     disabled={saving}
                     className="mt-2 inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
-                    onClick={() => void retryPinSync()}>
+                    onClick={() => void retryMarkSync()}>
                     {saving
                       ? t("extension.panel.syncing")
                       : t("extension.panel.retrySync")}
@@ -1650,7 +1650,7 @@ const CapturePanel = () => {
                 </div>
               ) : (
                 <p className="mt-2 text-[11px] text-[color:var(--yi-ext-text-dim)]">
-                  {formatShortDate(viewingPin.createdAt)}
+                  {formatShortDate(viewingMark.createdAt)}
                 </p>
               )}
 
@@ -1688,14 +1688,14 @@ const CapturePanel = () => {
                 </div>
               ) : null}
 
-              {viewingPin.captureKind !== "region" ? (
+              {viewingMark.captureKind !== "region" ? (
                 <div className="mt-4">
                   <DomContextPreview
-                    snapshot={viewingPin.domSnapshot}
-                    selector={viewingPin.selector}
-                    strategy={viewingPin.strategy}
-                    bbox={viewingPin.bbox}
-                    outerHTML={viewingPin.outerHTMLPreview}
+                    snapshot={viewingMark.domSnapshot}
+                    selector={viewingMark.selector}
+                    strategy={viewingMark.strategy}
+                    bbox={viewingMark.bbox}
+                    outerHTML={viewingMark.outerHTMLPreview}
                   />
                 </div>
               ) : null}
@@ -1748,16 +1748,16 @@ const CapturePanel = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    disabled={saving || viewingPin.status === "open"}
+                    disabled={saving || viewingMark.status === "open"}
                     className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-                    onClick={() => void setPinStatus("open" as PinStatus)}>
+                    onClick={() => void setMarkStatus("open" as MarkStatus)}>
                     Open
                   </button>
                   <button
                     type="button"
-                    disabled={saving || viewingPin.status === "closed"}
+                    disabled={saving || viewingMark.status === "closed"}
                     className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-                    onClick={() => void setPinStatus("closed" as PinStatus)}>
+                    onClick={() => void setMarkStatus("closed" as MarkStatus)}>
                     Resolved
                   </button>
                 </div>
@@ -1790,7 +1790,7 @@ const CapturePanel = () => {
                         type="button"
                         disabled={saving}
                         className="flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-mark)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-50"
-                        onClick={() => void deletePin()}>
+                        onClick={() => void deleteMark()}>
                         {t("extension.panel.confirmDelete")}
                       </button>
                     </div>
@@ -1800,7 +1800,7 @@ const CapturePanel = () => {
                     type="button"
                     disabled={saving}
                     className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-mark-soft)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-mark)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
-                    onClick={() => void deletePin()}>
+                    onClick={() => void deleteMark()}>
                     {t("extension.panel.deleteFeedback")}
                   </button>
                 )}

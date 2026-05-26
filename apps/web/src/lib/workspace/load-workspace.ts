@@ -19,8 +19,8 @@ import {
 import type {
   CommentType,
   MarkEventType,
-  PinComment,
-  PinItem,
+  MarkComment,
+  MarkItem,
   SpacePriority,
   TeamInvite,
   TeamMember,
@@ -34,7 +34,7 @@ import type {
 
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
+import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
 
 function toIso(value: Date | string): string {
@@ -318,7 +318,7 @@ export async function loadWorkspaceAggregate(
     markScreenshotPaths,
   );
 
-  const pins: PinItem[] = marksRows.map((mark) => {
+  const marksOut: MarkItem[] = marksRows.map((mark) => {
     const rawScreenshotUrl = mark.screenshotUrl;
     const screenshotUrl = isStoragePath(rawScreenshotUrl)
       ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
@@ -360,7 +360,7 @@ export async function loadWorkspaceAggregate(
       spaceId: mark.spaceId,
       spaceCode,
       seq,
-      displayKey: formatPinDisplayKey(spaceCode, seq),
+      displayKey: formatMarkDisplayKey(spaceCode, seq),
       title: mark.title,
       page: mark.page,
       description: mark.description ?? "",
@@ -380,14 +380,14 @@ export async function loadWorkspaceAggregate(
   }
   const signedByPath = await resolveImageUrls(supabase, storagePaths);
 
-  const comments: PinComment[] = commentsRows.map((comment) => {
+  const comments: MarkComment[] = commentsRows.map((comment) => {
     const raw = comment.imageUrl;
     const imageUrl = isStoragePath(raw)
       ? (signedByPath.get(raw) ?? raw ?? undefined)
       : (raw ?? undefined);
     return {
       id: comment.id,
-      pinId: comment.markId,
+      markId: comment.markId,
       authorId: comment.authorUserId,
       createdAt: toIso(comment.createdAt),
       type: (comment.type === "image" ? "image" : "text") as CommentType,
@@ -398,7 +398,7 @@ export async function loadWorkspaceAggregate(
 
   const markEventsOut = eventsRows.map((event) => ({
     id: event.id,
-    pinId: event.markId,
+    markId: event.markId,
     actorId: event.actorUserId,
     type: event.type as MarkEventType,
     createdAt: toIso(event.createdAt),
@@ -415,7 +415,7 @@ export async function loadWorkspaceAggregate(
     labels,
     members,
     invites,
-    pins,
+    marks: marksOut,
     comments,
     markEvents: markEventsOut,
   };

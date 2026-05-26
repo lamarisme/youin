@@ -1,4 +1,4 @@
-// One-shot migration of locally-stored spaces and pins into the user's
+// One-shot migration of locally-stored spaces and marks into the user's
 // workspace after they sign in for the first time. Runs from the popup so
 // errors surface to the user; idempotent via the local migration flag.
 
@@ -7,11 +7,11 @@ import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
-  getPins,
+  getMarks,
   getSpaces,
-  savePins,
+  saveMarks,
   type LocalThreadMessage,
-  type Pin,
+  type Mark,
   type Space
 } from "./storage"
 import { getSupabase } from "./supabase"
@@ -22,7 +22,7 @@ export interface MigrationResult {
   ok: boolean
   spacesCreated: number
   spacesMatched: number
-  pinsImported: number
+  marksImported: number
   commentsImported: number
   error?: string
 }
@@ -104,10 +104,10 @@ async function markMigrationDone(userId: string): Promise<void> {
 }
 
 /**
- * Migrate local spaces+pins into the signed-in user's workspace.
+ * Migrate local spaces+marks into the signed-in user's workspace.
  *
  * Spaces are matched by exact name (case-insensitive); missing ones are
- * created. Pins import as marks under the resolved space. Thread messages
+ * created. Marks import as marks under the resolved space. Thread messages
  * become mark_comments authored by the signed-in user.
  *
  * Re-running for the same user is a no-op once the flag is set.
@@ -120,7 +120,7 @@ export async function migrateLocalDataToWorkspace(
       ok: true,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0
     }
   }
@@ -138,7 +138,7 @@ export async function migrateLocalDataToWorkspace(
       ok: false,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0,
       error: memberErr.message
     }
@@ -148,7 +148,7 @@ export async function migrateLocalDataToWorkspace(
       ok: false,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0,
       error:
         "No workspace found for this user. Open the web app once to set one up."
@@ -161,20 +161,20 @@ export async function migrateLocalDataToWorkspace(
       ok: false,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0,
       error: project.error ?? "Failed to resolve project."
     }
   }
 
-  const [localSpaces, localPins] = await Promise.all([getSpaces(), getPins()])
-  if (!localPins.length) {
+  const [localSpaces, localMarks] = await Promise.all([getSpaces(), getMarks()])
+  if (!localMarks.length) {
     await markMigrationDone(userId)
     return {
       ok: true,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0
     }
   }
@@ -188,7 +188,7 @@ export async function migrateLocalDataToWorkspace(
       ok: false,
       spacesCreated: 0,
       spacesMatched: 0,
-      pinsImported: 0,
+      marksImported: 0,
       commentsImported: 0,
       error: spErr.message
     }
@@ -202,10 +202,10 @@ export async function migrateLocalDataToWorkspace(
     remoteByName.set(String(r.name).trim().toLowerCase(), r.id as string)
   }
 
-  // Resolve a remote space id for every distinct local space referenced by pins.
+  // Resolve a remote space id for every distinct local space referenced by marks.
   const localSpaceById = new Map<string, Space>()
   for (const s of localSpaces) localSpaceById.set(s.id, s)
-  const usedLocalSpaceIds = new Set(localPins.map((p) => p.spaceId))
+  const usedLocalSpaceIds = new Set(localMarks.map((p) => p.spaceId))
 
   const localToRemoteSpaceId = new Map<string, string>()
   let spacesCreated = 0
@@ -239,7 +239,7 @@ export async function migrateLocalDataToWorkspace(
         ok: false,
         spacesCreated,
         spacesMatched,
-        pinsImported: 0,
+        marksImported: 0,
         commentsImported: 0,
         error: createErr?.message ?? "Failed to create space."
       }
@@ -249,79 +249,79 @@ export async function migrateLocalDataToWorkspace(
     spacesCreated++
   }
 
-  let pinsImported = 0
+  let marksImported = 0
   let commentsImported = 0
 
-  /** Local chrome pin id → row written to Postgres */
+  /** Local chrome mark id → row written to Postgres */
   const linked: Array<{
-    pinId: string
+    markId: string
     spaceId: string
     remoteMarkId: string
     screenshotUploaded: boolean
   }> = []
 
-  for (const pin of localPins) {
-    const remoteSpaceId = localToRemoteSpaceId.get(pin.spaceId)
+  for (const localMark of localMarks) {
+    const remoteSpaceId = localToRemoteSpaceId.get(localMark.spaceId)
     if (!remoteSpaceId) continue
 
-    const description = buildMarkDescription(pin)
-    const { data: mark, error: markErr } = await supabase
+    const description = buildMarkDescription(localMark)
+    const { data: createdMark, error: markErr } = await supabase
       .from("marks")
       .insert({
         workspace_id: workspaceId,
         space_id: remoteSpaceId,
-        title: pin.title.trim() || "Untitled mark",
+        title: localMark.title.trim() || "Untitled mark",
         description,
-        page: pin.url,
-        status: normalizeMarkStatus(pin.status),
-        priority: normalizeMarkPriority(pin.priority),
+        page: localMark.url,
+        status: normalizeMarkStatus(localMark.status),
+        priority: normalizeMarkPriority(localMark.priority),
         pinned: false,
         created_by_user_id: userId,
-        selector: pin.selector,
-        viewport: `${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`,
-        dom_snapshot: pin.domSnapshot ?? null,
-        captured_at: new Date(pin.createdAt).toISOString()
+        selector: localMark.selector,
+        viewport: `${localMark.viewport.width}x${localMark.viewport.height}@${localMark.viewport.dpr}`,
+        dom_snapshot: localMark.domSnapshot ?? null,
+        captured_at: new Date(localMark.createdAt).toISOString()
       })
       .select("id")
       .single()
-    if (markErr || !mark) {
+    if (markErr || !createdMark) {
       return {
         ok: false,
         spacesCreated,
         spacesMatched,
-        pinsImported,
+        marksImported,
         commentsImported,
-        error: markErr?.message ?? "Failed to import a pin."
+        error: markErr?.message ?? "Failed to import a mark."
       }
     }
-    pinsImported++
+    marksImported++
     linked.push({
-      pinId: pin.id,
+      markId: localMark.id,
       spaceId: remoteSpaceId,
-      remoteMarkId: mark.id as string,
+      remoteMarkId: createdMark.id as string,
       screenshotUploaded: false
     })
 
-    if (pin.screenshotDataUrl) {
+    if (localMark.screenshotDataUrl) {
       const upload = await uploadMarkScreenshot(
         workspaceId,
-        mark.id as string,
-        pin.screenshotDataUrl
+        createdMark.id as string,
+        localMark.screenshotDataUrl
       )
       if ("path" in upload) {
         await supabase
           .from("marks")
           .update({ screenshot_url: upload.path })
-          .eq("id", mark.id as string)
+          .eq("id", createdMark.id as string)
           .eq("workspace_id", workspaceId)
         linked[linked.length - 1].screenshotUploaded = true
       }
     }
 
-    const messages: LocalThreadMessage[] = pin.thread ?? []
+    const messages: LocalThreadMessage[] = localMark.thread ?? []
     if (messages.length) {
       const rows = messages.map((m) => ({
-        mark_id: mark.id as string,
+        mark_id: createdMark.id as string,
         author_user_id: userId,
         type: "text" as const,
         body: m.body
@@ -332,7 +332,7 @@ export async function migrateLocalDataToWorkspace(
           ok: false,
           spacesCreated,
           spacesMatched,
-          pinsImported,
+          marksImported,
           commentsImported,
           error: cErr.message
         }
@@ -342,8 +342,8 @@ export async function migrateLocalDataToWorkspace(
   }
 
   if (linked.length) {
-    const current = await getPins()
-    const byId = new Map(linked.map((l) => [l.pinId, l]))
+    const current = await getMarks()
+    const byId = new Map(linked.map((l) => [l.markId, l]))
     const next = current.map((p) => {
       const upd = byId.get(p.id)
       if (!upd) return p
@@ -356,7 +356,7 @@ export async function migrateLocalDataToWorkspace(
           : p.screenshotDataUrl
       }
     })
-    await savePins(next)
+    await saveMarks(next)
   }
 
   await markMigrationDone(userId)
@@ -364,7 +364,7 @@ export async function migrateLocalDataToWorkspace(
     ok: true,
     spacesCreated,
     spacesMatched,
-    pinsImported,
+    marksImported,
     commentsImported
   }
 }

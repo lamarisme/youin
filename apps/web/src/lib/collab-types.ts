@@ -1,8 +1,11 @@
-import type { MarkPriority, MarkStatus } from "@youin/domain";
+import type {
+  MarkPriority as DomainMarkPriority,
+  MarkStatus as DomainMarkStatus,
+} from "@youin/domain";
 
-export type PinStatus = MarkStatus;
-export type PinPriority = MarkPriority;
-export type SpacePriority = PinPriority;
+export type MarkStatus = DomainMarkStatus;
+export type MarkPriority = DomainMarkPriority;
+export type SpacePriority = MarkPriority;
 export type MarkEventType =
   | "created"
   | "status_changed"
@@ -37,9 +40,9 @@ export interface TeamInvite {
   invitedBy: string;
 }
 
-export interface PinComment {
+export interface MarkComment {
   id: string;
-  pinId: string;
+  markId: string;
   authorId: string;
   createdAt: string;
   type: CommentType;
@@ -49,7 +52,7 @@ export interface PinComment {
 
 export interface MarkEvent {
   id: string;
-  pinId: string;
+  markId: string;
   actorId: string;
   type: MarkEventType;
   createdAt: string;
@@ -58,7 +61,7 @@ export interface MarkEvent {
   metadata?: string;
 }
 
-export interface PinCapture {
+export interface MarkCapture {
   selector?: string;
   viewport?: string;
   browser?: string;
@@ -68,7 +71,7 @@ export interface PinCapture {
   capturedAt?: string;
 }
 
-export interface PinItem {
+export interface MarkItem {
   id: string;
   spaceId: string;
   /** Uppercase per-space key; with {@link seq} forms {@link displayKey}. */
@@ -79,12 +82,12 @@ export interface PinItem {
   title: string;
   page: string;
   description: string;
-  status: PinStatus;
-  priority: PinPriority;
+  status: MarkStatus;
+  priority: MarkPriority;
   pinned: boolean;
   labelIds: string[];
   assigneeId?: string;
-  capture?: PinCapture;
+  capture?: MarkCapture;
   createdAt: string;
 }
 
@@ -121,8 +124,8 @@ export interface Workspace {
   labels: WorkspaceLabel[];
   members: TeamMember[];
   invites: TeamInvite[];
-  pins: PinItem[];
-  comments: PinComment[];
+  marks: MarkItem[];
+  comments: MarkComment[];
   markEvents: MarkEvent[];
 }
 

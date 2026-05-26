@@ -26,30 +26,30 @@ export function useSpaceStats(workspace: Workspace): Map<string, SpaceStats> {
         labelBreakdown: new Map(),
       });
     }
-    for (const pin of workspace.pins) {
-      const stats = map.get(pin.spaceId);
+    for (const mark of workspace.marks) {
+      const stats = map.get(mark.spaceId);
       if (!stats) continue;
       stats.total += 1;
-      if (pin.status === "open") stats.open += 1;
+      if (mark.status === "open") stats.open += 1;
       else stats.closed += 1;
-      for (const lid of pin.labelIds) {
+      for (const lid of mark.labelIds) {
         stats.labelBreakdown.set(lid, (stats.labelBreakdown.get(lid) ?? 0) + 1);
       }
     }
     for (const comment of workspace.comments) {
-      const pin = workspace.pins.find((p) => p.id === comment.pinId);
-      if (!pin) continue;
-      const stats = map.get(pin.spaceId);
+      const mark = workspace.marks.find((p) => p.id === comment.markId);
+      if (!mark) continue;
+      const stats = map.get(mark.spaceId);
       if (!stats) continue;
       stats.comments += 1;
       if (!stats.lastActivity || comment.createdAt > stats.lastActivity) {
         stats.lastActivity = comment.createdAt;
       }
     }
-    for (const pin of workspace.pins) {
-      const stats = map.get(pin.spaceId);
+    for (const mark of workspace.marks) {
+      const stats = map.get(mark.spaceId);
       if (!stats) continue;
-      const cap = pin.capture?.capturedAt;
+      const cap = mark.capture?.capturedAt;
       if (cap && (!stats.lastActivity || cap > stats.lastActivity)) {
         stats.lastActivity = cap;
       }

@@ -1,5 +1,5 @@
 /**
- * Mirrors apps/web mark-page-url normalization so extension pins match
+ * Mirrors apps/web mark-page-url normalization so extension marks match
  * dashboard URLs without depending on the web package.
  */
 export function normalizePageUrlForMatch(value: string): string {

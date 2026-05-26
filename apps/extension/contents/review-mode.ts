@@ -20,14 +20,14 @@ import { generateSelector } from "../lib/selector"
 import {
   getActiveProjectId,
   getActiveSpaceId,
-  getPinsForPage,
+  getMarksForPage,
   getProjects,
   getSpaces,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
   KEY_WIDGET_SETTINGS
@@ -96,8 +96,8 @@ async function refreshToolbarLabels() {
         ? `${project.name} / ${space.name}`
         : space?.name || project?.name || "—"
     toolbarNsEl.textContent = ns
-    const pins = await getPinsForPage(spaceId, location.href)
-    const open = pins.filter((p) => p.status !== "closed").length
+    const marks = await getMarksForPage(spaceId, location.href)
+    const open = marks.filter((p) => p.status !== "closed").length
     toolbarCountEl.textContent = `${open} open`
   } catch {
     toolbarNsEl.textContent = "—"
@@ -111,7 +111,7 @@ function subscribeToolbarRefresh() {
   >[0] = (changes, area) => {
     if (area !== "local") return
     if (
-      changes[KEY_PINS] ||
+      changes[KEY_MARKS] ||
       changes[KEY_PROJECTS] ||
       changes[KEY_SPACES] ||
       changes[KEY_ACTIVE_PROJECT] ||

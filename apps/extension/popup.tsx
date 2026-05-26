@@ -20,8 +20,8 @@ import {
   addSpace,
   getActiveProjectId,
   getActiveSpaceId,
-  getPins,
-  getPinsForPage,
+  getMarks,
+  getMarksForPage,
   getProjects,
   getSpaces,
   getWidgetSettings,
@@ -29,7 +29,7 @@ import {
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
-  KEY_PINS,
+  KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
   setActiveProjectId,
@@ -43,7 +43,7 @@ import {
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
 import {
   createRemoteWorkspaceSpace,
-  syncPendingPinsToWorkspace,
+  syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
 } from "./lib/sync"
@@ -194,9 +194,9 @@ function IndexPopup() {
       setCurrentHost("")
     }
     const sid = await getActiveSpaceId()
-    const pins = await getPinsForPage(sid, url)
-    setOpenCount(pins.filter((p) => p.status !== "closed").length)
-    setResolvedCount(pins.filter((p) => p.status === "closed").length)
+    const marks = await getMarksForPage(sid, url)
+    setOpenCount(marks.filter((p) => p.status !== "closed").length)
+    setResolvedCount(marks.filter((p) => p.status === "closed").length)
   }, [])
 
   const refreshSpaces = useCallback(async () => {
@@ -235,16 +235,16 @@ function IndexPopup() {
   }, [])
 
   const refreshSyncSummary = useCallback(async () => {
-    const pins = await getPins()
+    const marks = await getMarks()
     setPendingSyncCount(
-      pins.filter(
-        (pin) =>
-          pin.syncState === "pending" ||
-          Boolean(pin.screenshotDataUrl) ||
-          Boolean(pin.pendingSyncOps?.length)
+      marks.filter(
+        (mark) =>
+          mark.syncState === "pending" ||
+          Boolean(mark.screenshotDataUrl) ||
+          Boolean(mark.pendingSyncOps?.length)
       ).length
     )
-    setFailedSyncCount(pins.filter((pin) => pin.syncState === "failed").length)
+    setFailedSyncCount(marks.filter((mark) => mark.syncState === "failed").length)
   }, [])
 
   useEffect(() => {
@@ -282,7 +282,7 @@ function IndexPopup() {
         changes[KEY_ACTIVE_SPACE]
       )
         void refreshSpaces()
-      if (changes[KEY_PINS] || changes[KEY_ACTIVE_SPACE]) {
+      if (changes[KEY_MARKS] || changes[KEY_ACTIVE_SPACE]) {
         void refreshCounts()
         void refreshSyncSummary()
       }
@@ -424,7 +424,7 @@ function IndexPopup() {
         const sessionNow = await getSession()
         if (sessionNow?.user?.id) {
           await syncWorkspaceFromRemote(sessionNow.user.id)
-          await syncPendingPinsToWorkspace()
+          await syncPendingMarksToWorkspace()
           await syncWorkspaceMarksFromRemote()
           setSyncMsg("Sync complete.")
         }
@@ -1192,7 +1192,7 @@ function SignedInBlock({
     setMigrationStatus(null)
     try {
       const r = await migrateLocalDataToWorkspace(userId)
-      if (r.ok) await syncPendingPinsToWorkspace()
+      if (r.ok) await syncPendingMarksToWorkspace()
       setMigrationStatus(r)
     } catch (e) {
       setMigrationStatus({
@@ -1213,7 +1213,7 @@ function SignedInBlock({
       setSyncingDb(true)
       try {
         await syncWorkspaceFromRemote(userId)
-        await syncPendingPinsToWorkspace()
+        await syncPendingMarksToWorkspace()
         await syncWorkspaceMarksFromRemote()
       } finally {
         if (!cancelled) setSyncingDb(false)
@@ -1223,7 +1223,7 @@ function SignedInBlock({
       setMigrating(true)
       try {
         const r = await migrateLocalDataToWorkspace(userId)
-        if (r.ok) await syncPendingPinsToWorkspace()
+        if (r.ok) await syncPendingMarksToWorkspace()
         if (!cancelled) setMigrationStatus(r)
       } catch (e) {
         if (!cancelled)
@@ -1303,7 +1303,7 @@ function MigrationBanner({
     )
   }
   const r = status as MigrationResult
-  if (r.pinsImported === 0 && r.spacesCreated === 0 && r.spacesMatched === 0) {
+  if (r.marksImported === 0 && r.spacesCreated === 0 && r.spacesMatched === 0) {
     return null
   }
   const spacesPart =
@@ -1315,8 +1315,8 @@ function MigrationBanner({
   return (
     <div className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-low)] px-2.5 py-2 text-[10px] leading-snug text-[color:var(--yi-ext-text-muted)]">
       {t("extension.popup.migrationSuccess", {
-        count: r.pinsImported,
-        plural: r.pinsImported === 1 ? "" : "s",
+        count: r.marksImported,
+        plural: r.marksImported === 1 ? "" : "s",
         spaces: spacesPart
       })}
       <button

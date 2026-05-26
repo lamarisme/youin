@@ -12,7 +12,7 @@ import {
 } from "./session";
 
 export async function addMarkCommentsAction(
-  pinId: string,
+  markId: string,
   items: Array<{ type: "text" | "image"; body?: string; imageUrl?: string }>,
 ): Promise<void> {
   if (!items.length) return;
@@ -20,11 +20,11 @@ export async function addMarkCommentsAction(
   const [mark] = await ctx.db
     .select({ id: marks.id })
     .from(marks)
-    .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+    .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
     .limit(1);
   if (!mark) throw new Error("Mark not found.");
   const inserts = items.map((item) => ({
-    markId: pinId,
+    markId: markId,
     authorUserId: ctx.userId,
     type: item.type,
     body:

@@ -17,7 +17,7 @@ import { KeyboardHint } from "@/components/ui/kbd";
 import { toast } from "sonner";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
-import type { PinPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
+import type { MarkPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   isValidMarkPageUrl,
@@ -34,7 +34,7 @@ interface NewMarkFormState {
   page: string;
   description: string;
   labelIds: string[];
-  priority: PinPriority;
+  priority: MarkPriority;
   assigneeId: string;
   descriptionEditorKey: number;
 }
@@ -44,7 +44,7 @@ type Action =
   | { type: "set_page"; value: string }
   | { type: "set_description"; value: string }
   | { type: "set_label_ids"; value: string[] }
-  | { type: "set_priority"; value: PinPriority }
+  | { type: "set_priority"; value: MarkPriority }
   | { type: "set_assignee"; value: string }
   | { type: "reset"; assigneeDefault: string };
 
@@ -87,7 +87,7 @@ interface NewMarkFormProps {
   members: TeamMember[];
   /** Default assignee, usually the current user's id. Pass empty string to start unassigned. */
   defaultAssigneeId?: string;
-  onSubmit: (input: { title: string; page: string; description: string; labelIds: string[]; priority: PinPriority; assigneeId: string | null }) => void | Promise<void>;
+  onSubmit: (input: { title: string; page: string; description: string; labelIds: string[]; priority: MarkPriority; assigneeId: string | null }) => void | Promise<void>;
   onCancel?: () => void;
   /** When `false`, clears fields (e.g. dialog closed). Omit if not controlled by a dialog. */
   open?: boolean;
@@ -245,7 +245,7 @@ export function NewMarkForm({
       </div>
       <div className="space-y-1.5">
         <Label className="block text-ui-xs font-medium text-ink-2">Priority</Label>
-        <FilterSelect<PinPriority>
+        <FilterSelect<MarkPriority>
           value={state.priority}
           onValueChange={(v) => dispatch({ type: "set_priority", value: v })}
           options={NEW_MARK_PRIORITY_OPTIONS}

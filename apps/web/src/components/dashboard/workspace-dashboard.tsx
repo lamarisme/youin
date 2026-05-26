@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { findPinByMarkRouteParam } from "@/lib/workspace/mark-display-id";
+import { findMarkByRouteParam } from "@/lib/workspace/mark-display-id";
 import { dashboardHref } from "@/lib/workspace/routes";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
@@ -12,18 +12,18 @@ import { TriageView } from "./triage-view";
 import { PageContainer } from "@/components/page-container";
 
 export function WorkspaceDashboard({ markParam = null }: { markParam?: string | null }) {
-  const pins = useWorkspaceData((s) => s.workspace.pins);
+  const marks = useWorkspaceData((s) => s.workspace.marks);
   const searchParams = useSearchParams();
 
-  const selectedPin = useMemo(() => {
+  const selectedMark = useMemo(() => {
     if (!markParam) return null;
-    return findPinByMarkRouteParam(markParam, pins) ?? null;
-  }, [markParam, pins]);
+    return findMarkByRouteParam(markParam, marks) ?? null;
+  }, [markParam, marks]);
 
   return (
     <PageContainer>
-      {selectedPin ? (
-        <MarkDetailView pin={selectedPin} backHref={dashboardHref(searchParams)} />
+      {selectedMark ? (
+        <MarkDetailView mark={selectedMark} backHref={dashboardHref(searchParams)} />
       ) : (
         <TriageView />
       )}

@@ -6,8 +6,8 @@ import {
   isMarkPriority,
   normalizeMarkPriority,
   normalizeMarkStatus,
-  type MarkPriority,
-  type MarkStatus
+  type MarkPriority as DomainMarkPriority,
+  type MarkStatus as DomainMarkStatus
 } from "@youin/domain"
 
 import type { ElementDomSnapshot } from "./dom-snapshot"
@@ -17,7 +17,8 @@ export const KEY_SPACES = "youin:spaces"
 export const KEY_PROJECTS = "youin:projects"
 export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
 export const KEY_ACTIVE_SPACE = "youin:active-space-id"
-export const KEY_PINS = "youin:pins"
+// Backward compatibility: existing extension installs persist marks under the old pins key.
+export const KEY_MARKS = "youin:pins"
 export const KEY_WIDGET_SETTINGS = "youin:widget-settings"
 
 export type WidgetCorner =
@@ -68,15 +69,15 @@ export interface LocalThreadMessage {
   authorLabel: string
 }
 
-export type PinStatus = MarkStatus
-export type PinPriority = MarkPriority
-export type PinSyncState = "synced" | "pending" | "failed"
+export type MarkStatus = DomainMarkStatus
+export type MarkPriority = DomainMarkPriority
+export type MarkSyncState = "synced" | "pending" | "failed"
 
-export type PinSyncOperation =
+export type MarkSyncOperation =
   | {
       id: string
       type: "status"
-      status: PinStatus
+      status: MarkStatus
       createdAt: number
       attempts: number
       lastError?: string
@@ -99,7 +100,7 @@ export type PinSyncOperation =
       lastError?: string
     }
 
-export interface Pin {
+export interface Mark {
   id: string
   spaceId: string
   /** Distinguishes attached DOM marks from freeform screenshot rectangles. */
@@ -118,8 +119,8 @@ export interface Pin {
   viewport: { width: number; height: number; dpr: number }
   title: string
   thread: LocalThreadMessage[]
-  status: PinStatus
-  priority: PinPriority
+  status: MarkStatus
+  priority: MarkPriority
   createdAt: number
   updatedAt: number
   outerHTMLPreview: string
@@ -130,22 +131,22 @@ export interface Pin {
   /** Signed or external image URL for the uploaded mark screenshot. */
   screenshotUrl?: string
   /** Local sync health for the popup and in-page panel. */
-  syncState?: PinSyncState
+  syncState?: MarkSyncState
   syncError?: string
-  pendingSyncOps?: PinSyncOperation[]
+  pendingSyncOps?: MarkSyncOperation[]
   /** Last remote mark update applied locally, in epoch milliseconds. */
   remoteUpdatedAt?: number
   /** Local-only hide used until remote delete exists. */
   localHiddenAt?: number
-  /** @deprecated Prefer thread; migrated on read in {@link getPins}. */
+  /** @deprecated Prefer thread; migrated on read in {@link getMarks}. */
   comment?: string
 }
 
-function isStrategy(v: unknown): v is Pin["strategy"] {
+function isStrategy(v: unknown): v is Mark["strategy"] {
   return v === "test-id" || v === "id" || v === "aria" || v === "path"
 }
 
-function isPinPriority(v: unknown): v is PinPriority {
+function isStoredMarkPriority(v: unknown): v is MarkPriority {
   return isMarkPriority(v)
 }
 
@@ -169,10 +170,10 @@ const DEFAULT_SPACES: Space[] = [
   }
 ]
 
-/** Client-side caps; enforced again on persist in {@link addPin}. */
+/** Client-side caps; enforced again on persist in {@link addMark}. */
 export const STORAGE_LIMITS = {
-  pinTitle: 280,
-  pinComment: 4000,
+  markTitle: 280,
+  markComment: 4000,
   threadBody: 4000,
   projectName: 120,
   projectDescription: 240,
@@ -197,7 +198,7 @@ function makeSyncOpId(): string {
   return `op_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
-function isPinSyncState(v: unknown): v is PinSyncState {
+function isMarkSyncState(v: unknown): v is MarkSyncState {
   return v === "synced" || v === "pending" || v === "failed"
 }
 
@@ -224,9 +225,9 @@ function normalizeDisabledHosts(value: unknown): string[] {
   ).slice(0, 100)
 }
 
-function normalizeSyncOps(value: unknown): PinSyncOperation[] {
+function normalizeSyncOps(value: unknown): MarkSyncOperation[] {
   if (!Array.isArray(value)) return []
-  const out: PinSyncOperation[] = []
+  const out: MarkSyncOperation[] = []
   for (const item of value.slice(0, 50)) {
     if (!item || typeof item !== "object") continue
     const row = item as Record<string, unknown>
@@ -255,7 +256,7 @@ function normalizeSyncOps(value: unknown): PinSyncOperation[] {
     } else if (row.type === "edit") {
       const title =
         typeof row.title === "string"
-          ? row.title.trim().slice(0, STORAGE_LIMITS.pinTitle)
+          ? row.title.trim().slice(0, STORAGE_LIMITS.markTitle)
           : ""
       const openingBody =
         typeof row.openingBody === "string"
@@ -326,7 +327,7 @@ function normalizeDomSnapshot(value: unknown): ElementDomSnapshot | undefined {
   }
 }
 
-function legacyPinStableId(
+function legacyMarkStableId(
   p: Record<string, unknown>,
   createdAt: number
 ): string {
@@ -339,9 +340,9 @@ function legacyPinStableId(
   return `mig_${(h >>> 0).toString(36)}`
 }
 
-function migrateRawPin(raw: unknown): Pin {
+function migrateRawMark(raw: unknown): Mark {
   if (!raw || typeof raw !== "object") {
-    throw new Error("Invalid pin record")
+    throw new Error("Invalid mark record")
   }
   const p = raw as Record<string, unknown>
   const createdAt = typeof p.createdAt === "number" ? p.createdAt : Date.now()
@@ -374,7 +375,7 @@ function migrateRawPin(raw: unknown): Pin {
   }
   const title =
     typeof p.title === "string" && p.title.trim()
-      ? p.title.trim().slice(0, STORAGE_LIMITS.pinTitle)
+      ? p.title.trim().slice(0, STORAGE_LIMITS.markTitle)
       : legacyComment.trim()
         ? legacyComment.trim().slice(0, 120)
         : "Untitled mark"
@@ -390,10 +391,10 @@ function migrateRawPin(raw: unknown): Pin {
       : undefined
   const statusRaw = (p as { status?: unknown }).status
   const priorityRaw = (p as { priority?: unknown }).priority
-  const status: PinStatus = normalizeMarkStatus(
+  const status: MarkStatus = normalizeMarkStatus(
     typeof statusRaw === "string" ? statusRaw : undefined
   )
-  const priority: PinPriority = isPinPriority(priorityRaw)
+  const priority: MarkPriority = isStoredMarkPriority(priorityRaw)
     ? priorityRaw
     : normalizeMarkPriority(undefined)
   const screenshotDataUrl =
@@ -404,7 +405,7 @@ function migrateRawPin(raw: unknown): Pin {
       : undefined
   const domSnapshot = normalizeDomSnapshot(p.domSnapshot)
   const pendingSyncOps = normalizeSyncOps(p.pendingSyncOps)
-  const syncState = isPinSyncState(p.syncState)
+  const syncState = isMarkSyncState(p.syncState)
     ? p.syncState
     : pendingSyncOps.length || screenshotDataUrl || !remoteMarkId
       ? "pending"
@@ -414,11 +415,11 @@ function migrateRawPin(raw: unknown): Pin {
       ? p.syncError.slice(0, 300)
       : undefined
 
-  const base: Omit<Pin, "remoteMarkId"> & { remoteMarkId?: string } = {
+  const base: Omit<Mark, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
       typeof p.id === "string" && p.id.length > 0
         ? p.id
-        : legacyPinStableId(p, createdAt),
+        : legacyMarkStableId(p, createdAt),
     spaceId: String(p.spaceId ?? ""),
     captureKind: p.captureKind === "region" ? "region" : "element",
     url,
@@ -432,11 +433,11 @@ function migrateRawPin(raw: unknown): Pin {
     strategy: isStrategy(p.strategy) ? p.strategy : "path",
     bbox:
       p.bbox && typeof p.bbox === "object"
-        ? (p.bbox as Pin["bbox"])
+        ? (p.bbox as Mark["bbox"])
         : { x: 0, y: 0, width: 0, height: 0 },
     viewport:
       p.viewport && typeof p.viewport === "object"
-        ? (p.viewport as Pin["viewport"])
+        ? (p.viewport as Mark["viewport"])
         : { width: 0, height: 0, dpr: 1 },
     title,
     thread,
@@ -644,12 +645,12 @@ export function isHostDisabled(
   )
 }
 
-export async function getPins(): Promise<Pin[]> {
-  const stored = await read<unknown[]>(KEY_PINS, [])
-  const out: Pin[] = []
+export async function getMarks(): Promise<Mark[]> {
+  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const out: Mark[] = []
   for (const row of stored) {
     try {
-      out.push(migrateRawPin(row))
+      out.push(migrateRawMark(row))
     } catch {
       continue
     }
@@ -657,59 +658,59 @@ export async function getPins(): Promise<Pin[]> {
   return out
 }
 
-export async function addPin(pin: Pin): Promise<boolean> {
-  const result = await addPinWithFallback(pin)
+export async function addMark(mark: Mark): Promise<boolean> {
+  const result = await addMarkWithFallback(mark)
   return result.ok
 }
 
-export interface AddPinResult {
+export interface AddMarkResult {
   ok: boolean
-  pin?: Pin
+  mark?: Mark
   warning?: string
 }
 
-function sanitizePinForStorage(pin: Pin): Pin {
+function sanitizeMarkForStorage(mark: Mark): Mark {
   const screenshotDataUrl =
-    pin.screenshotDataUrl &&
-    pin.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
-      ? pin.screenshotDataUrl
+    mark.screenshotDataUrl &&
+    mark.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
+      ? mark.screenshotDataUrl
       : undefined
   return {
-    ...pin,
-    url: normalizePageUrlForMatch(pin.url) || pin.url,
-    pageTitle: pin.pageTitle?.slice(0, 280),
-    title: pin.title.slice(0, STORAGE_LIMITS.pinTitle),
-    status: normalizeMarkStatus(pin.status),
-    priority: normalizeMarkPriority(pin.priority),
-    thread: pin.thread.map((m) => ({
+    ...mark,
+    url: normalizePageUrlForMatch(mark.url) || mark.url,
+    pageTitle: mark.pageTitle?.slice(0, 280),
+    title: mark.title.slice(0, STORAGE_LIMITS.markTitle),
+    status: normalizeMarkStatus(mark.status),
+    priority: normalizeMarkPriority(mark.priority),
+    thread: mark.thread.map((m) => ({
       ...m,
       body: m.body.slice(0, STORAGE_LIMITS.threadBody),
       authorLabel: m.authorLabel.slice(0, 80)
     })),
-    domSnapshot: normalizeDomSnapshot(pin.domSnapshot),
+    domSnapshot: normalizeDomSnapshot(mark.domSnapshot),
     screenshotDataUrl,
-    syncState: pin.remoteMarkId ? "synced" : "pending",
+    syncState: mark.remoteMarkId ? "synced" : "pending",
     syncError: undefined,
-    pendingSyncOps: normalizeSyncOps(pin.pendingSyncOps),
-    outerHTMLPreview: pin.outerHTMLPreview.slice(
+    pendingSyncOps: normalizeSyncOps(mark.pendingSyncOps),
+    outerHTMLPreview: mark.outerHTMLPreview.slice(
       0,
       STORAGE_LIMITS.outerHTMLPreview
     ),
-    captureKind: pin.captureKind === "region" ? "region" : "element"
+    captureKind: mark.captureKind === "region" ? "region" : "element"
   }
 }
 
-export async function addPinWithFallback(pin: Pin): Promise<AddPinResult> {
-  const pins = await getPins()
-  const sanitized = sanitizePinForStorage(pin)
-  const attempts: Array<{ pin: Pin; warning?: string }> = [
-    { pin: sanitized },
+export async function addMarkWithFallback(mark: Mark): Promise<AddMarkResult> {
+  const marks = await getMarks()
+  const sanitized = sanitizeMarkForStorage(mark)
+  const attempts: Array<{ mark: Mark; warning?: string }> = [
+    { mark: sanitized },
     {
-      pin: { ...sanitized, domSnapshot: undefined },
+      mark: { ...sanitized, domSnapshot: undefined },
       warning: "Saved without DOM context because local storage was full."
     },
     {
-      pin: {
+      mark: {
         ...sanitized,
         domSnapshot: undefined,
         screenshotDataUrl: undefined,
@@ -722,18 +723,18 @@ export async function addPinWithFallback(pin: Pin): Promise<AddPinResult> {
 
   for (const attempt of attempts) {
     const ok = await write(
-      KEY_PINS,
-      serializePinsForStorage([...pins, attempt.pin])
+      KEY_MARKS,
+      serializeMarksForStorage([...marks, attempt.mark])
     )
-    if (ok) return { ok: true, pin: attempt.pin, warning: attempt.warning }
+    if (ok) return { ok: true, mark: attempt.mark, warning: attempt.warning }
   }
   return { ok: false }
 }
 
 /** Strip deprecated field on write */
-function serializePinsForStorage(pins: Pin[]): unknown[] {
-  return pins.map((p) => {
-    const { comment: _c, ...rest } = p as Pin & { comment?: string }
+function serializeMarksForStorage(marks: Mark[]): unknown[] {
+  return marks.map((p) => {
+    const { comment: _c, ...rest } = p as Mark & { comment?: string }
     if (!rest.remoteMarkId)
       delete (rest as { remoteMarkId?: string }).remoteMarkId
     if (!rest.screenshotDataUrl) {
@@ -746,7 +747,7 @@ function serializePinsForStorage(pins: Pin[]): unknown[] {
       delete (rest as { domSnapshot?: ElementDomSnapshot }).domSnapshot
     }
     if (!rest.pendingSyncOps?.length) {
-      delete (rest as { pendingSyncOps?: PinSyncOperation[] }).pendingSyncOps
+      delete (rest as { pendingSyncOps?: MarkSyncOperation[] }).pendingSyncOps
     }
     if (!rest.syncError) {
       delete (rest as { syncError?: string }).syncError
@@ -761,57 +762,57 @@ function serializePinsForStorage(pins: Pin[]): unknown[] {
   })
 }
 
-export async function savePins(pins: Pin[]): Promise<boolean> {
-  return write(KEY_PINS, serializePinsForStorage(pins))
+export async function saveMarks(marks: Mark[]): Promise<boolean> {
+  return write(KEY_MARKS, serializeMarksForStorage(marks))
 }
 
-/** Apply fields to one pin by id; no-op when missing */
-export async function patchPin(
-  pinId: string,
-  patch: Partial<Pin>
+/** Apply fields to one mark by id; no-op when missing */
+export async function patchMark(
+  markId: string,
+  patch: Partial<Mark>
 ): Promise<boolean> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return false
-  const merged = { ...pins[ix], ...patch }
-  pins[ix] = merged
-  return savePins(pins)
+  const merged = { ...marks[ix], ...patch }
+  marks[ix] = merged
+  return saveMarks(marks)
 }
 
-export async function removePin(pinId: string): Promise<Pin | undefined> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+export async function removeMark(markId: string): Promise<Mark | undefined> {
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return undefined
-  const pin = pins[ix]
-  if (pin.remoteMarkId) {
-    pins[ix] = { ...pin, localHiddenAt: Date.now(), updatedAt: Date.now() }
+  const mark = marks[ix]
+  if (mark.remoteMarkId) {
+    marks[ix] = { ...mark, localHiddenAt: Date.now(), updatedAt: Date.now() }
   } else {
-    pins.splice(ix, 1)
+    marks.splice(ix, 1)
   }
-  const ok = await savePins(pins)
-  return ok ? pin : undefined
+  const ok = await saveMarks(marks)
+  return ok ? mark : undefined
 }
 
-export async function restorePin(pin: Pin): Promise<boolean> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pin.id)
-  const restored = { ...pin, localHiddenAt: undefined, updatedAt: Date.now() }
-  if (ix >= 0) pins[ix] = restored
-  else pins.push(restored)
-  return savePins(pins)
+export async function restoreMark(mark: Mark): Promise<boolean> {
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === mark.id)
+  const restored = { ...mark, localHiddenAt: undefined, updatedAt: Date.now() }
+  if (ix >= 0) marks[ix] = restored
+  else marks.push(restored)
+  return saveMarks(marks)
 }
 
 export async function appendThreadComment(
-  pinId: string,
+  markId: string,
   body: string,
   authorLabel: string
-): Promise<Pin[] | undefined> {
+): Promise<Mark[] | undefined> {
   const trimmed = body.trim().slice(0, STORAGE_LIMITS.threadBody)
   if (!trimmed) return undefined
-  const pins = await getPins()
-  const idx = pins.findIndex((x) => x.id === pinId)
+  const marks = await getMarks()
+  const idx = marks.findIndex((x) => x.id === markId)
   if (idx < 0) return undefined
-  const pin = pins[idx]
+  const mark = marks[idx]
   const label = (authorLabel || "You").slice(0, 80)
   const msg: LocalThreadMessage = {
     id: makeThreadMessageId(),
@@ -819,40 +820,40 @@ export async function appendThreadComment(
     createdAt: Date.now(),
     authorLabel: label
   }
-  const updated: Pin = {
-    ...pin,
-    thread: [...pin.thread, msg],
+  const updated: Mark = {
+    ...mark,
+    thread: [...mark.thread, msg],
     updatedAt: Date.now()
   }
-  const next = [...pins.slice(0, idx), updated, ...pins.slice(idx + 1)]
-  const ok = await write(KEY_PINS, serializePinsForStorage(next))
+  const next = [...marks.slice(0, idx), updated, ...marks.slice(idx + 1)]
+  const ok = await write(KEY_MARKS, serializeMarksForStorage(next))
   return ok ? next : undefined
 }
 
-function computeSyncState(pin: Pin): PinSyncState {
-  if (pin.syncError) return "failed"
+function computeSyncState(mark: Mark): MarkSyncState {
+  if (mark.syncError) return "failed"
   if (
-    !pin.remoteMarkId ||
-    pin.screenshotDataUrl ||
-    pin.pendingSyncOps?.length
+    !mark.remoteMarkId ||
+    mark.screenshotDataUrl ||
+    mark.pendingSyncOps?.length
   ) {
     return "pending"
   }
   return "synced"
 }
 
-export async function enqueuePinSyncOp(
-  pinId: string,
+export async function enqueueMarkSyncOp(
+  markId: string,
   op:
-    | { type: "status"; status: PinStatus }
+    | { type: "status"; status: MarkStatus }
     | { type: "comment"; body: string }
     | { type: "edit"; title: string; openingBody: string }
-): Promise<PinSyncOperation | undefined> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+): Promise<MarkSyncOperation | undefined> {
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return undefined
   const now = Date.now()
-  let nextOp: PinSyncOperation
+  let nextOp: MarkSyncOperation
   if (op.type === "status") {
     nextOp = {
       id: makeSyncOpId(),
@@ -873,7 +874,7 @@ export async function enqueuePinSyncOp(
     nextOp = {
       id: makeSyncOpId(),
       type: "edit",
-      title: op.title.trim().slice(0, STORAGE_LIMITS.pinTitle),
+      title: op.title.trim().slice(0, STORAGE_LIMITS.markTitle),
       openingBody: op.openingBody.trim().slice(0, STORAGE_LIMITS.threadBody),
       createdAt: now,
       attempts: 0
@@ -883,81 +884,81 @@ export async function enqueuePinSyncOp(
   if (nextOp.type === "edit" && (!nextOp.title || !nextOp.openingBody)) {
     return undefined
   }
-  const pin = pins[ix]
-  pins[ix] = {
-    ...pin,
+  const mark = marks[ix]
+  marks[ix] = {
+    ...mark,
     syncState: "pending",
     syncError: undefined,
-    pendingSyncOps: [...(pin.pendingSyncOps ?? []), nextOp],
+    pendingSyncOps: [...(mark.pendingSyncOps ?? []), nextOp],
     updatedAt: now
   }
-  const ok = await savePins(pins)
+  const ok = await saveMarks(marks)
   return ok ? nextOp : undefined
 }
 
-export async function removePinSyncOp(
-  pinId: string,
+export async function removeMarkSyncOp(
+  markId: string,
   opId: string
 ): Promise<boolean> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return false
-  const pin = pins[ix]
-  const pendingSyncOps = (pin.pendingSyncOps ?? []).filter(
+  const mark = marks[ix]
+  const pendingSyncOps = (mark.pendingSyncOps ?? []).filter(
     (op) => op.id !== opId
   )
-  const next: Pin = {
-    ...pin,
+  const next: Mark = {
+    ...mark,
     pendingSyncOps,
     syncError: undefined
   }
   next.syncState = computeSyncState(next)
-  pins[ix] = next
-  return savePins(pins)
+  marks[ix] = next
+  return saveMarks(marks)
 }
 
-export async function markPinSyncFailure(
-  pinId: string,
+export async function markSyncFailure(
+  markId: string,
   error: string,
   opId?: string
 ): Promise<boolean> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return false
-  const pin = pins[ix]
+  const mark = marks[ix]
   const message = error.slice(0, 300)
-  pins[ix] = {
-    ...pin,
+  marks[ix] = {
+    ...mark,
     syncState: "failed",
     syncError: message,
-    pendingSyncOps: (pin.pendingSyncOps ?? []).map((op) =>
+    pendingSyncOps: (mark.pendingSyncOps ?? []).map((op) =>
       !opId || op.id === opId
         ? { ...op, attempts: op.attempts + 1, lastError: message }
         : op
     )
   }
-  return savePins(pins)
+  return saveMarks(marks)
 }
 
-export async function markPinSynced(pinId: string): Promise<boolean> {
-  const pins = await getPins()
-  const ix = pins.findIndex((p) => p.id === pinId)
+export async function markSynced(markId: string): Promise<boolean> {
+  const marks = await getMarks()
+  const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return false
-  const pin = pins[ix]
-  pins[ix] = {
-    ...pin,
-    syncState: computeSyncState({ ...pin, syncError: undefined }),
+  const mark = marks[ix]
+  marks[ix] = {
+    ...mark,
+    syncState: computeSyncState({ ...mark, syncError: undefined }),
     syncError: undefined
   }
-  return savePins(pins)
+  return saveMarks(marks)
 }
 
-export async function getPinsForPage(
+export async function getMarksForPage(
   spaceId: string,
   url: string
-): Promise<Pin[]> {
+): Promise<Mark[]> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await read<unknown[]>(KEY_PINS, [])
+  const stored = await read<unknown[]>(KEY_MARKS, [])
   const matching: unknown[] = []
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
@@ -968,10 +969,10 @@ export async function getPinsForPage(
     if (typeof p.localHiddenAt === "number") continue
     matching.push(row)
   }
-  const out: Pin[] = []
+  const out: Mark[] = []
   for (const row of matching) {
     try {
-      out.push(migrateRawPin(row))
+      out.push(migrateRawMark(row))
     } catch {
       continue
     }
@@ -979,12 +980,12 @@ export async function getPinsForPage(
   return out.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
-/** Counts pins per space for the current page without migrating the full pin list. */
-export async function getPinCountsByPage(
+/** Counts marks per space for the current page without migrating the full mark list. */
+export async function getMarkCountsByPage(
   url: string
 ): Promise<Map<string, number>> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await read<unknown[]>(KEY_PINS, [])
+  const stored = await read<unknown[]>(KEY_MARKS, [])
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
@@ -997,8 +998,8 @@ export async function getPinCountsByPage(
   return counts
 }
 
-export async function getPinCountsBySpace(): Promise<Map<string, number>> {
-  const stored = await read<unknown[]>(KEY_PINS, [])
+export async function getMarkCountsBySpace(): Promise<Map<string, number>> {
+  const stored = await read<unknown[]>(KEY_MARKS, [])
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
@@ -1009,14 +1010,14 @@ export async function getPinCountsBySpace(): Promise<Map<string, number>> {
   return counts
 }
 
-export async function getRecentPins(limit = 5): Promise<Pin[]> {
-  const pins = await getPins()
-  return pins
+export async function getRecentMarks(limit = 5): Promise<Mark[]> {
+  const marks = await getMarks()
+  return marks
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit)
 }
 
-export function makePinId(): string {
+export function makeMarkId(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 }

@@ -80,12 +80,12 @@ export function useAnalyticsStats(
 
     const chartStart = rangeStart ?? subDays(now, HEATMAP_MAX_WEEKS * 7);
 
-    const closeEventByPin = new Map<string, MarkEvent>();
+    const closeEventByMark = new Map<string, MarkEvent>();
     for (const e of workspace.markEvents) {
       if (e.type !== "status_changed" || e.toValue !== "closed") continue;
-      const existing = closeEventByPin.get(e.pinId);
+      const existing = closeEventByMark.get(e.markId);
       if (!existing || e.createdAt > existing.createdAt) {
-        closeEventByPin.set(e.pinId, e);
+        closeEventByMark.set(e.markId, e);
       }
     }
 
@@ -96,11 +96,11 @@ export function useAnalyticsStats(
     let closedInPeriod = 0;
     let closedInPrior = 0;
 
-    for (const pin of workspace.pins) {
-      if (pin.status === "open") openTotal += 1;
+    for (const mark of workspace.marks) {
+      if (mark.status === "open") openTotal += 1;
       else closedTotal += 1;
 
-      const created = new Date(pin.createdAt);
+      const created = new Date(mark.createdAt);
       if (rangeStart === null || (created >= rangeStart && created <= rangeEnd)) {
         openedInPeriod += 1;
       }
@@ -108,8 +108,8 @@ export function useAnalyticsStats(
         openedInPrior += 1;
       }
 
-      if (pin.status === "closed") {
-        const evt = closeEventByPin.get(pin.id);
+      if (mark.status === "closed") {
+        const evt = closeEventByMark.get(mark.id);
         if (!evt) continue;
         const closeStamp = new Date(evt.createdAt);
         if (rangeStart === null || (closeStamp >= rangeStart && closeStamp <= rangeEnd)) {
@@ -131,17 +131,17 @@ export function useAnalyticsStats(
       }
     }
 
-    for (const pin of workspace.pins) {
-      const created = new Date(pin.createdAt);
+    for (const mark of workspace.marks) {
+      const created = new Date(mark.createdAt);
       if (created < chartStart || created > rangeEnd) continue;
       const bucket = throughputMap.get(dayKey(created));
       if (bucket) bucket.opened += 1;
     }
 
-    const pinById = new Map(workspace.pins.map((p) => [p.id, p]));
-    for (const [pinId, evt] of closeEventByPin) {
-      const pin = pinById.get(pinId);
-      if (!pin || pin.status !== "closed") continue;
+    const markById = new Map(workspace.marks.map((p) => [p.id, p]));
+    for (const [markId, evt] of closeEventByMark) {
+      const mark = markById.get(markId);
+      if (!mark || mark.status !== "closed") continue;
       const closeDate = new Date(evt.createdAt);
       if (closeDate < chartStart || closeDate > rangeEnd) continue;
       const bucket = throughputMap.get(dayKey(closeDate));

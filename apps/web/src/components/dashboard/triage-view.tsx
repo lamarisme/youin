@@ -17,13 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { PinPriority } from "@/lib/collab-types";
+import type { MarkPriority } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
-  useCreatePinMutation,
-  useDeletePinMutation,
-  useTogglePinStatusMutation,
-  useUpdatePinPriorityMutation,
+  useCreateMarkMutation,
+  useDeleteMarkMutation,
+  useToggleMarkStatusMutation,
+  useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { FadeIn } from "@/components/motion";
 import { BulkActionBar } from "./bulk-action-bar";
@@ -34,7 +34,7 @@ import { SavedViewsBar } from "./saved-views-bar";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { markHref } from "@/lib/workspace/routes";
 import { useSavedViews, type SavedViewFilters } from "./use-saved-views";
-import { useVisibleDashboardPins } from "./use-visible-dashboard-pins";
+import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 const PAGE_SIZE = 6;
 
@@ -46,10 +46,10 @@ export function TriageView() {
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
     }));
-  const { mutateAsync: createPin } = useCreatePinMutation();
-  const { mutateAsync: togglePinStatus } = useTogglePinStatusMutation();
-  const { mutateAsync: updatePinPriority } = useUpdatePinPriorityMutation();
-  const { mutateAsync: deletePin } = useDeletePinMutation();
+  const { mutateAsync: createMark } = useCreateMarkMutation();
+  const { mutateAsync: toggleMarkStatus } = useToggleMarkStatusMutation();
+  const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
+  const { mutateAsync: deleteMark } = useDeleteMarkMutation();
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -101,13 +101,13 @@ export function TriageView() {
 
   const newMarkTargetSpace = selectedSpace ?? projectSpaces[0];
 
-  const visiblePins = useVisibleDashboardPins();
+  const visibleMarks = useVisibleDashboardMarks();
 
-  const selectedPins = useMemo(
-    () => visiblePins.filter((p) => selectedIds.has(p.id)),
-    [visiblePins, selectedIds],
+  const selectedMarks = useMemo(
+    () => visibleMarks.filter((p) => selectedIds.has(p.id)),
+    [visibleMarks, selectedIds],
   );
-  const allSelectedClosed = selectedPins.length > 0 && selectedPins.every((p) => p.status === "closed");
+  const allSelectedClosed = selectedMarks.length > 0 && selectedMarks.every((p) => p.status === "closed");
 
   const filtersActive =
     filters.status !== "all" ||
@@ -132,18 +132,18 @@ export function TriageView() {
     );
   }
 
-  const totalPages = Math.max(1, Math.ceil(visiblePins.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(visibleMarks.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, filters.page), totalPages);
-  const paginatedPins = useMemo(
-    () => visiblePins.slice((displayPage - 1) * PAGE_SIZE, (displayPage - 1) * PAGE_SIZE + PAGE_SIZE),
-    [visiblePins, displayPage],
+  const paginatedMarks = useMemo(
+    () => visibleMarks.slice((displayPage - 1) * PAGE_SIZE, (displayPage - 1) * PAGE_SIZE + PAGE_SIZE),
+    [visibleMarks, displayPage],
   );
 
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
-  const commentCountByPinId = useMemo(() => {
+  const commentCountByMarkId = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const c of workspace.comments) counts.set(c.pinId, (counts.get(c.pinId) ?? 0) + 1);
+    for (const c of workspace.comments) counts.set(c.markId, (counts.get(c.markId) ?? 0) + 1);
     return counts;
   }, [workspace.comments]);
 
@@ -172,13 +172,13 @@ export function TriageView() {
   }
 
   async function handleBulkSetStatus(target: "open" | "closed") {
-    const targets = selectedPins.filter((p) => p.status !== target);
+    const targets = selectedMarks.filter((p) => p.status !== target);
     if (targets.length === 0) {
       setSelectedIds(new Set());
       return;
     }
     const results = await Promise.allSettled(
-      targets.map((p) => togglePinStatus(p.id)),
+      targets.map((p) => toggleMarkStatus(p.id)),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
@@ -189,14 +189,14 @@ export function TriageView() {
     }
   }
 
-  async function handleBulkSetPriority(priority: PinPriority) {
-    const targets = selectedPins.filter((p) => p.priority !== priority);
+  async function handleBulkSetPriority(priority: MarkPriority) {
+    const targets = selectedMarks.filter((p) => p.priority !== priority);
     if (targets.length === 0) {
       toast.success("Already set.");
       return;
     }
     const results = await Promise.allSettled(
-      targets.map((p) => updatePinPriority({ pinId: p.id, priority })),
+      targets.map((p) => updateMarkPriority({ markId: p.id, priority })),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
@@ -208,9 +208,9 @@ export function TriageView() {
   }
 
   async function handleBulkDelete() {
-    const ids = selectedPins.map((p) => p.id);
+    const ids = selectedMarks.map((p) => p.id);
     if (ids.length === 0) return;
-    const results = await Promise.allSettled(ids.map((id) => deletePin(id)));
+    const results = await Promise.allSettled(ids.map((id) => deleteMark(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
     setSelectedIds(new Set());
     if (failed === 0) {
@@ -218,12 +218,12 @@ export function TriageView() {
     }
   }
 
-  async function handleCreatePin(input: {
+  async function handleCreateMark(input: {
     title: string;
     page: string;
     description: string;
     labelIds: string[];
-    priority: PinPriority;
+    priority: MarkPriority;
     assigneeId: string | null;
   }) {
     const targetSpace = selectedSpace ?? projectSpaces[0];
@@ -232,7 +232,7 @@ export function TriageView() {
       return;
     }
     try {
-      const created = await createPin({
+      const created = await createMark({
         title: input.title,
         description: input.description,
         page: input.page,
@@ -285,7 +285,7 @@ export function TriageView() {
 
       <MarkFilters
         filters={filters}
-        visibleCount={visiblePins.length}
+        visibleCount={visibleMarks.length}
         labels={workspace.labels}
         onChange={update}
       />
@@ -309,14 +309,14 @@ export function TriageView() {
             open={showNew}
             variant="plain"
             targetSpaceLabel={newMarkTargetSpace?.name}
-            onSubmit={handleCreatePin}
+            onSubmit={handleCreateMark}
             onCancel={() => setShowNew(false)}
           />
         </DialogContent>
       </Dialog>
 
       <div className="overflow-hidden rounded-md bg-paper-elevated">
-        {visiblePins.length === 0 ? (
+        {visibleMarks.length === 0 ? (
           <EmptyState
             variant="plain"
             className="rounded-none border-0 px-6 py-16"
@@ -342,19 +342,19 @@ export function TriageView() {
           />
         ) : (
           <MarkTable
-            pins={paginatedPins}
+            marks={paginatedMarks}
             membersById={membersById}
             labelsById={labelsById}
-            commentCountByPinId={commentCountByPinId}
+            commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
-            onSelectMark={(pin) => router.push(markHref(pin.displayKey, searchParams))}
+            onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
             selectedIds={selectedIds}
             onSelectionChange={handleSelectionChange}
           />
         )}
       </div>
 
-      {visiblePins.length > 0 ? (
+      {visibleMarks.length > 0 ? (
         <Pagination
           page={displayPage}
           totalPages={totalPages}
@@ -363,9 +363,9 @@ export function TriageView() {
         />
       ) : null}
 
-      {selectedPins.length > 0 ? (
+      {selectedMarks.length > 0 ? (
         <BulkActionBar
-          count={selectedPins.length}
+          count={selectedMarks.length}
           allClosed={allSelectedClosed}
           onSetStatus={handleBulkSetStatus}
           onSetPriority={handleBulkSetPriority}

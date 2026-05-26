@@ -1,27 +1,27 @@
-import type { Pin } from "./storage"
+import type { Mark } from "./storage"
 
-export type PinHealth = "attached" | "approximate" | "stale" | "screenshot-only"
+export type MarkHealth = "attached" | "approximate" | "stale" | "screenshot-only"
 
-export interface PinHealthResult {
-  health: PinHealth
+export interface MarkHealthResult {
+  health: MarkHealth
   label: string
   description: string
   attached: boolean
   rect?: DOMRectReadOnly
 }
 
-function savedRect(pin: Pin): DOMRectReadOnly | undefined {
-  if (pin.bbox.width < 1 || pin.bbox.height < 1) return undefined
+function savedRect(mark: Mark): DOMRectReadOnly | undefined {
+  if (mark.bbox.width < 1 || mark.bbox.height < 1) return undefined
   return new DOMRect(
-    pin.bbox.x - window.scrollX,
-    pin.bbox.y - window.scrollY,
-    pin.bbox.width,
-    pin.bbox.height
+    mark.bbox.x - window.scrollX,
+    mark.bbox.y - window.scrollY,
+    mark.bbox.width,
+    mark.bbox.height
   )
 }
 
 export function healthTone(
-  health: PinHealth
+  health: MarkHealth
 ): "ok" | "warn" | "danger" | "muted" {
   switch (health) {
     case "attached":
@@ -35,19 +35,19 @@ export function healthTone(
   }
 }
 
-export function computePinHealth(pin: Pin): PinHealthResult {
-  if (pin.captureKind === "region") {
+export function computeMarkHealth(mark: Mark): MarkHealthResult {
+  if (mark.captureKind === "region") {
     return {
       health: "screenshot-only",
       label: "Screenshot",
       description: "This feedback is tied to a captured area.",
       attached: false,
-      rect: savedRect(pin)
+      rect: savedRect(mark)
     }
   }
 
   try {
-    const el = pin.selector ? document.querySelector(pin.selector) : null
+    const el = mark.selector ? document.querySelector(mark.selector) : null
     if (el) {
       const rect = el.getBoundingClientRect()
       if (rect.width >= 1 || rect.height >= 1) {
@@ -64,7 +64,7 @@ export function computePinHealth(pin: Pin): PinHealthResult {
     /* invalid or stale selector */
   }
 
-  const rect = savedRect(pin)
+  const rect = savedRect(mark)
   if (rect) {
     return {
       health: "approximate",
@@ -84,11 +84,11 @@ export function computePinHealth(pin: Pin): PinHealthResult {
   }
 }
 
-export function scrollPinIntoView(pin: Pin): void {
-  const result = computePinHealth(pin)
-  if (result.attached && pin.selector) {
+export function scrollMarkIntoView(mark: Mark): void {
+  const result = computeMarkHealth(mark)
+  if (result.attached && mark.selector) {
     try {
-      document.querySelector(pin.selector)?.scrollIntoView({
+      document.querySelector(mark.selector)?.scrollIntoView({
         block: "center",
         inline: "center",
         behavior: "smooth"
@@ -100,8 +100,8 @@ export function scrollPinIntoView(pin: Pin): void {
   }
   if (result.rect) {
     window.scrollTo({
-      left: Math.max(0, pin.bbox.x - window.innerWidth / 2),
-      top: Math.max(0, pin.bbox.y - window.innerHeight / 2),
+      left: Math.max(0, mark.bbox.x - window.innerWidth / 2),
+      top: Math.max(0, mark.bbox.y - window.innerHeight / 2),
       behavior: "smooth"
     })
   }

@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { PinPriority, PinStatus, WorkspaceLabel } from "@/lib/collab-types";
+import type { MarkPriority, MarkStatus, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
@@ -338,4 +338,4 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
 }
 
 // Re-export type-safe filter values for callers that need to pass a known set.
-export type { PinPriority, PinStatus };
+export type { MarkPriority, MarkStatus };

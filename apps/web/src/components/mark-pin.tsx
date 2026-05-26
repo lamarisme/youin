@@ -11,7 +11,7 @@ const SIZE_CLASS = {
 export type MarkPinSize = keyof typeof SIZE_CLASS;
 
 export interface MarkPinProps extends React.HTMLAttributes<HTMLSpanElement> {
-  /** Pin label (number or short id). */
+  /** Visual pin label (number or short id). */
   label: React.ReactNode;
   size?: MarkPinSize;
   /** Subtle pulse ring for unresolved / hero emphasis. */
@@ -19,7 +19,7 @@ export interface MarkPinProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 
 /**
- * Canonical annotation pin — red mark on the interface.
+ * Canonical annotation pin — red dot on the interface.
  * Use for landing annotations, triage badges, and product demos.
  */
 export function MarkPin({

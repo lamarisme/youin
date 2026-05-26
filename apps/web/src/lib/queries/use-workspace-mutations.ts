@@ -5,9 +5,9 @@ import { toast } from "sonner";
 
 import { actionErrorMessage } from "@/lib/action-error";
 import type {
-  PinComment,
-  PinItem,
-  PinPriority,
+  MarkComment,
+  MarkItem,
+  MarkPriority,
   SpacePriority,
   Workspace,
   WorkspaceLabel,
@@ -20,7 +20,7 @@ import {
   setWorkspaceQueryData,
 } from "@/lib/queries/use-workspace";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { formatPinDisplayKey } from "@/lib/workspace/mark-display-id";
+import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 import * as ws from "@/lib/workspace/actions";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
@@ -213,10 +213,10 @@ export function useDeleteSpaceMutation() {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         spaces: workspace.spaces.filter((space) => space.id !== spaceId),
-        pins: workspace.pins.filter((pin) => pin.spaceId !== spaceId),
+        marks: workspace.marks.filter((mark) => mark.spaceId !== spaceId),
         comments: workspace.comments.filter(
           (comment) =>
-            workspace.pins.find((pin) => pin.id === comment.pinId)?.spaceId !==
+            workspace.marks.find((mark) => mark.id === comment.markId)?.spaceId !==
             spaceId,
         ),
       }));
@@ -232,24 +232,24 @@ export function useDeleteSpaceMutation() {
 }
 
 // ---------------------------------------------------------------------------
-// Pins (marks)
+// Marks
 // ---------------------------------------------------------------------------
 
-export interface CreatePinInput {
+export interface CreateMarkInput {
   title: string;
   description: string;
   page: string;
   spaceId: string;
   labelIds: string[];
   assigneeId?: string | null;
-  priority?: PinPriority;
+  priority?: MarkPriority;
 }
 
-export function useCreatePinMutation() {
+export function useCreateMarkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CreatePinInput): Promise<PinItem> => {
-      const created = await ws.createPinAction(input);
+    mutationFn: async (input: CreateMarkInput): Promise<MarkItem> => {
+      const created = await ws.createMarkAction(input);
       const bundle = getWorkspaceQueryData(queryClient);
       const space = bundle?.workspace.spaces.find((s) => s.id === input.spaceId);
       const spaceCode = space?.code ?? "?";
@@ -258,7 +258,7 @@ export function useCreatePinMutation() {
         spaceId: input.spaceId,
         spaceCode,
         seq: created.seq,
-        displayKey: formatPinDisplayKey(spaceCode, created.seq),
+        displayKey: formatMarkDisplayKey(spaceCode, created.seq),
         title: input.title.trim(),
         page: normalizeMarkPageUrl(input.page),
         description: input.description || "",
@@ -270,12 +270,12 @@ export function useCreatePinMutation() {
         createdAt: created.createdAt,
       };
     },
-    onSuccess: (pin) => {
+    onSuccess: (mark) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: [...workspace.pins, pin],
+        marks: [...workspace.marks, mark],
       }));
-      toast.success(`Created ${pin.displayKey}.`);
+      toast.success(`Created ${mark.displayKey}.`);
     },
     onError: (e) =>
       toast.error(actionErrorMessage(e, "Couldn't create this mark.")),
@@ -283,42 +283,42 @@ export function useCreatePinMutation() {
   });
 }
 
-export function useTogglePinStatusMutation() {
+export function useToggleMarkStatusMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ws.togglePinStatusAction,
-    onMutate: async (pinId) => {
+    mutationFn: ws.toggleMarkStatusAction,
+    onMutate: async (markId) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.map((pin) =>
-          pin.id === pinId
-            ? { ...pin, status: pin.status === "closed" ? "open" : "closed" }
-            : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.id === markId
+            ? { ...mark, status: mark.status === "closed" ? "open" : "closed" }
+            : mark,
         ),
       }));
       return context;
     },
     onError: (e, _vars, context) => {
       restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't update pin status."));
+      toast.error(actionErrorMessage(e, "Couldn't update mark status."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
 
-export function useTogglePinPinnedMutation() {
+export function useToggleMarkPinnedMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ws.togglePinPinnedAction,
-    onMutate: async (pinId) => {
+    mutationFn: ws.toggleMarkPinnedAction,
+    onMutate: async (markId) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.map((pin) =>
-          pin.id === pinId ? { ...pin, pinned: !pin.pinned } : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.id === markId ? { ...mark, pinned: !mark.pinned } : mark,
         ),
       }));
       return context;
@@ -331,23 +331,23 @@ export function useTogglePinPinnedMutation() {
   });
 }
 
-export function useUpdatePinPriorityMutation() {
+export function useUpdateMarkPriorityMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      pinId,
+      markId,
       priority,
     }: {
-      pinId: string;
-      priority: PinPriority;
-    }) => ws.updatePinPriorityAction(pinId, priority),
-    onMutate: async ({ pinId, priority }) => {
+      markId: string;
+      priority: MarkPriority;
+    }) => ws.updateMarkPriorityAction(markId, priority),
+    onMutate: async ({ markId, priority }) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.map((pin) =>
-          pin.id === pinId ? { ...pin, priority } : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.id === markId ? { ...mark, priority } : mark,
         ),
       }));
       return context;
@@ -360,18 +360,18 @@ export function useUpdatePinPriorityMutation() {
   });
 }
 
-export function useDeletePinMutation() {
+export function useDeleteMarkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ws.deletePinAction,
-    onMutate: async (pinId) => {
+    mutationFn: ws.deleteMarkAction,
+    onMutate: async (markId) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.filter((pin) => pin.id !== pinId),
-        comments: workspace.comments.filter((comment) => comment.pinId !== pinId),
-        markEvents: workspace.markEvents.filter((event) => event.pinId !== pinId),
+        marks: workspace.marks.filter((mark) => mark.id !== markId),
+        comments: workspace.comments.filter((comment) => comment.markId !== markId),
+        markEvents: workspace.markEvents.filter((event) => event.markId !== markId),
       }));
       return context;
     },
@@ -384,22 +384,22 @@ export function useDeletePinMutation() {
   });
 }
 
-export function useUpdatePinMutation() {
+export function useUpdateMarkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      pinId,
+      markId,
       updates,
     }: {
-      pinId: string;
+      markId: string;
       updates: {
         title?: string;
         description?: string;
         page?: string;
         spaceId?: string;
       };
-    }) => ws.updatePinFieldsAction(pinId, updates),
-    onMutate: async ({ pinId, updates }) => {
+    }) => ws.updateMarkFieldsAction(markId, updates),
+    onMutate: async ({ markId, updates }) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => {
@@ -408,10 +408,10 @@ export function useUpdatePinMutation() {
           : undefined;
         return {
           ...workspace,
-          pins: workspace.pins.map((pin) =>
-            pin.id === pinId
+          marks: workspace.marks.map((mark) =>
+            mark.id === markId
               ? {
-                  ...pin,
+                  ...mark,
                   ...(typeof updates.title === "string"
                     ? { title: updates.title }
                     : {}),
@@ -424,15 +424,15 @@ export function useUpdatePinMutation() {
                   ...(updates.spaceId
                     ? {
                         spaceId: updates.spaceId,
-                        spaceCode: nextSpace?.code ?? pin.spaceCode,
-                        displayKey: formatPinDisplayKey(
-                          nextSpace?.code ?? pin.spaceCode,
-                          pin.seq,
+                        spaceCode: nextSpace?.code ?? mark.spaceCode,
+                        displayKey: formatMarkDisplayKey(
+                          nextSpace?.code ?? mark.spaceCode,
+                          mark.seq,
                         ),
                       }
                     : {}),
                 }
-              : pin,
+              : mark,
           ),
         };
       });
@@ -450,19 +450,19 @@ export function useAssignMarkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({
-      pinId,
+      markId,
       assigneeId,
     }: {
-      pinId: string;
+      markId: string;
       assigneeId: string | null;
-    }) => ws.assignMarkAction(pinId, assigneeId),
-    onMutate: async ({ pinId, assigneeId }) => {
+    }) => ws.assignMarkAction(markId, assigneeId),
+    onMutate: async ({ markId, assigneeId }) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.map((pin) =>
-          pin.id === pinId ? { ...pin, assigneeId: assigneeId ?? undefined } : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.id === markId ? { ...mark, assigneeId: assigneeId ?? undefined } : mark,
         ),
       }));
       return context;
@@ -478,16 +478,16 @@ export function useAssignMarkMutation() {
 export function useSetMarkLabelsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ pinId, labelIds }: { pinId: string; labelIds: string[] }) =>
-      ws.setMarkLabelsAction(pinId, labelIds),
-    onMutate: async ({ pinId, labelIds }) => {
+    mutationFn: ({ markId, labelIds }: { markId: string; labelIds: string[] }) =>
+      ws.setMarkLabelsAction(markId, labelIds),
+    onMutate: async ({ markId, labelIds }) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       const nextLabelIds = Array.from(new Set(labelIds));
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        pins: workspace.pins.map((pin) =>
-          pin.id === pinId ? { ...pin, labelIds: nextLabelIds } : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.id === markId ? { ...mark, labelIds: nextLabelIds } : mark,
         ),
       }));
       return context;
@@ -507,10 +507,10 @@ export function useSetMarkLabelsMutation() {
 export function useAddCommentsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (comments: PinComment[]) => {
+    mutationFn: async (comments: MarkComment[]) => {
       if (!comments.length) return comments;
       await ws.addMarkCommentsAction(
-        comments[0].pinId,
+        comments[0].markId,
         comments.map((comment) => ({
           type: comment.type === "image" ? "image" : "text",
           body: comment.body,
@@ -755,8 +755,8 @@ export function useRemoveMemberMutation() {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         members: workspace.members.filter((member) => member.id !== memberUserId),
-        pins: workspace.pins.map((pin) =>
-          pin.assigneeId === memberUserId ? { ...pin, assigneeId: undefined } : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.assigneeId === memberUserId ? { ...mark, assigneeId: undefined } : mark,
         ),
       }));
       return context;
@@ -810,10 +810,10 @@ export function useDeleteLabelMutation() {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         labels: workspace.labels.filter((label) => label.id !== labelId),
-        pins: workspace.pins.map((pin) =>
-          pin.labelIds.includes(labelId)
-            ? { ...pin, labelIds: pin.labelIds.filter((id) => id !== labelId) }
-            : pin,
+        marks: workspace.marks.map((mark) =>
+          mark.labelIds.includes(labelId)
+            ? { ...mark, labelIds: mark.labelIds.filter((id) => id !== labelId) }
+            : mark,
         ),
       }));
       return context;

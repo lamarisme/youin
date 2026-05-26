@@ -4,7 +4,7 @@ import { normalizeMarkPriority } from "@youin/domain";
 import { and, eq, inArray } from "drizzle-orm";
 
 import { markLabels, marks, marksToLabels, spaces, workspaceMembers } from "@/db/schema";
-import type { PinPriority } from "@/lib/collab-types";
+import type { MarkPriority } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 
@@ -17,7 +17,7 @@ import {
 const BAD_PAGE =
   "Page must be a full http or https URL (for example https://app.example.com/pricing).";
 
-export interface CreatedPin {
+export interface CreatedMark {
   id: string;
   /** Per-space sequence assigned by the set_mark_seq trigger. */
   seq: number;
@@ -68,15 +68,15 @@ async function assertAssigneeInWorkspace(
   if (!member) throw new Error("Assignee is not a member of this workspace.");
 }
 
-export async function createPinAction(input: {
+export async function createMarkAction(input: {
   title: string;
   description: string;
   page: string;
   spaceId: string;
   labelIds: string[];
   assigneeId?: string | null;
-  priority?: PinPriority;
-}): Promise<CreatedPin> {
+  priority?: MarkPriority;
+}): Promise<CreatedMark> {
   const ctx = await requireWorkspaceContext();
   const pageNormalized = normalizeMarkPageUrl(input.page);
   if (!isValidMarkPageUrl(pageNormalized)) {
@@ -133,20 +133,20 @@ export async function createPinAction(input: {
   };
 }
 
-export async function deletePinAction(pinId: string): Promise<void> {
+export async function deleteMarkAction(markId: string): Promise<void> {
   const ctx = await requireWorkspaceContext();
   await withWorkspaceActor(ctx, async (tx) => {
     const [deleted] = await tx
       .delete(marks)
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .returning({ id: marks.id });
     if (!deleted) throw new Error("Mark not found.");
   });
   revalidateWorkspaceViews();
 }
 
-export async function updatePinFieldsAction(
-  pinId: string,
+export async function updateMarkFieldsAction(
+  markId: string,
   updates: {
     title?: string;
     description?: string;
@@ -179,57 +179,57 @@ export async function updatePinFieldsAction(
     const [updated] = await tx
       .update(marks)
       .set(patch)
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .returning({ id: marks.id });
     if (!updated) throw new Error("Mark not found.");
   });
   revalidateWorkspaceViews();
 }
 
-export async function togglePinStatusAction(pinId: string): Promise<void> {
+export async function toggleMarkStatusAction(markId: string): Promise<void> {
   const ctx = await requireWorkspaceContext();
   await withWorkspaceActor(ctx, async (tx) => {
     const [row] = await tx
       .select({ status: marks.status })
       .from(marks)
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .limit(1);
     if (!row) throw new Error("Mark not found.");
     await tx
       .update(marks)
       .set({ status: row.status === "closed" ? "open" : "closed" })
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)));
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)));
   });
   revalidateWorkspaceViews();
 }
 
-export async function togglePinPinnedAction(pinId: string): Promise<void> {
+export async function toggleMarkPinnedAction(markId: string): Promise<void> {
   const ctx = await requireWorkspaceContext();
   await withWorkspaceActor(ctx, async (tx) => {
     const [row] = await tx
       .select({ pinned: marks.pinned })
       .from(marks)
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .limit(1);
     if (!row) throw new Error("Mark not found.");
     await tx
       .update(marks)
       .set({ pinned: !row.pinned })
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)));
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)));
   });
   revalidateWorkspaceViews();
 }
 
-export async function updatePinPriorityAction(
-  pinId: string,
-  priority: PinPriority,
+export async function updateMarkPriorityAction(
+  markId: string,
+  priority: MarkPriority,
 ): Promise<void> {
   const ctx = await requireWorkspaceContext();
   await withWorkspaceActor(ctx, async (tx) => {
     const [updated] = await tx
       .update(marks)
       .set({ priority: normalizeMarkPriority(priority) })
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .returning({ id: marks.id });
     if (!updated) throw new Error("Mark not found.");
   });
@@ -237,7 +237,7 @@ export async function updatePinPriorityAction(
 }
 
 export async function assignMarkAction(
-  pinId: string,
+  markId: string,
   assigneeId: string | null,
 ): Promise<void> {
   const ctx = await requireWorkspaceContext();
@@ -246,7 +246,7 @@ export async function assignMarkAction(
     const [updated] = await tx
       .update(marks)
       .set({ assigneeUserId: assigneeId })
-      .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+      .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .returning({ id: marks.id });
     if (!updated) throw new Error("Mark not found.");
   });
@@ -254,7 +254,7 @@ export async function assignMarkAction(
 }
 
 export async function setMarkLabelsAction(
-  pinId: string,
+  markId: string,
   labelIds: string[],
 ): Promise<void> {
   const ctx = await requireWorkspaceContext();
@@ -262,7 +262,7 @@ export async function setMarkLabelsAction(
   const [mark] = await ctx.db
     .select({ id: marks.id })
     .from(marks)
-    .where(and(eq(marks.id, pinId), eq(marks.workspaceId, ctx.workspaceId)))
+    .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
     .limit(1);
   if (!mark) throw new Error("Mark not found.");
   await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, desired);
@@ -270,7 +270,7 @@ export async function setMarkLabelsAction(
   const existingRows = await ctx.db
     .select({ labelId: marksToLabels.labelId })
     .from(marksToLabels)
-    .where(eq(marksToLabels.markId, pinId));
+    .where(eq(marksToLabels.markId, markId));
   const existing = new Set(existingRows.map((row) => row.labelId));
 
   const toAdd = desired.filter((id) => !existing.has(id));
@@ -281,7 +281,7 @@ export async function setMarkLabelsAction(
       .delete(marksToLabels)
       .where(
         and(
-          eq(marksToLabels.markId, pinId),
+          eq(marksToLabels.markId, markId),
           inArray(marksToLabels.labelId, toRemove),
         ),
       );
@@ -289,7 +289,7 @@ export async function setMarkLabelsAction(
   if (toAdd.length) {
     await ctx.db
       .insert(marksToLabels)
-      .values(toAdd.map((labelId) => ({ markId: pinId, labelId })));
+      .values(toAdd.map((labelId) => ({ markId: markId, labelId })));
   }
   revalidateWorkspaceViews();
 }

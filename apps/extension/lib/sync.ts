@@ -9,19 +9,19 @@ import { allocateSpaceCode } from "./migrate"
 import {
   getActiveProjectId,
   getActiveSpaceId,
-  getPins,
+  getMarks,
   getSpaces,
-  markPinSynced,
-  markPinSyncFailure,
-  patchPin,
-  removePinSyncOp,
-  savePins,
+  markSynced,
+  markSyncFailure,
+  patchMark,
+  removeMarkSyncOp,
+  saveMarks,
   setActiveProjectId,
   setActiveSpaceId,
   setProjects,
   setSpaces,
-  type Pin,
-  type PinPriority,
+  type Mark,
+  type MarkPriority,
   type Project,
   type Space
 } from "./storage"
@@ -89,7 +89,7 @@ export interface SyncWorkspaceResult {
 
 /**
  * Fetch spaces for the user's workspace from Postgres, replace chrome.storage mirrors,
- * and remap pin {@link Pin.spaceId} from legacy local IDs to UUIDs by space name match.
+ * and remap mark {@link Mark.spaceId} from legacy local IDs to UUIDs by space name match.
  */
 export async function syncWorkspaceFromRemote(
   userId: string
@@ -209,16 +209,16 @@ export async function syncWorkspaceFromRemote(
     return remoteByNameLc.get(label.toLowerCase()) ?? spaceId
   }
 
-  const pins = await getPins()
+  const marks = await getMarks()
   let changed = false
-  const mapped = pins.map((p) => {
+  const mapped = marks.map((p) => {
     const nu = remapSpaceId(p.spaceId)
     if (nu === p.spaceId) return p
     changed = true
     return { ...p, spaceId: nu }
   })
   if (changed) {
-    await savePins(mapped)
+    await saveMarks(mapped)
   }
 
   const active = await getActiveSpaceId()
@@ -241,7 +241,7 @@ export async function syncWorkspaceFromRemote(
   }
 }
 
-export interface PushPinResult {
+export interface PushMarkResult {
   ok: boolean
   skipped: boolean
   error?: string
@@ -254,7 +254,7 @@ interface CreatedRemoteMark {
   createdAt: string
 }
 
-export interface SyncPendingPinsResult {
+export interface SyncPendingMarksResult {
   ok: boolean
   attempted: number
   synced: number
@@ -274,8 +274,8 @@ interface RemoteMark {
   spaceId: string
   title: string
   page: string
-  status: Pin["status"]
-  priority: PinPriority
+  status: Mark["status"]
+  priority: MarkPriority
   selector: string
   viewport: string
   createdAt: string
@@ -286,20 +286,20 @@ interface RemoteMark {
   comments: RemoteComment[]
 }
 
-async function reloadPin(pinId: string): Promise<Pin | undefined> {
-  const pins = await getPins()
-  return pins.find((p) => p.id === pinId)
+async function reloadMark(markId: string): Promise<Mark | undefined> {
+  const marks = await getMarks()
+  return marks.find((p) => p.id === markId)
 }
 
-async function uploadPinScreenshot(
-  pin: Pin,
+async function uploadLocalMarkScreenshot(
+  mark: Mark,
   workspaceId: string
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!pin.remoteMarkId || !pin.screenshotDataUrl) return { ok: true }
+  if (!mark.remoteMarkId || !mark.screenshotDataUrl) return { ok: true }
   const upload = await uploadMarkScreenshot(
     workspaceId,
-    pin.remoteMarkId,
-    pin.screenshotDataUrl
+    mark.remoteMarkId,
+    mark.screenshotDataUrl
   )
   if ("error" in upload) return { ok: false, error: upload.error }
 
@@ -307,15 +307,15 @@ async function uploadPinScreenshot(
   const { error } = await supabase
     .from("marks")
     .update({ screenshot_url: upload.path })
-    .eq("id", pin.remoteMarkId)
-    .eq("space_id", pin.spaceId)
+    .eq("id", mark.remoteMarkId)
+    .eq("space_id", mark.spaceId)
   if (error) return { ok: false, error: error.message }
 
-  await patchPin(pin.id, {
+  await patchMark(mark.id, {
     screenshotDataUrl: undefined,
-    screenshotUrl: pin.screenshotDataUrl
+    screenshotUrl: mark.screenshotDataUrl
   })
-  await markPinSynced(pin.id)
+  await markSynced(mark.id)
   return { ok: true }
 }
 
@@ -340,19 +340,19 @@ async function responseErrorMessage(
 }
 
 async function patchRemoteMark(
-  pin: Pin,
+  mark: Mark,
   patch: {
-    status?: Pin["status"]
+    status?: Mark["status"]
     commentBody?: string
     title?: string
     openingBody?: string
   }
-): Promise<PushPinResult> {
+): Promise<PushMarkResult> {
   const session = await getSession()
   if (!session?.user?.id) {
     return { ok: true, skipped: true }
   }
-  if (!pin.remoteMarkId) {
+  if (!mark.remoteMarkId) {
     return { ok: true, skipped: true }
   }
 
@@ -365,7 +365,7 @@ async function patchRemoteMark(
         authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        markId: pin.remoteMarkId,
+        markId: mark.remoteMarkId,
         ...patch
       })
     })
@@ -385,59 +385,59 @@ async function patchRemoteMark(
   return { ok: true, skipped: false }
 }
 
-export async function pushPinStatusToWorkspace(
-  pin: Pin,
-  status: Pin["status"]
-): Promise<PushPinResult> {
-  return patchRemoteMark(pin, { status: normalizeMarkStatus(status) })
+export async function pushMarkStatusToWorkspace(
+  mark: Mark,
+  status: Mark["status"]
+): Promise<PushMarkResult> {
+  return patchRemoteMark(mark, { status: normalizeMarkStatus(status) })
 }
 
-export async function pushPinCommentToWorkspace(
-  pin: Pin,
+export async function pushMarkCommentToWorkspace(
+  mark: Mark,
   commentBody: string
-): Promise<PushPinResult> {
+): Promise<PushMarkResult> {
   const body = commentBody.trim()
   if (!body) return { ok: true, skipped: true }
-  return patchRemoteMark(pin, { commentBody: body })
+  return patchRemoteMark(mark, { commentBody: body })
 }
 
-export async function pushPinEditToWorkspace(
-  pin: Pin,
+export async function pushMarkEditToWorkspace(
+  mark: Mark,
   patch: { title: string; openingBody: string }
-): Promise<PushPinResult> {
+): Promise<PushMarkResult> {
   const title = patch.title.trim()
   const openingBody = patch.openingBody.trim()
   if (!title || !openingBody) return { ok: true, skipped: true }
-  return patchRemoteMark(pin, { title, openingBody })
+  return patchRemoteMark(mark, { title, openingBody })
 }
 
-/** Insert a freshly saved local pin as a `marks` row when authenticated. */
-export async function pushPinToWorkspace(
-  pinAfterSave: Pin,
+/** Insert a freshly saved local mark as a `marks` row when authenticated. */
+export async function pushMarkToWorkspace(
+  markAfterSave: Mark,
   options?: { screenshotDataUrl?: string }
-): Promise<PushPinResult> {
+): Promise<PushMarkResult> {
   const session = await getSession()
   if (!session?.user?.id) {
     return { ok: true, skipped: true }
   }
 
-  let pin = pinAfterSave
+  let mark = markAfterSave
 
-  const fresh = await reloadPin(pin.id)
+  const fresh = await reloadMark(mark.id)
   if (fresh?.remoteMarkId) return { ok: true, skipped: true }
-  if (fresh) pin = fresh
+  if (fresh) mark = fresh
 
-  if (!pin.title?.trim()) {
-    await markPinSyncFailure(pin.id, "Mark needs a title before sync.")
+  if (!mark.title?.trim()) {
+    await markSyncFailure(mark.id, "Mark needs a title before sync.")
     return {
       ok: false,
       skipped: false,
       error: "Mark needs a title before sync."
     }
   }
-  if (!isUuidLike(pin.spaceId)) {
-    await markPinSyncFailure(
-      pin.id,
+  if (!isUuidLike(mark.spaceId)) {
+    await markSyncFailure(
+      mark.id,
       "Space is still local-only. Reload the popup after signing in to sync workspaces."
     )
     return {
@@ -448,7 +448,7 @@ export async function pushPinToWorkspace(
     }
   }
 
-  const description = buildMarkDescription(pin)
+  const description = buildMarkDescription(mark)
   let res: Response
   try {
     res = await fetch(`${WEB_APP_URL}/api/extension/marks`, {
@@ -458,21 +458,21 @@ export async function pushPinToWorkspace(
         authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        spaceId: pin.spaceId,
-        title: pin.title.trim(),
+        spaceId: mark.spaceId,
+        title: mark.title.trim(),
         description,
-        page: pin.url,
-        status: normalizeMarkStatus(pin.status),
-        priority: normalizeMarkPriority(pin.priority),
-        selector: pin.selector,
-        viewport: `${pin.viewport.width}x${pin.viewport.height}@${pin.viewport.dpr}`,
-        domSnapshot: pin.domSnapshot,
-        capturedAt: new Date(pin.createdAt).toISOString(),
-        comments: (pin.thread ?? []).map((m) => ({ body: m.body }))
+        page: mark.url,
+        status: normalizeMarkStatus(mark.status),
+        priority: normalizeMarkPriority(mark.priority),
+        selector: mark.selector,
+        viewport: `${mark.viewport.width}x${mark.viewport.height}@${mark.viewport.dpr}`,
+        domSnapshot: mark.domSnapshot,
+        capturedAt: new Date(mark.createdAt).toISOString(),
+        comments: (mark.thread ?? []).map((m) => ({ body: m.body }))
       })
     })
   } catch {
-    await markPinSyncFailure(pin.id, "Could not reach the YouIn web app.")
+    await markSyncFailure(mark.id, "Could not reach the YouIn web app.")
     return {
       ok: false,
       skipped: false,
@@ -482,7 +482,7 @@ export async function pushPinToWorkspace(
 
   if (!res.ok) {
     const message = await responseErrorMessage(res, "Could not sync mark.")
-    await markPinSyncFailure(pin.id, message)
+    await markSyncFailure(mark.id, message)
     return {
       ok: false,
       skipped: false,
@@ -490,20 +490,20 @@ export async function pushPinToWorkspace(
     }
   }
 
-  const mark = (await res.json()) as CreatedRemoteMark
-  let screenshotDataUrl = options?.screenshotDataUrl ?? pin.screenshotDataUrl
-  let screenshotUrl = pin.screenshotUrl
+  const createdMark = (await res.json()) as CreatedRemoteMark
+  let screenshotDataUrl = options?.screenshotDataUrl ?? mark.screenshotDataUrl
+  let screenshotUrl = mark.screenshotUrl
   let warning: string | undefined
 
   if (screenshotDataUrl) {
     const workspaceId = await workspaceIdForUser(session.user.id)
     if (workspaceId) {
-      const screenshotPin = {
-        ...pin,
-        remoteMarkId: mark.id,
+      const screenshotMark = {
+        ...mark,
+        remoteMarkId: createdMark.id,
         screenshotDataUrl
       }
-      const upload = await uploadPinScreenshot(screenshotPin, workspaceId)
+      const upload = await uploadLocalMarkScreenshot(screenshotMark, workspaceId)
       if (upload.ok) {
         screenshotUrl = screenshotDataUrl
         screenshotDataUrl = undefined
@@ -515,8 +515,8 @@ export async function pushPinToWorkspace(
     }
   }
 
-  await patchPin(pin.id, {
-    remoteMarkId: mark.id,
+  await patchMark(mark.id, {
+    remoteMarkId: createdMark.id,
     screenshotDataUrl,
     screenshotUrl,
     pendingSyncOps: [],
@@ -527,13 +527,13 @@ export async function pushPinToWorkspace(
   return { ok: true, skipped: false, warning }
 }
 
-async function syncQueuedOpsForPin(pin: Pin): Promise<{
+async function syncQueuedOpsForMark(mark: Mark): Promise<{
   attempted: number
   synced: number
   failed: number
   error?: string
 }> {
-  if (!pin.remoteMarkId || !pin.pendingSyncOps?.length) {
+  if (!mark.remoteMarkId || !mark.pendingSyncOps?.length) {
     return { attempted: 0, synced: 0, failed: 0 }
   }
   let attempted = 0
@@ -541,28 +541,28 @@ async function syncQueuedOpsForPin(pin: Pin): Promise<{
   let failed = 0
   let firstError: string | undefined
 
-  for (const op of pin.pendingSyncOps) {
+  for (const op of mark.pendingSyncOps) {
     attempted++
     const result =
       op.type === "status"
-        ? await patchRemoteMark(pin, { status: op.status })
+        ? await patchRemoteMark(mark, { status: op.status })
         : op.type === "comment"
-          ? await patchRemoteMark(pin, { commentBody: op.body })
-          : await patchRemoteMark(pin, {
+          ? await patchRemoteMark(mark, { commentBody: op.body })
+          : await patchRemoteMark(mark, {
               title: op.title,
               openingBody: op.openingBody
             })
 
     if (result.ok || result.skipped) {
-      await removePinSyncOp(pin.id, op.id)
+      await removeMarkSyncOp(mark.id, op.id)
       synced++
       continue
     }
 
     failed++
     firstError ??= result.error
-    await markPinSyncFailure(
-      pin.id,
+    await markSyncFailure(
+      mark.id,
       result.error ?? "Could not sync mark.",
       op.id
     )
@@ -571,7 +571,7 @@ async function syncQueuedOpsForPin(pin: Pin): Promise<{
   return { attempted, synced, failed, error: firstError }
 }
 
-function parseViewport(value: string): Pin["viewport"] {
+function parseViewport(value: string): Mark["viewport"] {
   const match = /^(\d+)x(\d+)@([\d.]+)$/.exec(value)
   if (!match) return { width: 0, height: 0, dpr: 1 }
   return {
@@ -581,7 +581,7 @@ function parseViewport(value: string): Pin["viewport"] {
   }
 }
 
-function remoteThread(mark: RemoteMark): Pin["thread"] {
+function remoteThread(mark: RemoteMark): Mark["thread"] {
   return mark.comments.map((comment) => ({
     id: `remote_${comment.id}`,
     body: comment.body,
@@ -590,7 +590,7 @@ function remoteThread(mark: RemoteMark): Pin["thread"] {
   }))
 }
 
-function pinFromRemoteMark(mark: RemoteMark): Pin {
+function markFromRemoteMark(mark: RemoteMark): Mark {
   const raw = mark.page
   let origin = ""
   let pathname = ""
@@ -603,7 +603,7 @@ function pinFromRemoteMark(mark: RemoteMark): Pin {
     pathname = ""
   }
 
-  const snapshot = mark.domSnapshot as unknown as Pin["domSnapshot"] | undefined
+  const snapshot = mark.domSnapshot as unknown as Mark["domSnapshot"] | undefined
   const rect = snapshot?.selectedElement?.boundingRect
   const createdAt =
     new Date(mark.capturedAt || mark.createdAt).getTime() || Date.now()
@@ -640,7 +640,7 @@ function pinFromRemoteMark(mark: RemoteMark): Pin {
   }
 }
 
-function mergeRemoteMark(local: Pin, mark: RemoteMark): Pin {
+function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
   const remoteUpdatedAt = new Date(mark.updatedAt).getTime() || Date.now()
   if (local.remoteUpdatedAt && remoteUpdatedAt <= local.remoteUpdatedAt) {
     return local
@@ -678,7 +678,7 @@ function mergeRemoteMark(local: Pin, mark: RemoteMark): Pin {
   }
 }
 
-export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingPinsResult> {
+export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksResult> {
   const session = await getSession()
   if (!session?.user?.id) {
     return { ok: true, attempted: 0, synced: 0, failed: 0 }
@@ -708,27 +708,27 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingPinsRes
 
   const body = (await res.json()) as { marks?: RemoteMark[] }
   const remoteMarks = body.marks ?? []
-  const pins = await getPins()
+  const marks = await getMarks()
   const byRemoteId = new Map(
-    pins.filter((pin) => pin.remoteMarkId).map((pin) => [pin.remoteMarkId, pin])
+    marks.filter((mark) => mark.remoteMarkId).map((mark) => [mark.remoteMarkId, mark])
   )
   const remoteIds = new Set(remoteMarks.map((mark) => mark.id))
-  const next: Pin[] = []
+  const next: Mark[] = []
 
-  for (const pin of pins) {
-    if (!pin.remoteMarkId || !remoteIds.has(pin.remoteMarkId)) {
-      next.push(pin)
+  for (const mark of marks) {
+    if (!mark.remoteMarkId || !remoteIds.has(mark.remoteMarkId)) {
+      next.push(mark)
     }
   }
 
   for (const mark of remoteMarks) {
     const existing = byRemoteId.get(mark.id)
     next.push(
-      existing ? mergeRemoteMark(existing, mark) : pinFromRemoteMark(mark)
+      existing ? mergeRemoteMark(existing, mark) : markFromRemoteMark(mark)
     )
   }
 
-  await savePins(next)
+  await saveMarks(next)
   return {
     ok: true,
     attempted: remoteMarks.length,
@@ -737,7 +737,7 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingPinsRes
   }
 }
 
-export async function syncPendingPinsToWorkspace(): Promise<SyncPendingPinsResult> {
+export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksResult> {
   const session = await getSession()
   if (!session?.user?.id) {
     return { ok: true, attempted: 0, synced: 0, failed: 0 }
@@ -754,21 +754,21 @@ export async function syncPendingPinsToWorkspace(): Promise<SyncPendingPinsResul
     }
   }
 
-  const pins = await getPins()
-  const pending = pins.filter(
-    (pin) =>
-      !pin.localHiddenAt &&
-      ((!pin.remoteMarkId && isUuidLike(pin.spaceId)) ||
-        Boolean(pin.remoteMarkId && pin.screenshotDataUrl) ||
-        Boolean(pin.remoteMarkId && pin.pendingSyncOps?.length))
+  const marks = await getMarks()
+  const pending = marks.filter(
+    (mark) =>
+      !mark.localHiddenAt &&
+      ((!mark.remoteMarkId && isUuidLike(mark.spaceId)) ||
+        Boolean(mark.remoteMarkId && mark.screenshotDataUrl) ||
+        Boolean(mark.remoteMarkId && mark.pendingSyncOps?.length))
   )
   let synced = 0
   let failed = 0
   let firstError: string | undefined
 
-  for (const pin of pending) {
-    if (!pin.remoteMarkId) {
-      const result = await pushPinToWorkspace(pin)
+  for (const mark of pending) {
+    if (!mark.remoteMarkId) {
+      const result = await pushMarkToWorkspace(mark)
       if (result.ok) {
         synced++
         continue
@@ -778,22 +778,22 @@ export async function syncPendingPinsToWorkspace(): Promise<SyncPendingPinsResul
       continue
     }
 
-    if (pin.screenshotDataUrl) {
-      const result = await uploadPinScreenshot(pin, workspaceId)
+    if (mark.screenshotDataUrl) {
+      const result = await uploadLocalMarkScreenshot(mark, workspaceId)
       if (result.ok) {
         synced++
       } else {
         failed++
         firstError ??= result.error
-        await markPinSyncFailure(
-          pin.id,
+        await markSyncFailure(
+          mark.id,
           result.error ?? "Could not upload screenshot."
         )
       }
     }
 
-    if (pin.pendingSyncOps?.length) {
-      const result = await syncQueuedOpsForPin(pin)
+    if (mark.pendingSyncOps?.length) {
+      const result = await syncQueuedOpsForMark(mark)
       synced += result.synced
       failed += result.failed
       firstError ??= result.error

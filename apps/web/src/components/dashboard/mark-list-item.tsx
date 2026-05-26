@@ -6,7 +6,7 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { DisplayNamePreference, PinItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
+import type { DisplayNamePreference, MarkItem, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -14,7 +14,7 @@ import { MarkPageOpenButton } from "./mark-page-open";
 import { formatMarkPageLabel } from "./mark-page-label";
 
 interface MarkListItemProps {
-  pin: PinItem;
+  mark: MarkItem;
   assignee?: TeamMember;
   labelsById: Map<string, WorkspaceLabel>;
   commentCount: number;
@@ -26,7 +26,7 @@ interface MarkListItemProps {
 }
 
 export function MarkListItem({
-  pin,
+  mark,
   assignee,
   labelsById,
   commentCount,
@@ -36,7 +36,7 @@ export function MarkListItem({
   onToggleSelected,
   displayNamePreference,
 }: MarkListItemProps) {
-  const pageLabel = formatMarkPageLabel(pin.page);
+  const pageLabel = formatMarkPageLabel(mark.page);
 
   return (
     <div
@@ -57,7 +57,7 @@ export function MarkListItem({
           <Checkbox
             checked={selected}
             onCheckedChange={() => onToggleSelected?.()}
-            aria-label={selected ? `Deselect ${pin.title}` : `Select ${pin.title}`}
+            aria-label={selected ? `Deselect ${mark.title}` : `Select ${mark.title}`}
             className="size-4"
           />
         ) : (
@@ -67,14 +67,14 @@ export function MarkListItem({
               e.stopPropagation();
               onToggleSelected?.();
             }}
-            aria-label={`Select ${pin.title}`}
+            aria-label={`Select ${mark.title}`}
             className="size-4 rounded-[4px] border border-input transition-colors hover:border-mark"
           />
         )}
       </div>
-      {pin.page.trim() ? (
+      {mark.page.trim() ? (
         <MarkPageOpenButton
-          page={pin.page}
+          page={mark.page}
           appearance="icon"
           stopPropagation
           className="mt-0.5 border-transparent bg-transparent opacity-100 shadow-none hover:bg-paper-3 sm:opacity-0 sm:group-hover/row:opacity-100"
@@ -83,37 +83,37 @@ export function MarkListItem({
       <button
         type="button"
         onClick={onSelect}
-        aria-label={`Open mark ${pin.displayKey}: ${pin.title}. ${pin.status === "open" ? "Open" : "Resolved"}.`}
+        aria-label={`Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Resolved"}.`}
         className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
-        {pin.status === "open" ? (
+        {mark.status === "open" ? (
           <CircleDashed className="mt-px size-3.5 shrink-0 text-mark" aria-hidden />
         ) : (
           <CheckCircle2 className="mt-px size-3.5 shrink-0 text-ok" aria-hidden />
         )}
-        <span className="sr-only">{pin.status === "open" ? "Open." : "Resolved."}</span>
+        <span className="sr-only">{mark.status === "open" ? "Open." : "Resolved."}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="truncate text-ui-md font-semibold text-ink group-hover/row:text-mark">{pin.title}</p>
+            <p className="truncate text-ui-md font-semibold text-ink group-hover/row:text-mark">{mark.title}</p>
             <span
               className="hidden shrink-0 tabular-nums font-mono text-ui-2xs text-ink-3 sm:inline"
               aria-hidden
             >
-              {pin.displayKey}
+              {mark.displayKey}
             </span>
           </div>
           <p className="mt-0.5 text-ui-xs text-ink-3">
             <span className="sr-only">Page URL: </span>
-            <span title={pin.page}>{pageLabel}</span>
+            <span title={mark.page}>{pageLabel}</span>
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <PriorityBadge priority={pin.priority} size="sm" />
-            {pin.pinned ? (
+            <PriorityBadge priority={mark.priority} size="sm" />
+            {mark.pinned ? (
               <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
                 Pinned
               </Pill>
             ) : null}
-            {pin.labelIds.map((lid) => {
+            {mark.labelIds.map((lid) => {
               const label = labelsById.get(lid);
               if (!label) return null;
               return (

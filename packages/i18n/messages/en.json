@@ -488,7 +488,7 @@
       "noWorkspace": "No workspace found for this user. Open the web app once to set one up.",
       "createSpaceFailed": "Failed to create space.",
       "untitledMark": "Untitled mark",
-      "importMarkFailed": "Failed to import a pin."
+      "importMarkFailed": "Failed to import a mark."
     },
     "background": {
       "unrecognizedMessage": "Unrecognized message."
