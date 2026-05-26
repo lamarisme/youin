@@ -145,23 +145,8 @@
       "title": "Your product backlog, pinned to your actual UI.",
       "subtitle": "YouIn turns your web app into a spatial backlog. Click any element, create the task, discuss it in context, and send it to Linear or Jira with screenshots, selectors, and browser metadata included.",
       "chromeCta": "Join free beta",
-      "secondaryCta": "See the backlog",
-      "metaLine": "Free during beta · Spatial tasks · Linear-ready context"
+      "secondaryCta": "See the backlog"
     },
-    "annotations": [
-      {
-        "pin": "1",
-        "note": "Spatial backlog — not another screenshot tool."
-      },
-      {
-        "pin": "2",
-        "note": "The old loop loses context after every deploy."
-      },
-      {
-        "pin": "3",
-        "note": "Click the UI. The task lands exactly there."
-      }
-    ],
     "productStage": {
       "ariaLabel": "Demo of YouIn triage dashboard with spatial marks on a live pricing page",
       "urlBar": "app.client.com/pricing",
@@ -217,6 +202,9 @@
         "elementLabel": "Pro plan CTA"
       },
       "anchor": {
+        "selectorLabel": "Selector",
+        "viewportLabel": "Viewport",
+        "fallbackLabel": "Fallback",
         "selector": "button[data-plan=\"pro\"]",
         "viewport": "1440×900",
         "fallback": "Screenshot anchor",

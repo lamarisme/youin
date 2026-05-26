@@ -26,11 +26,11 @@ export async function LandingProductStage() {
 
   return (
     <div
-      className="relative z-0 -mx-4 mt-2 pb-8 sm:mx-0 sm:mt-0 lg:-mt-8"
+      className="relative z-0 min-w-0"
       role="img"
       aria-label={t("ariaLabel")}
     >
-      <div className="relative mx-auto max-w-[72rem] overflow-hidden rounded-t-lg bg-paper-elevated">
+      <div className="relative w-full overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule">
         <div className="flex h-10 items-center justify-between bg-paper-2 px-3">
           <div className="flex items-center gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-rule-strong" />
@@ -60,7 +60,7 @@ export async function LandingProductStage() {
             {navItems.map((item, index) => (
               <div
                 key={item}
-                className={`mb-1 flex h-8 items-center rounded-md px-2 text-ui-sm ${
+                className={`mb-1 flex h-8 min-w-0 items-center truncate rounded-md px-2 text-ui-sm ${
                   index === 1 ? "bg-paper-3 font-medium text-ink" : "text-ink-2"
                 }`}
               >
@@ -70,16 +70,16 @@ export async function LandingProductStage() {
           </aside>
 
           <div className="min-w-0" aria-hidden>
-            <div className="flex min-h-12 items-center justify-between px-4">
-              <div>
+            <div className="flex min-h-12 min-w-0 items-center justify-between gap-3 px-4">
+              <div className="min-w-0">
                 <p className="text-ui-xs font-medium uppercase text-ink-3">
                   {t("triageLabel")}
                 </p>
-                <p className="text-ui-md font-semibold text-ink">{t("triageTitle")}</p>
+                <p className="truncate text-ui-md font-semibold text-ink">{t("triageTitle")}</p>
               </div>
-              <div className="inline-flex h-8 items-center gap-1.5 rounded-md bg-mark px-2.5 text-ui-sm font-medium text-paper">
-                <Plus className="size-3.5" />
-                {t("newMark")}
+              <div className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-mark px-2.5 text-ui-sm font-medium text-paper">
+                <Plus className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{t("newMark")}</span>
               </div>
             </div>
 
@@ -144,7 +144,7 @@ export async function LandingProductStage() {
               </div>
               <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-paper-3/80 to-transparent" />
               <MarkPin label="4" size="md" pulse className="pd-anim-pin absolute left-[58%] top-[42%]" />
-              <p className="pd-anim-comment absolute left-[52%] top-[18%] max-w-[11rem] rounded-md bg-paper-elevated px-2 py-1 text-ui-2xs leading-snug text-ink-2 ring-1 ring-rule">
+              <p className="pd-anim-comment absolute left-[52%] top-[18%] max-w-[11rem] line-clamp-3 rounded-md bg-paper-elevated px-2 py-1 text-ui-2xs leading-snug text-ink-2 ring-1 ring-rule">
                 {t("commentPreview")}
               </p>
               <MousePointer2 className="pd-anim-cursor absolute left-[60%] top-[48%] size-5 rotate-[-18deg] fill-ink text-ink sm:size-6" />

@@ -54,22 +54,22 @@ export async function LandingLoopScene({ variant }: LandingLoopSceneProps) {
           </span>
         </div>
         <dl className="divide-y divide-rule text-ui-xs">
-          <div className="grid grid-cols-[5.5rem_1fr] gap-2 px-3 py-2.5">
-            <dt className="text-ink-3">Selector</dt>
-            <dd className="truncate font-mono text-ink">{t("selector")}</dd>
+          <div className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)] gap-2 px-3 py-2.5">
+            <dt className="text-ink-3">{t("selectorLabel")}</dt>
+            <dd className="min-w-0 truncate font-mono text-ink">{t("selector")}</dd>
           </div>
-          <div className="grid grid-cols-[5.5rem_1fr] gap-2 px-3 py-2.5">
-            <dt className="text-ink-3">Viewport</dt>
-            <dd className="font-mono text-ink">{t("viewport")}</dd>
+          <div className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)] gap-2 px-3 py-2.5">
+            <dt className="text-ink-3">{t("viewportLabel")}</dt>
+            <dd className="min-w-0 font-mono text-ink">{t("viewport")}</dd>
           </div>
-          <div className="grid grid-cols-[5.5rem_1fr] gap-2 px-3 py-2.5">
-            <dt className="text-ink-3">Fallback</dt>
-            <dd className="text-ink-2">{t("fallback")}</dd>
+          <div className="grid grid-cols-[minmax(0,5.5rem)_minmax(0,1fr)] gap-2 px-3 py-2.5">
+            <dt className="text-ink-3">{t("fallbackLabel")}</dt>
+            <dd className="min-w-0 text-pretty text-ink-2">{t("fallback")}</dd>
           </div>
         </dl>
-        <div className="flex items-center gap-1.5 border-t border-rule bg-paper-2 px-3 py-2 text-ui-2xs text-ink-3">
-          <Link2 className="size-3 shrink-0" />
-          {t("footerNote")}
+        <div className="flex min-w-0 items-center gap-1.5 border-t border-rule bg-paper-2 px-3 py-2 text-ui-2xs text-ink-3">
+          <Link2 className="size-3 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate">{t("footerNote")}</span>
         </div>
       </div>
     );
@@ -85,11 +85,11 @@ export async function LandingLoopScene({ variant }: LandingLoopSceneProps) {
         <ArrowUpRight className="size-3.5 text-ink-3" />
       </div>
       <div className="space-y-3 p-3">
-        <p className="text-ui-sm font-semibold leading-snug text-ink">{t("title")}</p>
-        <p className="font-mono text-ui-2xs text-ink-3">{t("meta")}</p>
-        <div className="flex items-center justify-between rounded-md bg-paper-2 px-2.5 py-2">
-          <span className="text-ui-xs text-ink-2">{t("destination")}</span>
-          <span className="text-ui-xs font-medium text-ink">{t("status")}</span>
+        <p className="line-clamp-2 text-ui-sm font-semibold leading-snug text-ink">{t("title")}</p>
+        <p className="truncate font-mono text-ui-2xs text-ink-3">{t("meta")}</p>
+        <div className="flex min-w-0 items-center justify-between gap-2 rounded-md bg-paper-2 px-2.5 py-2">
+          <span className="min-w-0 truncate text-ui-xs text-ink-2">{t("destination")}</span>
+          <span className="shrink-0 text-ui-xs font-medium text-ink">{t("status")}</span>
         </div>
       </div>
     </div>
