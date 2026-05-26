@@ -15,8 +15,8 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className="border-b border-rule">
-        <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+        <div className="shell flex h-14 items-center justify-between">
+          <Link href="/" aria-label="youin home" className="flex h-10 items-center">
             <BrandLockup />
           </Link>
           <Link

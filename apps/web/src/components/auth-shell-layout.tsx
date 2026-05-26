@@ -12,17 +12,17 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-paper">
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
-        <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+        <div className="shell flex h-14 items-center justify-between">
+          <Link href="/" aria-label="youin home" className="flex h-10 items-center">
             <BrandLockup />
           </Link>
-          <p className="hidden min-h-11 items-center font-mono text-ui-xs text-ink-3 sm:inline-flex">
+          <p className="hidden h-10 items-center font-mono text-ui-xs text-ink-3 sm:inline-flex">
             {t("workspaceAccess")}
           </p>
         </div>
       </header>
 
-      <main className="shell grid min-h-[calc(100vh-73px)] min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-6 overflow-hidden py-4 md:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] md:gap-12 md:py-6">
+      <main className="shell grid min-h-[calc(100vh-3.5rem)] min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-6 overflow-hidden py-4 md:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] md:gap-12 md:py-6">
         <section className="section-block order-2 min-w-0 md:order-1">
           <div className="min-w-0">
             <p className="text-eyebrow mb-2">{t("eyebrow")}</p>

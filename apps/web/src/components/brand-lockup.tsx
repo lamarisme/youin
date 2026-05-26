@@ -9,13 +9,15 @@ type BrandLockupProps = HTMLAttributes<HTMLSpanElement> & {
 
 export function BrandLockup({
   className,
-  logoClassName,
+  logoClassName = "size-9",
   ...props
 }: BrandLockupProps) {
   return (
-    <span className={cn("inline-flex items-center gap-2", className)} {...props}>
+    <span className={cn("inline-flex items-center gap-1", className)} {...props}>
       <BrandLogo className={logoClassName} />
-      <span className="text-ui-sm font-semibold tracking-[-0.01em] text-ink">youin</span>
+      <span className="text-title-lg font-semibold leading-none tracking-[-0.02em] text-ink">
+        youin
+      </span>
     </span>
   );
 }

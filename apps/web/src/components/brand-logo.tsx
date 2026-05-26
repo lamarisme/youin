@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 type BrandLogoProps = SVGProps<SVGSVGElement>;
 
-export function BrandLogo({ className = "size-10", ...props }: BrandLogoProps) {
+export function BrandLogo({ className = "size-9", ...props }: BrandLogoProps) {
   return (
     <svg
       viewBox="150 180 760 540"

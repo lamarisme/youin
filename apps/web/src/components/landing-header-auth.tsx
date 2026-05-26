@@ -41,8 +41,8 @@ export function LandingHeaderAuth() {
 
   if (isSignedIn) {
     return (
-      <Button asChild size="sm" className="min-h-11 px-3.5 text-ui-sm">
-        <Link href="/dashboard" className="inline-flex items-center gap-2">
+      <Button asChild size="sm" className="h-9 px-3.5 text-ui-sm">
+        <Link href="/dashboard" className="inline-flex items-center gap-1.5">
           {t("openDashboard")}
           <ArrowRight className="size-3.5" />
         </Link>
@@ -54,7 +54,7 @@ export function LandingHeaderAuth() {
     <>
       <Link
         href="/login"
-        className="-mx-1 hidden min-h-11 px-1 text-ui-sm font-medium text-ink-2 hover:text-ink sm:inline-flex sm:items-center"
+        className="-mx-1 hidden h-9 items-center px-2 text-ui-sm font-medium text-ink-2 hover:text-ink sm:inline-flex"
       >
         {t("signIn")}
       </Link>

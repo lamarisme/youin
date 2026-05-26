@@ -24,7 +24,7 @@ export function LandingPrimaryButton({
       asChild
       className={
         compact
-          ? "min-h-11 px-3.5 font-semibold"
+          ? "h-9 px-3.5 text-ui-sm font-medium"
           : "min-h-11 px-5 font-semibold"
       }
     >

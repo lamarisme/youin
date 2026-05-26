@@ -14,15 +14,15 @@ export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col bg-paper bg-paper-grain text-ink">
       <header className="border-b border-rule bg-paper/95">
-        <div className="shell flex items-center justify-between py-[var(--space-md)]">
-          <Link href="/" aria-label="youin home" className="flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
+        <div className="shell flex h-14 items-center justify-between">
+          <Link href="/" aria-label="youin home" className="flex h-10 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper">
             <BrandLockup />
           </Link>
           <nav className="flex items-center gap-2 md:gap-3">
-            <Button variant="ghost" size="sm" asChild className="h-8 text-ui-sm text-ink-2 hover:text-ink">
+            <Button variant="ghost" size="sm" asChild className="h-9 text-ui-sm text-ink-2 hover:text-ink">
               <Link href="/login">{t("signIn")}</Link>
             </Button>
-            <Button variant="mark" size="sm" asChild className="h-8">
+            <Button variant="mark" size="sm" asChild className="h-9">
               <Link href="/signup" className="inline-flex items-center gap-1.5">
                 {t("createAccount")}
                 <ArrowRight className="size-3 opacity-90" aria-hidden />

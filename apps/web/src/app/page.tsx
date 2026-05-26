@@ -45,16 +45,16 @@ export default async function Home() {
         {t("skipLink")}
       </a>
       <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
-        <div className="shell flex items-center justify-between py-3.5">
-          <Link href="/" aria-label="youin home" className="flex min-h-11 items-center">
+        <div className="shell flex h-14 items-center justify-between">
+          <Link href="/" aria-label="youin home" className="flex h-10 items-center">
             <BrandLockup />
           </Link>
-          <nav aria-label="Primary" className="hidden items-center gap-5 text-ui-sm text-ink-2 md:flex">
+          <nav aria-label="Primary" className="hidden items-center gap-5 text-ui-sm font-medium text-ink-2 md:flex">
             {navItems.map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="-mx-2 inline-flex min-h-11 items-center px-2 transition-colors hover:text-ink"
+                className="-mx-2 inline-flex h-9 items-center px-2 transition-colors hover:text-ink"
               >
                 {item.label}
               </a>

@@ -63,6 +63,9 @@ const NAV_ITEMS = [
   { href: "/analytics", labelKey: "analytics" as const, icon: BarChart3, shortcut: "A", exactOnly: false },
 ] as const;
 
+const SIDEBAR_FOCUS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
+
 function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -129,13 +132,13 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col bg-paper-2 px-3 py-3 transition-colors duration-150 ease-out",
-        "lg:sticky lg:top-0 lg:z-10 lg:h-screen",
-        collapsed ? "lg:w-[52px] lg:px-2 lg:py-3" : "lg:w-56 lg:px-3 lg:py-4",
+        "group/sidebar flex flex-col border-b border-rule bg-paper-2/95 px-2.5 py-2.5 transition-[background-color,width,padding] duration-200 ease-[var(--ease-out-quart)]",
+        "lg:sticky lg:top-0 lg:z-10 lg:h-screen lg:border-b-0 lg:border-r lg:border-rule/80 lg:bg-paper-2",
+        collapsed ? "lg:w-[3.25rem] lg:px-2 lg:py-3" : "lg:w-60 lg:px-2.5 lg:py-3",
       )}
     >
       {/* Header */}
-      <div className={cn("mb-3 space-y-3 lg:mb-4", collapsed && "lg:space-y-2")}>
+      <div className={cn("mb-2.5 space-y-2.5 lg:mb-3", collapsed && "lg:space-y-2")}>
         <div
           className={cn(
             "flex items-center justify-between gap-2",
@@ -155,9 +158,9 @@ export function AppSidebar() {
             onClick={toggleCollapsed}
             aria-label={collapsed ? tSide("expandSidebar") : tSide("collapseSidebar")}
             className={cn(
-              "hidden size-8 items-center justify-center rounded-md text-ink-3 transition-colors lg:flex",
+              "hidden size-7 items-center justify-center rounded-md text-ink-3 transition-colors lg:flex",
               "hover:bg-paper-3/80 hover:text-ink",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              SIDEBAR_FOCUS,
               collapsed && "lg:mx-auto",
             )}
           >
@@ -191,9 +194,9 @@ export function AppSidebar() {
                 onClick={openCommandPalette}
                 aria-label={tSide("openCommandPalette")}
                 className={cn(
-                  "hidden size-8 w-full items-center justify-center rounded-md bg-paper text-ink-3 transition-colors lg:flex",
-                  "hover:bg-paper-3 hover:text-ink",
-                  "focus-visible:ring-2 focus-visible:ring-mark/40",
+                  "hidden size-8 w-full items-center justify-center rounded-md bg-paper text-ink-3 ring-1 ring-rule/60 transition-colors lg:flex",
+                  "hover:bg-paper-elevated hover:text-ink hover:ring-rule-strong/70",
+                  SIDEBAR_FOCUS,
                 )}
               >
                 <Search className="size-[1rem]" />
@@ -212,18 +215,18 @@ export function AppSidebar() {
             onClick={openCommandPalette}
             aria-label={tSide("openCommandPalette")}
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md bg-paper px-3 text-left outline-none transition-colors lg:min-h-8 lg:px-2.5",
-              "hover:bg-paper-elevated",
-              "focus-visible:ring-2 focus-visible:ring-mark/40",
+              "flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-md bg-paper px-3 text-left text-ink-3 ring-1 ring-rule/60 transition-colors lg:min-h-8 lg:px-2.5",
+              "hover:bg-paper-elevated hover:text-ink-2 hover:ring-rule-strong/70",
+              SIDEBAR_FOCUS,
             )}
           >
-            <Search className="size-[1rem] shrink-0 text-ink-3" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-ui-sm text-ink-3">{tSide("searchOrJump")}</span>
+            <Search className="size-[1rem] shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-ui-sm">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
-              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
+              <kbd className="rounded-[4px] bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
                 ⌘
               </kbd>
-              <kbd className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
+              <kbd className="rounded-[4px] bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
                 K
               </kbd>
             </span>
@@ -239,6 +242,14 @@ export function AppSidebar() {
           collapsed ? "lg:space-y-0.5" : "lg:space-y-0.5",
         )}
       >
+        <div
+          className={cn(
+            "hidden px-2 pb-1 pt-1 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3 lg:block",
+            collapsed && "lg:sr-only",
+          )}
+        >
+          {tCommon("workspaceFallback")}
+        </div>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = item.exactOnly
@@ -257,16 +268,16 @@ export function AppSidebar() {
                     className={cn(
                       "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
                       isActive
-                        ? "bg-paper-elevated text-ink"
-                        : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+                        ? "bg-paper text-ink"
+                        : "text-ink-3 hover:bg-paper-3/80 hover:text-ink",
+                      SIDEBAR_FOCUS,
                     )}
                   >
                     <Icon className="size-[1.1rem]" />
                     {showInboxBadge && (
                       <span
                         aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                        className="absolute -top-0.5 -right-0.5 inline-flex min-w-[1rem] h-4 items-center justify-center rounded-full bg-mark px-1 text-ui-2xs font-semibold tabular-nums text-paper leading-none"
+                        className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-mark-soft px-1 text-ui-2xs font-semibold leading-none tabular-nums text-mark-ink ring-1 ring-mark/15"
                       >
                         {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
                       </span>
@@ -289,26 +300,30 @@ export function AppSidebar() {
               href={item.href}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-lg transition-colors",
-                "lg:flex lg:w-full lg:min-h-8 lg:gap-2 lg:px-2",
-                "lg:text-ui-sm",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+                "group relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-md transition-colors",
+                "lg:flex lg:h-8 lg:w-full lg:min-h-0 lg:gap-2 lg:px-2.5 lg:py-0 lg:text-ui-sm",
+                SIDEBAR_FOCUS,
                 isActive
-                  ? "bg-paper-elevated font-medium text-ink"
+                  ? "bg-paper font-medium text-ink"
                   : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
               )}
             >
-              <Icon className="size-[1.1rem] shrink-0" />
+              <Icon
+                className={cn(
+                  "size-[1rem] shrink-0 transition-colors",
+                  isActive ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
+                )}
+              />
               <span className="flex-1">{tNav(item.labelKey)}</span>
               {showInboxBadge ? (
                 <span
                   aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark px-1.5 text-ui-2xs font-semibold tabular-nums text-paper"
+                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark-soft px-1.5 text-ui-2xs font-semibold tabular-nums text-mark-ink ring-1 ring-mark/15"
                 >
                   {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
                 </span>
               ) : (
-                <kbd className="hidden lg:inline text-ui-2xs text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity font-mono">
+                <kbd className="hidden rounded-[4px] bg-paper-3/70 px-1 py-0.5 font-mono text-ui-2xs text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 lg:inline">
                   G {item.shortcut}
                 </kbd>
               )}
@@ -318,7 +333,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Bottom section, desktop */}
-      <div className="mt-auto hidden pt-6 lg:block">
+      <div className="mt-auto hidden border-t border-rule/70 pt-2 lg:block">
         {collapsed ? (
           <>
             <div className="flex flex-col items-center gap-0.5">
@@ -452,24 +467,25 @@ function ProjectSwitcher({
             type="button"
             aria-label="Switch project"
             className={cn(
-              "group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors",
-              "hover:bg-paper-3/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-              "lg:min-h-10",
+              "group flex min-h-10 w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors",
+              "hover:bg-paper-3/80",
+              SIDEBAR_FOCUS,
+              "lg:min-h-9",
               collapsed && "lg:size-8 lg:min-h-0 lg:justify-center lg:px-0 lg:py-0",
             )}
           >
             <BrandLogo
               className={cn(
-                "size-9 transition-transform group-hover:scale-[1.03]",
-                collapsed && "lg:size-10",
+                "size-8 transition-transform group-hover:scale-[1.03] lg:size-7",
+                collapsed && "lg:size-8",
               )}
             />
             <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <span className="block truncate text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
-                Project
-              </span>
-              <span className="block truncate text-ui-sm font-semibold leading-tight text-ink">
+              <span className="block truncate text-ui-sm font-medium leading-tight text-ink">
                 {switcherLabel}
+              </span>
+              <span className="block truncate text-ui-xs leading-tight text-ink-3">
+                {switcherMeta}
               </span>
             </span>
             <ChevronsUpDown
@@ -632,9 +648,9 @@ function MobileAccountMenu({
         <button
           aria-label={t("openAccountMenu")}
           className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-full ring-2 ring-transparent transition-shadow",
-            "hover:ring-mark/30",
-            "focus-visible:outline-none focus-visible:ring-mark/60",
+            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md ring-2 ring-transparent transition-shadow",
+            "hover:bg-paper-3/80 hover:ring-mark/20",
+            "focus-visible:outline-none focus-visible:ring-focus-ring",
           )}
         >
           <Avatar className="size-8">
@@ -688,14 +704,14 @@ function DesktopAccountMenu({
             type="button"
             aria-label={t("openAccountMenu")}
             className={cn(
-              "flex size-9 items-center justify-center rounded-md transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
+              "flex size-8 items-center justify-center rounded-md transition-colors",
+              SIDEBAR_FOCUS,
               accountActive
-                ? "bg-paper-elevated text-ink"
+                ? "bg-paper text-ink"
                 : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
             )}
           >
-            <Avatar className="size-7">
+            <Avatar className="size-6">
               <AvatarFallback
                 className={cn(
                   "text-ui-2xs font-medium text-ink",
@@ -711,12 +727,12 @@ function DesktopAccountMenu({
             type="button"
             aria-label={t("openAccountMenu")}
             className={cn(
-              "group flex min-h-10 w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/40",
-              accountActive ? "bg-paper-3" : "hover:bg-paper-3/80",
+              "group flex h-9 w-full items-center gap-2 rounded-md px-2 text-left transition-colors",
+              SIDEBAR_FOCUS,
+              accountActive ? "bg-paper" : "hover:bg-paper-3/80",
             )}
           >
-            <Avatar className="size-7">
+            <Avatar className="size-6">
               <AvatarFallback
                 className={cn(
                   "text-ui-2xs font-medium text-ink",
@@ -727,8 +743,8 @@ function DesktopAccountMenu({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-ui-sm font-medium text-ink">{displayName}</p>
-              <p className="truncate text-ui-xs text-ink-3">{workspaceLabel}</p>
+              <p className="truncate text-ui-sm font-medium leading-tight text-ink">{displayName}</p>
+              <p className="truncate text-ui-xs leading-tight text-ink-3">{workspaceLabel}</p>
             </div>
             <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />
           </button>
