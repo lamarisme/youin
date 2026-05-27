@@ -78,10 +78,11 @@ html:has(#__plasmo),
   --yi-ext-btn-primary-hover: var(--yi-mark-bright);
   --yi-ext-link: var(--yi-mark);
   --yi-ext-shadow-panel: var(--yi-shadow-hairline), var(--yi-shadow-panel);
+  /* Dock: soft cast to the left + leading hairline (Linear-light, not heavy card shadow). */
   --yi-ext-shadow-dock:
-    -26px 0 54px -40px oklch(from var(--yi-ink) l c h / 0.5),
-    -8px 0 18px -16px oklch(from var(--yi-ink) l c h / 0.38),
-    inset 1px 0 0 oklch(80.8% 0.007 78 / 0.78);
+    -16px 0 40px -14px oklch(18.4% 0.018 62 / 0.16),
+    -6px 0 16px -8px oklch(18.4% 0.018 62 / 0.1),
+    inset 1px 0 0 var(--yi-ext-border-hairline);
   --yi-ext-surface-low: var(--yi-paper);
   --yi-ext-surface-mid: var(--yi-paper-2);
   --yi-ext-kbd-bg: var(--yi-paper-2);
