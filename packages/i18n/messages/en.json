@@ -366,6 +366,19 @@
       "openDrawerFailed": "Reload the page, then try again.",
       "reloadPageHint": "Reload the page, then try again."
     },
+    "widget": {
+      "review": "Review",
+      "exitReview": "Exit review",
+      "captureMode": "Capture mode",
+      "startInspectAria": "Start element inspect review on this page",
+      "startScreenshotAria": "Start area screenshot review on this page",
+      "startInspectWithCount": "Start element inspect review. {count} open feedback items on this page.",
+      "startScreenshotWithCount": "Start area screenshot review. {count} open feedback items on this page.",
+      "exitReviewAria": "Exit review mode",
+      "inspectModeActive": "Inspect mode active",
+      "screenshotModeActive": "Screenshot mode active",
+      "reviewMenuAria": "Youin review — hover for capture modes"
+    },
     "panel": {
       "leaveFeedback": "Leave feedback",
       "regionAttached": "This comment will stay attached to the selected area.",

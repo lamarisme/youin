@@ -18,8 +18,15 @@ export const MESSAGE_FORWARD_CAPTURE = "youin:forward-capture"
 export const MESSAGE_REVIEW_PING_ANNOTATION_DRAWER =
   "youin:ping-annotation-drawer"
 
+export type ReviewMode = "inspect" | "screenshot"
+
+export interface ReviewStartDetail {
+  mode?: ReviewMode
+}
+
 export interface ReviewStateDetail {
   active: boolean
+  mode?: ReviewMode
 }
 
 export interface OpenMarkDetail {

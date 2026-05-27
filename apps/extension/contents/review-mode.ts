@@ -16,6 +16,8 @@ import {
   MESSAGE_FORWARD_CAPTURE,
   MESSAGE_REVIEW_PING_CONTENT,
   type ReviewCaptureDetail,
+  type ReviewMode,
+  type ReviewStartDetail,
   type ReviewStateDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
@@ -786,8 +788,17 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
+function reviewModeFromState(): ReviewMode | undefined {
+  if (mode === "active" || mode === "paused") return "inspect"
+  if (mode === "region") return "screenshot"
+  return undefined
+}
+
 function emitState() {
-  const detail: ReviewStateDetail = { active: mode !== "inactive" }
+  const detail: ReviewStateDetail = {
+    active: mode !== "inactive",
+    mode: reviewModeFromState()
+  }
   window.dispatchEvent(new CustomEvent(EVENT_REVIEW_STATE, { detail }))
 }
 
@@ -920,7 +931,11 @@ function deactivate() {
   emitState()
 }
 
-window.addEventListener(EVENT_REVIEW_START, () => activate())
+window.addEventListener(EVENT_REVIEW_START, (e) => {
+  const mode = (e as CustomEvent<ReviewStartDetail>).detail?.mode ?? "inspect"
+  if (mode === "screenshot") activateRegion()
+  else activate()
+})
 window.addEventListener(EVENT_REVIEW_EXIT, () => deactivate())
 window.addEventListener(EVENT_REVIEW_RESUME, () => resume())
 window.addEventListener(EVENT_REVIEW_PAUSE, () => pause())

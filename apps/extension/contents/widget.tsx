@@ -1,4 +1,5 @@
 import tailwindCss from "data-text:~/globals.css"
+import { t } from "@youin/i18n/t"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useCallback, useEffect, useState } from "react"
 
@@ -8,6 +9,7 @@ import {
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
   EVENT_REVIEW_TOGGLE_DRAWER,
+  type ReviewMode,
   type ReviewStateDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
@@ -67,10 +69,67 @@ function cornerClass(corner: WidgetCorner): string {
   }
 }
 
+function isRightCorner(corner: WidgetCorner): boolean {
+  return corner === "bottom-right" || corner === "top-right"
+}
+
+function YouInMark({ className = "size-5 shrink-0" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="150 180 760 540"
+      className={`text-[color:var(--yi-mark)] ${className}`}
+      fill="currentColor"
+      aria-hidden="true">
+      <path d="M479 218.9c-31 9.9-37.6 51.3-11.1 70.2 22.7 16.3 53.9 5.8 62.6-21 2.5-7.7 1.7-19.7-1.7-27.3-3.1-6.7-10.2-14.7-16.2-18.2-9.6-5.6-23.1-7.1-33.6-3.7zM484.8 323c-11.9 1.5-22.2 9.3-27.6 20.8l-2.7 5.7-.5 90.5c-.5 89.1-.6 90.6-2.7 98.2-9.5 33.7-35.1 59.1-68.9 68.4-9 2.4-28.1 2.9-39.2 1-34.1-5.9-61.9-30.4-73.2-64.4-4.6-14-5-21.3-5-93.9 0-77.2-.1-77.9-7.1-92.3-7.7-15.5-22.3-27-38.8-30.5-4-.8-11.5-1.5-16.7-1.5h-9.5l.4 104.2c.3 89.1.6 105.5 1.9 112.4 5.5 28.5 15.9 52.9 31.6 74 8.7 11.7 24.5 27.2 36.2 35.7 11.1 7.8 31.7 18.3 44.5 22.6 52.1 17.4 108.5 8.5 152.7-24.1 10.7-7.8 27.5-24.8 36-36.3 12.4-16.7 23.6-41.4 28.4-62.4 4.3-19.3 4.7-28.9 4.1-116.6-.4-79.9-.5-82.1-2.5-87.4-5.8-14.9-15.9-22.4-33.2-24.5-1.4-.2-5.1 0-8.2.4zM680 325.7c-32 5-58 16.9-81.5 37.3-28.9 25-47.9 58.7-55.6 98.5-.6 2.7-1.4 20.1-1.9 38.5-1.1 43.2-3.3 58.3-11.7 81-16.8 45.2-53.7 84-93.8 98.5-2.7 1-5.4 2.2-5.9 2.7-1.4 1.2 28.7 1 40.2-.3 52.8-5.7 96.1-32.7 121.5-75.7 6.1-10.2 12.6-25.9 15.7-37.7 4.4-17.2 5.2-24.9 6-61.5.9-38 1.4-42.7 6.6-55.6 10.3-25.9 31.7-45.1 57.9-52 9.8-2.6 33.3-2.6 42.5 0 27.9 7.7 48.5 28.1 57.2 56.7 2.2 7.4 2.2 7.6 2.8 97.9.5 83.5.7 90.8 2.3 95 3 7.6 6.4 12.5 12.4 18 10.5 9.6 21.5 13 43.1 13H851V577.2c0-59.6-.4-106.6-1-112-5-47.2-30.6-90.4-68.5-115.7-17.1-11.4-33.1-18-53.2-22-10.5-2.1-15-2.5-29.1-2.4-9.2.1-17.8.4-19.2.6z" />
+    </svg>
+  )
+}
+
+function InspectIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3" />
+      <circle cx="10" cy="10" r="2.75" />
+    </svg>
+  )
+}
+
+function ScreenshotIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M6.5 3.5h7v7M3.5 6.5v7h7" />
+      <rect x="9.5" y="9.5" width="7" height="7" rx="1" />
+    </svg>
+  )
+}
+
+function modeButtonClass(): string {
+  return [
+    "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
+  ].join(" ")
+}
+
 function Widget() {
   const [settings, setSettings] = useState<WidgetSettings>(DEFAULT_SETTINGS)
   const [active, setActive] = useState(false)
+  const [activeMode, setActiveMode] = useState<ReviewMode>("inspect")
   const [openCount, setOpenCount] = useState(0)
+  const [pinnedOpen, setPinnedOpen] = useState(false)
 
   const refreshCount = useCallback(async () => {
     const spaceId = await getActiveSpaceId()
@@ -121,7 +180,10 @@ function Widget() {
     }
 
     const onState = (e: Event) => {
-      setActive(Boolean((e as CustomEvent<ReviewStateDetail>).detail?.active))
+      const detail = (e as CustomEvent<ReviewStateDetail>).detail
+      setActive(Boolean(detail?.active))
+      if (detail?.mode) setActiveMode(detail.mode)
+      if (detail?.active) setPinnedOpen(false)
     }
 
     chrome.storage.onChanged.addListener(onStorage)
@@ -142,44 +204,120 @@ function Widget() {
   if (!settings.fabVisible || isHostDisabled(location.href, settings))
     return null
 
-  const label = active ? "Exit review" : "Review"
-  const ariaLabel = active
-    ? "Exit marking mode"
-    : openCount > 0
-      ? `Start review. ${openCount} open feedback item${openCount === 1 ? "" : "s"} on this page.`
-      : "Start reviewing this page"
+  const modesFirst = isRightCorner(settings.corner)
+  const expanded = pinnedOpen
+
+  const startReview = (mode: ReviewMode) => {
+    setPinnedOpen(false)
+    window.dispatchEvent(
+      new CustomEvent(EVENT_REVIEW_START, { detail: { mode } })
+    )
+  }
+
+  const modeButtons = (
+    <div
+      role="group"
+      aria-label={t("extension.widget.captureMode")}
+      className={[
+        "flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity,margin] duration-200 [transition-timing-function:var(--yi-ease-out-expo)] motion-reduce:transition-none",
+        "max-w-0 opacity-0 pointer-events-none",
+        "group-hover/widget:max-w-[4.5rem] group-hover/widget:opacity-100 group-hover/widget:pointer-events-auto",
+        "group-focus-within/widget:max-w-[4.5rem] group-focus-within/widget:opacity-100 group-focus-within/widget:pointer-events-auto",
+        expanded
+          ? "max-w-[4.5rem] opacity-100 pointer-events-auto"
+          : "",
+        modesFirst ? "me-0.5" : "ms-0.5"
+      ].join(" ")}>
+      <button
+        type="button"
+        title={t("extension.popup.inspect")}
+        aria-label={t("extension.widget.startInspectAria")}
+        className={modeButtonClass()}
+        onClick={() => startReview("inspect")}>
+        <InspectIcon />
+      </button>
+      <button
+        type="button"
+        title={t("extension.popup.screenshot")}
+        aria-label={t("extension.widget.startScreenshotAria")}
+        className={modeButtonClass()}
+        onClick={() => startReview("screenshot")}>
+        <ScreenshotIcon />
+      </button>
+    </div>
+  )
 
   return (
     <div
       className={`pointer-events-none fixed ${cornerClass(settings.corner)}`}
       style={{ zIndex: Z_WIDGET }}>
-      <div className="pointer-events-auto inline-flex min-h-11 items-center gap-2 rounded-full border border-transparent bg-[color:var(--yi-paper)] px-3.5 py-2 font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] [font-feature-settings:'ss01','cv11','tnum']">
-        <button
-          type="button"
-          aria-pressed={active}
-          aria-label={ariaLabel}
-          className="inline-flex min-h-7 items-center gap-2 rounded-full border-0 bg-transparent p-0 text-[12px] font-semibold text-[color:var(--yi-ink)] outline-none transition-[background-color,box-shadow,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
-          onClick={() => {
-            window.dispatchEvent(
-              new CustomEvent(active ? EVENT_REVIEW_EXIT : EVENT_REVIEW_START)
-            )
-          }}>
+      <div
+        tabIndex={active ? undefined : 0}
+        aria-label={active ? undefined : t("extension.widget.reviewMenuAria")}
+        className={[
+          "group/widget pointer-events-auto inline-flex min-h-11 items-center rounded-full border border-transparent bg-[color:var(--yi-paper)] font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none [font-feature-settings:'ss01','cv11','tnum'] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]",
+          active ? "gap-1.5 px-2 py-1.5" : "gap-0 p-1.5",
+          !active && "hover:gap-0.5 hover:px-2"
+        ].join(" ")}
+        onClick={(e) => {
+          if (active) return
+          const finePointer = window.matchMedia(
+            "(hover: hover) and (pointer: fine)"
+          ).matches
+          if (finePointer) return
+          if ((e.target as HTMLElement).closest("button")) return
+          setPinnedOpen((open) => !open)
+        }}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setPinnedOpen(false)
+          }
+        }}>
+        {!active && modesFirst ? modeButtons : null}
+
+        {active ? (
+          <button
+            type="button"
+            aria-pressed
+            aria-label={t("extension.widget.exitReviewAria")}
+            className="inline-flex min-h-7 items-center gap-1.5 rounded-full border-0 bg-transparent px-1.5 py-0 text-[12px] font-semibold text-[color:var(--yi-ink)] outline-none transition-[color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_EXIT))
+            }}>
+            <span
+              className="size-2 rounded-full bg-[color:var(--yi-mark)]"
+              aria-hidden
+            />
+            <span>{t("extension.widget.exitReview")}</span>
+            <span className="sr-only">
+              {activeMode === "screenshot"
+                ? t("extension.widget.screenshotModeActive")
+                : t("extension.widget.inspectModeActive")}
+            </span>
+          </button>
+        ) : (
           <span
-            className={`size-2 rounded-full ${
-              active
-                ? "bg-[color:var(--yi-mark)]"
-                : "bg-[color:var(--yi-ext-text-placeholder)]"
-            }`}
-            aria-hidden
-          />
-          <span>{label}</span>
-        </button>
+            aria-hidden="true"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full">
+            <YouInMark className="size-[1.35rem]" />
+          </span>
+        )}
+
+        {!active && !modesFirst ? modeButtons : null}
+
         {openCount > 0 ? (
           <button
             type="button"
             aria-label={`${openCount} open feedback item${openCount === 1 ? "" : "s"}`}
             title="Show page feedback"
-            className="-my-1 rounded-full border-0 bg-[color:var(--yi-mark-soft)] px-1.5 py-1 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)]"
+            className={[
+              "-my-0.5 overflow-hidden rounded-full border-0 bg-[color:var(--yi-mark-soft)] px-1.5 py-1 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] transition-[max-width,opacity,margin] duration-200 [transition-timing-function:var(--yi-ease-out-expo)] motion-reduce:transition-none",
+              active || expanded
+                ? "max-w-[3rem] opacity-100"
+                : "pointer-events-none max-w-0 opacity-0",
+              !active &&
+                "group-hover/widget:max-w-[3rem] group-hover/widget:opacity-100 group-hover/widget:pointer-events-auto group-focus-within/widget:max-w-[3rem] group-focus-within/widget:opacity-100 group-focus-within/widget:pointer-events-auto"
+            ].join(" ")}
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
