@@ -454,6 +454,46 @@ export const workspaceInvites = pgTable(
   ],
 );
 
+export const workspaceReviewLinks = pgTable(
+  "workspace_review_links",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Allowed site origin for guest submissions, e.g. https://staging.example.com. */
+    targetOrigin: text("target_origin").notNull(),
+    /** Public high-entropy token used in the embedded script URL. */
+    token: text("token").notNull().unique(),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "no action" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).default(
+      sql`now() + interval '30 days'`,
+    ),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("workspace_review_links_workspace_created_at_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+    index("workspace_review_links_workspace_active_idx").on(
+      table.workspaceId,
+      table.revokedAt,
+      table.expiresAt,
+    ),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Relations — for ergonomic `db.query.x.findMany({ with: ... })` joins.
 // ---------------------------------------------------------------------------
@@ -467,6 +507,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
   createdMarks: many(marks, { relationName: "marks_creator" }),
   sentInvites: many(workspaceInvites),
+  createdReviewLinks: many(workspaceReviewLinks),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
@@ -479,6 +520,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   events: many(markEvents),
   inboxReadStates: many(inboxReadStates),
   invites: many(workspaceInvites),
+  reviewLinks: many(workspaceReviewLinks),
 }));
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
@@ -620,6 +662,24 @@ export const workspaceInvitesRelations = relations(
   }),
 );
 
+export const workspaceReviewLinksRelations = relations(
+  workspaceReviewLinks,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [workspaceReviewLinks.workspaceId],
+      references: [workspaces.id],
+    }),
+    space: one(spaces, {
+      fields: [workspaceReviewLinks.spaceId],
+      references: [spaces.id],
+    }),
+    createdBy: one(profiles, {
+      fields: [workspaceReviewLinks.createdByUserId],
+      references: [profiles.id],
+    }),
+  }),
+);
+
 export type Profile = typeof profiles.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;
@@ -633,3 +693,4 @@ export type MarkEvent = typeof markEvents.$inferSelect;
 export type InboxReadState = typeof inboxReadStates.$inferSelect;
 export type WorkspaceView = typeof workspaceViews.$inferSelect;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;
+export type WorkspaceReviewLink = typeof workspaceReviewLinks.$inferSelect;

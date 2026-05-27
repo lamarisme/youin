@@ -95,6 +95,7 @@ ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_read_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.workspace_review_links ENABLE ROW LEVEL SECURITY;
 
 DO $$
 DECLARE
@@ -117,7 +118,8 @@ BEGIN
         'mark_comments',
         'mark_events',
         'inbox_read_states',
-        'workspace_views'
+        'workspace_views',
+        'workspace_review_links'
       )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', r.policyname, r.tablename);
@@ -226,6 +228,11 @@ CREATE POLICY projects_all_member ON public.projects
   WITH CHECK (public.user_workspace_member(workspace_id));
 
 CREATE POLICY workspace_views_all_member ON public.workspace_views
+  FOR ALL TO authenticated
+  USING (public.user_workspace_member(workspace_id))
+  WITH CHECK (public.user_workspace_member(workspace_id));
+
+CREATE POLICY workspace_review_links_all_member ON public.workspace_review_links
   FOR ALL TO authenticated
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));

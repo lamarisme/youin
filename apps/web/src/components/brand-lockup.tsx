@@ -13,9 +13,9 @@ export function BrandLockup({
   ...props
 }: BrandLockupProps) {
   return (
-    <span className={cn("inline-flex items-center gap-1", className)} {...props}>
+    <span className={cn("inline-flex items-center gap-1.5", className)} {...props}>
       <BrandLogo className={logoClassName} />
-      <span className="text-[1.375rem] font-semibold leading-none tracking-[-0.02em] text-mark">
+      <span className="font-display text-[1.375rem] font-semibold leading-none text-mark">
         youin
       </span>
     </span>

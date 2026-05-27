@@ -14,6 +14,7 @@ import {
 
 function mark(input: Partial<MarkItem> & Pick<MarkItem, "id" | "spaceId" | "title">): MarkItem {
   return {
+    spaceCode: "A",
     displayKey: input.id.toUpperCase(),
     seq: 1,
     page: "https://example.com",
@@ -42,6 +43,7 @@ const workspace: Workspace = {
   labels: [{ id: "label-a", name: "Bug", colorClass: "bg-paper-3" }],
   members: [],
   invites: [],
+  reviewLinks: [],
   marks: [
     mark({ id: "mark-a", spaceId: "space-a", title: "Pricing CTA", priority: "high", labelIds: ["label-a"], assigneeId: "user-a" }),
     mark({ id: "mark-b", spaceId: "space-b", title: "Resolved footer", status: "closed", priority: "low" }),

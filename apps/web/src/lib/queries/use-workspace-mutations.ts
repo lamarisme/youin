@@ -12,6 +12,7 @@ import type {
   Workspace,
   WorkspaceLabel,
   WorkspaceProject,
+  WorkspaceReviewLink,
   WorkspaceSpace,
   WorkspaceView,
   WorkspaceViewConfig,
@@ -833,6 +834,53 @@ export function useCancelInviteMutation() {
     onError: (e, _vars, context) => {
       restoreWorkspace(queryClient, context);
       toast.error(actionErrorMessage(e, "Couldn't cancel invite."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useCreateReviewLinkMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.createReviewLinkAction,
+    onSuccess: (link: WorkspaceReviewLink) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        reviewLinks: workspace.reviewLinks.some((item) => item.id === link.id)
+          ? workspace.reviewLinks
+          : [link, ...workspace.reviewLinks],
+      }));
+      toast.success(`Created review link for ${link.targetOrigin}.`);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't create review link.")),
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useRevokeReviewLinkMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ linkId }: { linkId: string; name?: string }) =>
+      ws.revokeReviewLinkAction(linkId),
+    onMutate: async ({ linkId }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        reviewLinks: workspace.reviewLinks.map((link) =>
+          link.id === linkId
+            ? { ...link, revokedAt: new Date().toISOString() }
+            : link,
+        ),
+      }));
+      return context;
+    },
+    onSuccess: (_, vars) =>
+      toast.success(vars.name ? `Revoked ${vars.name}.` : "Review link revoked."),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't revoke review link."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
   });

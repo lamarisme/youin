@@ -36,6 +36,7 @@ function emptyWorkspace(): Workspace {
     labels: [],
     members: [],
     invites: [],
+    reviewLinks: [],
     marks: [],
     comments: [],
     markEvents: [],

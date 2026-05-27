@@ -120,7 +120,7 @@ function ScreenshotIcon() {
 
 function modeButtonClass(): string {
   return [
-    "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-transparent text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
+    "youin-widget-mode inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] shadow-[0_12px_26px_-22px_oklch(18.4%_0.018_62_/_0.42)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
   ].join(" ")
 }
 
@@ -206,6 +206,16 @@ function Widget() {
 
   const modesFirst = isRightCorner(settings.corner)
   const expanded = pinnedOpen
+  const modeGroupPosition = modesFirst
+    ? "right-full pe-1.5 flex-row-reverse"
+    : "left-full ps-1.5"
+  const modeGroupHidden = modesFirst
+    ? "translate-x-2 opacity-0 pointer-events-none"
+    : "-translate-x-2 opacity-0 pointer-events-none"
+  const openFeedbackLabel = t("extension.widget.openFeedbackAria", {
+    count: openCount,
+    plural: openCount === 1 ? "" : "s"
+  })
 
   const startReview = (mode: ReviewMode) => {
     setPinnedOpen(false)
@@ -214,19 +224,23 @@ function Widget() {
     )
   }
 
+  const toggleDrawer = () => {
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
+  }
+
   const modeButtons = (
     <div
       role="group"
       aria-label={t("extension.widget.captureMode")}
       className={[
-        "flex items-center gap-0.5 overflow-hidden transition-[max-width,opacity,margin] duration-200 [transition-timing-function:var(--yi-ease-out-expo)] motion-reduce:transition-none",
-        "max-w-0 opacity-0 pointer-events-none",
-        "group-hover/widget:max-w-[4.5rem] group-hover/widget:opacity-100 group-hover/widget:pointer-events-auto",
-        "group-focus-within/widget:max-w-[4.5rem] group-focus-within/widget:opacity-100 group-focus-within/widget:pointer-events-auto",
+        "absolute top-1/2 z-10 flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap transition-[opacity,transform] duration-200 [transition-timing-function:var(--yi-ease-out-expo)] motion-reduce:transition-none",
+        modeGroupPosition,
         expanded
-          ? "max-w-[4.5rem] opacity-100 pointer-events-auto"
-          : "",
-        modesFirst ? "me-0.5" : "ms-0.5"
+          ? "translate-x-0 opacity-100 pointer-events-auto"
+          : modeGroupHidden,
+        !expanded
+          ? "group-hover/widget:translate-x-0 group-hover/widget:opacity-100 group-hover/widget:pointer-events-auto group-focus-within/widget:translate-x-0 group-focus-within/widget:opacity-100 group-focus-within/widget:pointer-events-auto"
+          : ""
       ].join(" ")}>
       <button
         type="button"
@@ -235,6 +249,7 @@ function Widget() {
         className={modeButtonClass()}
         onClick={() => startReview("inspect")}>
         <InspectIcon />
+        <span>{t("extension.popup.inspect")}</span>
       </button>
       <button
         type="button"
@@ -243,6 +258,7 @@ function Widget() {
         className={modeButtonClass()}
         onClick={() => startReview("screenshot")}>
         <ScreenshotIcon />
+        <span>{t("extension.popup.screenshot")}</span>
       </button>
     </div>
   )
@@ -251,41 +267,27 @@ function Widget() {
     <div
       className={`pointer-events-none fixed ${cornerClass(settings.corner)}`}
       style={{ zIndex: Z_WIDGET }}>
-      <div
-        tabIndex={active ? undefined : 0}
-        aria-label={active ? undefined : t("extension.widget.reviewMenuAria")}
-        className={[
-          "group/widget pointer-events-auto inline-flex min-h-11 items-center rounded-full border border-transparent bg-[color:var(--yi-paper)] font-sans text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_12px_32px_-22px_oklch(18.4%_0.018_62_/_0.42),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none [font-feature-settings:'ss01','cv11','tnum'] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]",
-          active ? "gap-1.5 px-2 py-1.5" : "gap-0 p-1.5",
-          !active && "hover:gap-0.5 hover:px-2"
-        ].join(" ")}
-        onClick={(e) => {
-          if (active) return
-          const finePointer = window.matchMedia(
-            "(hover: hover) and (pointer: fine)"
-          ).matches
-          if (finePointer) return
-          if ((e.target as HTMLElement).closest("button")) return
-          setPinnedOpen((open) => !open)
-        }}
-        onBlur={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-            setPinnedOpen(false)
-          }
-        }}>
-        {!active && modesFirst ? modeButtons : null}
-
-        {active ? (
+      {active ? (
+        <div className="pointer-events-auto inline-flex items-center gap-1 font-sans text-[12px] font-semibold [font-feature-settings:'ss01','cv11','tnum']">
           <button
             type="button"
             aria-pressed
             aria-label={t("extension.widget.exitReviewAria")}
-            className="inline-flex min-h-7 items-center gap-1.5 rounded-full border-0 bg-transparent px-1.5 py-0 text-[12px] font-semibold text-[color:var(--yi-ink)] outline-none transition-[color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="youin-widget-active inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_14px_34px_-24px_oklch(18.4%_0.018_62_/_0.46),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-elevated)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={() => {
               window.dispatchEvent(new CustomEvent(EVENT_REVIEW_EXIT))
             }}>
             <span
               className="size-2 rounded-full bg-[color:var(--yi-mark)]"
+              aria-hidden
+            />
+            <span className="text-[color:var(--yi-ext-text-muted)]">
+              {activeMode === "screenshot"
+                ? t("extension.popup.screenshot")
+                : t("extension.popup.inspect")}
+            </span>
+            <span
+              className="h-3 w-px bg-[color:var(--yi-ext-border)]"
               aria-hidden
             />
             <span>{t("extension.widget.exitReview")}</span>
@@ -295,38 +297,51 @@ function Widget() {
                 : t("extension.widget.inspectModeActive")}
             </span>
           </button>
-        ) : (
-          <span
-            aria-hidden="true"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-full">
-            <YouInMark className="size-[1.35rem]" />
-          </span>
-        )}
-
-        {!active && !modesFirst ? modeButtons : null}
-
-        {openCount > 0 ? (
+          {openCount > 0 ? (
+            <button
+              type="button"
+              aria-label={openFeedbackLabel}
+              title={t("extension.widget.showPageFeedback")}
+              className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-mark-soft)] px-2 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] shadow-[0_10px_24px_-20px_oklch(18.4%_0.018_62_/_0.42)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+              onClick={toggleDrawer}>
+              {openCount}
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <div
+          className={[
+            "group/widget pointer-events-auto relative inline-flex size-11 items-center justify-center font-sans text-[12px] font-semibold [font-feature-settings:'ss01','cv11','tnum']",
+            expanded ? "youin-widget-expanded" : ""
+          ].join(" ")}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setPinnedOpen(false)
+            }
+          }}>
+          {modeButtons}
           <button
             type="button"
-            aria-label={`${openCount} open feedback item${openCount === 1 ? "" : "s"}`}
-            title="Show page feedback"
-            className={[
-              "-my-0.5 overflow-hidden rounded-full border-0 bg-[color:var(--yi-mark-soft)] px-1.5 py-1 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] transition-[max-width,opacity,margin] duration-200 [transition-timing-function:var(--yi-ease-out-expo)] motion-reduce:transition-none",
-              active || expanded
-                ? "max-w-[3rem] opacity-100"
-                : "pointer-events-none max-w-0 opacity-0",
-              !active &&
-                "group-hover/widget:max-w-[3rem] group-hover/widget:opacity-100 group-hover/widget:pointer-events-auto group-focus-within/widget:max-w-[3rem] group-focus-within/widget:opacity-100 group-focus-within/widget:pointer-events-auto"
-            ].join(" ")}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
-            }}>
-            {openCount}
+            aria-label={t("extension.widget.reviewMenuAria")}
+            aria-expanded={expanded}
+            className="youin-widget-fab relative inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] text-[color:var(--yi-mark)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.97] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+            onClick={() => setPinnedOpen((open) => !open)}>
+            <span className="youin-widget-fab-icon inline-flex size-8 shrink-0 items-center justify-center rounded-full">
+              <YouInMark className="size-[1.35rem]" />
+            </span>
           </button>
-        ) : null}
-      </div>
+          {openCount > 0 ? (
+            <button
+              type="button"
+              aria-label={openFeedbackLabel}
+              title={t("extension.widget.showPageFeedback")}
+              className="absolute -right-1 -top-1 z-20 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border border-[color:var(--yi-paper)] bg-[color:var(--yi-mark)] px-1 font-mono text-[9px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.5)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+              onClick={toggleDrawer}>
+              {openCount}
+            </button>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }

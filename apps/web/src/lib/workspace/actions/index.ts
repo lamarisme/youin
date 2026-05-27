@@ -55,6 +55,11 @@ export {
 } from "./invites";
 
 export {
+  createReviewLinkAction,
+  revokeReviewLinkAction,
+} from "./review-links";
+
+export {
   createLabelAction,
   deleteLabelAction,
   type CreatedLabel,

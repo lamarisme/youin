@@ -47,6 +47,18 @@ export interface TeamInvite {
   invitedBy: string;
 }
 
+export interface WorkspaceReviewLink {
+  id: string;
+  name: string;
+  spaceId: string;
+  targetOrigin: string;
+  token: string;
+  createdAt: string;
+  expiresAt?: string;
+  revokedAt?: string;
+  lastUsedAt?: string;
+}
+
 export interface MarkComment {
   id: string;
   markId: string;
@@ -160,6 +172,7 @@ export interface Workspace {
   labels: WorkspaceLabel[];
   members: TeamMember[];
   invites: TeamInvite[];
+  reviewLinks: WorkspaceReviewLink[];
   marks: MarkItem[];
   comments: MarkComment[];
   markEvents: MarkEvent[];

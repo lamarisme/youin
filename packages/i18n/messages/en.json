@@ -303,6 +303,11 @@
       "screenshot": "Screenshot",
       "disabledOnSite": "YouIn is disabled on this site.",
       "noSpaceSelected": "Create a space in this project before reviewing.",
+      "floatingCapture": "Floating capture",
+      "floatingReady": "Ready on this page",
+      "floatingHidden": "Hidden on pages",
+      "enableFloatingButton": "Enable",
+      "captureUnavailable": "Open a website tab to review.",
       "inspectHint": "Inspect an element, or drag any screen area.",
       "shortcutHint": "Alt+Shift+Y toggles review on the page.",
       "open": "Open",
@@ -377,7 +382,20 @@
       "exitReviewAria": "Exit review mode",
       "inspectModeActive": "Inspect mode active",
       "screenshotModeActive": "Screenshot mode active",
-      "reviewMenuAria": "Youin review — hover for capture modes"
+      "reviewMenuAria": "Youin review — hover for capture modes",
+      "openFeedbackAria": "{count} open feedback item{plural}",
+      "showPageFeedback": "Show page feedback",
+      "chooseSpace": "Choose a space",
+      "spaceSaveError": "Couldn't save. Try again.",
+      "spaceCreated": "Created. Select it in the list.",
+      "createSpaceError": "Could not create in your workspace—try signing in via the popup first.",
+      "openYouinAria": "Open Youin",
+      "closeMenuAria": "Close menu",
+      "marksTitle": "Marks on this page",
+      "spaceNamePlaceholder": "Space name",
+      "newSpaceNameAria": "New space name",
+      "saveSpaceAria": "Save new space",
+      "addSpaceAria": "Add a space"
     },
     "panel": {
       "leaveFeedback": "Leave feedback",
@@ -473,19 +491,6 @@
       "save": "Save",
       "marksOnPageAria": "Marks on this page",
       "previewAlt": "Captured element preview"
-    },
-    "widget": {
-      "chooseSpace": "Choose a space",
-      "spaceSaveError": "Couldn't save. Try again.",
-      "spaceCreated": "Created. Select it in the list.",
-      "createSpaceError": "Could not create in your workspace—try signing in via the popup first.",
-      "openYouinAria": "Open Youin",
-      "closeMenuAria": "Close menu",
-      "marksTitle": "Marks on this page",
-      "spaceNamePlaceholder": "Space name",
-      "newSpaceNameAria": "New space name",
-      "saveSpaceAria": "Save new space",
-      "addSpaceAria": "Add a space"
     },
     "sync": {
       "noWorkspace": "No workspace found for this user. Use the web app once to finish setup.",

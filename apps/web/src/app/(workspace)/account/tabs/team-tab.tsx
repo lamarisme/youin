@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, UserPlus, X } from "lucide-react";
+import { Copy, Link2, Trash2, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,10 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
+import type { WorkspaceReviewLink } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCancelInviteMutation,
+  useCreateReviewLinkMutation,
   useInviteMemberMutation,
+  useRevokeReviewLinkMutation,
   useRemoveMemberMutation,
   useUpdateMyWorkspaceUsernameMutation,
 } from "@/lib/queries/use-workspace-mutations";
@@ -23,11 +26,30 @@ import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function reviewScriptUrl(token: string, appOrigin: string): string {
+  const path = `/api/review-links/${encodeURIComponent(token)}/script`;
+  return appOrigin ? `${appOrigin}${path}` : path;
+}
+
+function reviewScriptSnippet(token: string, appOrigin: string): string {
+  return `<script async src="${reviewScriptUrl(token, appOrigin)}"></script>`;
+}
+
+function reviewLinkState(link: WorkspaceReviewLink): "active" | "expired" | "revoked" {
+  if (link.revokedAt) return "revoked";
+  if (link.expiresAt && new Date(link.expiresAt).getTime() <= Date.now()) {
+    return "expired";
+  }
+  return "active";
+}
+
 export function TeamTab() {
-  const { members, invites, userId, isOwner, displayNamePreference } =
+  const { members, invites, reviewLinks, spaces, userId, isOwner, displayNamePreference } =
     useWorkspaceData((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
+      reviewLinks: s.workspace.reviewLinks,
+      spaces: s.workspace.spaces,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
       isOwner:
@@ -38,6 +60,9 @@ export function TeamTab() {
   const { mutateAsync: inviteMember, isPending: isInviting } =
     useInviteMemberMutation();
   const { mutate: cancelInvite } = useCancelInviteMutation();
+  const { mutateAsync: createReviewLink, isPending: isCreatingReviewLink } =
+    useCreateReviewLinkMutation();
+  const { mutate: revokeReviewLink } = useRevokeReviewLinkMutation();
   const { mutate: removeMember } = useRemoveMemberMutation();
 
   const me = members.find((m) => m.id === userId);
@@ -68,6 +93,22 @@ export function TeamTab() {
       ? "Username must be at least 2 characters."
       : null;
   const usernameFieldError = usernameError ?? usernameLengthError;
+  const defaultReviewSpaceId = spaces[0]?.id ?? "";
+  const [reviewLinkName, setReviewLinkName] = useState("");
+  const [reviewTargetOrigin, setReviewTargetOrigin] = useState("");
+  const [reviewSpaceId, setReviewSpaceId] = useState(defaultReviewSpaceId);
+  const [reviewLinkError, setReviewLinkError] = useState<string | null>(null);
+  const [copiedReviewLinkId, setCopiedReviewLinkId] = useState<string | null>(null);
+  const [appOrigin, setAppOrigin] = useState("");
+  if (!appOrigin && typeof window !== "undefined") {
+    setAppOrigin(window.location.origin);
+  }
+  if (!reviewSpaceId && defaultReviewSpaceId) {
+    setReviewSpaceId(defaultReviewSpaceId);
+  }
+  const reviewTargetReady = reviewTargetOrigin.trim().length > 0;
+  const canCreateReviewLink =
+    isOwner && reviewTargetReady && Boolean(reviewSpaceId) && !isCreatingReviewLink;
 
   async function handleSaveUsername() {
     if (!me || isSavingUsername) return;
@@ -109,6 +150,39 @@ export function TeamTab() {
   function handleRemove(memberUserId: string, name: string) {
     if (!isOwner || memberUserId === userId) return;
     removeMember({ memberUserId, name });
+  }
+
+  async function handleCreateReviewLink() {
+    if (!canCreateReviewLink) return;
+    setReviewLinkError(null);
+    try {
+      await createReviewLink({
+        name: reviewLinkName,
+        targetOrigin: reviewTargetOrigin,
+        spaceId: reviewSpaceId,
+      });
+      setReviewLinkName("");
+      setReviewTargetOrigin("");
+    } catch (e) {
+      setReviewLinkError(
+        e instanceof Error ? e.message : "Couldn't create the review link.",
+      );
+    }
+  }
+
+  async function handleCopyReviewSnippet(link: WorkspaceReviewLink) {
+    try {
+      await navigator.clipboard.writeText(reviewScriptSnippet(link.token, appOrigin));
+      setCopiedReviewLinkId(link.id);
+      window.setTimeout(() => setCopiedReviewLinkId(null), 1600);
+    } catch {
+      setReviewLinkError("Couldn't copy the snippet. Select it manually.");
+    }
+  }
+
+  function handleRevokeReviewLink(link: WorkspaceReviewLink) {
+    if (!isOwner || reviewLinkState(link) !== "active") return;
+    revokeReviewLink({ linkId: link.id, name: link.name });
   }
 
   return (
@@ -225,6 +299,145 @@ export function TeamTab() {
             </p>
           ) : null}
         </div>
+      </section>
+
+      <section className="space-y-4">
+        <ProductSectionHeader
+          title="Guest review links"
+          description="Embed a tiny script on a staging or client site so reviewers can mark UI without a YouIn account or Chrome extension."
+        />
+
+        {isOwner ? (
+          <div className="space-y-3 rounded-md bg-paper-2 p-3">
+            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div>
+                <Label htmlFor="review-origin" className="text-ui-xs font-medium text-ink-2">
+                  Site origin
+                </Label>
+                <Input
+                  id="review-origin"
+                  value={reviewTargetOrigin}
+                  onChange={(e) => {
+                    setReviewLinkError(null);
+                    setReviewTargetOrigin(e.target.value);
+                  }}
+                  placeholder="https://staging.client.com"
+                  className="mt-1 h-10 rounded-md border-transparent bg-paper-elevated text-ui-sm shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="review-space" className="text-ui-xs font-medium text-ink-2">
+                  Destination space
+                </Label>
+                <select
+                  id="review-space"
+                  value={reviewSpaceId}
+                  onChange={(e) => setReviewSpaceId(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border-0 bg-paper-elevated px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper-3 focus:ring-2 focus:ring-mark/20"
+                >
+                  {spaces.length > 0 ? (
+                    spaces.map((space) => (
+                      <option key={space.id} value={space.id}>
+                        {space.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Create a space first</option>
+                  )}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={reviewLinkName}
+                onChange={(e) => setReviewLinkName(e.target.value)}
+                placeholder="Optional label, like Client review"
+                className="h-10 flex-1 rounded-md border-transparent bg-paper-elevated text-ui-sm shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0"
+              />
+              <SubmitButton
+                type="button"
+                onClick={() => void handleCreateReviewLink()}
+                loading={isCreatingReviewLink}
+                disabled={!canCreateReviewLink}
+                loadingText="Creating..."
+                className="h-10 shrink-0 sm:px-4"
+              >
+                <Link2 className="size-3.5" />
+                Create link
+              </SubmitButton>
+            </div>
+            {reviewLinkError ? (
+              <p role="alert" className="text-ui-xs text-mark">
+                {reviewLinkError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {reviewLinks.length > 0 ? (
+          <ProductList>
+            {reviewLinks.map((link) => {
+              const state = reviewLinkState(link);
+              const space = spaces.find((item) => item.id === link.spaceId);
+              const muted = state !== "active";
+              return (
+                <ProductListItem
+                  key={link.id}
+                  className={cn(
+                    "space-y-2",
+                    muted && "opacity-65",
+                  )}
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="flex flex-wrap items-center gap-2 text-ui-sm font-medium text-ink">
+                        <span className="truncate">{link.name}</span>
+                        <Badge variant="outline" className="text-ui-2xs capitalize">
+                          {state}
+                        </Badge>
+                      </p>
+                      <p className="mt-0.5 truncate text-ui-xs text-ink-3">
+                        {link.targetOrigin}
+                        {space ? ` -> ${space.name}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyReviewSnippet(link)}
+                        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
+                        aria-label={`Copy embed snippet for ${link.name}`}
+                      >
+                        <Copy className="size-3.5" />
+                      </button>
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRevokeReviewLink(link)}
+                          disabled={state !== "active"}
+                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label={`Revoke review link ${link.name}`}
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <code className="block overflow-x-auto rounded bg-paper-2 px-2 py-1.5 font-mono text-ui-2xs text-ink-2">
+                    {reviewScriptSnippet(link.token, appOrigin)}
+                  </code>
+                  {copiedReviewLinkId === link.id ? (
+                    <p className="text-ui-xs text-ink-3">Snippet copied.</p>
+                  ) : null}
+                </ProductListItem>
+              );
+            })}
+          </ProductList>
+        ) : (
+          <div className="rounded-md bg-paper-2 px-3 py-4 text-ui-sm text-ink-3">
+            No guest review links yet.
+          </div>
+        )}
       </section>
 
       {/* Roster list, bordered so it visually anchors as the team. */}

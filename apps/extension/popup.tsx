@@ -13,7 +13,6 @@ import {
 } from "./lib/auth"
 import {
   ANNOTATION_DRAWER_SCRIPT,
-  CAPTURE_PANEL_SCRIPT,
   ensureReviewContentScripts,
   REVIEW_MODE_SCRIPT,
   type ReviewScriptRequirement
@@ -58,10 +57,7 @@ import {
 const SYNC_NOW = "youin:sync-now"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
-type ReviewCommandType =
-  | "youin:start-inspect"
-  | "youin:start-screenshot"
-  | "youin:toggle-drawer"
+type ReviewCommandType = "youin:toggle-drawer"
 type ReviewCommandMessage = { type: ReviewCommandType }
 
 type ReviewCommandScripts = {
@@ -71,14 +67,6 @@ type ReviewCommandScripts = {
 
 const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
   {
-    "youin:start-inspect": {
-      required: [REVIEW_MODE_SCRIPT, CAPTURE_PANEL_SCRIPT],
-      requireReady: true
-    },
-    "youin:start-screenshot": {
-      required: [REVIEW_MODE_SCRIPT, CAPTURE_PANEL_SCRIPT],
-      requireReady: true
-    },
     "youin:toggle-drawer": {
       required: [REVIEW_MODE_SCRIPT, ANNOTATION_DRAWER_SCRIPT]
     }
@@ -171,28 +159,6 @@ async function fetchWorkspaceLabel(): Promise<string | null> {
   return String(ws.name)
 }
 
-async function startInspectOnActiveTab(): Promise<{
-  ok: boolean
-  error?: string
-}> {
-  return sendReviewCommandToActiveTab(
-    { type: "youin:start-inspect" },
-    "Open a web page to inspect.",
-    "Could not start inspect mode on this page. Reload the tab, then try again."
-  )
-}
-
-async function startScreenshotOnActiveTab(): Promise<{
-  ok: boolean
-  error?: string
-}> {
-  return sendReviewCommandToActiveTab(
-    { type: "youin:start-screenshot" },
-    "Open a web page to screenshot.",
-    t("extension.popup.reloadPageHint")
-  )
-}
-
 async function openDrawerOnActiveTab(): Promise<{
   ok: boolean
   error?: string
@@ -222,7 +188,7 @@ function IndexPopup() {
   const [canReviewPage, setCanReviewPage] = useState(false)
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
-  const [inspectMsg, setInspectMsg] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [creatingSpace, setCreatingSpace] = useState(false)
   const [newSpaceName, setNewSpaceName] = useState("")
   const [spaceErr, setSpaceErr] = useState<string | null>(null)
@@ -437,31 +403,18 @@ function IndexPopup() {
     }
   }, [view, session?.user?.id])
 
-  const beginInspect = () => {
-    setInspectMsg(null)
-    void (async () => {
-      const r = await startInspectOnActiveTab()
-      if (!r.ok) setInspectMsg(r.error ?? "Could not start inspect mode.")
-      else window.close()
-    })()
-  }
-
-  const beginScreenshot = () => {
-    setInspectMsg(null)
-    void (async () => {
-      const r = await startScreenshotOnActiveTab()
-      if (!r.ok) setInspectMsg(r.error ?? "Could not start screenshot mode.")
-      else window.close()
-    })()
-  }
-
   const openPageFeedback = () => {
-    setInspectMsg(null)
+    setActionError(null)
     void (async () => {
       const r = await openDrawerOnActiveTab()
-      if (!r.ok) setInspectMsg(r.error ?? t("extension.popup.openDrawerFailed"))
+      if (!r.ok) setActionError(r.error ?? t("extension.popup.openDrawerFailed"))
       else window.close()
     })()
+  }
+
+  const enableFloatingControl = () => {
+    setFloatingControl(true)
+    void setWidgetSettings({ fabVisible: true })
   }
 
   const isSyncingBadge =
@@ -530,6 +483,17 @@ function IndexPopup() {
   const projectSpaces = spaces.filter((space) => space.projectId === projectId)
   const activeProjectName =
     projects.find((project) => project.id === projectId)?.name ?? "General"
+  const floatingCaptureStatus = domainDisabled
+    ? t("extension.popup.disabledOnSite")
+    : !canReviewPage
+      ? t("extension.popup.captureUnavailable")
+      : !spaceId
+        ? view === "signedIn" && !projectSpaces.length
+          ? t("extension.popup.setupSpaceBody")
+          : t("extension.popup.noSpaceSelected")
+        : floatingControl
+          ? t("extension.popup.floatingReady")
+          : t("extension.popup.floatingHidden")
 
   const selectProject = (id: string) => {
     setProjectId(id)
@@ -731,45 +695,34 @@ function IndexPopup() {
           </span>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={!canReviewPage || !spaceId || domainDisabled}
-            className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
-            onClick={beginInspect}>
-            {t("extension.popup.inspect")}
-          </button>
-          <button
-            type="button"
-            disabled={!canReviewPage || !spaceId || domainDisabled}
-            className="flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transition-none motion-reduce:active:scale-100"
-            onClick={beginScreenshot}>
-            {t("extension.popup.screenshot")}
-          </button>
-        </div>
-
-        {domainDisabled ? (
-          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            {t("extension.popup.disabledOnSite")}
-          </p>
-        ) : !spaceId ? (
-          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            {view === "signedIn" && !projectSpaces.length
-              ? t("extension.popup.setupSpaceBody")
-              : t("extension.popup.noSpaceSelected")}
-          </p>
-        ) : inspectMsg ? (
-          <p className="mt-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
-            {inspectMsg}
-          </p>
-        ) : (
-          <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-            {t("extension.popup.inspectHint")}
-            <span className="mt-0.5 block">
-              {t("extension.popup.shortcutHint")}
+        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2.5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--yi-mark-soft)]">
+              <YouInMark />
             </span>
-          </p>
-        )}
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
+                {t("extension.popup.floatingCapture")}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                {floatingCaptureStatus}
+              </p>
+            </div>
+            {!floatingControl && canReviewPage && !domainDisabled ? (
+              <button
+                type="button"
+                className="min-h-8 shrink-0 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+                onClick={enableFloatingControl}>
+                {t("extension.popup.enableFloatingButton")}
+              </button>
+            ) : null}
+          </div>
+          {actionError ? (
+            <p className="mt-2 text-[11px] text-[color:var(--yi-ext-danger-text)]">
+              {actionError}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-md bg-[color:var(--yi-paper-elevated)]">
           <button

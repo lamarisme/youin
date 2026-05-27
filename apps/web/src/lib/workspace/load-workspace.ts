@@ -14,6 +14,7 @@ import {
   spaces,
   workspaceInvites,
   workspaceMembers,
+  workspaceReviewLinks,
   workspaceViews,
   workspaces,
 } from "@/db/schema";
@@ -30,6 +31,7 @@ import type {
   Workspace,
   WorkspaceLabel,
   WorkspaceProject,
+  WorkspaceReviewLink,
   WorkspaceView,
   WorkspaceSpace,
 } from "@/lib/collab-types";
@@ -129,6 +131,7 @@ export async function loadWorkspaceAggregate(
     labelsRows,
     membersRows,
     invitesRows,
+    reviewLinkRows,
     marksRows,
   ] = await Promise.all([
     db
@@ -168,6 +171,11 @@ export async function loadWorkspaceAggregate(
       .select()
       .from(workspaceInvites)
       .where(eq(workspaceInvites.workspaceId, workspaceId)),
+    db
+      .select()
+      .from(workspaceReviewLinks)
+      .where(eq(workspaceReviewLinks.workspaceId, workspaceId))
+      .orderBy(desc(workspaceReviewLinks.createdAt)),
     db
       .select()
       .from(marks)
@@ -336,6 +344,18 @@ export async function loadWorkspaceAggregate(
     };
   });
 
+  const reviewLinks: WorkspaceReviewLink[] = reviewLinkRows.map((link) => ({
+    id: link.id,
+    name: link.name,
+    spaceId: link.spaceId,
+    targetOrigin: link.targetOrigin,
+    token: link.token,
+    createdAt: toIso(link.createdAt),
+    expiresAt: link.expiresAt ? toIso(link.expiresAt) : undefined,
+    revokedAt: link.revokedAt ? toIso(link.revokedAt) : undefined,
+    lastUsedAt: link.lastUsedAt ? toIso(link.lastUsedAt) : undefined,
+  }));
+
   const markScreenshotPaths: string[] = [];
   for (const mark of marksRows) {
     if (isStoragePath(mark.screenshotUrl)) markScreenshotPaths.push(mark.screenshotUrl);
@@ -443,6 +463,7 @@ export async function loadWorkspaceAggregate(
     labels,
     members,
     invites,
+    reviewLinks,
     marks: marksOut,
     comments,
     markEvents: markEventsOut,
