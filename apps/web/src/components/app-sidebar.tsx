@@ -4,7 +4,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  BarChart3,
   Check,
   ChevronsUpDown,
   Inbox as InboxIcon,
@@ -19,6 +18,7 @@ import {
   Search,
   Sun,
   User,
+  View,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -60,7 +60,7 @@ const NAV_ITEMS = [
   { href: "/inbox", labelKey: "inbox" as const, icon: InboxIcon, shortcut: "I", exactOnly: false },
   { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
   { href: "/spaces", labelKey: "spaces" as const, icon: Layers, shortcut: "S", exactOnly: false },
-  { href: "/analytics", labelKey: "analytics" as const, icon: BarChart3, shortcut: "A", exactOnly: false },
+  { href: "/views", labelKey: "views" as const, icon: View, shortcut: "V", exactOnly: false },
 ] as const;
 
 const SIDEBAR_FOCUS =

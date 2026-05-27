@@ -3,6 +3,15 @@
 
 import { getSession, setSessionFromBridge } from "../lib/auth"
 import {
+  ensureReviewContentScripts,
+  MESSAGE_ENSURE_REVIEW_SCRIPTS,
+  requirementsForFileMarkers,
+  type EnsureReviewScriptsMessage,
+  type EnsureReviewScriptsResponse
+} from "../lib/review-scripts"
+import { MESSAGE_FORWARD_CAPTURE, MESSAGE_OPEN_CAPTURE_PANEL } from "../lib/events"
+import type { ReviewCaptureDetail } from "../lib/events"
+import {
   syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
@@ -80,11 +89,26 @@ async function runBackgroundSync(): Promise<SyncNowResponse> {
   }
 }
 
+interface ForwardCaptureMessage {
+  type: typeof MESSAGE_FORWARD_CAPTURE
+  detail: ReviewCaptureDetail
+}
+
+interface ForwardCaptureResponse {
+  ok: boolean
+}
+
 chrome.runtime.onMessage.addListener(
   (
     message: unknown,
     sender,
-    sendResponse: (r: TabCaptureCropResponse | SyncNowResponse) => void
+    sendResponse: (
+      r:
+        | TabCaptureCropResponse
+        | SyncNowResponse
+        | EnsureReviewScriptsResponse
+        | ForwardCaptureResponse
+    ) => void
   ) => {
     if (!message || typeof message !== "object") {
       return false
@@ -93,6 +117,42 @@ chrome.runtime.onMessage.addListener(
     const type = (message as { type?: unknown }).type
     if (type === SYNC_NOW) {
       void runBackgroundSync().then(sendResponse)
+      return true
+    }
+    if (type === MESSAGE_ENSURE_REVIEW_SCRIPTS) {
+      const tabId = sender.tab?.id
+      const url = sender.tab?.url
+      if (tabId == null || !url) {
+        sendResponse({ ok: false })
+        return false
+      }
+      const m = message as EnsureReviewScriptsMessage
+      void ensureReviewContentScripts(
+        tabId,
+        url,
+        requirementsForFileMarkers(m.fileMarkers),
+        { requireReady: m.requireReady ?? false }
+      ).then((ok) => sendResponse({ ok }))
+      return true
+    }
+    if (type === MESSAGE_FORWARD_CAPTURE) {
+      const tabId = sender.tab?.id
+      if (tabId == null) {
+        sendResponse({ ok: false })
+        return false
+      }
+      const m = message as ForwardCaptureMessage
+      void (async () => {
+        try {
+          const response = (await chrome.tabs.sendMessage(tabId, {
+            type: MESSAGE_OPEN_CAPTURE_PANEL,
+            detail: m.detail
+          })) as { ok?: boolean } | undefined
+          sendResponse({ ok: response?.ok === true })
+        } catch {
+          sendResponse({ ok: false })
+        }
+      })()
       return true
     }
     if (type !== TAB_CAPTURE_CROP) {

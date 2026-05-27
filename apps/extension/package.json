@@ -34,6 +34,7 @@
   "manifest": {
     "permissions": [
       "activeTab",
+      "scripting",
       "storage",
       "tabs"
     ],

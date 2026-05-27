@@ -78,6 +78,13 @@
       "when": 1778186000000,
       "tag": "0010_inbox_read_states",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778187000000,
+      "tag": "0011_workspace_views",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,569 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CircleDashed,
+  Plus,
+  Trash2,
+} from "lucide-react";
+
+import { ActivityHeatmap } from "@/app/(workspace)/analytics/activity-heatmap";
+import { StatTile } from "@/app/(workspace)/analytics/stat-tile";
+import { ThroughputChart } from "@/app/(workspace)/analytics/throughput-chart";
+import { TimeframeFilter } from "@/app/(workspace)/analytics/timeframe-filter";
+import {
+  useAnalyticsStats,
+  type AnalyticsTimeframe,
+} from "@/app/(workspace)/analytics/use-analytics-stats";
+import { BreadcrumbHeader } from "@/components/breadcrumbs";
+import { EmptyState } from "@/components/empty-state";
+import { MarkFilters } from "@/components/dashboard/mark-filters";
+import { MarkTable } from "@/components/dashboard/mark-table";
+import { Pagination } from "@/components/pagination";
+import { Pill } from "@/components/pill";
+import { PriorityBadge } from "@/components/priority-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PageContainer } from "@/components/page-container";
+import type {
+  DisplayNamePreference,
+  MarkItem,
+  Workspace,
+  WorkspaceView,
+  WorkspaceViewConfig,
+  WorkspaceViewFilters,
+} from "@/lib/collab-types";
+import {
+  useDeleteWorkspaceViewMutation,
+  useUpdateWorkspaceViewMutation,
+} from "@/lib/queries/use-workspace-mutations";
+import { useWorkspaceData } from "@/lib/queries/use-workspace";
+import { markHref } from "@/lib/workspace/routes";
+import {
+  DEFAULT_WORKSPACE_VIEW_CONFIG,
+  filterMarksForWorkspaceView,
+  filterWorkspaceForView,
+} from "@/lib/workspace/views";
+
+import { ViewScopeFields } from "./view-filter-fields";
+import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
+
+import type { DashboardFilters } from "@/components/dashboard/use-dashboard-filters";
+
+const PAGE_SIZE = 8;
+
+export function ViewDetailClient({ viewId }: { viewId: string }) {
+  const { workspace, userId, displayNamePreference } = useWorkspaceData((s) => ({
+    workspace: s.workspace,
+    userId: s.userId,
+    displayNamePreference: s.profile.displayNamePreference,
+  }));
+  const view = workspace.views.find((item) => item.id === viewId) ?? null;
+
+  if (!view) {
+    return <ViewNotFound />;
+  }
+
+  return (
+    <ViewDetail
+      key={view.id}
+      view={view}
+      workspace={workspace}
+      userId={userId}
+      displayNamePreference={displayNamePreference}
+    />
+  );
+}
+
+function ViewDetail({
+  view,
+  workspace,
+  userId,
+  displayNamePreference,
+}: {
+  view: WorkspaceView;
+  workspace: Workspace;
+  userId: string | null;
+  displayNamePreference: DisplayNamePreference;
+}) {
+  const router = useRouter();
+  const { mutateAsync: updateView, isPending: isSaving } =
+    useUpdateWorkspaceViewMutation();
+  const { mutateAsync: deleteView, isPending: isDeleting } =
+    useDeleteWorkspaceViewMutation();
+  const [name, setName] = useState(view.name);
+  const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
+  const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
+  const [page, setPage] = useState(1);
+
+  const visibleMarks = useMemo(
+    () =>
+      filterMarksForWorkspaceView(workspace.marks, filters, {
+        spaces: workspace.spaces,
+        viewerId: userId,
+      }),
+    [filters, userId, workspace.marks, workspace.spaces],
+  );
+
+  const dirty = viewSignature({
+    name,
+    filters,
+    config,
+  }) !== viewSignature({
+    name: view.name,
+    filters: view.filters,
+    config: view.config,
+  });
+
+  function updateFilters(patch: Partial<WorkspaceViewFilters>) {
+    setFilters((current) => ({ ...current, ...patch }));
+    setPage(1);
+  }
+
+  async function saveChanges() {
+    if (!dirty || isSaving) return;
+    await updateView({
+      viewId: view.id,
+      name,
+      filters,
+      config,
+    });
+  }
+
+  async function removeView() {
+    if (isDeleting) return;
+    if (!window.confirm(`Delete “${view.name}”?`)) return;
+    await deleteView({ viewId: view.id, name: view.name });
+    router.push("/views");
+  }
+
+  const dashboardFilters = toDashboardFilters(filters, page);
+
+  return (
+    <PageContainer>
+      <BreadcrumbHeader
+        items={[
+          { label: "Views", href: "/views" },
+          { label: view.name, current: true },
+        ]}
+        actions={
+          <>
+            {dirty ? (
+              <Button type="button" size="sm" className="h-9" onClick={saveChanges} disabled={isSaving || !name.trim()}>
+                {isSaving ? "Saving..." : "Save changes"}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              className="text-ink-3 hover:text-mark"
+              onClick={removeView}
+              disabled={isDeleting}
+              aria-label="Delete view"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </Button>
+          </>
+        }
+      />
+
+      <section className="space-y-3 rounded-md bg-paper-2 p-2.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-paper text-ink-3">
+              <ViewLayoutIcon layout={view.layout} className="size-4" />
+            </span>
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              aria-label="View name"
+              maxLength={80}
+              className="h-11 bg-paper text-ui-lg font-medium sm:h-9 sm:text-ui-sm"
+            />
+          </div>
+          <span className="self-start rounded bg-paper-3 px-2 py-1 text-ui-xs font-medium text-ink-3 sm:self-auto">
+            {viewLayoutLabel(view.layout)}
+          </span>
+        </div>
+        <ViewScopeFields
+          workspace={workspace}
+          filters={filters}
+          onChange={updateFilters}
+        />
+      </section>
+
+      {view.layout === "analytics" ? (
+        <ViewAnalytics
+          workspace={workspace}
+          filters={filters}
+          userId={userId}
+          config={config}
+          onConfigChange={setConfig}
+        />
+      ) : (
+        <>
+          <MarkFilters
+            filters={dashboardFilters}
+            visibleCount={visibleMarks.length}
+            labels={workspace.labels}
+            onChange={(patch) => updateFilters(dashboardPatchToViewPatch(patch))}
+          />
+
+          {view.layout === "board" ? (
+            <StatusBoard
+              marks={visibleMarks}
+              workspace={workspace}
+              displayNamePreference={displayNamePreference}
+              onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
+            />
+          ) : (
+            <ViewList
+              marks={visibleMarks}
+              workspace={workspace}
+              displayNamePreference={displayNamePreference}
+              page={page}
+              onPageChange={setPage}
+              onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
+            />
+          )}
+        </>
+      )}
+    </PageContainer>
+  );
+}
+
+function ViewList({
+  marks,
+  workspace,
+  displayNamePreference,
+  page,
+  onPageChange,
+  onSelectMark,
+}: {
+  marks: MarkItem[];
+  workspace: Workspace;
+  displayNamePreference: DisplayNamePreference;
+  page: number;
+  onPageChange: (page: number) => void;
+  onSelectMark: (mark: MarkItem) => void;
+}) {
+  const membersById = useMemo(() => new Map(workspace.members.map((member) => [member.id, member])), [workspace.members]);
+  const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
+  const commentCountByMarkId = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const comment of workspace.comments) {
+      counts.set(comment.markId, (counts.get(comment.markId) ?? 0) + 1);
+    }
+    return counts;
+  }, [workspace.comments]);
+  const totalPages = Math.max(1, Math.ceil(marks.length / PAGE_SIZE));
+  const displayPage = Math.min(Math.max(1, page), totalPages);
+  const paginatedMarks = marks.slice((displayPage - 1) * PAGE_SIZE, displayPage * PAGE_SIZE);
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-md bg-paper-elevated">
+        {marks.length === 0 ? (
+          <ViewEmptyState />
+        ) : (
+          <MarkTable
+            marks={paginatedMarks}
+            membersById={membersById}
+            labelsById={labelsById}
+            commentCountByMarkId={commentCountByMarkId}
+            displayNamePreference={displayNamePreference}
+            onSelectMark={onSelectMark}
+          />
+        )}
+      </div>
+      {marks.length > 0 ? (
+        <Pagination
+          page={displayPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          className="mt-2"
+        />
+      ) : null}
+    </>
+  );
+}
+
+function StatusBoard({
+  marks,
+  workspace,
+  displayNamePreference,
+  onSelectMark,
+}: {
+  marks: MarkItem[];
+  workspace: Workspace;
+  displayNamePreference: DisplayNamePreference;
+  onSelectMark: (mark: MarkItem) => void;
+}) {
+  const open = marks.filter((mark) => mark.status === "open");
+  const closed = marks.filter((mark) => mark.status === "closed");
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      <BoardColumn
+        title="Open"
+        marks={open}
+        workspace={workspace}
+        displayNamePreference={displayNamePreference}
+        onSelectMark={onSelectMark}
+      />
+      <BoardColumn
+        title="Resolved"
+        marks={closed}
+        workspace={workspace}
+        displayNamePreference={displayNamePreference}
+        onSelectMark={onSelectMark}
+      />
+    </div>
+  );
+}
+
+function BoardColumn({
+  title,
+  marks,
+  workspace,
+  displayNamePreference,
+  onSelectMark,
+}: {
+  title: string;
+  marks: MarkItem[];
+  workspace: Workspace;
+  displayNamePreference: DisplayNamePreference;
+  onSelectMark: (mark: MarkItem) => void;
+}) {
+  const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
+  return (
+    <section className="min-h-[18rem] overflow-hidden rounded-md bg-paper-elevated">
+      <div className="flex items-center justify-between border-b border-rule/70 bg-paper-2 px-3 py-2">
+        <h2 className="text-ui-sm font-medium text-ink">{title}</h2>
+        <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium tabular-nums text-ink-3">
+          {marks.length}
+        </span>
+      </div>
+      {marks.length === 0 ? (
+        <div className="px-3 py-8 text-center text-ui-sm text-ink-3">No marks here.</div>
+      ) : (
+        <div className="space-y-2 p-2">
+          {marks.map((mark) => (
+            <button
+              key={mark.id}
+              type="button"
+              onClick={() => onSelectMark(mark)}
+              className="block w-full rounded-md bg-paper-2 px-3 py-2.5 text-left transition-colors hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              <span className="block text-ui-sm font-medium leading-snug text-ink">{mark.title}</span>
+              <span className="mt-1 block truncate font-mono text-ui-2xs text-ink-3">{mark.displayKey}</span>
+              <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                <PriorityBadge priority={mark.priority} size="sm" />
+                {mark.pinned ? <Pill size="sm">Pinned</Pill> : null}
+                {mark.labelIds.slice(0, 2).map((labelId) => {
+                  const label = labelsById.get(labelId);
+                  if (!label) return null;
+                  return (
+                    <span key={labelId} className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2">
+                      {label.name}
+                    </span>
+                  );
+                })}
+                {mark.assigneeId ? (
+                  <span className="text-ui-2xs text-ink-3">
+                    {displayNamePreference === "username" ? "Assigned" : "Assigned"}
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ViewAnalytics({
+  workspace,
+  filters,
+  userId,
+  config,
+  onConfigChange,
+}: {
+  workspace: Workspace;
+  filters: WorkspaceViewFilters;
+  userId: string | null;
+  config: WorkspaceViewConfig;
+  onConfigChange: (config: WorkspaceViewConfig) => void;
+}) {
+  const timeframe = (config.analyticsTimeframe ?? "30d") as AnalyticsTimeframe;
+  const filteredWorkspace = useMemo(
+    () => filterWorkspaceForView(workspace, filters, userId),
+    [filters, userId, workspace],
+  );
+  const stats = useAnalyticsStats(filteredWorkspace, timeframe);
+  const totalMarks = stats.headline.openTotal + stats.headline.closedTotal;
+  const showPeriodTiles = timeframe !== "all";
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-paper-2 p-1.5">
+        <p className="px-1.5 text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
+          Analytics
+        </p>
+        <TimeframeFilter
+          value={timeframe}
+          onChange={(next) => onConfigChange({ ...config, analyticsTimeframe: next })}
+        />
+      </div>
+
+      {totalMarks === 0 ? (
+        <ViewEmptyState />
+      ) : (
+        <>
+          <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile
+              label="Open"
+              value={stats.headline.openTotal}
+              accent="mark"
+              hint={`of ${totalMarks} total`}
+            />
+            <StatTile
+              label="Resolved"
+              value={stats.headline.closedTotal}
+              accent="ok"
+              hint={`${Math.round((stats.headline.closedTotal / totalMarks) * 100)}% of total`}
+            />
+            {showPeriodTiles ? (
+              <>
+                <StatTile
+                  label={`Opened · ${timeframe}`}
+                  value={stats.headline.openedInPeriod.current}
+                  delta={stats.headline.openedInPeriod.delta}
+                  deltaSemantic="neutral"
+                  hint={`${stats.headline.openedInPeriod.prior} prior period`}
+                />
+                <StatTile
+                  label={`Resolved · ${timeframe}`}
+                  value={stats.headline.closedInPeriod.current}
+                  delta={stats.headline.closedInPeriod.delta}
+                  deltaSemantic="up-good"
+                  hint={`${stats.headline.closedInPeriod.prior} prior period`}
+                />
+              </>
+            ) : (
+              <>
+                <StatTile label="Total marks" value={totalMarks} />
+                <StatTile label="Spaces" value={filteredWorkspace.spaces.length} />
+              </>
+            )}
+          </section>
+          <ThroughputChart data={stats.throughput} />
+          <ActivityHeatmap data={stats.heatmap} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function ViewNotFound() {
+  return (
+    <PageContainer>
+      <BreadcrumbHeader items={[{ label: "Views", href: "/views" }, { label: "Missing view", current: true }]} />
+      <EmptyState
+        icon={CircleDashed}
+        title="View not found."
+        description="The view may have been deleted, or the link points to another workspace."
+        action={
+          <Button asChild variant="outline" size="sm" className="h-9">
+            <Link href="/views">
+              <ArrowLeft className="size-3.5" aria-hidden />
+              Back to views
+            </Link>
+          </Button>
+        }
+      />
+    </PageContainer>
+  );
+}
+
+function ViewEmptyState() {
+  return (
+    <EmptyState
+      variant="plain"
+      className="rounded-none border-0 px-6 py-16"
+      icon={CircleDashed}
+      title="No marks match this view."
+      description="Broaden the filters or capture a new mark in the matching project or space."
+      action={
+        <Button asChild variant="outline" size="sm" className="h-9">
+          <Link href="/dashboard">
+            <Plus className="size-3.5" aria-hidden />
+            New mark
+          </Link>
+        </Button>
+      }
+    />
+  );
+}
+
+function toDashboardFilters(filters: WorkspaceViewFilters, page: number): DashboardFilters {
+  return {
+    projectId: filters.projectId,
+    spaceId: filters.spaceId,
+    markId: null,
+    status: filters.status,
+    priority: filters.priority,
+    pinned: filters.pinned,
+    label: filters.label,
+    assignee: filters.assignee,
+    q: filters.q,
+    sort: filters.sort,
+    page,
+  };
+}
+
+function dashboardPatchToViewPatch(
+  patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
+): Partial<WorkspaceViewFilters> {
+  const out: Partial<WorkspaceViewFilters> = {};
+  if (typeof patch.projectId === "string") out.projectId = patch.projectId;
+  if (typeof patch.spaceId === "string") out.spaceId = patch.spaceId;
+  if (typeof patch.status === "string") out.status = patch.status as WorkspaceViewFilters["status"];
+  if (typeof patch.priority === "string") out.priority = patch.priority as WorkspaceViewFilters["priority"];
+  if (typeof patch.pinned === "string") out.pinned = patch.pinned as WorkspaceViewFilters["pinned"];
+  if (typeof patch.label === "string") out.label = patch.label;
+  if (typeof patch.assignee === "string") out.assignee = patch.assignee as WorkspaceViewFilters["assignee"];
+  if (patch.q !== undefined) out.q = typeof patch.q === "string" ? patch.q : "";
+  if (typeof patch.sort === "string") out.sort = patch.sort as WorkspaceViewFilters["sort"];
+  return out;
+}
+
+function searchParamsFromFilters(filters: WorkspaceViewFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (typeof value === "string" && value && value !== "all" && value !== "recent") {
+      params.set(key === "projectId" ? "project" : key === "spaceId" ? "space" : key, value);
+    }
+  }
+  return params;
+}
+
+function viewSignature(input: {
+  name: string;
+  filters: WorkspaceViewFilters;
+  config: WorkspaceViewConfig;
+}): string {
+  return JSON.stringify({
+    name: input.name.trim(),
+    filters: input.filters,
+    config: {
+      ...DEFAULT_WORKSPACE_VIEW_CONFIG,
+      ...input.config,
+      boardGroupBy: "status",
+    },
+  });
+}

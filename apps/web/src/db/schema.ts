@@ -1,5 +1,9 @@
 import { relations, sql } from "drizzle-orm";
 import { MARK_PRIORITIES, MARK_STATUSES } from "@youin/domain";
+import type {
+  WorkspaceViewConfig,
+  WorkspaceViewFilters,
+} from "@/lib/collab-types";
 import {
   boolean,
   check,
@@ -31,6 +35,11 @@ export const markEventTypeEnum = pgEnum("mark_event_type", [
 export const markCommentTypeEnum = pgEnum("mark_comment_type", [
   "text",
   "image",
+]);
+export const workspaceViewLayoutEnum = pgEnum("workspace_view_layout", [
+  "list",
+  "board",
+  "analytics",
 ]);
 export const workspaceInviteStatusEnum = pgEnum("workspace_invite_status", [
   "pending",
@@ -367,6 +376,43 @@ export const inboxReadStates = pgTable(
   ],
 );
 
+export const workspaceViews = pgTable(
+  "workspace_views",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    layout: workspaceViewLayoutEnum("layout").notNull(),
+    filters: jsonb("filters").$type<WorkspaceViewFilters>().notNull(),
+    config: jsonb("config").$type<WorkspaceViewConfig>().notNull().default(sql`'{}'::jsonb`),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "no action" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("workspace_views_workspace_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("workspace_views_workspace_created_at_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+    index("workspace_views_workspace_layout_idx").on(
+      table.workspaceId,
+      table.layout,
+    ),
+  ],
+);
+
 export const workspaceInvites = pgTable(
   "workspace_invites",
   {
@@ -417,6 +463,7 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   authoredComments: many(markComments),
   authoredEvents: many(markEvents),
   inboxReadStates: many(inboxReadStates),
+  createdViews: many(workspaceViews),
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
   createdMarks: many(marks, { relationName: "marks_creator" }),
   sentInvites: many(workspaceInvites),
@@ -426,6 +473,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(workspaceMembers),
   projects: many(projects),
   spaces: many(spaces),
+  views: many(workspaceViews),
   marks: many(marks),
   labels: many(markLabels),
   events: many(markEvents),
@@ -547,6 +595,17 @@ export const inboxReadStatesRelations = relations(inboxReadStates, ({ one }) => 
   }),
 }));
 
+export const workspaceViewsRelations = relations(workspaceViews, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [workspaceViews.workspaceId],
+    references: [workspaces.id],
+  }),
+  creator: one(profiles, {
+    fields: [workspaceViews.createdByUserId],
+    references: [profiles.id],
+  }),
+}));
+
 export const workspaceInvitesRelations = relations(
   workspaceInvites,
   ({ one }) => ({
@@ -572,4 +631,5 @@ export type MarkLabel = typeof markLabels.$inferSelect;
 export type MarkComment = typeof markComments.$inferSelect;
 export type MarkEvent = typeof markEvents.$inferSelect;
 export type InboxReadState = typeof inboxReadStates.$inferSelect;
+export type WorkspaceView = typeof workspaceViews.$inferSelect;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;

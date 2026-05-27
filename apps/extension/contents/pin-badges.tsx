@@ -189,7 +189,7 @@ const PinBadges = () => {
               window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
               window.dispatchEvent(
                 new CustomEvent(EVENT_REVIEW_OPEN_MARK, {
-                  detail: { markId: mark.id, attached }
+                  detail: { markId: mark.id, pinId: mark.id, attached }
                 })
               )
             }}>

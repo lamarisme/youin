@@ -6,6 +6,13 @@ import type {
 export type MarkStatus = DomainMarkStatus;
 export type MarkPriority = DomainMarkPriority;
 export type SpacePriority = MarkPriority;
+export type WorkspaceViewLayout = "list" | "board" | "analytics";
+export type WorkspaceViewStatusFilter = "all" | MarkStatus;
+export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
+export type WorkspaceViewPinnedFilter = "all" | "pinned" | "unpinned";
+export type WorkspaceViewAssigneeFilter = "all" | "me" | "unassigned";
+export type WorkspaceViewSortMode = "recent" | "oldest" | "priority" | "status";
+export type WorkspaceViewAnalyticsTimeframe = "7d" | "30d" | "90d" | "all";
 export type MarkEventType =
   | "created"
   | "status_changed"
@@ -110,6 +117,34 @@ export interface WorkspaceProject {
   createdAt: string;
 }
 
+export interface WorkspaceViewFilters {
+  projectId: string;
+  spaceId: string;
+  status: WorkspaceViewStatusFilter;
+  priority: WorkspaceViewPriorityFilter;
+  pinned: WorkspaceViewPinnedFilter;
+  label: string;
+  assignee: WorkspaceViewAssigneeFilter;
+  q: string;
+  sort: WorkspaceViewSortMode;
+}
+
+export interface WorkspaceViewConfig {
+  analyticsTimeframe?: WorkspaceViewAnalyticsTimeframe;
+  boardGroupBy?: "status";
+}
+
+export interface WorkspaceView {
+  id: string;
+  name: string;
+  layout: WorkspaceViewLayout;
+  filters: WorkspaceViewFilters;
+  config: WorkspaceViewConfig;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorkspaceLabel {
   id: string;
   name: string;
@@ -121,6 +156,7 @@ export interface Workspace {
   name: string;
   projects: WorkspaceProject[];
   spaces: WorkspaceSpace[];
+  views: WorkspaceView[];
   labels: WorkspaceLabel[];
   members: TeamMember[];
   invites: TeamInvite[];

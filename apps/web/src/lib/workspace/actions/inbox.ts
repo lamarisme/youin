@@ -12,42 +12,15 @@ import {
   workspaceMembers,
 } from "@/db/schema";
 import type { MarkEventType } from "@/lib/collab-types";
+import {
+  emptyInboxSnapshot,
+  type InboxEvent,
+  type InboxGroup,
+  type InboxSnapshot,
+} from "@/lib/workspace/inbox-model";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { requireWorkspaceContext } from "./session";
-
-export interface InboxEvent {
-  id: string;
-  markId: string;
-  markTitle: string;
-  spaceId: string;
-  actorId: string;
-  actorName: string;
-  actorUsername: string;
-  actorInitials: string;
-  type: MarkEventType;
-  fromValue?: string;
-  toValue?: string;
-  createdAt: string;
-  unread: boolean;
-}
-
-export interface InboxGroup {
-  markId: string;
-  markDisplayKey: string;
-  markTitle: string;
-  spaceId: string;
-  events: InboxEvent[];
-  latestAt: string;
-  unreadCount: number;
-}
-
-export interface InboxSnapshot {
-  groups: InboxGroup[];
-  totalEvents: number;
-  unreadCount: number;
-  lastReadAt: string;
-}
 
 type MarkRow = {
   id: string;
@@ -84,10 +57,6 @@ type SpaceRow = {
 
 function toIso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
-}
-
-function emptyInbox(lastReadAt = ""): InboxSnapshot {
-  return { groups: [], totalEvents: 0, unreadCount: 0, lastReadAt };
 }
 
 function unique(values: string[]): string[] {
@@ -140,7 +109,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
     ...touchedComments.map((c) => c.markId),
   ]);
 
-  if (markIds.length === 0) return emptyInbox(lastReadAt);
+  if (markIds.length === 0) return emptyInboxSnapshot(lastReadAt);
 
   const marksForInbox = await db
     .select({
@@ -154,7 +123,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
 
   const markRows = marksForInbox as MarkRow[];
   const validMarkIds = unique(markRows.map((m) => m.id));
-  if (validMarkIds.length === 0) return emptyInbox(lastReadAt);
+  if (validMarkIds.length === 0) return emptyInboxSnapshot(lastReadAt);
 
   const spaceIds = unique(markRows.map((m) => m.spaceId));
   const [events, spaceRows] = await Promise.all([
@@ -187,7 +156,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
     ...event,
     createdAt: toIso(event.createdAt),
   })) as EventRow[];
-  if (eventRows.length === 0) return emptyInbox(lastReadAt);
+  if (eventRows.length === 0) return emptyInboxSnapshot(lastReadAt);
 
   const actorIds = unique(eventRows.map((e) => e.actorUserId));
   const [members, profileRows] = await Promise.all([

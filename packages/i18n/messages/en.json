@@ -17,7 +17,7 @@
     "triage": "Triage",
     "inbox": "Inbox",
     "spaces": "Spaces",
-    "analytics": "Analytics"
+    "views": "Views"
   },
   "sidebar": {
     "homeAria": "youin home",
@@ -100,6 +100,7 @@
     "footerToggle": "toggle",
     "groups": {
       "navigate": "Navigate",
+      "views": "Views",
       "spaces": "Spaces",
       "theme": "Theme"
     },
@@ -109,8 +110,8 @@
       "inbox": "Inbox",
       "inboxUnread": "Inbox · {count} unread",
       "inboxSub": "Activity on marks you follow",
-      "analytics": "Analytics",
-      "analyticsSub": "Throughput and workspace activity",
+      "views": "Views",
+      "viewsSub": "Saved lenses for backlog work",
       "spaces": "Spaces",
       "spacesSub": "Spaces in the selected project",
       "account": "Account settings",
@@ -153,7 +154,7 @@
       "overlayLabel": "youin overlay",
       "workspaceName": "Client portal",
       "workspaceSubtitle": "Website QA",
-      "navItems": ["Inbox", "Triage", "Spaces", "Analytics"],
+      "navItems": ["Inbox", "Triage", "Spaces", "Views"],
       "triageLabel": "Triage",
       "triageTitle": "Pricing review",
       "newMark": "New mark",

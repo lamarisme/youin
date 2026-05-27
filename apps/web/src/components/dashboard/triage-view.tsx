@@ -30,19 +30,16 @@ import { BulkActionBar } from "./bulk-action-bar";
 import { MarkFilters } from "./mark-filters";
 import { MarkTable } from "./mark-table";
 import { NewMarkForm } from "./new-mark-form";
-import { SavedViewsBar } from "./saved-views-bar";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { markHref } from "@/lib/workspace/routes";
-import { useSavedViews, type SavedViewFilters } from "./use-saved-views";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 const PAGE_SIZE = 6;
 
 export function TriageView() {
-  const { workspace, workspaceId, userId, displayNamePreference } =
+  const { workspace, userId, displayNamePreference } =
     useWorkspaceData((s) => ({
       workspace: s.workspace,
-      workspaceId: s.workspaceId,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
     }));
@@ -53,23 +50,6 @@ export function TriageView() {
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { views: savedViews, saveView, deleteView } = useSavedViews(workspaceId);
-
-  function applySavedView(snapshot: SavedViewFilters) {
-    update(
-      {
-        projectId: snapshot.projectId,
-        status: snapshot.status,
-        priority: snapshot.priority,
-        pinned: snapshot.pinned,
-        label: snapshot.label,
-        assignee: snapshot.assignee,
-        q: snapshot.q || null,
-        sort: snapshot.sort,
-      },
-      { resetPage: true },
-    );
-  }
   const [showNew, setShowNew] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
@@ -274,14 +254,6 @@ export function TriageView() {
           </Button>
         </div>
       </FadeIn>
-
-      <SavedViewsBar
-        views={savedViews}
-        currentFilters={filters}
-        onApply={applySavedView}
-        onSave={(name, snapshot) => saveView(name, snapshot)}
-        onDelete={deleteView}
-      />
 
       <MarkFilters
         filters={filters}

@@ -1,5 +1,9 @@
 "use server";
 
+import { and, eq } from "drizzle-orm";
+
+import { getDb } from "@/db/client";
+import { inboxReadStates } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import {
   loadUserProfile,
@@ -7,6 +11,26 @@ import {
 } from "@/lib/workspace/load-workspace";
 import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+
+function toIso(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : value;
+}
+
+async function loadInboxLastReadAt(workspaceId: string, userId: string): Promise<string> {
+  const db = getDb();
+  const [readState] = await db
+    .select({ lastReadAt: inboxReadStates.lastReadAt })
+    .from(inboxReadStates)
+    .where(
+      and(
+        eq(inboxReadStates.workspaceId, workspaceId),
+        eq(inboxReadStates.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return readState?.lastReadAt ? toIso(readState.lastReadAt) : "";
+}
 
 export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null> {
   const supabase = await createClient();
@@ -16,15 +40,17 @@ export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null
   if (!user) return null;
   try {
     const workspaceId = await ensureWorkspaceForUser(supabase, user);
-    const [workspace, profile] = await Promise.all([
+    const [workspace, profile, inboxLastReadAt] = await Promise.all([
       loadWorkspaceAggregate(workspaceId, supabase),
       loadUserProfile(user.id),
+      loadInboxLastReadAt(workspaceId, user.id),
     ]);
     return {
       workspaceId,
       userId: user.id,
       workspace,
       profile,
+      inboxLastReadAt,
       loadedAt: new Date().toISOString(),
     };
   } catch (e) {

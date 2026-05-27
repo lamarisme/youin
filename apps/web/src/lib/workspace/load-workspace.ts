@@ -14,6 +14,7 @@ import {
   spaces,
   workspaceInvites,
   workspaceMembers,
+  workspaceViews,
   workspaces,
 } from "@/db/schema";
 import type {
@@ -29,6 +30,7 @@ import type {
   Workspace,
   WorkspaceLabel,
   WorkspaceProject,
+  WorkspaceView,
   WorkspaceSpace,
 } from "@/lib/collab-types";
 
@@ -36,6 +38,11 @@ import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
+import {
+  normalizeWorkspaceViewConfig,
+  normalizeWorkspaceViewFilters,
+  normalizeWorkspaceViewLayout,
+} from "@/lib/workspace/views";
 
 function toIso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
@@ -118,6 +125,7 @@ export async function loadWorkspaceAggregate(
     wsRows,
     projectRows,
     spacesRows,
+    viewRows,
     labelsRows,
     membersRows,
     invitesRows,
@@ -138,6 +146,11 @@ export async function loadWorkspaceAggregate(
       .from(spaces)
       .where(eq(spaces.workspaceId, workspaceId))
       .orderBy(desc(spaces.createdAt)),
+    db
+      .select()
+      .from(workspaceViews)
+      .where(eq(workspaceViews.workspaceId, workspaceId))
+      .orderBy(asc(workspaceViews.createdAt)),
     db
       .select()
       .from(markLabels)
@@ -249,6 +262,20 @@ export async function loadWorkspaceAggregate(
   }));
 
   const codeBySpaceId = new Map(spacesOut.map((s) => [s.id, s.code]));
+
+  const viewsOut: WorkspaceView[] = viewRows.map((view) => {
+    const layout = normalizeWorkspaceViewLayout(view.layout);
+    return {
+      id: view.id,
+      name: view.name,
+      layout,
+      filters: normalizeWorkspaceViewFilters(view.filters),
+      config: normalizeWorkspaceViewConfig(layout, view.config),
+      createdByUserId: view.createdByUserId,
+      createdAt: toIso(view.createdAt),
+      updatedAt: toIso(view.updatedAt),
+    };
+  });
 
   const labels: WorkspaceLabel[] = labelsRows.map((label) => ({
     id: label.id,
@@ -412,6 +439,7 @@ export async function loadWorkspaceAggregate(
     name: wsRow.name,
     projects: projectsOut,
     spaces: spacesOut,
+    views: viewsOut,
     labels,
     members,
     invites,

@@ -15,6 +15,7 @@ export function revalidateWorkspaceViews(): void {
   revalidatePath("/account");
   revalidatePath("/inbox");
   revalidatePath("/analytics");
+  revalidatePath("/views");
 }
 
 type AppDb = ReturnType<typeof getDb>;

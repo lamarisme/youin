@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistance } from "date-fns";
 import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
@@ -116,6 +116,7 @@ export function InboxView() {
               spaceName={spaceLookup.get(group.spaceId) ?? null}
               members={memberLookup}
               displayNamePreference={displayNamePreference}
+              dataUpdatedAt={inbox.dataUpdatedAt}
             />
           ))}
         </ProductList>
@@ -129,17 +130,19 @@ function InboxGroupRow({
   spaceName,
   members,
   displayNamePreference,
+  dataUpdatedAt,
 }: {
   group: InboxGroup;
   spaceName: string | null;
   members: Map<string, { name: string; username: string }>;
   displayNamePreference: DisplayNamePreference;
+  dataUpdatedAt: number;
 }) {
   const top = group.events[0];
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
   const actorLabel = top.actorUsername || top.actorName;
-  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt)}.`;
+  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
   return (
     <ProductListItem className="p-0">
       <Link
@@ -165,7 +168,7 @@ function InboxGroupRow({
               className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
               dateTime={group.latestAt}
             >
-              {formatRelative(group.latestAt)}
+              {formatRelative(group.latestAt, dataUpdatedAt)}
             </time>
             {spaceName ? (
               <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{spaceName}</span>
@@ -221,10 +224,11 @@ function ActorChip({
   );
 }
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, baseTime: number): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "recently";
-  return formatDistanceToNow(date, { addSuffix: true });
+  const baseDate = Number.isFinite(baseTime) && baseTime > 0 ? new Date(baseTime) : date;
+  return formatDistance(date, baseDate, { addSuffix: true });
 }
 
 function formatCount(count: number): string {

@@ -4,16 +4,26 @@ import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { getSession } from "../lib/auth"
+import {
+  deliverCapture,
+  ensureCapturePanelBridgeListeners,
+  isCapturePanelHandlerReady,
+  registerCaptureHandler,
+  registerCaptureUpdateHandler
+} from "../lib/capture-panel-bridge"
 import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
-  EVENT_REVIEW_CAPTURE,
   EVENT_REVIEW_OPEN_MARK,
+  EVENT_REVIEW_OPEN_PIN_LEGACY,
   EVENT_REVIEW_RESUME,
+  MESSAGE_OPEN_CAPTURE_PANEL,
+  MESSAGE_REVIEW_PING_CAPTURE_PANEL,
+  MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY,
   type ReviewCaptureDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { normalizePageUrlForMatch } from "../lib/page-url"
 import { computeMarkHealth } from "../lib/mark-health"
+import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
   addMarkWithFallback,
   appendThreadComment,
@@ -66,6 +76,41 @@ export const getStyle: PlasmoGetStyle = () => {
 }
 
 const Z_PANEL = EXTENSION_LAYER.panel
+const OPEN_MARK_EVENTS = [
+  EVENT_REVIEW_OPEN_MARK,
+  EVENT_REVIEW_OPEN_PIN_LEGACY
+] as const
+
+ensureCapturePanelBridgeListeners()
+
+declare global {
+  interface Window {
+    __youinCapturePanelMessageListener?: boolean
+  }
+}
+
+if (!window.__youinCapturePanelMessageListener) {
+  window.__youinCapturePanelMessageListener = true
+  chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
+    if (!msg || typeof msg !== "object") return false
+    const t = (msg as { type?: string }).type
+    if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL) {
+      sendResponse({ ok: true })
+      return true
+    }
+    if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY) {
+      sendResponse({ ok: isCapturePanelHandlerReady() })
+      return true
+    }
+    if (t === MESSAGE_OPEN_CAPTURE_PANEL) {
+      const detail = (msg as { detail?: ReviewCaptureDetail }).detail
+      if (detail) deliverCapture(detail)
+      sendResponse({ ok: true })
+      return true
+    }
+    return false
+  })
+}
 
 type PanelMode = "create" | "thread"
 
@@ -834,8 +879,7 @@ const CapturePanel = () => {
   }, [])
 
   useEffect(() => {
-    const onCap = (e: Event) => {
-      const detail = (e as CustomEvent<ReviewCaptureDetail>).detail
+    const onCap = (detail: ReviewCaptureDetail) => {
       setCapture(detail)
       setMode("create")
       setViewingMark(null)
@@ -848,13 +892,23 @@ const CapturePanel = () => {
       setOpen(true)
       void reloadPageMarks(detail.url)
     }
-    window.addEventListener(EVENT_REVIEW_CAPTURE, onCap)
-    return () => window.removeEventListener(EVENT_REVIEW_CAPTURE, onCap)
+    registerCaptureHandler(onCap)
+    return () => registerCaptureHandler(null)
   }, [loadSpaces, reloadPageMarks])
 
   useEffect(() => {
+    registerCaptureUpdateHandler((patch) => {
+      setCapture((current) => (current ? { ...current, ...patch } : current))
+    })
+    return () => registerCaptureUpdateHandler(null)
+  }, [])
+
+  useEffect(() => {
     const onOpen = (e: Event) => {
-      const { markId } = (e as CustomEvent<{ markId: string }>).detail
+      const detail = (e as CustomEvent<{ markId?: string; pinId?: string }>)
+        .detail
+      const markId = detail?.markId ?? detail?.pinId
+      if (!markId) return
       void (async () => {
         await loadSpaces()
         const marks = await getMarks()
@@ -874,8 +928,14 @@ const CapturePanel = () => {
         void reloadPageMarks(mark.url, mark.spaceId)
       })()
     }
-    window.addEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
-    return () => window.removeEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
+    for (const eventName of OPEN_MARK_EVENTS) {
+      window.addEventListener(eventName, onOpen)
+    }
+    return () => {
+      for (const eventName of OPEN_MARK_EVENTS) {
+        window.removeEventListener(eventName, onOpen)
+      }
+    }
   }, [loadSpaces, reloadPageMarks])
 
   useEffect(() => {
@@ -943,7 +1003,7 @@ const CapturePanel = () => {
     if (!open) return
     const id = mode === "create" ? "capture-body" : "thread-reply"
     const raf = requestAnimationFrame(() => {
-      document.getElementById(id)?.focus()
+      panelRef.current?.querySelector<HTMLElement>(`#${id}`)?.focus()
     })
     return () => cancelAnimationFrame(raf)
   }, [open, mode])
@@ -1042,7 +1102,9 @@ const CapturePanel = () => {
       if (!push.skipped && !push.ok) {
         await syncPendingMarksToWorkspace()
         await reloadMark(viewingMark.id)
-        const refreshed = (await getMarks()).find((p) => p.id === viewingMark.id)
+        const refreshed = (await getMarks()).find(
+          (p) => p.id === viewingMark.id
+        )
         if (refreshed?.syncState === "failed") {
           setSaveError(refreshed.syncError ?? t("extension.panel.syncFailed"))
         }
@@ -1342,12 +1404,14 @@ const CapturePanel = () => {
                 onSubmit={() => void handleSave()}
               />
 
-              {pageMarks.filter((mark) => mark.status !== "closed").length > 0 ? (
+              {pageMarks.filter((mark) => mark.status !== "closed").length >
+              0 ? (
                 <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2.5">
                   <p className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
                     {t("extension.panel.otherOnPage", {
-                      count: pageMarks.filter((mark) => mark.status !== "closed")
-                        .length
+                      count: pageMarks.filter(
+                        (mark) => mark.status !== "closed"
+                      ).length
                     })}
                   </p>
                   <ul className="mt-2 space-y-1">

@@ -14,7 +14,6 @@ import {
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
-  BarChart3,
   Hash,
   Inbox,
   Layers,
@@ -23,9 +22,11 @@ import {
   Search,
   Sun,
   User,
+  View,
   type LucideIcon,
 } from "lucide-react";
 
+import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
@@ -36,7 +37,7 @@ interface PaletteCommand {
   id: string;
   title: string;
   subtitle?: string;
-  group: "navigate" | "spaces" | "theme";
+  group: "navigate" | "views" | "spaces" | "theme";
   keywords?: string[];
   shortcut?: string;
   icon?: LucideIcon;
@@ -89,8 +90,9 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { spaces, workspaceId, userId } = useWorkspaceData((s) => ({
+  const { spaces, views, workspaceId, userId } = useWorkspaceData((s) => ({
       spaces: s.workspace.spaces,
+      views: s.workspace.views,
       workspaceId: s.workspaceId,
       userId: s.userId,
     }));
@@ -131,7 +133,7 @@ function CommandPaletteDialog({
         d: "/dashboard",
         i: "/inbox",
         s: "/spaces",
-        a: "/analytics",
+        v: "/views",
         c: "/account",
       };
       const key = e.key.toLowerCase();
@@ -180,13 +182,13 @@ function CommandPaletteDialog({
         run: () => router.push("/inbox"),
       },
       {
-        id: "nav-analytics",
-        title: t("nav.analytics"),
-        subtitle: t("nav.analyticsSub"),
+        id: "nav-views",
+        title: t("nav.views"),
+        subtitle: t("nav.viewsSub"),
         group: "navigate",
-        shortcut: "G A",
-        icon: BarChart3,
-        run: () => router.push("/analytics"),
+        shortcut: "G V",
+        icon: View,
+        run: () => router.push("/views"),
       },
       {
         id: "nav-spaces",
@@ -224,8 +226,17 @@ function CommandPaletteDialog({
       icon: Hash,
       run: () => router.push(`/dashboard?space=${s.id}`),
     }));
-    return [...base, ...spaceCommands];
-  }, [router, theme, toggleTheme, spaces, inbox.unreadCount, t]);
+    const viewCommands: PaletteCommand[] = views.map((view) => ({
+      id: `view-${view.id}`,
+      title: view.name,
+      subtitle: `${viewLayoutLabel(view.layout)} view`,
+      group: "views" as const,
+      keywords: ["view", view.layout],
+      icon: View,
+      run: () => router.push(`/views/${view.id}`),
+    }));
+    return [...base, ...viewCommands, ...spaceCommands];
+  }, [router, theme, toggleTheme, spaces, views, inbox.unreadCount, t]);
 
   const onSelect = useCallback(
     (id: string) => {
@@ -266,7 +277,7 @@ function CommandPaletteDialog({
           {t("empty")}
         </Command.Empty>
 
-        {(["navigate", "spaces", "theme"] as const).map((groupId) => {
+        {(["navigate", "views", "spaces", "theme"] as const).map((groupId) => {
           const items = allCommands.filter((c) => c.group === groupId);
           if (items.length === 0) return null;
           return (

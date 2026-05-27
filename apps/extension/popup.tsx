@@ -12,6 +12,13 @@ import {
   signOut
 } from "./lib/auth"
 import {
+  ANNOTATION_DRAWER_SCRIPT,
+  CAPTURE_PANEL_SCRIPT,
+  ensureReviewContentScripts,
+  REVIEW_MODE_SCRIPT,
+  type ReviewScriptRequirement
+} from "./lib/review-scripts"
+import {
   isMigrationDoneForUser,
   migrateLocalDataToWorkspace,
   type MigrationResult
@@ -51,6 +58,98 @@ import {
 const SYNC_NOW = "youin:sync-now"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
+type ReviewCommandType =
+  | "youin:start-inspect"
+  | "youin:start-screenshot"
+  | "youin:toggle-drawer"
+type ReviewCommandMessage = { type: ReviewCommandType }
+
+type ReviewCommandScripts = {
+  required: ReviewScriptRequirement[]
+  requireReady?: boolean
+}
+
+const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
+  {
+    "youin:start-inspect": {
+      required: [REVIEW_MODE_SCRIPT, CAPTURE_PANEL_SCRIPT],
+      requireReady: true
+    },
+    "youin:start-screenshot": {
+      required: [REVIEW_MODE_SCRIPT, CAPTURE_PANEL_SCRIPT],
+      requireReady: true
+    },
+    "youin:toggle-drawer": {
+      required: [REVIEW_MODE_SCRIPT, ANNOTATION_DRAWER_SCRIPT]
+    }
+  }
+
+function isReviewableUrl(url: string | undefined): url is string {
+  return Boolean(url?.startsWith("http://") || url?.startsWith("https://"))
+}
+
+async function findActiveReviewableTab(): Promise<chrome.tabs.Tab | null> {
+  const [currentWindowTab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true
+  })
+  if (isReviewableUrl(currentWindowTab?.url)) return currentWindowTab
+
+  const [lastFocusedTab] = await chrome.tabs.query({
+    active: true,
+    lastFocusedWindow: true
+  })
+  if (isReviewableUrl(lastFocusedTab?.url)) return lastFocusedTab
+
+  return currentWindowTab ?? lastFocusedTab ?? null
+}
+
+async function sendReviewCommand(
+  tabId: number,
+  message: ReviewCommandMessage
+): Promise<boolean> {
+  try {
+    const response = (await chrome.tabs.sendMessage(tabId, message)) as
+      | { ok?: boolean }
+      | undefined
+    return response?.ok === true
+  } catch {
+    return false
+  }
+}
+
+async function sendReviewCommandToActiveTab(
+  message: ReviewCommandMessage,
+  unavailableError: string,
+  failedError: string
+): Promise<{ ok: boolean; error?: string }> {
+  const tab = await findActiveReviewableTab()
+  if (!tab?.id) return { ok: false, error: "No active tab." }
+  const url = tab.url ?? ""
+  if (!isReviewableUrl(url)) {
+    return { ok: false, error: unavailableError }
+  }
+
+  const { required, requireReady = false } =
+    REVIEW_COMMAND_SCRIPTS[message.type]
+  if (
+    !(await ensureReviewContentScripts(tab.id, url, required, {
+      requireReady
+    }))
+  ) {
+    return { ok: false, error: failedError }
+  }
+
+  if (await sendReviewCommand(tab.id, message)) return { ok: true }
+
+  if (
+    await ensureReviewContentScripts(tab.id, url, required, { requireReady })
+  ) {
+    if (await sendReviewCommand(tab.id, message)) return { ok: true }
+  }
+
+  return { ok: false, error: failedError }
+}
 
 async function fetchWorkspaceLabel(): Promise<string | null> {
   const session = await getSession()
@@ -76,57 +175,33 @@ async function startInspectOnActiveTab(): Promise<{
   ok: boolean
   error?: string
 }> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.id) return { ok: false, error: "No active tab." }
-  const url = tab.url ?? ""
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return { ok: false, error: "Open a web page to inspect." }
-  }
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "youin:start-inspect" })
-    return { ok: true }
-  } catch {
-    return {
-      ok: false,
-      error: "Reload the page, then try again."
-    }
-  }
+  return sendReviewCommandToActiveTab(
+    { type: "youin:start-inspect" },
+    "Open a web page to inspect.",
+    "Could not start inspect mode on this page. Reload the tab, then try again."
+  )
 }
 
 async function startScreenshotOnActiveTab(): Promise<{
   ok: boolean
   error?: string
 }> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.id) return { ok: false, error: "No active tab." }
-  const url = tab.url ?? ""
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return { ok: false, error: "Open a web page to screenshot." }
-  }
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "youin:start-screenshot" })
-    return { ok: true }
-  } catch {
-    return {
-      ok: false,
-      error: t("extension.popup.reloadPageHint")
-    }
-  }
+  return sendReviewCommandToActiveTab(
+    { type: "youin:start-screenshot" },
+    "Open a web page to screenshot.",
+    t("extension.popup.reloadPageHint")
+  )
 }
 
-async function openDrawerOnActiveTab(): Promise<{ ok: boolean; error?: string }> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.id) return { ok: false, error: "No active tab." }
-  const url = tab.url ?? ""
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return { ok: false, error: t("extension.popup.openWebsite") }
-  }
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "youin:toggle-drawer" })
-    return { ok: true }
-  } catch {
-    return { ok: false, error: t("extension.popup.openDrawerFailed") }
-  }
+async function openDrawerOnActiveTab(): Promise<{
+  ok: boolean
+  error?: string
+}> {
+  return sendReviewCommandToActiveTab(
+    { type: "youin:toggle-drawer" },
+    t("extension.popup.openWebsite"),
+    t("extension.popup.openDrawerFailed")
+  )
 }
 
 type SyncActivity = {
@@ -244,7 +319,9 @@ function IndexPopup() {
           Boolean(mark.pendingSyncOps?.length)
       ).length
     )
-    setFailedSyncCount(marks.filter((mark) => mark.syncState === "failed").length)
+    setFailedSyncCount(
+      marks.filter((mark) => mark.syncState === "failed").length
+    )
   }, [])
 
   useEffect(() => {
@@ -307,7 +384,9 @@ function IndexPopup() {
       }
       const menuItems = items()
       if (!menuItems.length) return
-      const currentIndex = menuItems.findIndex((node) => node === document.activeElement)
+      const currentIndex = menuItems.findIndex(
+        (node) => node === document.activeElement
+      )
       if (e.key === "ArrowDown") {
         e.preventDefault()
         const next = menuItems[(currentIndex + 1) % menuItems.length]
@@ -315,9 +394,7 @@ function IndexPopup() {
       } else if (e.key === "ArrowUp") {
         e.preventDefault()
         const next =
-          menuItems[
-            (currentIndex <= 0 ? menuItems.length : currentIndex) - 1
-          ]
+          menuItems[(currentIndex <= 0 ? menuItems.length : currentIndex) - 1]
         next?.focus()
       } else if (e.key === "Home") {
         e.preventDefault()
@@ -688,7 +765,9 @@ function IndexPopup() {
         ) : (
           <p className="mt-2 text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
             {t("extension.popup.inspectHint")}
-            <span className="mt-0.5 block">{t("extension.popup.shortcutHint")}</span>
+            <span className="mt-0.5 block">
+              {t("extension.popup.shortcutHint")}
+            </span>
           </p>
         )}
 
@@ -1197,9 +1276,7 @@ function SignedInBlock({
     } catch (e) {
       setMigrationStatus({
         error:
-          e instanceof Error
-            ? e.message
-            : t("extension.popup.migrationFailed")
+          e instanceof Error ? e.message : t("extension.popup.migrationFailed")
       })
     } finally {
       setMigrating(false)

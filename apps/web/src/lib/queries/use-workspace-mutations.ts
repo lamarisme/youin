@@ -13,6 +13,10 @@ import type {
   WorkspaceLabel,
   WorkspaceProject,
   WorkspaceSpace,
+  WorkspaceView,
+  WorkspaceViewConfig,
+  WorkspaceViewFilters,
+  WorkspaceViewLayout,
 } from "@/lib/collab-types";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
@@ -70,6 +74,100 @@ function labelFromCreated(created: ws.CreatedLabel): WorkspaceLabel {
     name: created.name,
     colorClass: labelColorClass(created.id),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Views
+// ---------------------------------------------------------------------------
+
+export function useCreateWorkspaceViewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.createWorkspaceViewAction,
+    onSuccess: (view: WorkspaceView) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        views: workspace.views.some((item) => item.id === view.id)
+          ? workspace.views
+          : [...workspace.views, view],
+      }));
+      toast.success(`Created “${view.name}”.`);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't create this view.")),
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useUpdateWorkspaceViewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      viewId,
+      ...input
+    }: {
+      viewId: string;
+      name?: string;
+      layout?: WorkspaceViewLayout;
+      filters?: Partial<WorkspaceViewFilters> | null;
+      config?: Partial<WorkspaceViewConfig> | null;
+    }) => ws.updateWorkspaceViewAction(viewId, input),
+    onMutate: async ({ viewId, name, layout, filters, config }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        views: workspace.views.map((view) =>
+          view.id === viewId
+            ? {
+                ...view,
+                ...(typeof name === "string" ? { name: name.trim() } : {}),
+                ...(layout ? { layout } : {}),
+                ...(filters ? { filters: { ...view.filters, ...filters } } : {}),
+                ...(config ? { config: { ...view.config, ...config } } : {}),
+              }
+            : view,
+        ),
+      }));
+      return context;
+    },
+    onSuccess: (view) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        views: workspace.views.map((item) => (item.id === view.id ? view : item)),
+      }));
+      toast.success("View saved.");
+    },
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't save this view."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useDeleteWorkspaceViewMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ viewId }: { viewId: string; name?: string }) =>
+      ws.deleteWorkspaceViewAction(viewId),
+    onMutate: async ({ viewId }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        views: workspace.views.filter((view) => view.id !== viewId),
+      }));
+      return context;
+    },
+    onSuccess: (_, vars) =>
+      toast.success(vars.name ? `Deleted “${vars.name}”.` : "View deleted."),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't delete this view."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
 }
 
 // ---------------------------------------------------------------------------

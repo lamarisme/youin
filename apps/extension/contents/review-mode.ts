@@ -6,17 +6,24 @@ import { captureElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_CAPTURE,
+  EVENT_REVIEW_CAPTURE_UPDATE,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
   EVENT_REVIEW_TOGGLE_DRAWER,
+  MESSAGE_FORWARD_CAPTURE,
+  MESSAGE_REVIEW_PING_CONTENT,
   type ReviewCaptureDetail,
   type ReviewStateDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { generateSelector } from "../lib/selector"
+import {
+  CAPTURE_PANEL_SCRIPT,
+  MESSAGE_ENSURE_REVIEW_SCRIPTS
+} from "../lib/review-scripts"
 import {
   getActiveProjectId,
   getActiveSpaceId,
@@ -47,6 +54,7 @@ const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
 const Z_TOP = EXTENSION_LAYER.reviewOverlay
 const MIN_REGION_SIZE = 8
+const SCREENSHOT_CAPTURE_TIMEOUT_MS = 1500
 
 type Mode = "inactive" | "active" | "paused" | "region"
 
@@ -426,6 +434,19 @@ function waitNext2Frames(): Promise<void> {
   })
 }
 
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number
+): Promise<T | undefined> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<undefined>((resolve) => {
+    timeoutId = setTimeout(() => resolve(undefined), timeoutMs)
+  })
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId != null) clearTimeout(timeoutId)
+  })
+}
+
 /**
  * Snapshot via `captureVisibleTab` in the background, cropped to the element’s
  * on-screen rect. Hides the review overlay so it is not included in the image.
@@ -441,11 +462,14 @@ async function captureElementViaTab(
     if (host) host.style.visibility = "hidden"
     await waitNext2Frames()
 
-    const res = (await chrome.runtime.sendMessage({
-      type: TAB_CAPTURE_CROP,
-      rect: crop,
-      viewport: { width: window.innerWidth, height: window.innerHeight }
-    })) as TabCaptureCropResponse | undefined
+    const res = (await withTimeout(
+      chrome.runtime.sendMessage({
+        type: TAB_CAPTURE_CROP,
+        rect: crop,
+        viewport: { width: window.innerWidth, height: window.innerHeight }
+      }),
+      SCREENSHOT_CAPTURE_TIMEOUT_MS
+    )) as TabCaptureCropResponse | undefined
 
     if (res?.ok === true && typeof res.dataUrl === "string") return res.dataUrl
     return undefined
@@ -465,11 +489,14 @@ async function captureRegionViaTab(rect: {
     if (host) host.style.visibility = "hidden"
     await waitNext2Frames()
 
-    const res = (await chrome.runtime.sendMessage({
-      type: TAB_CAPTURE_CROP,
-      rect,
-      viewport: { width: window.innerWidth, height: window.innerHeight }
-    })) as TabCaptureCropResponse | undefined
+    const res = (await withTimeout(
+      chrome.runtime.sendMessage({
+        type: TAB_CAPTURE_CROP,
+        rect,
+        viewport: { width: window.innerWidth, height: window.innerHeight }
+      }),
+      SCREENSHOT_CAPTURE_TIMEOUT_MS
+    )) as TabCaptureCropResponse | undefined
 
     if (res?.ok === true && typeof res.dataUrl === "string") {
       return { dataUrl: res.dataUrl }
@@ -517,6 +544,74 @@ function onMouseOver(e: MouseEvent) {
   }
 }
 
+async function ensureCapturePanelReady(): Promise<boolean> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: MESSAGE_ENSURE_REVIEW_SCRIPTS,
+      fileMarkers: [CAPTURE_PANEL_SCRIPT.fileMarker],
+      requireReady: true
+    })) as { ok?: boolean } | undefined
+    return response?.ok === true
+  } catch {
+    return false
+  }
+}
+
+async function deliverReviewCapture(detail: ReviewCaptureDetail) {
+  await ensureCapturePanelReady()
+
+  try {
+    const forwarded = (await chrome.runtime.sendMessage({
+      type: MESSAGE_FORWARD_CAPTURE,
+      detail
+    })) as { ok?: boolean } | undefined
+    if (forwarded?.ok === true) return
+  } catch {
+    /* fall back to in-page bridge */
+  }
+
+  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
+}
+
+async function dispatchReviewCapture(detail: ReviewCaptureDetail) {
+  await deliverReviewCapture(detail)
+  pause()
+}
+
+function enrichCaptureAsync(
+  target: Element,
+  rect: DOMRectReadOnly,
+  settings: Awaited<ReturnType<typeof getWidgetSettings>>
+) {
+  if (!settings.captureScreenshots) return
+  void (async () => {
+    let elementScreenshotDataUrl: string | undefined
+    try {
+      elementScreenshotDataUrl = await captureElementViaTab(rect)
+    } catch {
+      /* captureVisibleTab / message channel failures */
+    }
+    if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
+      try {
+        elementScreenshotDataUrl = await withTimeout(
+          toPng(target, {
+            pixelRatio: Math.max(1, window.devicePixelRatio || 1),
+            cacheBust: true
+          }),
+          SCREENSHOT_CAPTURE_TIMEOUT_MS
+        )
+      } catch {
+        /* DOM / CORS snapshot fallback not possible */
+      }
+    }
+    if (!elementScreenshotDataUrl) return
+    const patch = { elementScreenshotDataUrl }
+    window.dispatchEvent(
+      new CustomEvent(EVENT_REVIEW_CAPTURE_UPDATE, { detail: patch })
+    )
+  })()
+}
+
 async function captureAndDispatch(target: Element) {
   const settings = await getWidgetSettings()
   const rect = target.getBoundingClientRect()
@@ -527,22 +622,17 @@ async function captureAndDispatch(target: Element) {
     dpr: window.devicePixelRatio
   }
 
-  let elementScreenshotDataUrl: string | undefined
-  if (settings.captureScreenshots) {
+  let domSnapshot: ReviewCaptureDetail["domSnapshot"]
+  if (settings.captureDomSnapshots) {
     try {
-      elementScreenshotDataUrl = await captureElementViaTab(rect)
+      domSnapshot = captureElementDomSnapshot(
+        target,
+        result.selector,
+        result.strategy,
+        viewport
+      )
     } catch {
-      /* captureVisibleTab / message channel failures */
-    }
-    if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
-      try {
-        elementScreenshotDataUrl = await toPng(target, {
-          pixelRatio: Math.max(1, window.devicePixelRatio || 1),
-          cacheBust: true
-        })
-      } catch {
-        /* DOM / CORS snapshot fallback not possible */
-      }
+      /* DOM snapshot is optional; still open the feedback panel. */
     }
   }
 
@@ -559,19 +649,11 @@ async function captureAndDispatch(target: Element) {
     viewport,
     url: location.href,
     outerHTML: target.outerHTML.slice(0, 400),
-    domSnapshot: settings.captureDomSnapshots
-      ? captureElementDomSnapshot(
-          target,
-          result.selector,
-          result.strategy,
-          viewport
-        )
-      : undefined,
-    elementScreenshotDataUrl
+    domSnapshot
   }
 
-  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
-  pause()
+  await dispatchReviewCapture(detail)
+  enrichCaptureAsync(target, rect, settings)
 }
 
 async function captureRegionAndDispatch(rect: {
@@ -585,11 +667,6 @@ async function captureRegionAndDispatch(rect: {
     height: window.innerHeight,
     dpr: window.devicePixelRatio
   }
-  let elementScreenshotDataUrl: string | undefined
-  let screenshotCaptureError: string | undefined
-  const captureResult = await captureRegionViaTab(rect)
-  elementScreenshotDataUrl = captureResult.dataUrl
-  screenshotCaptureError = captureResult.error
 
   const detail: ReviewCaptureDetail = {
     captureKind: "region",
@@ -604,13 +681,21 @@ async function captureRegionAndDispatch(rect: {
     viewport,
     url: location.href,
     pageTitle: document.title,
-    outerHTML: "",
-    elementScreenshotDataUrl,
-    screenshotCaptureError
+    outerHTML: ""
   }
 
-  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
-  pause()
+  await dispatchReviewCapture(detail)
+
+  void (async () => {
+    const captureResult = await captureRegionViaTab(rect)
+    const patch: Partial<ReviewCaptureDetail> = {
+      elementScreenshotDataUrl: captureResult.dataUrl,
+      screenshotCaptureError: captureResult.error
+    }
+    window.dispatchEvent(
+      new CustomEvent(EVENT_REVIEW_CAPTURE_UPDATE, { detail: patch })
+    )
+  })()
 }
 
 function onClick(e: MouseEvent) {
@@ -742,6 +827,14 @@ function detachRegionListeners() {
   resetRegionSelection()
 }
 
+function preloadCapturePanel() {
+  void chrome.runtime.sendMessage({
+    type: MESSAGE_ENSURE_REVIEW_SCRIPTS,
+    fileMarkers: [CAPTURE_PANEL_SCRIPT.fileMarker],
+    requireReady: true
+  })
+}
+
 function activate() {
   if (mode === "active") return
   if (mode === "paused") {
@@ -763,6 +856,7 @@ function activate() {
     applyCursorOverride()
     attachCaptureListeners()
     emitState()
+    preloadCapturePanel()
   })()
 }
 
@@ -787,6 +881,7 @@ function activateRegion() {
     applyCursorOverride()
     attachRegionListeners()
     emitState()
+    preloadCapturePanel()
   })()
 }
 
@@ -863,7 +958,7 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
     sendResponse({ ok: true })
     return true
   }
-  if (t === "youin:ping-content") {
+  if (t === MESSAGE_REVIEW_PING_CONTENT) {
     sendResponse({ ok: true })
     return true
   }

@@ -80,6 +80,7 @@ Required permissions:
 
 - `storage`: persists local-first feedback, workspace mirrors, auth session state, privacy settings, and retry queues.
 - `tabs`: starts review mode from the popup on the active tab and reads the current page URL for page-scoped counts.
+- `scripting`: injects the review UI into an already-open tab when Chrome has not loaded the content scripts yet.
 - `host_permissions` for HTTP/HTTPS pages: injects the review UI and captures selected elements on pages the user reviews.
 
 Privacy controls live in the popup settings:

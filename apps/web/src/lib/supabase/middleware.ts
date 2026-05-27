@@ -63,6 +63,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/inbox") ||
     path.startsWith("/spaces") ||
     path.startsWith("/analytics") ||
+    path.startsWith("/views") ||
     path.startsWith("/account") ||
     path.startsWith("/profile");
 

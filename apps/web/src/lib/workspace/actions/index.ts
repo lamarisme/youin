@@ -32,10 +32,14 @@ export {
 export {
   getInboxAction,
   markInboxReadAction,
-  type InboxEvent,
-  type InboxGroup,
-  type InboxSnapshot,
 } from "./inbox";
+
+export {
+  createWorkspaceViewAction,
+  updateWorkspaceViewAction,
+  deleteWorkspaceViewAction,
+  type SavedWorkspaceView,
+} from "./views";
 
 export {
   updateProfileAction,

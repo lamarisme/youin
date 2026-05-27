@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-
-import { AnalyticsView } from "./analytics-view";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Analytics",
+  title: "Views",
 };
 
 export default function AnalyticsPage() {
-  return <AnalyticsView />;
+  redirect("/views");
 }

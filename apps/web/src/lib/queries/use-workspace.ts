@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { UserProfile, Workspace } from "@/lib/collab-types";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { getWorkspaceBootstrap } from "@/lib/workspace/actions";
+import { emptyInboxSnapshot } from "@/lib/workspace/inbox-model";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
 export function useWorkspaceQuery(
@@ -31,6 +32,7 @@ function emptyWorkspace(): Workspace {
     name: "",
     projects: [],
     spaces: [],
+    views: [],
     labels: [],
     members: [],
     invites: [],
@@ -59,6 +61,7 @@ export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
     userId: "",
     workspace: emptyWorkspace(),
     profile: emptyProfile(),
+    inboxLastReadAt: emptyInboxSnapshot().lastReadAt,
     loadedAt: "",
   };
 }

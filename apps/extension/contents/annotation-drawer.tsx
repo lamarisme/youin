@@ -1,13 +1,14 @@
+import { t } from "@youin/i18n/t"
 import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
-import { t } from "@youin/i18n/t"
 import { useCallback, useEffect, useState } from "react"
 
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_PAUSE,
-  EVENT_REVIEW_TOGGLE_DRAWER
+  EVENT_REVIEW_TOGGLE_DRAWER,
+  MESSAGE_REVIEW_PING_ANNOTATION_DRAWER
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
@@ -43,6 +44,18 @@ export const getStyle: PlasmoGetStyle = () => {
 }
 
 const Z_DRAWER = EXTENSION_LAYER.panel - 1
+
+chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
+  if (
+    msg &&
+    typeof msg === "object" &&
+    (msg as { type?: string }).type === MESSAGE_REVIEW_PING_ANNOTATION_DRAWER
+  ) {
+    sendResponse({ ok: true })
+    return true
+  }
+  return false
+})
 
 function timeAgo(ts: number): string {
   const diff = Math.max(0, Date.now() - ts)
@@ -176,7 +189,9 @@ const AnnotationDrawer = () => {
   const [marks, setMarks] = useState<Mark[]>([])
   const [disabled, setDisabled] = useState(false)
   const [undoMark, setUndoMark] = useState<Mark | null>(null)
-  const [pendingDeleteMarkId, setPendingDeleteId] = useState<string | null>(null)
+  const [pendingDeleteMarkId, setPendingDeleteId] = useState<string | null>(
+    null
+  )
 
   const refresh = useCallback(async () => {
     const settings = await getWidgetSettings()
@@ -250,7 +265,11 @@ const AnnotationDrawer = () => {
     window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
     window.dispatchEvent(
       new CustomEvent(EVENT_REVIEW_OPEN_MARK, {
-        detail: { markId: mark.id, attached: computeMarkHealth(mark).attached }
+        detail: {
+          markId: mark.id,
+          pinId: mark.id,
+          attached: computeMarkHealth(mark).attached
+        }
       })
     )
   }
