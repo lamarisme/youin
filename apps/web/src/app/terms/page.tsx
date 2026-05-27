@@ -9,7 +9,7 @@ export const metadata = {
   description: "The terms that govern your use of youin. Contact us for the current version.",
 };
 
-const SUPPORT_EMAIL = "support@youin.dev";
+const SUPPORT_EMAIL = "support@youin.click";
 
 export default function TermsPage() {
   return (

@@ -65,4 +65,13 @@ export {
   type CreatedLabel,
 } from "./labels";
 
+export {
+  createWorkflowStatusAction,
+  updateWorkflowStatusAction,
+  archiveWorkflowStatusAction,
+  setMarkWorkflowStatusAction,
+  type WorkflowStatusInput,
+  type WorkflowStatusUpdateInput,
+} from "./workflow-statuses";
+
 export { getMarkUploadUrlAction } from "./storage";

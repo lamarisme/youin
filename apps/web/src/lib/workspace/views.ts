@@ -35,6 +35,7 @@ export const DEFAULT_WORKSPACE_VIEW_FILTERS: WorkspaceViewFilters = {
   projectId: "all",
   spaceId: "all",
   status: "all",
+  workflowStatus: "all",
   priority: "all",
   pinned: "all",
   label: "all",
@@ -83,6 +84,7 @@ export function normalizeWorkspaceViewFilters(value: unknown): WorkspaceViewFilt
     projectId: stringOrAll(raw.projectId),
     spaceId: stringOrAll(raw.spaceId),
     status: status as WorkspaceViewStatusFilter,
+    workflowStatus: stringOrAll(raw.workflowStatus),
     priority: priority as WorkspaceViewPriorityFilter,
     pinned: isStringIn(raw.pinned, PINNED_FILTERS)
       ? (raw.pinned as WorkspaceViewPinnedFilter)
@@ -143,6 +145,7 @@ export function filterMarksForWorkspaceView(
     if (filters.spaceId !== "all" && mark.spaceId !== filters.spaceId) return false;
     if (filters.spaceId === "all" && filters.projectId !== "all" && projectId !== filters.projectId) return false;
     if (filters.status !== "all" && mark.status !== filters.status) return false;
+    if (filters.workflowStatus !== "all" && mark.workflowStatusId !== filters.workflowStatus) return false;
     if (filters.priority !== "all" && mark.priority !== filters.priority) return false;
     if (filters.pinned === "pinned" && !mark.pinned) return false;
     if (filters.pinned === "unpinned" && mark.pinned) return false;
@@ -183,6 +186,7 @@ export function describeWorkspaceViewFilters(filters: WorkspaceViewFilters): str
   if (filters.projectId !== "all") parts.push("Project");
   if (filters.spaceId !== "all") parts.push("Space");
   if (filters.status !== "all") parts.push(normalizeMarkStatus(filters.status));
+  if (filters.workflowStatus !== "all") parts.push("Workflow");
   if (filters.priority !== "all") parts.push(normalizeMarkPriority(filters.priority));
   if (filters.pinned !== "all") parts.push(filters.pinned === "pinned" ? "Pinned" : "Unpinned");
   if (filters.label !== "all") parts.push("Label");

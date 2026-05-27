@@ -89,6 +89,7 @@ ALTER TABLE public.workspace_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.spaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_labels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mark_workflow_statuses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks_to_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
@@ -113,6 +114,7 @@ BEGIN
         'projects',
         'spaces',
         'mark_labels',
+        'mark_workflow_statuses',
         'marks',
         'marks_to_labels',
         'mark_comments',
@@ -243,6 +245,11 @@ CREATE POLICY spaces_all_member ON public.spaces
   WITH CHECK (public.user_workspace_member(workspace_id));
 
 CREATE POLICY mark_labels_all_member ON public.mark_labels
+  FOR ALL TO authenticated
+  USING (public.user_workspace_member(workspace_id))
+  WITH CHECK (public.user_workspace_member(workspace_id));
+
+CREATE POLICY mark_workflow_statuses_all_member ON public.mark_workflow_statuses
   FOR ALL TO authenticated
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));

@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 
 import { BrandLogo } from "@/components/brand-logo";
-import { MarkPin } from "@/components/mark-pin";
 
 type ProductRow = {
   id: string;
@@ -39,10 +38,6 @@ export async function LandingProductStage() {
           </div>
           <div className="hidden rounded-md bg-paper px-3 py-1 font-mono text-ui-xs text-ink-3 sm:block">
             {t("urlBar")}
-          </div>
-          <div className="flex items-center gap-1 text-ui-xs text-ink-3">
-            <span className="hidden sm:inline">{t("overlayLabel")}</span>
-            <MarkPin label="4" size="sm" />
           </div>
         </div>
 
@@ -143,7 +138,6 @@ export async function LandingProductStage() {
                 </div>
               </div>
               <div className="absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-paper-3/80 to-transparent" />
-              <MarkPin label="4" size="md" pulse className="pd-anim-pin absolute left-[58%] top-[42%]" />
               <p className="pd-anim-comment absolute left-[52%] top-[18%] max-w-[11rem] line-clamp-3 rounded-md bg-paper-elevated px-2 py-1 text-ui-2xs leading-snug text-ink-2 ring-1 ring-rule">
                 {t("commentPreview")}
               </p>

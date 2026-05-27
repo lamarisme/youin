@@ -90,6 +90,10 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
   const project = workspace.projects.find((p) => p.id === space.projectId) ?? null;
   const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
   const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
+  const workflowStatusesById = useMemo(
+    () => new Map(workspace.workflowStatuses.map((status) => [status.id, status])),
+    [workspace.workflowStatuses],
+  );
   const spaceMarks = useMemo(
     () => workspace.marks.filter((p) => p.spaceId === space.id),
     [workspace.marks, space.id],
@@ -390,6 +394,7 @@ export function SpaceDetailView({ space, onBack }: SpaceDetailViewProps) {
                   marks={spaceMarks}
                   membersById={membersById}
                   labelsById={labelsById}
+                  workflowStatusesById={workflowStatusesById}
                   commentCountByMarkId={commentCountByMarkId}
                   displayNamePreference={namePref}
                   onSelectMark={(mark) => {

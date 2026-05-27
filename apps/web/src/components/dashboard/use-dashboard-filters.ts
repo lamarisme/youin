@@ -21,6 +21,7 @@ export interface DashboardFilters {
   spaceId: string;
   markId: string | null;
   status: StatusFilter;
+  workflowStatus: string;
   priority: PriorityFilter;
   pinned: PinnedFilter;
   label: string;
@@ -39,6 +40,7 @@ const assigneeParser = parseAsStringLiteral(["all", "me", "unassigned"] as const
 const projectParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const spaceParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const markParser = parseAsString;
+const workflowStatusParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const labelParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const queryParser = parseAsString.withDefault("").withOptions({ clearOnDefault: true });
 const pageParser = parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true });
@@ -48,6 +50,7 @@ export function useDashboardFilters() {
   const [space, setSpace] = useQueryState("space", spaceParser);
   const [mark, setMark] = useQueryState("mark", markParser);
   const [status, setStatus] = useQueryState("status", statusParser);
+  const [workflowStatus, setWorkflowStatus] = useQueryState("workflowStatus", workflowStatusParser);
   const [priority, setPriority] = useQueryState("priority", priorityParser);
   const [pinned, setPinned] = useQueryState("pinned", pinnedParser);
   const [label, setLabel] = useQueryState("label", labelParser);
@@ -62,6 +65,7 @@ export function useDashboardFilters() {
       spaceId: space,
       markId: mark ?? null,
       status,
+      workflowStatus,
       priority,
       pinned,
       label,
@@ -70,7 +74,7 @@ export function useDashboardFilters() {
       sort,
       page,
     }),
-    [project, space, mark, status, priority, pinned, label, assignee, q, sort, page],
+    [project, space, mark, status, workflowStatus, priority, pinned, label, assignee, q, sort, page],
   );
 
   const update = useCallback(
@@ -91,6 +95,10 @@ export function useDashboardFilters() {
       }
       if (patch.status !== undefined) {
         void setStatus(patch.status as StatusFilter);
+      }
+      if (patch.workflowStatus !== undefined) {
+        const v = patch.workflowStatus;
+        void setWorkflowStatus(typeof v === "string" && v !== "all" ? v : "all");
       }
       if (patch.priority !== undefined) {
         void setPriority(patch.priority as PriorityFilter);
@@ -117,7 +125,7 @@ export function useDashboardFilters() {
         void setPage(1);
       }
     },
-    [setProject, setSpace, setMark, setStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setPage],
+    [setProject, setSpace, setMark, setStatus, setWorkflowStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setPage],
   );
 
   return { filters, update };

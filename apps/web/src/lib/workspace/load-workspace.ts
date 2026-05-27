@@ -1,12 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
   markComments,
   markEvents,
   markLabels,
+  markWorkflowStatuses,
   marks,
   marksToLabels,
   profiles,
@@ -34,12 +35,14 @@ import type {
   WorkspaceReviewLink,
   WorkspaceView,
   WorkspaceSpace,
+  WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
+import { normalizeWorkflowStatusColor } from "@/lib/workspace/workflow-statuses";
 import {
   normalizeWorkspaceViewConfig,
   normalizeWorkspaceViewFilters,
@@ -132,6 +135,7 @@ export async function loadWorkspaceAggregate(
     membersRows,
     invitesRows,
     reviewLinkRows,
+    workflowStatusRows,
     marksRows,
   ] = await Promise.all([
     db
@@ -176,6 +180,16 @@ export async function loadWorkspaceAggregate(
       .from(workspaceReviewLinks)
       .where(eq(workspaceReviewLinks.workspaceId, workspaceId))
       .orderBy(desc(workspaceReviewLinks.createdAt)),
+    db
+      .select()
+      .from(markWorkflowStatuses)
+      .where(
+        and(
+          eq(markWorkflowStatuses.workspaceId, workspaceId),
+          isNull(markWorkflowStatuses.archivedAt),
+        ),
+      )
+      .orderBy(asc(markWorkflowStatuses.position), asc(markWorkflowStatuses.createdAt)),
     db
       .select()
       .from(marks)
@@ -290,6 +304,18 @@ export async function loadWorkspaceAggregate(
     name: label.name,
     colorClass: labelColorClass(label.id),
   }));
+
+  const workflowStatuses: WorkspaceWorkflowStatus[] = workflowStatusRows.map(
+    (status) => ({
+      id: status.id,
+      name: status.name,
+      color: normalizeWorkflowStatusColor(status.color),
+      lifecycleStatus: normalizeMarkStatus(status.lifecycleStatus),
+      position: Number(status.position ?? 0),
+      isDefaultOpen: Boolean(status.isDefaultOpen),
+      isDefaultClosed: Boolean(status.isDefaultClosed),
+    }),
+  );
 
   const members: TeamMember[] = membersRows.map((row) => {
     const prof = profilesByUserId.get(row.userId);
@@ -412,6 +438,7 @@ export async function loadWorkspaceAggregate(
       page: mark.page,
       description: mark.description ?? "",
       status: normalizeMarkStatus(mark.status),
+      workflowStatusId: mark.workflowStatusId ?? undefined,
       priority: normalizeMarkPriority(mark.priority),
       pinned: Boolean(mark.pinned),
       labelIds: labelsByMark.get(mark.id) ?? [],
@@ -461,6 +488,7 @@ export async function loadWorkspaceAggregate(
     spaces: spacesOut,
     views: viewsOut,
     labels,
+    workflowStatuses,
     members,
     invites,
     reviewLinks,

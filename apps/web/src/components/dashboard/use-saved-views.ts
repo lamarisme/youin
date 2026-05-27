@@ -6,7 +6,7 @@ import type { DashboardFilters } from "./use-dashboard-filters";
 
 export type SavedViewFilters = Pick<
   DashboardFilters,
-  "projectId" | "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
+  "projectId" | "status" | "workflowStatus" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 export interface SavedView {
@@ -46,6 +46,10 @@ function parseViews(raw: string | null): SavedView[] {
               ? view.filters.projectId
               : "all",
           status: view.filters.status,
+          workflowStatus:
+            typeof view.filters.workflowStatus === "string"
+              ? view.filters.workflowStatus
+              : "all",
           priority: view.filters.priority,
           pinned: view.filters.pinned,
           label: view.filters.label,
@@ -74,6 +78,7 @@ export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
   return {
     projectId: filters.projectId,
     status: filters.status,
+    workflowStatus: filters.workflowStatus,
     priority: filters.priority,
     pinned: filters.pinned,
     label: filters.label,
@@ -86,6 +91,7 @@ export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
 export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
   return (
     snapshot.status === "all" &&
+    snapshot.workflowStatus === "all" &&
     snapshot.projectId === "all" &&
     snapshot.priority === "all" &&
     snapshot.pinned === "all" &&
@@ -99,6 +105,7 @@ export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
 export function describeFilters(snapshot: SavedViewFilters): string {
   const parts: string[] = [];
   if (snapshot.status !== "all") parts.push(snapshot.status);
+  if (snapshot.workflowStatus !== "all") parts.push("workflow");
   if (snapshot.projectId !== "all") parts.push("project");
   if (snapshot.priority !== "all") parts.push(snapshot.priority);
   if (snapshot.pinned !== "all") parts.push(snapshot.pinned === "pinned" ? "pinned" : "unpinned");

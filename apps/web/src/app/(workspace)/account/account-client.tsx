@@ -12,12 +12,16 @@ import { accountHref, type AccountSection } from "@/lib/workspace/routes";
 import { OverviewTab } from "./tabs/overview-tab";
 import { ProfileTab } from "./tabs/profile-tab";
 import { LabelsTab } from "./tabs/labels-tab";
+import { IntegrationsTab } from "./tabs/integrations-tab";
+import { StatusesTab } from "./tabs/statuses-tab";
 import { TeamTab } from "./tabs/team-tab";
 
 export function AccountClient({ section = null }: { section?: string | null }) {
-  const { memberCount, labelCount } = useWorkspaceData((s) => ({
+  const { memberCount, labelCount, reviewLinkCount, statusCount } = useWorkspaceData((s) => ({
     memberCount: s.workspace.members.length,
     labelCount: s.workspace.labels.length,
+    reviewLinkCount: s.workspace.reviewLinks.length,
+    statusCount: s.workspace.workflowStatuses.length,
   }));
   const activeSection = (section ?? "overview") as AccountSection;
 
@@ -29,7 +33,14 @@ export function AccountClient({ section = null }: { section?: string | null }) {
   }> = [
     { value: "overview", label: "Overview", detail: "Workspace and security" },
     { value: "team", label: "Team", detail: "Members and invites", count: memberCount },
+    {
+      value: "integrations",
+      label: "Integrations",
+      detail: "Extension and app installs",
+      count: reviewLinkCount,
+    },
     { value: "labels", label: "Labels", detail: "Mark taxonomy", count: labelCount },
+    { value: "statuses", label: "Statuses", detail: "Workflow stages", count: statusCount },
     { value: "profile", label: "Profile", detail: "Your display identity" },
   ];
 
@@ -38,7 +49,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
       <AppHeader
         title="Account"
         eyebrow="Settings"
-        subtitle="Workspace settings, team access, labels, and profile."
+        subtitle="Workspace settings, integrations, team access, labels, statuses, and profile."
       />
 
       <div className="grid gap-4 lg:grid-cols-[13rem_minmax(0,52rem)] lg:gap-8">
@@ -87,7 +98,9 @@ export function AccountClient({ section = null }: { section?: string | null }) {
         <section className="min-w-0">
           {activeSection === "overview" ? <OverviewTab /> : null}
           {activeSection === "team" ? <TeamTab /> : null}
+          {activeSection === "integrations" ? <IntegrationsTab /> : null}
           {activeSection === "labels" ? <LabelsTab /> : null}
+          {activeSection === "statuses" ? <StatusesTab /> : null}
           {activeSection === "profile" ? <ProfileTab /> : null}
         </section>
       </div>

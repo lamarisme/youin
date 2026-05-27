@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ChevronDown,
+  ListFilter,
   Search,
   UserCheck,
   UserRound,
@@ -19,6 +19,14 @@ import {
 } from "@/components/select-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { MarkPriority, MarkStatus, WorkspaceLabel } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
@@ -42,14 +50,17 @@ interface MarkFiltersProps {
 }
 
 export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFiltersProps) {
-  const viewerId = useWorkspaceData((s) => s.userId);
-  const [showMore, setShowMore] = useState(false);
+  const { viewerId, workflowStatuses } = useWorkspaceData((s) => ({
+    viewerId: s.userId,
+    workflowStatuses: s.workspace.workflowStatuses,
+  }));
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [queryDraft, setQueryDraft] = useState(filters.q);
   const [lastSyncedQ, setLastSyncedQ] = useState(filters.q);
   const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
 
-  function toggleAssigneePreset(next: AssigneeFilter) {
-    onChange({ assignee: filters.assignee === next ? "all" : next }, { resetPage: true });
+  function setAssignee(next: AssigneeFilter) {
+    onChange({ assignee: next }, { resetPage: true });
   }
 
   if (filters.q !== lastSyncedQ) {
@@ -73,6 +84,17 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     [labels],
   );
 
+  const workflowStatusOptions: ReadonlyArray<FilterOption> = useMemo(
+    () => [
+      { value: "all", label: "All stages" },
+      ...workflowStatuses.map((status) => ({
+        value: status.id,
+        label: status.name,
+      })),
+    ],
+    [workflowStatuses],
+  );
+
   const activeFilters = useMemo(() => {
     const out: { key: string; label: string; value: string; reset: () => void }[] = [];
     const statusLabel =
@@ -80,12 +102,24 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     const priorityLabel =
       DASHBOARD_PRIORITY_FILTER_OPTIONS.find((o) => o.value === filters.priority)?.label ??
       filters.priority;
+    const workflowStatusLabel =
+      workflowStatusOptions.find((o) => o.value === filters.workflowStatus)?.label ??
+      filters.workflowStatus;
+    const sortLabel = MARK_SORT_OPTIONS.find((o) => o.value === filters.sort)?.label ?? filters.sort;
     if (filters.status !== "all") {
       out.push({
         key: "status",
         label: "Status",
         value: statusLabel,
         reset: () => onChange({ status: "all" }, { resetPage: true }),
+      });
+    }
+    if (filters.workflowStatus !== "all") {
+      out.push({
+        key: "workflowStatus",
+        label: "Stage",
+        value: workflowStatusLabel,
+        reset: () => onChange({ workflowStatus: "all" }, { resetPage: true }),
       });
     }
     if (filters.label !== "all") {
@@ -117,7 +151,10 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
         key: "q",
         label: "Search",
         value: `“${filters.q.trim()}”`,
-        reset: () => onChange({ q: null }, { resetPage: true }),
+        reset: () => {
+          setQueryDraft("");
+          onChange({ q: null }, { resetPage: true });
+        },
       });
     }
     if (filters.assignee === "me") {
@@ -136,35 +173,49 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
         reset: () => onChange({ assignee: "all" }, { resetPage: true }),
       });
     }
+    if (filters.sort !== "recent") {
+      out.push({
+        key: "sort",
+        label: "Sort",
+        value: sortLabel,
+        reset: () => onChange({ sort: "recent" }, { resetPage: true }),
+      });
+    }
     return out;
-  }, [filters, labelsById, onChange]);
+  }, [filters, labelsById, onChange, workflowStatusOptions]);
 
-  const secondaryCount =
+  const hiddenControlCount =
+    (filters.status !== "all" ? 1 : 0) +
     (filters.label !== "all" ? 1 : 0) +
+    (filters.workflowStatus !== "all" ? 1 : 0) +
     (filters.priority !== "all" ? 1 : 0) +
     (filters.pinned !== "all" ? 1 : 0) +
-    (filters.assignee !== "all" ? 1 : 0);
+    (filters.assignee !== "all" ? 1 : 0) +
+    (filters.sort !== "recent" ? 1 : 0);
 
   function clearAll() {
     onChange(
       {
         status: "all",
+        workflowStatus: "all",
         priority: "all",
         pinned: "all",
         label: "all",
         assignee: "all",
         q: null,
+        sort: "recent",
       },
       { resetPage: true },
     );
+    setQueryDraft("");
   }
 
-  const presetBtn =
-    "h-11 shrink-0 gap-1.5 rounded-full px-3 text-ui-sm font-normal shadow-none transition-colors duration-150 sm:h-8 sm:px-2.5 sm:text-ui-xs";
-  const presetActive =
-    "bg-mark-soft/70 text-ink hover:bg-mark-soft hover:text-ink dark:bg-mark-soft/30 dark:hover:bg-mark-soft/45";
-  const presetIdle =
-    "bg-transparent text-ink-2 hover:bg-paper-3/70 hover:text-ink";
+  const dialogSelectClass = "h-9 w-full justify-between bg-paper-2 text-ui-sm";
+  const dialogLabelClass = "text-ui-xs font-medium text-ink-3";
+  const assigneeButtonClass =
+    "h-8 min-w-0 gap-1 rounded-[5px] px-2 text-ui-sm font-normal shadow-none";
+  const assigneeIdleClass = "text-ink-2 hover:bg-paper-elevated hover:text-ink";
+  const assigneeActiveClass = "bg-paper-elevated text-ink hover:bg-paper-elevated";
 
   return (
     <FadeIn className="w-full space-y-1.5">
@@ -202,102 +253,173 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
           ) : null}
         </div>
 
-        <FilterSelect<StatusFilter>
-          value={filters.status}
-          onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
-          options={DASHBOARD_STATUS_FILTER_OPTIONS}
-          ariaLabel="Filter by status"
-          triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
-        />
-        <FilterSelect<SortMode>
-          value={filters.sort}
-          onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
-          options={MARK_SORT_OPTIONS}
-          ariaLabel="Sort marks"
-          triggerClassName="w-[min(100vw-6rem,150px)] sm:w-[150px]"
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          onClick={() => setShowMore((v) => !v)}
-          aria-expanded={showMore}
-          aria-controls="more-filters-panel"
-          className={cn(
-            "h-11 gap-1.5 rounded-md px-3 text-ui-lg font-normal text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-ui-sm",
-            showMore && "bg-paper-3/50 text-ink",
-          )}
-        >
-          <span className="tabular-nums">
-            More
-            {secondaryCount > 0 ? (
-              <span className="text-ink-3"> · {secondaryCount}</span>
-            ) : null}
-          </span>
-          <ChevronDown
-            aria-hidden
-            className={cn(
-              "size-3 shrink-0 transition-transform duration-150 ease-[cubic-bezier(0.25,1,0.5,1)] motion-reduce:transition-none",
-              showMore && "rotate-180",
-            )}
-          />
-        </Button>
+        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-label={
+                hiddenControlCount > 0
+                  ? `Open dashboard filters (${hiddenControlCount} active)`
+                  : "Open dashboard filters"
+              }
+              className="h-11 gap-1.5 bg-transparent px-3 text-ui-lg font-normal text-ink-2 shadow-none hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-ui-sm"
+            >
+              <ListFilter className="size-3.5 opacity-75 sm:size-3" aria-hidden />
+              <span className="tabular-nums">
+                Filters
+                {hiddenControlCount > 0 ? (
+                  <span className="text-ink-3"> · {hiddenControlCount}</span>
+                ) : null}
+              </span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[34rem]">
+            <div className="px-4 pb-3 pt-4">
+              <DialogTitle>Filter marks</DialogTitle>
+              <DialogDescription className="sr-only">
+                Adjust dashboard filters and sort order.
+              </DialogDescription>
+            </div>
+
+            <div className="grid gap-4 border-y border-rule/70 px-4 py-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Status</span>
+                  <FilterSelect<StatusFilter>
+                    value={filters.status}
+                    onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
+                    options={DASHBOARD_STATUS_FILTER_OPTIONS}
+                    ariaLabel="Filter by status"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Stage</span>
+                  <FilterSelect
+                    value={filters.workflowStatus}
+                    onValueChange={(v) => onChange({ workflowStatus: v }, { resetPage: true })}
+                    options={workflowStatusOptions}
+                    ariaLabel="Filter by workflow stage"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Label</span>
+                  <FilterSelect
+                    value={filters.label}
+                    onValueChange={(v) => onChange({ label: v }, { resetPage: true })}
+                    options={labelOptions}
+                    ariaLabel="Filter by label"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Priority</span>
+                  <FilterSelect<PriorityFilter>
+                    value={filters.priority}
+                    onValueChange={(v) => onChange({ priority: v }, { resetPage: true })}
+                    options={DASHBOARD_PRIORITY_FILTER_OPTIONS}
+                    ariaLabel="Filter by priority"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Pinned</span>
+                  <FilterSelect<PinnedFilter>
+                    value={filters.pinned}
+                    onValueChange={(v) => onChange({ pinned: v }, { resetPage: true })}
+                    options={DASHBOARD_PINNED_FILTER_OPTIONS}
+                    ariaLabel="Filter by pinned"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <span className={dialogLabelClass}>Sort</span>
+                  <FilterSelect<SortMode>
+                    value={filters.sort}
+                    onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
+                    options={MARK_SORT_OPTIONS}
+                    ariaLabel="Sort marks"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <span className={dialogLabelClass}>Assignee</span>
+                <div className="grid grid-cols-3 gap-1 rounded-md bg-paper-2 p-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-pressed={filters.assignee === "all"}
+                    onClick={() => setAssignee("all")}
+                    className={cn(
+                      assigneeButtonClass,
+                      filters.assignee === "all" ? assigneeActiveClass : assigneeIdleClass,
+                    )}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={!viewerId}
+                    title={!viewerId ? "Sign in to filter by assignee." : undefined}
+                    aria-pressed={filters.assignee === "me"}
+                    onClick={() => viewerId && setAssignee("me")}
+                    className={cn(
+                      assigneeButtonClass,
+                      filters.assignee === "me" ? assigneeActiveClass : assigneeIdleClass,
+                    )}
+                  >
+                    <UserCheck className="size-3 opacity-70" aria-hidden />
+                    Mine
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-pressed={filters.assignee === "unassigned"}
+                    onClick={() => setAssignee("unassigned")}
+                    className={cn(
+                      assigneeButtonClass,
+                      filters.assignee === "unassigned" ? assigneeActiveClass : assigneeIdleClass,
+                    )}
+                  >
+                    <UserRound className="size-3 opacity-70" aria-hidden />
+                    Unassigned
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 bg-paper-2/70 px-4 py-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeFilters.length === 0}
+                onClick={clearAll}
+                className="text-ink-3 hover:text-ink"
+              >
+                Reset
+              </Button>
+              <DialogClose asChild>
+                <Button type="button" size="sm" variant="default">
+                  Done
+                </Button>
+              </DialogClose>
+            </div>
+          </DialogContent>
+        </Dialog>
         <span className="ml-auto text-ui-xs tabular-nums text-ink-3">
           {visibleCount} mark{visibleCount === 1 ? "" : "s"}
         </span>
       </div>
-
-      {showMore ? (
-        <div
-          id="more-filters-panel"
-          className="flex flex-wrap items-center gap-1.5 rounded-md bg-paper-2 p-1.5"
-        >
-          <FilterSelect
-            value={filters.label}
-            onValueChange={(v) => onChange({ label: v }, { resetPage: true })}
-            options={labelOptions}
-            ariaLabel="Filter by label"
-            triggerClassName="w-[150px]"
-          />
-          <FilterSelect<PriorityFilter>
-            value={filters.priority}
-            onValueChange={(v) => onChange({ priority: v }, { resetPage: true })}
-            options={DASHBOARD_PRIORITY_FILTER_OPTIONS}
-            ariaLabel="Filter by priority"
-            triggerClassName="w-[150px]"
-          />
-          <FilterSelect<PinnedFilter>
-            value={filters.pinned}
-            onValueChange={(v) => onChange({ pinned: v }, { resetPage: true })}
-            options={DASHBOARD_PINNED_FILTER_OPTIONS}
-            ariaLabel="Filter by pinned"
-            triggerClassName="w-[150px]"
-          />
-          <span aria-hidden className="hidden h-6 w-px bg-rule sm:inline-block" />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!viewerId}
-            title={!viewerId ? "Sign in to filter by assignee." : undefined}
-            aria-pressed={filters.assignee === "me"}
-            onClick={() => viewerId && toggleAssigneePreset("me")}
-            className={cn(presetBtn, filters.assignee === "me" ? presetActive : presetIdle)}
-          >
-            <UserCheck className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
-            Mine
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            aria-pressed={filters.assignee === "unassigned"}
-            onClick={() => toggleAssigneePreset("unassigned")}
-            className={cn(presetBtn, filters.assignee === "unassigned" ? presetActive : presetIdle)}
-          >
-            <UserRound className="size-3.5 opacity-65 sm:size-3 sm:opacity-70" aria-hidden />
-            Unassigned
-          </Button>
-        </div>
-      ) : null}
 
       {activeFilters.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">

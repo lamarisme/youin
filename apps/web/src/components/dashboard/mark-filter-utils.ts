@@ -6,7 +6,7 @@ import type { DashboardFilters, SortMode } from "./use-dashboard-filters";
 /** URL-driven dashboard filters applied to marks (marks). */
 export type MarkDashboardFilterSlice = Pick<
   DashboardFilters,
-  "spaceId" | "status" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
+  "spaceId" | "status" | "workflowStatus" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -26,6 +26,7 @@ export function filterMarksByDashboardFilters(
   const filtered = marks.filter((mark) => {
     if (filters.spaceId !== "all" && mark.spaceId !== filters.spaceId) return false;
     if (filters.status !== "all" && mark.status !== filters.status) return false;
+    if (filters.workflowStatus !== "all" && mark.workflowStatusId !== filters.workflowStatus) return false;
     if (filters.priority !== "all" && mark.priority !== filters.priority) return false;
     if (filters.pinned === "pinned" && !mark.pinned) return false;
     if (filters.pinned === "unpinned" && mark.pinned) return false;

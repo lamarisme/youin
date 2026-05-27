@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { type KeyboardEvent, useMemo } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -35,6 +35,7 @@ import type {
   MarkItem,
   TeamMember,
   WorkspaceLabel,
+  WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
@@ -48,16 +49,27 @@ export interface MarkTableProps {
   marks: MarkItem[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
+  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   /** Called when a mark title is opened. */
   onSelectMark: (mark: MarkItem) => void;
+  /** Optional quiet row action for resolving or reopening without opening detail. */
+  onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+  /** Optional list keyboard navigation handler. */
+  onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
+  /** Optional shortcut help handler for focused list usage. */
+  onShowShortcuts?: () => void;
+  /** Current mark shown in the detail pane. Independent from bulk selection. */
+  activeMarkId?: string;
   /** If provided, enables row checkboxes. */
   selectedIds?: Set<string>;
   /** Fires with the full next selection set (replaces per-id toggle). */
   onSelectionChange?: (ids: Set<string>) => void;
   /** Enable / disable sorting. Defaults to true. */
   sortable?: boolean;
+  /** Compact density removes secondary columns for cockpit panes. */
+  density?: "default" | "compact";
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────
@@ -74,17 +86,25 @@ const PRIORITY_ORDER: Record<string, number> = {
 function buildColumns({
   membersById,
   labelsById,
+  workflowStatusesById,
   commentCountByMarkId,
   displayNamePreference,
   selectable,
   onSelectMark,
+  onToggleMarkStatus,
+  activeMarkId,
+  density,
 }: {
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
+  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
   onSelectMark: (mark: MarkItem) => void;
+  onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+  activeMarkId?: string;
+  density: "default" | "compact";
 }): ColumnDef<MarkItem>[] {
   const cols: ColumnDef<MarkItem>[] = [];
 
@@ -122,24 +142,25 @@ function buildColumns({
     });
   }
 
-  // ── Status column ─────────
+  // ── Workflow status column ─────────
   cols.push({
     accessorKey: "status",
-    header: "",
-    size: 28,
+    header: "Stage",
+    size: density === "compact" ? 98 : 112,
     enableSorting: false,
-    cell: ({ row }) =>
-      row.original.status === "open" ? (
-        <CircleDashed
-          className="size-3.5 text-mark"
-          aria-label="Open"
+    cell: ({ row }) => {
+      const mark = row.original;
+      return (
+        <StatusInline
+          status={mark.status}
+          label={
+            mark.workflowStatusId
+              ? workflowStatusesById.get(mark.workflowStatusId)?.name
+              : undefined
+          }
         />
-      ) : (
-        <CheckCircle2
-          className="size-3.5 text-ok"
-          aria-label="Resolved"
-        />
-      ),
+      );
+    },
   });
 
   // ── Title + page ──────────
@@ -149,21 +170,45 @@ function buildColumns({
     size: 999, // flexible
     cell: ({ row }) => {
       const mark = row.original;
+      const active = activeMarkId === mark.id;
       return (
-        <button
-          type="button"
-          onClick={() => onSelectMark(mark)}
-          className="-mx-1 block min-w-0 rounded-md px-1 py-1 text-left outline-none transition-colors hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/35"
-        >
-          <p className="truncate text-ui-sm font-semibold text-ink">
-            {mark.title}
-          </p>
-          {mark.page.trim() ? (
-            <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={mark.page}>
-              {formatMarkPageLabel(mark.page)}
+        <div className="-mx-1 flex min-w-0 items-start gap-1 rounded-md px-1 py-1">
+          <button
+            type="button"
+            data-mark-id={mark.id}
+            aria-current={active ? "true" : undefined}
+            onClick={() => onSelectMark(mark)}
+            className={cn(
+              "block min-w-0 flex-1 rounded-md text-left outline-none transition-colors hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/35",
+              active && "text-mark",
+            )}
+          >
+            <p className="flex min-w-0 items-center gap-1 truncate text-ui-sm font-semibold text-ink">
+              <span className="truncate">{mark.title}</span>
+              {density === "compact" && mark.pinned ? (
+                <Bookmark className="size-3 shrink-0 text-mark" aria-label="Pinned" />
+              ) : null}
             </p>
-          ) : null}
-        </button>
+            {density === "compact" ? (
+              <p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-ui-xs text-ink-3">
+                <span className="shrink-0 font-mono">{mark.displayKey}</span>
+                {mark.page.trim() ? (
+                  <>
+                    <span aria-hidden>·</span>
+                    <span className="truncate" title={mark.page}>
+                      {formatMarkPageLabel(mark.page)}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            ) : mark.page.trim() ? (
+              <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={mark.page}>
+                {formatMarkPageLabel(mark.page)}
+              </p>
+            ) : null}
+          </button>
+          <RowStatusAction mark={mark} onToggle={onToggleMarkStatus} />
+        </div>
       );
     },
   });
@@ -172,7 +217,7 @@ function buildColumns({
   cols.push({
     accessorKey: "priority",
     header: "Priority",
-    size: 90,
+    size: density === "compact" ? 76 : 90,
     sortingFn: (a, b) =>
       (PRIORITY_ORDER[a.original.priority] ?? 99) -
       (PRIORITY_ORDER[b.original.priority] ?? 99),
@@ -182,32 +227,34 @@ function buildColumns({
   });
 
   // ── Labels ────────────────
-  cols.push({
-    id: "labels",
-    header: "Labels",
-    size: 140,
-    enableSorting: false,
-    cell: ({ row }) => {
-      const mark = row.original;
-      if (mark.labelIds.length === 0) return null;
-      return (
-        <div className="flex flex-wrap gap-1">
-          {mark.labelIds.map((lid) => {
-            const label = labelsById.get(lid);
-            if (!label) return null;
-            return (
-              <span
-                key={lid}
-                className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
-              >
-                {label.name}
-              </span>
-            );
-          })}
-        </div>
-      );
-    },
-  });
+  if (density === "default") {
+    cols.push({
+      id: "labels",
+      header: "Labels",
+      size: 140,
+      enableSorting: false,
+      cell: ({ row }) => {
+        const mark = row.original;
+        if (mark.labelIds.length === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-1">
+            {mark.labelIds.map((lid) => {
+              const label = labelsById.get(lid);
+              if (!label) return null;
+              return (
+                <span
+                  key={lid}
+                  className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
+                >
+                  {label.name}
+                </span>
+              );
+            })}
+          </div>
+        );
+      },
+    });
+  }
 
   // ── Assignee ──────────────
   cols.push({
@@ -236,18 +283,20 @@ function buildColumns({
   });
 
   // ── Pinned ────────────────
-  cols.push({
-    id: "pinned",
-    header: "",
-    size: 28,
-    enableSorting: false,
-    cell: ({ row }) =>
-      row.original.pinned ? (
-        <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
-          Pinned
-        </Pill>
-      ) : null,
-  });
+  if (density === "default") {
+    cols.push({
+      id: "pinned",
+      header: "",
+      size: 28,
+      enableSorting: false,
+      cell: ({ row }) =>
+        row.original.pinned ? (
+          <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
+            Pinned
+          </Pill>
+        ) : null,
+    });
+  }
 
   // ── Comments ──────────────
   cols.push({
@@ -288,16 +337,18 @@ function buildColumns({
   });
 
   // ── Display key ───────────
-  cols.push({
-    accessorKey: "displayKey",
-    header: "ID",
-    size: 72,
-    cell: ({ row }) => (
-      <span className="shrink-0 whitespace-nowrap font-mono text-ui-2xs text-ink-3">
-        {row.original.displayKey}
-      </span>
-    ),
-  });
+  if (density === "default") {
+    cols.push({
+      accessorKey: "displayKey",
+      header: "ID",
+      size: 72,
+      cell: ({ row }) => (
+        <span className="shrink-0 whitespace-nowrap font-mono text-ui-2xs text-ink-3">
+          {row.original.displayKey}
+        </span>
+      ),
+    });
+  }
 
   return cols;
 }
@@ -308,12 +359,18 @@ export function MarkTable({
   marks,
   membersById,
   labelsById,
+  workflowStatusesById,
   commentCountByMarkId,
   displayNamePreference,
   onSelectMark,
+  onToggleMarkStatus,
+  onNavigateAdjacent,
+  onShowShortcuts,
+  activeMarkId,
   selectedIds,
   onSelectionChange,
   sortable = true,
+  density = "default",
 }: MarkTableProps) {
   const selectable = !!selectedIds && !!onSelectionChange;
 
@@ -322,12 +379,16 @@ export function MarkTable({
       buildColumns({
         membersById,
         labelsById,
+        workflowStatusesById,
         commentCountByMarkId,
         displayNamePreference,
         selectable,
         onSelectMark,
+        onToggleMarkStatus,
+        activeMarkId,
+        density,
       }),
-    [membersById, labelsById, commentCountByMarkId, displayNamePreference, selectable, onSelectMark],
+    [membersById, labelsById, workflowStatusesById, commentCountByMarkId, displayNamePreference, selectable, onSelectMark, onToggleMarkStatus, activeMarkId, density],
   );
 
   // Map Set<string> → TanStack RowSelectionState keyed by mark.id
@@ -369,21 +430,48 @@ export function MarkTable({
 
   return (
     <>
-      <div className="md:hidden">
+      <div
+        className="md:hidden"
+        onKeyDown={(event) =>
+          handleListKeyDown(event, {
+            marks,
+            activeMarkId,
+            onNavigateAdjacent,
+            onToggleMarkStatus,
+            onShowShortcuts,
+          })
+        }
+      >
         <MobileMarkList
           marks={marks}
           membersById={membersById}
           labelsById={labelsById}
+          workflowStatusesById={workflowStatusesById}
           commentCountByMarkId={commentCountByMarkId}
           displayNamePreference={displayNamePreference}
           selectable={selectable}
           selectedIds={selectedIds}
+          activeMarkId={activeMarkId}
           onSelectionChange={onSelectionChange}
           onSelectMark={onSelectMark}
+          onToggleMarkStatus={onToggleMarkStatus}
         />
       </div>
 
-      <div className="hidden md:block">
+      <div
+        className="hidden md:block outline-none"
+        tabIndex={0}
+        aria-label="Marks list"
+        onKeyDown={(event) =>
+          handleListKeyDown(event, {
+            marks,
+            activeMarkId,
+            onNavigateAdjacent,
+            onToggleMarkStatus,
+            onShowShortcuts,
+          })
+        }
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -434,31 +522,38 @@ export function MarkTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() ? "selected" : undefined}
-                className={cn(
-                  "group/row transition-colors",
-                  row.getIsSelected() && "[&>td]:bg-mark-soft/35 hover:[&>td]:bg-mark-soft/45",
-                )}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell
-                    key={cell.id}
-                    style={{ width: cell.column.getSize() === 999 ? undefined : cell.column.getSize() }}
-                    className="py-2.5"
-                    onClick={
-                      cell.column.id === "select"
-                        ? (e) => e.stopPropagation()
-                        : undefined
-                    }
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {table.getRowModel().rows.map((row) => {
+              const active = activeMarkId === row.original.id;
+              const selected = row.getIsSelected();
+              return (
+                <TableRow
+                  key={row.id}
+                  data-mark-id={row.original.id}
+                  data-state={selected ? "selected" : undefined}
+                  aria-current={active ? "true" : undefined}
+                  className={cn(
+                    "group/row transition-colors",
+                    active && "[&>td]:bg-paper-2 hover:[&>td]:bg-paper-3/60",
+                    selected && "[&>td]:bg-mark-soft/35 hover:[&>td]:bg-mark-soft/45",
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      style={{ width: cell.column.getSize() === 999 ? undefined : cell.column.getSize() }}
+                      className={density === "compact" ? "py-2" : "py-2.5"}
+                      onClick={
+                        cell.column.id === "select"
+                          ? (e) => e.stopPropagation()
+                          : undefined
+                      }
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -470,22 +565,28 @@ function MobileMarkList({
   marks,
   membersById,
   labelsById,
+  workflowStatusesById,
   commentCountByMarkId,
   displayNamePreference,
   selectable,
   selectedIds,
+  activeMarkId,
   onSelectionChange,
   onSelectMark,
+  onToggleMarkStatus,
 }: {
   marks: MarkItem[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
+  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
   selectedIds?: Set<string>;
+  activeMarkId?: string;
   onSelectionChange?: (ids: Set<string>) => void;
   onSelectMark: (mark: MarkItem) => void;
+  onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
 }) {
   function toggleSelection(markId: string, checked: boolean) {
     if (!onSelectionChange || !selectedIds) return;
@@ -501,13 +602,16 @@ function MobileMarkList({
         const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
         const commentCount = commentCountByMarkId.get(mark.id) ?? 0;
         const selected = selectedIds?.has(mark.id) ?? false;
+        const active = activeMarkId === mark.id;
         const pageLabel = mark.page.trim() ? formatMarkPageLabel(mark.page) : null;
         return (
           <li
             key={mark.id}
             data-state={selected ? "selected" : undefined}
+            aria-current={active ? "true" : undefined}
             className={cn(
               "px-3 py-3 transition-colors hover:bg-paper-2",
+              active && "bg-paper-2",
               selected && "bg-mark-soft/40 hover:bg-mark-soft/45",
             )}
           >
@@ -525,6 +629,7 @@ function MobileMarkList({
                   <button
                     type="button"
                     onClick={() => onSelectMark(mark)}
+                    aria-current={active ? "true" : undefined}
                     className="min-h-11 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
                   >
                     <span className="block break-words text-ui-lg font-semibold leading-snug text-ink">
@@ -544,10 +649,18 @@ function MobileMarkList({
                       className="mt-0.5"
                     />
                   ) : null}
+                  <RowStatusAction mark={mark} onToggle={onToggleMarkStatus} className="mt-0.5" />
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <StatusInline status={mark.status} />
+                  <StatusInline
+                    status={mark.status}
+                    label={
+                      mark.workflowStatusId
+                        ? workflowStatusesById.get(mark.workflowStatusId)?.name
+                        : undefined
+                    }
+                  />
                   <PriorityBadge priority={mark.priority} size="sm" />
                   {mark.pinned ? (
                     <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
@@ -605,16 +718,131 @@ function MobileMarkList({
   );
 }
 
-function StatusInline({ status }: { status: MarkItem["status"] }) {
+function RowStatusAction({
+  mark,
+  onToggle,
+  className,
+}: {
+  mark: MarkItem;
+  onToggle?: (mark: MarkItem) => void | Promise<void>;
+  className?: string;
+}) {
+  if (!onToggle) return null;
+  const open = mark.status === "open";
+  return (
+    <button
+      type="button"
+      data-mark-id={mark.id}
+      onClick={(event) => {
+        event.stopPropagation();
+        void onToggle(mark);
+      }}
+      aria-label={open ? `Resolve ${mark.title}` : `Reopen ${mark.title}`}
+      title={open ? "Resolve" : "Reopen"}
+      className={cn(
+        "inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 outline-none transition-colors hover:bg-paper-3 hover:text-ink focus-visible:bg-paper-3 focus-visible:text-ink focus-visible:ring-2 focus-visible:ring-mark/25 md:size-7 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100",
+        open && "hover:text-ok focus-visible:text-ok",
+        !open && "hover:text-mark focus-visible:text-mark",
+        className,
+      )}
+    >
+      {open ? (
+        <CheckCircle2 className="size-3.5" aria-hidden />
+      ) : (
+        <CircleDashed className="size-3.5" aria-hidden />
+      )}
+    </button>
+  );
+}
+
+function handleListKeyDown(
+  event: KeyboardEvent<HTMLElement>,
+  {
+    marks,
+    activeMarkId,
+    onNavigateAdjacent,
+    onToggleMarkStatus,
+    onShowShortcuts,
+  }: {
+    marks: MarkItem[];
+    activeMarkId?: string;
+    onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
+    onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+    onShowShortcuts?: () => void;
+  },
+) {
+  if (isEditableTarget(event.target)) return;
+
+  const key = event.key;
+  if ((key === "j" || key === "ArrowDown") && onNavigateAdjacent) {
+    event.preventDefault();
+    event.stopPropagation();
+    onNavigateAdjacent("next", currentKeyboardMark(event.target, marks, activeMarkId));
+    return;
+  }
+  if ((key === "k" || key === "ArrowUp") && onNavigateAdjacent) {
+    event.preventDefault();
+    event.stopPropagation();
+    onNavigateAdjacent("prev", currentKeyboardMark(event.target, marks, activeMarkId));
+    return;
+  }
+  if (key === "x" && onToggleMarkStatus) {
+    const mark = currentKeyboardMark(event.target, marks, activeMarkId);
+    if (!mark) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void onToggleMarkStatus(mark);
+    return;
+  }
+  if ((key === "?" || (key === "/" && event.shiftKey)) && onShowShortcuts) {
+    event.preventDefault();
+    event.stopPropagation();
+    onShowShortcuts();
+  }
+}
+
+function currentKeyboardMark(
+  target: EventTarget,
+  marks: MarkItem[],
+  activeMarkId?: string,
+) {
+  const targetElement = target instanceof HTMLElement ? target : null;
+  const focusedMarkId = targetElement?.closest<HTMLElement>("[data-mark-id]")?.dataset.markId;
+  return (
+    marks.find((mark) => mark.id === focusedMarkId) ??
+    marks.find((mark) => mark.id === activeMarkId) ??
+    marks[0]
+  );
+}
+
+function isEditableTarget(target: EventTarget) {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    target.getAttribute("role") === "textbox"
+  );
+}
+
+function StatusInline({
+  status,
+  label,
+}: {
+  status: MarkItem["status"];
+  label?: string;
+}) {
   return status === "open" ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
       <CircleDashed className="size-3" aria-hidden />
-      Open
+      {label ?? "Open"}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
       <CheckCircle2 className="size-3" aria-hidden />
-      Resolved
+      {label ?? "Resolved"}
     </span>
   );
 }

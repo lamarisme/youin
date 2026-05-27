@@ -12,34 +12,45 @@ import {
 
 import type { MarkItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 
 import { MarkPin } from "@/components/mark-pin";
 
 import { shortMarkLabel } from "./format-mark-event";
 import { FullImagePreview } from "./full-image-preview";
 import { formatMarkPageOrigin } from "./mark-page-label";
+import { MarkPageOpenButton } from "./mark-page-open";
 
 interface MarkDetailCaptureProps {
   mark: MarkItem;
+  variant?: "compact" | "hero";
 }
 
-export function MarkDetailCapture({ mark }: MarkDetailCaptureProps) {
+export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptureProps) {
   const cap = mark.capture;
   const pageOrigin = formatMarkPageOrigin(mark.page);
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
+  const isHero = variant === "hero";
 
   return (
     <>
-      <div className="mt-5 overflow-hidden rounded-lg bg-paper-2">
+      <div className={cn("overflow-hidden rounded-lg bg-paper-2", isHero ? "mt-4" : "mt-5")}>
         <div className="flex items-center gap-2 px-3 py-2">
           <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
           <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
             Capture
           </span>
+          {isHero && mark.page.trim() ? (
+            <MarkPageOpenButton
+              page={mark.page}
+              appearance="icon"
+              className="size-7 border-transparent bg-transparent hover:bg-paper-3"
+            />
+          ) : null}
         </div>
         <div className="relative px-3 pb-3">
           {cap?.screenshotUrl ? (
-            <div className="mx-auto max-w-2xl overflow-hidden rounded-md bg-paper-3">
+            <div className={cn("mx-auto overflow-hidden rounded-md bg-paper-3", isHero ? "max-w-4xl" : "max-w-2xl")}>
               <FullImagePreview
                 src={cap.screenshotUrl}
                 alt={`Captured element for ${mark.displayKey}`}
@@ -51,14 +62,22 @@ export function MarkDetailCapture({ mark }: MarkDetailCaptureProps) {
                   alt={`Captured element for ${mark.displayKey}`}
                   loading="lazy"
                   decoding="async"
-                  className="max-h-[22rem] w-full object-contain object-top"
+                  className={cn(
+                    "w-full object-contain object-top",
+                    isHero ? "max-h-[28rem]" : "max-h-[22rem]",
+                  )}
                 />
               </FullImagePreview>
             </div>
           ) : (
-            <p className="py-6 text-center text-ui-sm text-ink-3">
-              No capture snapshot saved for this mark.
-            </p>
+            <div className="grid gap-3 py-8 text-center">
+              <p className="mx-auto max-w-sm text-ui-sm text-ink-3">
+                No capture snapshot saved. Open the page to inspect this mark in context.
+              </p>
+              {mark.page.trim() ? (
+                <MarkPageOpenButton page={mark.page} appearance="labeled" className="mx-auto h-8" />
+              ) : null}
+            </div>
           )}
           {cap?.selector ? (
             <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded bg-ink/85 px-2 py-0.5 font-mono text-ui-2xs text-paper">

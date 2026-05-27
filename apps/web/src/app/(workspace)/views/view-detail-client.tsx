@@ -253,6 +253,10 @@ function ViewList({
 }) {
   const membersById = useMemo(() => new Map(workspace.members.map((member) => [member.id, member])), [workspace.members]);
   const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
+  const workflowStatusesById = useMemo(
+    () => new Map(workspace.workflowStatuses.map((status) => [status.id, status])),
+    [workspace.workflowStatuses],
+  );
   const commentCountByMarkId = useMemo(() => {
     const counts = new Map<string, number>();
     for (const comment of workspace.comments) {
@@ -274,6 +278,7 @@ function ViewList({
             marks={paginatedMarks}
             membersById={membersById}
             labelsById={labelsById}
+            workflowStatusesById={workflowStatusesById}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
             onSelectMark={onSelectMark}
@@ -303,24 +308,36 @@ function StatusBoard({
   displayNamePreference: DisplayNamePreference;
   onSelectMark: (mark: MarkItem) => void;
 }) {
-  const open = marks.filter((mark) => mark.status === "open");
-  const closed = marks.filter((mark) => mark.status === "closed");
+  const columns = workspace.workflowStatuses.length
+    ? workspace.workflowStatuses.map((status) => ({
+        id: status.id,
+        title: status.name,
+        marks: marks.filter((mark) => mark.workflowStatusId === status.id),
+      }))
+    : [
+        {
+          id: "open",
+          title: "Open",
+          marks: marks.filter((mark) => mark.status === "open"),
+        },
+        {
+          id: "closed",
+          title: "Resolved",
+          marks: marks.filter((mark) => mark.status === "closed"),
+        },
+      ];
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
-      <BoardColumn
-        title="Open"
-        marks={open}
-        workspace={workspace}
-        displayNamePreference={displayNamePreference}
-        onSelectMark={onSelectMark}
-      />
-      <BoardColumn
-        title="Resolved"
-        marks={closed}
-        workspace={workspace}
-        displayNamePreference={displayNamePreference}
-        onSelectMark={onSelectMark}
-      />
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {columns.map((column) => (
+        <BoardColumn
+          key={column.id}
+          title={column.title}
+          marks={column.marks}
+          workspace={workspace}
+          displayNamePreference={displayNamePreference}
+          onSelectMark={onSelectMark}
+        />
+      ))}
     </div>
   );
 }
@@ -516,6 +533,7 @@ function toDashboardFilters(filters: WorkspaceViewFilters, page: number): Dashbo
     spaceId: filters.spaceId,
     markId: null,
     status: filters.status,
+    workflowStatus: filters.workflowStatus,
     priority: filters.priority,
     pinned: filters.pinned,
     label: filters.label,
@@ -533,6 +551,7 @@ function dashboardPatchToViewPatch(
   if (typeof patch.projectId === "string") out.projectId = patch.projectId;
   if (typeof patch.spaceId === "string") out.spaceId = patch.spaceId;
   if (typeof patch.status === "string") out.status = patch.status as WorkspaceViewFilters["status"];
+  if (typeof patch.workflowStatus === "string") out.workflowStatus = patch.workflowStatus;
   if (typeof patch.priority === "string") out.priority = patch.priority as WorkspaceViewFilters["priority"];
   if (typeof patch.pinned === "string") out.pinned = patch.pinned as WorkspaceViewFilters["pinned"];
   if (typeof patch.label === "string") out.label = patch.label;

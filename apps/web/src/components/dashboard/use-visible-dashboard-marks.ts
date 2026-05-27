@@ -32,6 +32,7 @@ export function useVisibleDashboardMarks() {
         {
           spaceId: filters.spaceId,
           status: filters.status,
+          workflowStatus: filters.workflowStatus,
           priority: filters.priority,
           pinned: filters.pinned,
           label: filters.label,
@@ -49,6 +50,7 @@ export function useVisibleDashboardMarks() {
       filters.projectId,
       filters.spaceId,
       filters.status,
+      filters.workflowStatus,
       filters.priority,
       filters.pinned,
       filters.label,

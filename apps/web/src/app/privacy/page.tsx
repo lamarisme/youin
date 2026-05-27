@@ -9,7 +9,7 @@ export const metadata = {
   description: "How youin handles the data captured by marks, comments, and integrations.",
 };
 
-const SUPPORT_EMAIL = "support@youin.dev";
+const SUPPORT_EMAIL = "support@youin.click";
 
 export default function PrivacyPage() {
   return (

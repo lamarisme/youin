@@ -252,8 +252,8 @@ html:has(#__plasmo) body {
 
 #__plasmo {
   box-sizing: border-box;
-  min-width: 320px;
-  max-width: 320px;
+  min-width: 344px;
+  max-width: 344px;
 }
 
 /* Refined input: borderless, focuses with mark ring */

@@ -34,6 +34,7 @@ function emptyWorkspace(): Workspace {
     spaces: [],
     views: [],
     labels: [],
+    workflowStatuses: [],
     members: [],
     invites: [],
     reviewLinks: [],

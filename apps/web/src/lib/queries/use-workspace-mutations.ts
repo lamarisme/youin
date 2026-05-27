@@ -18,6 +18,7 @@ import type {
   WorkspaceViewConfig,
   WorkspaceViewFilters,
   WorkspaceViewLayout,
+  WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
@@ -27,6 +28,7 @@ import {
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
+import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-statuses";
 import * as ws from "@/lib/workspace/actions";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
@@ -75,6 +77,13 @@ function labelFromCreated(created: ws.CreatedLabel): WorkspaceLabel {
     name: created.name,
     colorClass: labelColorClass(created.id),
   };
+}
+
+function workflowStatusById(
+  statuses: readonly WorkspaceWorkflowStatus[],
+  id: string,
+): WorkspaceWorkflowStatus | undefined {
+  return statuses.find((status) => status.id === id);
 }
 
 // ---------------------------------------------------------------------------
@@ -352,6 +361,12 @@ export function useCreateMarkMutation() {
       const bundle = getWorkspaceQueryData(queryClient);
       const space = bundle?.workspace.spaces.find((s) => s.id === input.spaceId);
       const spaceCode = space?.code ?? "?";
+      const workflowStatusId =
+        created.workflowStatusId ??
+        defaultWorkflowStatusForLifecycle(
+          bundle?.workspace.workflowStatuses ?? [],
+          "open",
+        )?.id;
       return {
         id: created.id,
         spaceId: input.spaceId,
@@ -362,6 +377,7 @@ export function useCreateMarkMutation() {
         page: normalizeMarkPageUrl(input.page),
         description: input.description || "",
         status: "open",
+        workflowStatusId,
         priority: input.priority ?? "medium",
         pinned: false,
         labelIds: [...input.labelIds],
@@ -391,11 +407,18 @@ export function useToggleMarkStatusMutation() {
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        marks: workspace.marks.map((mark) =>
-          mark.id === markId
-            ? { ...mark, status: mark.status === "closed" ? "open" : "closed" }
-            : mark,
-        ),
+        marks: workspace.marks.map((mark) => {
+          if (mark.id !== markId) return mark;
+          const status = mark.status === "closed" ? "open" : "closed";
+          return {
+            ...mark,
+            status,
+            workflowStatusId: defaultWorkflowStatusForLifecycle(
+              workspace.workflowStatuses,
+              status,
+            )?.id,
+          };
+        }),
       }));
       return context;
     },
@@ -599,6 +622,47 @@ export function useSetMarkLabelsMutation() {
   });
 }
 
+export function useSetMarkWorkflowStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      markId,
+      workflowStatusId,
+    }: {
+      markId: string;
+      workflowStatusId: string;
+    }) => ws.setMarkWorkflowStatusAction(markId, workflowStatusId),
+    onMutate: async ({ markId, workflowStatusId }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => {
+        const workflowStatus = workflowStatusById(
+          workspace.workflowStatuses,
+          workflowStatusId,
+        );
+        return {
+          ...workspace,
+          marks: workspace.marks.map((mark) =>
+            mark.id === markId && workflowStatus
+              ? {
+                  ...mark,
+                  workflowStatusId,
+                  status: workflowStatus.lifecycleStatus,
+                }
+              : mark,
+          ),
+        };
+      });
+      return context;
+    },
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't update workflow status."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------------
@@ -768,6 +832,122 @@ export function useUpdateWorkspaceMutation() {
     onError: (e, _vars, context) => {
       restoreWorkspace(queryClient, context);
       toast.error(actionErrorMessage(e, "Couldn't rename workspace."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useCreateWorkflowStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.createWorkflowStatusAction,
+    onSuccess: (status) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        workflowStatuses: workspace.workflowStatuses.some((item) => item.id === status.id)
+          ? workspace.workflowStatuses
+          : [...workspace.workflowStatuses, status],
+      }));
+      toast.success(`Created “${status.name}”.`);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't create this workflow status.")),
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useUpdateWorkflowStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      statusId,
+      ...input
+    }: ws.WorkflowStatusUpdateInput & { statusId: string }) =>
+      ws.updateWorkflowStatusAction(statusId, input),
+    onMutate: async ({ statusId, ...input }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        workflowStatuses: workspace.workflowStatuses.map((status) => {
+          if (status.id !== statusId) {
+            if (input.isDefaultOpen && status.lifecycleStatus === "open") {
+              return { ...status, isDefaultOpen: false };
+            }
+            if (input.isDefaultClosed && status.lifecycleStatus === "closed") {
+              return { ...status, isDefaultClosed: false };
+            }
+            return status;
+          }
+          return {
+            ...status,
+            ...(typeof input.name === "string" ? { name: input.name.trim() } : {}),
+            ...(input.color ? { color: input.color } : {}),
+            ...(input.isDefaultOpen ? { isDefaultOpen: true, isDefaultClosed: false } : {}),
+            ...(input.isDefaultClosed ? { isDefaultClosed: true, isDefaultOpen: false } : {}),
+          };
+        }),
+      }));
+      return context;
+    },
+    onSuccess: (status) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        workflowStatuses: workspace.workflowStatuses.map((item) =>
+          item.id === status.id ? status : item,
+        ),
+      }));
+      toast.success("Workflow status saved.");
+    },
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't save this workflow status."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useArchiveWorkflowStatusMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ statusId }: { statusId: string; name?: string }) =>
+      ws.archiveWorkflowStatusAction(statusId),
+    onMutate: async ({ statusId }) => {
+      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
+      const context = snapshot(queryClient);
+      updateWorkspace(queryClient, (workspace) => {
+        const archived = workflowStatusById(workspace.workflowStatuses, statusId);
+        const fallback =
+          archived &&
+          defaultWorkflowStatusForLifecycle(
+            workspace.workflowStatuses.filter((status) => status.id !== statusId),
+            archived.lifecycleStatus,
+          );
+        return {
+          ...workspace,
+          workflowStatuses: workspace.workflowStatuses.filter(
+            (status) => status.id !== statusId,
+          ),
+          marks: fallback
+            ? workspace.marks.map((mark) =>
+                mark.workflowStatusId === statusId
+                  ? {
+                      ...mark,
+                      workflowStatusId: fallback.id,
+                      status: fallback.lifecycleStatus,
+                    }
+                  : mark,
+              )
+            : workspace.marks,
+        };
+      });
+      return context;
+    },
+    onSuccess: (_, vars) =>
+      toast.success(vars.name ? `Archived “${vars.name}”.` : "Workflow status archived."),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't archive this workflow status."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
   });

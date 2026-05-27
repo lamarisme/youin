@@ -1,4 +1,11 @@
-const ACCOUNT_SECTIONS = ["overview", "team", "labels", "profile"] as const;
+const ACCOUNT_SECTIONS = [
+  "overview",
+  "team",
+  "integrations",
+  "labels",
+  "statuses",
+  "profile",
+] as const;
 
 export type AccountSection = (typeof ACCOUNT_SECTIONS)[number];
 

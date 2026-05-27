@@ -7,6 +7,7 @@ import type {
 import {
   boolean,
   check,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -195,6 +196,59 @@ export const spaces = pgTable(
   ],
 );
 
+export const markWorkflowStatuses = pgTable(
+  "mark_workflow_statuses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("gray"),
+    position: integer("position").notNull().default(0),
+    lifecycleStatus: markStatusEnum("lifecycle_status")
+      .notNull()
+      .default("open"),
+    isDefaultOpen: boolean("is_default_open").notNull().default(false),
+    isDefaultClosed: boolean("is_default_closed").notNull().default(false),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("mark_workflow_statuses_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    uniqueIndex("mark_workflow_statuses_workspace_active_name_unique")
+      .on(table.workspaceId, sql`lower(${table.name})`)
+      .where(sql`${table.archivedAt} IS NULL`),
+    uniqueIndex("mark_workflow_statuses_default_open_unique")
+      .on(table.workspaceId)
+      .where(sql`${table.isDefaultOpen} = true AND ${table.archivedAt} IS NULL`),
+    uniqueIndex("mark_workflow_statuses_default_closed_unique")
+      .on(table.workspaceId)
+      .where(sql`${table.isDefaultClosed} = true AND ${table.archivedAt} IS NULL`),
+    index("mark_workflow_statuses_workspace_position_idx").on(
+      table.workspaceId,
+      table.position,
+    ),
+    check("mark_workflow_statuses_name_not_blank", sql`length(trim(${table.name})) > 0`),
+    check(
+      "mark_workflow_statuses_default_open_lifecycle",
+      sql`${table.isDefaultOpen} = false OR ${table.lifecycleStatus} = 'open'`,
+    ),
+    check(
+      "mark_workflow_statuses_default_closed_lifecycle",
+      sql`${table.isDefaultClosed} = false OR ${table.lifecycleStatus} = 'closed'`,
+    ),
+  ],
+);
+
 export const marks = pgTable(
   "marks",
   {
@@ -209,6 +263,7 @@ export const marks = pgTable(
     page: text("page").notNull(),
     description: text("description").notNull().default(""),
     status: markStatusEnum("status").notNull().default("open"),
+    workflowStatusId: uuid("workflow_status_id"),
     priority: markPriorityEnum("priority").notNull().default("medium"),
     pinned: boolean("pinned").notNull().default(false),
     assigneeUserId: uuid("assignee_user_id").references(() => profiles.id, {
@@ -249,10 +304,22 @@ export const marks = pgTable(
       table.createdAt,
     ),
     index("marks_workspace_status_idx").on(table.workspaceId, table.status),
+    index("marks_workspace_workflow_status_idx").on(
+      table.workspaceId,
+      table.workflowStatusId,
+    ),
     index("marks_workspace_assignee_idx").on(
       table.workspaceId,
       table.assigneeUserId,
     ),
+    foreignKey({
+      columns: [table.workspaceId, table.workflowStatusId],
+      foreignColumns: [
+        markWorkflowStatuses.workspaceId,
+        markWorkflowStatuses.id,
+      ],
+      name: "marks_workflow_status_workspace_fk",
+    }),
   ],
 );
 
@@ -516,6 +583,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   spaces: many(spaces),
   views: many(workspaceViews),
   marks: many(marks),
+  workflowStatuses: many(markWorkflowStatuses),
   labels: many(markLabels),
   events: many(markEvents),
   inboxReadStates: many(inboxReadStates),
@@ -557,6 +625,17 @@ export const spacesRelations = relations(spaces, ({ one, many }) => ({
   marks: many(marks),
 }));
 
+export const markWorkflowStatusesRelations = relations(
+  markWorkflowStatuses,
+  ({ one, many }) => ({
+    workspace: one(workspaces, {
+      fields: [markWorkflowStatuses.workspaceId],
+      references: [workspaces.id],
+    }),
+    marks: many(marks),
+  }),
+);
+
 export const marksRelations = relations(marks, ({ one, many }) => ({
   workspace: one(workspaces, {
     fields: [marks.workspaceId],
@@ -565,6 +644,10 @@ export const marksRelations = relations(marks, ({ one, many }) => ({
   space: one(spaces, {
     fields: [marks.spaceId],
     references: [spaces.id],
+  }),
+  workflowStatus: one(markWorkflowStatuses, {
+    fields: [marks.workflowStatusId],
+    references: [markWorkflowStatuses.id],
   }),
   assignee: one(profiles, {
     fields: [marks.assigneeUserId],
@@ -687,6 +770,7 @@ export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type Space = typeof spaces.$inferSelect;
 export type Mark = typeof marks.$inferSelect;
 export type NewMark = typeof marks.$inferInsert;
+export type MarkWorkflowStatus = typeof markWorkflowStatuses.$inferSelect;
 export type MarkLabel = typeof markLabels.$inferSelect;
 export type MarkComment = typeof markComments.$inferSelect;
 export type MarkEvent = typeof markEvents.$inferSelect;

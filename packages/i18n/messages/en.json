@@ -115,7 +115,7 @@
       "spaces": "Spaces",
       "spacesSub": "Spaces in the selected project",
       "account": "Account settings",
-      "accountSub": "Profile, team, and labels",
+      "accountSub": "Profile, team, integrations, and labels",
       "themeLight": "Switch to light mode",
       "themeDark": "Switch to dark mode"
     },
@@ -131,6 +131,10 @@
       {
         "href": "#loop",
         "label": "Spatial backlog"
+      },
+      {
+        "href": "#integrations",
+        "label": "Integrations"
       },
       {
         "href": "#who",
@@ -247,6 +251,30 @@
         }
       ]
     },
+    "integrations": {
+      "eyebrow": "Install paths",
+      "title": "Use the extension, or bring YouIn directly into your app.",
+      "subtitle": "The Chrome extension stays the fastest way to mark any page. For teams that do not want browser extensions, YouIn is being shaped around a hosted script and an npm package with the same capture model.",
+      "options": [
+        {
+          "name": "Chrome extension",
+          "status": "Available",
+          "body": "Capture on any web app or staging site without changing the codebase."
+        },
+        {
+          "name": "Hosted script",
+          "status": "Planned",
+          "body": "Drop a tiny script into a first-party app so reviewers can create marks from inside your own product surface."
+        },
+        {
+          "name": "NPM package",
+          "status": "Planned",
+          "body": "Install a React-friendly package when teams want typed APIs, identity, route context, and deeper UI control."
+        }
+      ],
+      "contractTitle": "One contract underneath",
+      "contractBody": "Allowed domains, current user identity, route and entity metadata, screenshots, selectors, and workspace routing should stay consistent across every install path."
+    },
     "who": {
       "eyebrow": "Focused wedge",
       "title": "Built for teams with expensive feedback loops.",
@@ -290,6 +318,8 @@
   "extension": {
     "popup": {
       "title": "Youin",
+      "pageReview": "Page review",
+      "workspaceSignIn": "Workspace sign in",
       "preparingReview": "Preparing review…",
       "reviewSession": "Review session",
       "openWebsite": "Open a website",
@@ -311,15 +341,27 @@
       "inspectHint": "Inspect an element, or drag any screen area.",
       "shortcutHint": "Alt+Shift+Y toggles review on the page.",
       "open": "Open",
+      "openPageFeedback": "Open page feedback",
+      "openFeedbackCount": "{count} open",
       "resolved": "Resolved",
       "destination": "Destination",
+      "dashboard": "Dashboard",
+      "openWorkspaceDashboardAria": "Open {workspace} dashboard",
+      "projectLabel": "Project",
+      "spaceLabel": "Space",
+      "noProjectLabel": "No project",
       "noSpaceLabel": "No space selected",
       "localFeedback": "Local feedback",
       "localFeedbackHint": "Saved on this device. Sign in to share it.",
       "signIn": "Sign in",
+      "signInHint": "Use your workspace account to sync review spaces and feedback.",
       "signInFailed": "Sign-in failed.",
+      "continueGoogle": "Continue with Google",
       "continueGoogleAria": "Continue with Google in a new tab",
       "waitingGoogle": "Waiting for Google sign-in… Complete sign-in in the browser tab.",
+      "or": "or",
+      "email": "Email",
+      "password": "Password",
       "signingIn": "Signing in…",
       "signedInFallback": "Signed in",
       "migrationFailed": "Migration failed.",
@@ -354,7 +396,9 @@
       "couldNotCreateSpace": "Could not create space. Try the web app.",
       "couldNotSaveSpace": "Couldn't save space.",
       "spaceNamePlaceholder": "Client homepage review",
+      "newSpaceNameAria": "New review space name",
       "accountMenuAria": "Account and settings",
+      "accountMenuLabel": "Account",
       "signOut": "Sign out",
       "signInMenu": "Sign in…",
       "webApp": "Web app",

@@ -6,6 +6,7 @@ import type {
 export type MarkStatus = DomainMarkStatus;
 export type MarkPriority = DomainMarkPriority;
 export type SpacePriority = MarkPriority;
+export type WorkflowStatusColor = "gray" | "blue" | "amber" | "green" | "red" | "violet";
 export type WorkspaceViewLayout = "list" | "board" | "analytics";
 export type WorkspaceViewStatusFilter = "all" | MarkStatus;
 export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
@@ -102,12 +103,23 @@ export interface MarkItem {
   page: string;
   description: string;
   status: MarkStatus;
+  workflowStatusId?: string;
   priority: MarkPriority;
   pinned: boolean;
   labelIds: string[];
   assigneeId?: string;
   capture?: MarkCapture;
   createdAt: string;
+}
+
+export interface WorkspaceWorkflowStatus {
+  id: string;
+  name: string;
+  color: WorkflowStatusColor;
+  lifecycleStatus: MarkStatus;
+  position: number;
+  isDefaultOpen: boolean;
+  isDefaultClosed: boolean;
 }
 
 export interface WorkspaceSpace {
@@ -133,6 +145,7 @@ export interface WorkspaceViewFilters {
   projectId: string;
   spaceId: string;
   status: WorkspaceViewStatusFilter;
+  workflowStatus: string;
   priority: WorkspaceViewPriorityFilter;
   pinned: WorkspaceViewPinnedFilter;
   label: string;
@@ -170,6 +183,7 @@ export interface Workspace {
   spaces: WorkspaceSpace[];
   views: WorkspaceView[];
   labels: WorkspaceLabel[];
+  workflowStatuses: WorkspaceWorkflowStatus[];
   members: TeamMember[];
   invites: TeamInvite[];
   reviewLinks: WorkspaceReviewLink[];

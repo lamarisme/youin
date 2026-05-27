@@ -21,9 +21,11 @@ import type {
   WorkspaceProject,
   TeamMember,
   WorkspaceSpace,
+  WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import {
   useAssignMarkMutation,
+  useSetMarkWorkflowStatusMutation,
   useToggleMarkPinnedMutation,
   useToggleMarkStatusMutation,
   useUpdateMarkMutation,
@@ -35,6 +37,7 @@ import { cn } from "@/lib/utils";
 interface MarkDetailActionsProps {
   mark: MarkItem;
   members: TeamMember[];
+  workflowStatuses: WorkspaceWorkflowStatus[];
   projects?: WorkspaceProject[];
   spaces: WorkspaceSpace[];
   displayNamePreference: DisplayNamePreference;
@@ -44,17 +47,26 @@ interface MarkDetailActionsProps {
 export function MarkDetailActions({
   mark,
   members,
+  workflowStatuses,
   projects = [],
   spaces,
   displayNamePreference,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
   const { mutate: toggleMarkStatus } = useToggleMarkStatusMutation();
+  const { mutate: setMarkWorkflowStatus } = useSetMarkWorkflowStatusMutation();
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
   const { mutate: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutate: assignMark } = useAssignMarkMutation();
   const { mutate: updateMark } = useUpdateMarkMutation();
   const projectById = new Map(projects.map((project) => [project.id, project.name]));
+  const workflowStatusOptions = workflowStatuses.map((status) => ({
+    value: status.id,
+    label: status.name,
+  }));
+  const currentWorkflowStatus =
+    workflowStatuses.find((status) => status.id === mark.workflowStatusId) ??
+    workflowStatuses.find((status) => status.lifecycleStatus === mark.status);
 
   return (
     <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-ui-sm text-ink-2">
@@ -68,19 +80,32 @@ export function MarkDetailActions({
           )
         }
       >
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => toggleMarkStatus(mark.id)}
-          aria-keyshortcuts="X"
-          aria-label={mark.status === "open" ? "Resolve mark" : "Reopen mark"}
-          className={cn(
-            "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
-            mark.status === "open" ? "text-mark" : "text-ok",
-          )}
-        >
-          {mark.status === "open" ? "Open" : "Resolved"}
-        </Button>
+        {currentWorkflowStatus ? (
+          <FilterSelect
+            value={currentWorkflowStatus.id}
+            onValueChange={(workflowStatusId) =>
+              setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
+            }
+            options={workflowStatusOptions}
+            ariaLabel="Mark workflow status"
+            triggerClassName="h-11 w-[132px] sm:h-8"
+            variant="inline"
+          />
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => toggleMarkStatus(mark.id)}
+            aria-keyshortcuts="X"
+            aria-label={mark.status === "open" ? "Resolve mark" : "Reopen mark"}
+            className={cn(
+              "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+              mark.status === "open" ? "text-mark" : "text-ok",
+            )}
+          >
+            {mark.status === "open" ? "Open" : "Resolved"}
+          </Button>
+        )}
       </PropertyGroup>
 
       <PropertyGroup label="Priority" icon={<Flag className="size-3.5" aria-hidden />}>

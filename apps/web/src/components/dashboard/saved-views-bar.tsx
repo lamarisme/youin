@@ -154,7 +154,9 @@ export function SavedViewsBar({
 
 function snapshotsEqual(a: SavedViewFilters, b: SavedViewFilters): boolean {
   return (
+    a.projectId === b.projectId &&
     a.status === b.status &&
+    a.workflowStatus === b.workflowStatus &&
     a.priority === b.priority &&
     a.pinned === b.pinned &&
     a.label === b.label &&

@@ -9,7 +9,7 @@ export const metadata = {
   description: "Talk to a human about youin. We respond within one working day.",
 };
 
-const SUPPORT_EMAIL = "support@youin.dev";
+const SUPPORT_EMAIL = "support@youin.click";
 
 export default function ContactPage() {
   return (

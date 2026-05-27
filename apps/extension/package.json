@@ -45,8 +45,8 @@
     "externally_connectable": {
       "matches": [
         "http://localhost:3000/*",
-        "https://youin.dev/*",
-        "https://www.youin.dev/*"
+        "https://youin.click/*",
+        "https://www.youin.click/*"
       ]
     }
   }

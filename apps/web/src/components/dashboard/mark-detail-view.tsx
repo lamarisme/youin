@@ -6,6 +6,7 @@ import { Check, FileText, Link2, Pencil, Tags, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { LabelPicker } from "@/components/label-picker";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,6 +42,7 @@ import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
+import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markHref, spaceHref } from "@/lib/workspace/routes";
 import {
@@ -53,11 +55,12 @@ import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 interface MarkDetailViewProps {
   mark: MarkItem;
   backHref: string;
+  variant?: "page" | "pane";
 }
 
 type EditingField = "title" | "page" | "description";
 
-export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
+export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
   const workspace = useWorkspaceData((s) => s.workspace);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,6 +107,7 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const isEditing = editingField !== null;
+  const isPane = variant === "pane";
 
   function startEdit(field: EditingField = "title") {
     setEditTitle(mark.title);
@@ -220,20 +224,28 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
 
   return (
     <>
-      <MarkDetailNav
-        markLabel={mark.displayKey}
-        positionLabel={positionLabel}
-        spaceHref={selectedSpaceHref}
-        spaceName={space?.name}
-        canPrev={canPrev}
-        canNext={canNext}
-        onBack={() => router.push(backHref)}
-        onPrev={() => goAdjacent("prev")}
-        onNext={() => goAdjacent("next")}
-        onShowHelp={() => setShowHelp(true)}
-      />
+      {!isPane ? (
+        <MarkDetailNav
+          markLabel={mark.displayKey}
+          positionLabel={positionLabel}
+          spaceHref={selectedSpaceHref}
+          spaceName={space?.name}
+          canPrev={canPrev}
+          canNext={canNext}
+          onBack={() => router.push(backHref)}
+          onPrev={() => goAdjacent("prev")}
+          onNext={() => goAdjacent("next")}
+          onShowHelp={() => setShowHelp(true)}
+        />
+      ) : null}
 
-      <FadeIn key={mark.id} delay={0.08} className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <FadeIn
+        key={mark.id}
+        delay={0.08}
+        className={cn(
+          isPane ? "space-y-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]",
+        )}
+      >
         <div className="min-w-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -278,12 +290,15 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
             <MarkDetailActions
               mark={mark}
               members={workspace.members}
+              workflowStatuses={workspace.workflowStatuses}
               projects={workspace.projects}
               spaces={workspace.spaces}
               displayNamePreference={namePref}
               onConfirmDelete={() => setConfirmDelete(true)}
             />
           </div>
+
+          {isPane ? <MarkDetailCapture mark={mark} variant="hero" /> : null}
 
           <div className="mt-3 rounded-md bg-paper-2">
             <div className="grid min-h-11 gap-1 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
@@ -341,7 +356,7 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
             </div>
           </div>
 
-          <MarkDetailCapture mark={mark} />
+          {!isPane ? <MarkDetailCapture mark={mark} /> : null}
 
           {editingField === "description" ? (
             <div className="mt-5">
@@ -437,9 +452,23 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
         </div>
 
         <div className="min-w-0">
-          <div className="space-y-4 lg:sticky lg:top-4">
+          <div className={cn("space-y-4", !isPane && "lg:sticky lg:top-4")}>
             <CommentThread mark={mark} comments={comments} membersById={membersById} />
-            <MarkHistory events={events} membersById={membersById} />
+            {isPane ? (
+              <details className="group overflow-hidden rounded-md bg-paper-2">
+                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-ui-xs font-medium text-ink-2 outline-none transition-colors hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 [&::-webkit-details-marker]:hidden">
+                  <span>History</span>
+                  <span className="font-mono text-ui-2xs tabular-nums text-ink-3">
+                    {events.length}
+                  </span>
+                </summary>
+                <div className="border-t border-rule/70 p-3">
+                  <MarkHistory events={events} membersById={membersById} />
+                </div>
+              </details>
+            ) : (
+              <MarkHistory events={events} membersById={membersById} />
+            )}
           </div>
         </div>
       </FadeIn>
@@ -477,6 +506,8 @@ export function MarkDetailView({ mark, backHref }: MarkDetailViewProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
     </>
   );
 }

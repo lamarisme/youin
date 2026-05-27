@@ -7,7 +7,6 @@ import { findMarkByRouteParam } from "@/lib/workspace/mark-display-id";
 import { dashboardHref } from "@/lib/workspace/routes";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
-import { MarkDetailView } from "./mark-detail-view";
 import { TriageView } from "./triage-view";
 import { PageContainer } from "@/components/page-container";
 
@@ -22,11 +21,11 @@ export function WorkspaceDashboard({ markParam = null }: { markParam?: string | 
 
   return (
     <PageContainer>
-      {selectedMark ? (
-        <MarkDetailView mark={selectedMark} backHref={dashboardHref(searchParams)} />
-      ) : (
-        <TriageView />
-      )}
+      <TriageView
+        selectedMark={selectedMark}
+        selectedMarkParam={markParam}
+        backHref={dashboardHref(searchParams)}
+      />
     </PageContainer>
   );
 }

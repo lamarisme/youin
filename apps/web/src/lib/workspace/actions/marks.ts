@@ -18,10 +18,11 @@ const BAD_PAGE =
   "Page must be a full http or https URL (for example https://app.example.com/pricing).";
 
 export interface CreatedMark {
-  id: string;
-  /** Per-space sequence assigned by the set_mark_seq trigger. */
-  seq: number;
-  createdAt: string;
+    id: string;
+    /** Per-space sequence assigned by the set_mark_seq trigger. */
+    seq: number;
+    workflowStatusId?: string;
+    createdAt: string;
 }
 
 function toIso(value: Date | string): string {
@@ -111,6 +112,7 @@ export async function createMarkAction(input: {
       .returning({
         id: marks.id,
         seq: marks.seq,
+        workflowStatusId: marks.workflowStatusId,
         createdAt: marks.createdAt,
       });
     if (!created) throw new Error("Failed to create mark.");
@@ -129,6 +131,7 @@ export async function createMarkAction(input: {
   return {
     id: mk.id,
     seq: Number(mk.seq ?? 0),
+    workflowStatusId: mk.workflowStatusId ?? undefined,
     createdAt: toIso(mk.createdAt),
   };
 }

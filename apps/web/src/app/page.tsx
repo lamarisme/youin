@@ -16,6 +16,7 @@ import Link from "next/link";
 
 type LandingNavItem = { href: string; label: string };
 type LoopStep = { title: string; body: string };
+type IntegrationOption = { name: string; status: string; body: string };
 type Persona = { role: string; detail: string; body: string };
 
 const LOOP_SCENE_VARIANTS = ["capture", "anchor", "sync"] as const;
@@ -26,11 +27,13 @@ export default async function Home() {
   const landing = messages.landing as {
     nav: LandingNavItem[];
     loop: { steps: LoopStep[] };
+    integrations: { options: IntegrationOption[] };
     who: { personas: Persona[] };
   };
 
   const navItems = landing.nav;
   const loopSteps = landing.loop.steps;
+  const integrationOptions = landing.integrations.options;
   const personas = landing.who.personas;
 
   return (
@@ -164,6 +167,51 @@ export default async function Home() {
                   <LandingLoopScene variant={LOOP_SCENE_VARIANTS[index]} />
                 </div>
               ))}
+            </div>
+          </section>
+
+          <section id="integrations" className="shell scroll-mt-32 md:scroll-mt-20">
+            <div className="grid min-w-0 gap-[var(--block-gap)] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start lg:gap-[var(--space-3xl)]">
+              <div className="landing-section-head mb-0">
+                <p className="text-eyebrow">{t("integrations.eyebrow")}</p>
+                <h2 className="text-editorial-md text-balance text-ink">
+                  {t("integrations.title")}
+                </h2>
+                <p className="max-w-[52ch] text-pretty text-ui-md leading-relaxed text-ink-2">
+                  {t("integrations.subtitle")}
+                </p>
+              </div>
+
+              <div className="min-w-0">
+                <div className="divide-y divide-rule border-y border-rule">
+                  {integrationOptions.map((option) => (
+                    <article
+                      key={option.name}
+                      className="grid min-w-0 gap-3 py-5 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:gap-6"
+                    >
+                      <div className="min-w-0">
+                        <h3 className="truncate font-display text-lg font-semibold text-ink">
+                          {option.name}
+                        </h3>
+                        <p className="mt-1 inline-flex rounded-md bg-paper-2 px-2 py-1 font-mono text-ui-2xs uppercase tracking-[0.08em] text-ink-3">
+                          {option.status}
+                        </p>
+                      </div>
+                      <p className="max-w-[56ch] text-pretty text-ui-sm leading-relaxed text-ink-2">
+                        {option.body}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+                <div className="mt-5 rounded-md bg-paper-2 px-4 py-4 sm:px-5">
+                  <p className="text-ui-sm font-semibold text-ink">
+                    {t("integrations.contractTitle")}
+                  </p>
+                  <p className="mt-1 text-pretty text-ui-sm leading-relaxed text-ink-2">
+                    {t("integrations.contractBody")}
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 

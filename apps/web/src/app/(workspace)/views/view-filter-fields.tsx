@@ -71,6 +71,17 @@ export function ViewScopeFields({
     [workspace.labels],
   );
 
+  const workflowStatusOptions = useMemo<ReadonlyArray<FilterOption>>(
+    () => [
+      { value: "all", label: "All stages" },
+      ...workspace.workflowStatuses.map((status) => ({
+        value: status.id,
+        label: status.name,
+      })),
+    ],
+    [workspace.workflowStatuses],
+  );
+
   const assigneeOptions: ReadonlyArray<FilterOption<WorkspaceViewAssigneeFilter>> = [
     { value: "all", label: "All assignees" },
     { value: "me", label: "Mine" },
@@ -106,6 +117,13 @@ export function ViewScopeFields({
             onValueChange={(value) => onChange({ status: value })}
             options={DASHBOARD_STATUS_FILTER_OPTIONS}
             ariaLabel="Filter view by status"
+            triggerClassName="h-11 w-[150px] sm:h-9"
+          />
+          <FilterSelect
+            value={filters.workflowStatus}
+            onValueChange={(value) => onChange({ workflowStatus: value })}
+            options={workflowStatusOptions}
+            ariaLabel="Filter view by workflow stage"
             triggerClassName="h-11 w-[150px] sm:h-9"
           />
           <FilterSelect<WorkspaceViewPriorityFilter>
