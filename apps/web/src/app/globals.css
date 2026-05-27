@@ -484,11 +484,7 @@
 
   @media (min-width: 80rem) {
     .landing-hero-shell {
-      gap: clamp(2.5rem, 3.5vw, 3.25rem);
-    }
-
-    .landing-hero-stage {
-      margin-top: calc(-1 * var(--space-md));
+      gap: clamp(3rem, 4vw, 4rem);
     }
   }
 
