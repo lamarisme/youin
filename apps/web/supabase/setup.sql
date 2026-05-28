@@ -8,7 +8,7 @@
 
     • cleanup for older setup-owned mark sequence trigger
     • optional mark_event_type enum toppings (harmless no-ops when already present)
-    • project/space hierarchy RLS
+    • project-scoped workspace RLS
     • profiles ↔ auth.users FK + signup trigger + RLS policies + storage
     • (separate step) onboarding-rpcs.sql for bootstrap_workspace RPCs
 
@@ -87,7 +87,6 @@ ALTER TABLE public.workspaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_invites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.spaces ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_workflow_statuses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
@@ -112,7 +111,6 @@ BEGIN
         'workspace_members',
         'workspace_invites',
         'projects',
-        'spaces',
         'mark_labels',
         'mark_workflow_statuses',
         'marks',
@@ -235,11 +233,6 @@ CREATE POLICY workspace_views_all_member ON public.workspace_views
   WITH CHECK (public.user_workspace_member(workspace_id));
 
 CREATE POLICY workspace_review_links_all_member ON public.workspace_review_links
-  FOR ALL TO authenticated
-  USING (public.user_workspace_member(workspace_id))
-  WITH CHECK (public.user_workspace_member(workspace_id));
-
-CREATE POLICY spaces_all_member ON public.spaces
   FOR ALL TO authenticated
   USING (public.user_workspace_member(workspace_id))
   WITH CHECK (public.user_workspace_member(workspace_id));

@@ -7,30 +7,23 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { filterMarksByDashboardFilters } from "./mark-filter-utils";
 import { useDashboardFilters } from "./use-dashboard-filters";
 
-/** Marks visible under the current dashboard URL filters (space, status, priority, pinned, label, assignee). */
+/** Marks visible under the current dashboard URL filters (project, status, priority, pinned, label, assignee). */
 export function useVisibleDashboardMarks() {
-  const { marks, spaces, userId } = useWorkspaceData((s) => ({
+  const { marks, projects, userId } = useWorkspaceData((s) => ({
     marks: s.workspace.marks,
-    spaces: s.workspace.spaces,
+    projects: s.workspace.projects,
     userId: s.userId,
   }));
   const { filters } = useDashboardFilters();
 
   return useMemo(
     () => {
-      const spaceProjectById = new Map(spaces.map((space) => [space.id, space.projectId]));
-      const selectedSpaceProjectId =
-        filters.spaceId === "all" ? null : spaceProjectById.get(filters.spaceId) ?? null;
       const activeProjectId =
-        selectedSpaceProjectId ??
-        (filters.projectId === "all" ? spaces[0]?.projectId : filters.projectId);
-      const projectMarks = activeProjectId
-        ? marks.filter((mark) => spaceProjectById.get(mark.spaceId) === activeProjectId)
-        : [];
+        filters.projectId === "all" ? projects[0]?.id : filters.projectId;
       return filterMarksByDashboardFilters(
-        projectMarks,
+        marks,
         {
-          spaceId: filters.spaceId,
+          projectId: activeProjectId ?? "all",
           status: filters.status,
           workflowStatus: filters.workflowStatus,
           priority: filters.priority,
@@ -45,10 +38,9 @@ export function useVisibleDashboardMarks() {
     },
     [
       marks,
-      spaces,
+      projects,
       userId,
       filters.projectId,
-      filters.spaceId,
       filters.status,
       filters.workflowStatus,
       filters.priority,

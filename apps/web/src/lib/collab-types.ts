@@ -5,21 +5,18 @@ import type {
 
 export type MarkStatus = DomainMarkStatus;
 export type MarkPriority = DomainMarkPriority;
-export type SpacePriority = MarkPriority;
 export type WorkflowStatusColor = "gray" | "blue" | "amber" | "green" | "red" | "violet";
-export type WorkspaceViewLayout = "list" | "board" | "analytics";
+export type WorkspaceViewLayout = "list" | "board";
 export type WorkspaceViewStatusFilter = "all" | MarkStatus;
 export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
 export type WorkspaceViewPinnedFilter = "all" | "pinned" | "unpinned";
 export type WorkspaceViewAssigneeFilter = "all" | "me" | "unassigned";
 export type WorkspaceViewSortMode = "recent" | "oldest" | "priority" | "status";
-export type WorkspaceViewAnalyticsTimeframe = "7d" | "30d" | "90d" | "all";
 export type MarkEventType =
   | "created"
   | "status_changed"
   | "priority_changed"
   | "pinned_changed"
-  | "linear_link_updated"
   | "comment_added"
   | "assignee_changed"
   | "label_changed";
@@ -51,7 +48,7 @@ export interface TeamInvite {
 export interface WorkspaceReviewLink {
   id: string;
   name: string;
-  spaceId: string;
+  projectId: string;
   targetOrigin: string;
   token: string;
   createdAt: string;
@@ -93,17 +90,17 @@ export interface MarkCapture {
 
 export interface MarkItem {
   id: string;
-  spaceId: string;
-  /** Uppercase per-space key; with {@link seq} forms {@link displayKey}. */
-  spaceCode: string;
+  projectId: string;
   seq: number;
-  /** Human-friendly id, e.g. `WEB-42` (unique per workspace given unique space codes). */
+  /** Human-friendly workspace-scoped id, e.g. `YIN-42`. */
   displayKey: string;
+  /** Previous space-scoped key, e.g. `WEB-42`, retained so old URLs resolve. */
+  legacyDisplayKey?: string;
   title: string;
   page: string;
   description: string;
   status: MarkStatus;
-  workflowStatusId?: string;
+  workflowStatusId: string;
   priority: MarkPriority;
   pinned: boolean;
   labelIds: string[];
@@ -122,18 +119,6 @@ export interface WorkspaceWorkflowStatus {
   isDefaultClosed: boolean;
 }
 
-export interface WorkspaceSpace {
-  id: string;
-  projectId: string;
-  /** Uppercase short key; marks in this space use `CODE-seq` display ids. */
-  code: string;
-  name: string;
-  notes: string;
-  createdAt: string;
-  priority: SpacePriority;
-  pinned: boolean;
-}
-
 export interface WorkspaceProject {
   id: string;
   name: string;
@@ -143,7 +128,6 @@ export interface WorkspaceProject {
 
 export interface WorkspaceViewFilters {
   projectId: string;
-  spaceId: string;
   status: WorkspaceViewStatusFilter;
   workflowStatus: string;
   priority: WorkspaceViewPriorityFilter;
@@ -155,7 +139,6 @@ export interface WorkspaceViewFilters {
 }
 
 export interface WorkspaceViewConfig {
-  analyticsTimeframe?: WorkspaceViewAnalyticsTimeframe;
   boardGroupBy?: "status";
 }
 
@@ -180,7 +163,6 @@ export interface Workspace {
   id: string;
   name: string;
   projects: WorkspaceProject[];
-  spaces: WorkspaceSpace[];
   views: WorkspaceView[];
   labels: WorkspaceLabel[];
   workflowStatuses: WorkspaceWorkflowStatus[];

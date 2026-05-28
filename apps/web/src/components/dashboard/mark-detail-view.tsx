@@ -44,7 +44,7 @@ import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { markHref, spaceHref } from "@/lib/workspace/routes";
+import { markHref } from "@/lib/workspace/routes";
 import {
   clickByAria,
   focusElementById,
@@ -71,10 +71,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const { mutateAsync: deleteMark, isPending: isDeleting } = useDeleteMarkMutation();
   const { mutateAsync: updateMark, isPending: isSavingEdit } = useUpdateMarkMutation();
   const visibleMarks = useVisibleDashboardMarks();
-  const space = workspace.spaces.find((s) => s.id === mark.spaceId) ?? null;
-  const selectedSpaceHref = space
-    ? spaceHrefForCurrentFilters(space.code, space.projectId, searchParams)
-    : undefined;
+  const project = workspace.projects.find((item) => item.id === mark.projectId) ?? null;
 
   const selectedIndex = visibleMarks.findIndex((p) => p.id === mark.id);
   const canPrev = selectedIndex > 0;
@@ -217,7 +214,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     onFocusComment: () => focusElementById("comment-composer"),
     onOpenAssignee: () => clickByAria("Mark assignee"),
     onOpenPriority: () => clickByAria("Mark priority"),
-    onOpenSpace: () => clickByAria("Mark space"),
+    onOpenSpace: () => clickByAria("Mark project"),
     onShowHelp: () => setShowHelp(true),
     onBack: () => router.push(backHref),
   });
@@ -228,8 +225,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
         <MarkDetailNav
           markLabel={mark.displayKey}
           positionLabel={positionLabel}
-          spaceHref={selectedSpaceHref}
-          spaceName={space?.name}
+          projectName={project?.name}
           canPrev={canPrev}
           canNext={canNext}
           onBack={() => router.push(backHref)}
@@ -292,7 +288,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               members={workspace.members}
               workflowStatuses={workspace.workflowStatuses}
               projects={workspace.projects}
-              spaces={workspace.spaces}
               displayNamePreference={namePref}
               onConfirmDelete={() => setConfirmDelete(true)}
             />
@@ -510,16 +505,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
       <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
     </>
   );
-}
-
-function spaceHrefForCurrentFilters(
-  code: string,
-  projectId: string | undefined,
-  searchParams: { toString: () => string },
-) {
-  const params = new URLSearchParams(searchParams.toString());
-  if (projectId) params.set("project", projectId);
-  return spaceHref(code, params);
 }
 
 function InlineEditActions({

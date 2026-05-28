@@ -10,14 +10,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { ActivityHeatmap } from "@/app/(workspace)/analytics/activity-heatmap";
-import { StatTile } from "@/app/(workspace)/analytics/stat-tile";
-import { ThroughputChart } from "@/app/(workspace)/analytics/throughput-chart";
-import { TimeframeFilter } from "@/app/(workspace)/analytics/timeframe-filter";
-import {
-  useAnalyticsStats,
-  type AnalyticsTimeframe,
-} from "@/app/(workspace)/analytics/use-analytics-stats";
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { MarkFilters } from "@/components/dashboard/mark-filters";
@@ -45,7 +37,6 @@ import { markHref } from "@/lib/workspace/routes";
 import {
   DEFAULT_WORKSPACE_VIEW_CONFIG,
   filterMarksForWorkspaceView,
-  filterWorkspaceForView,
 } from "@/lib/workspace/views";
 
 import { ViewScopeFields } from "./view-filter-fields";
@@ -96,16 +87,15 @@ function ViewDetail({
     useDeleteWorkspaceViewMutation();
   const [name, setName] = useState(view.name);
   const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
-  const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
+  const [config] = useState<WorkspaceViewConfig>(view.config);
   const [page, setPage] = useState(1);
 
   const visibleMarks = useMemo(
     () =>
       filterMarksForWorkspaceView(workspace.marks, filters, {
-        spaces: workspace.spaces,
         viewerId: userId,
       }),
-    [filters, userId, workspace.marks, workspace.spaces],
+    [filters, userId, workspace.marks],
   );
 
   const dirty = viewSignature({
@@ -196,41 +186,29 @@ function ViewDetail({
         />
       </section>
 
-      {view.layout === "analytics" ? (
-        <ViewAnalytics
+      <MarkFilters
+        filters={dashboardFilters}
+        visibleCount={visibleMarks.length}
+        labels={workspace.labels}
+        onChange={(patch) => updateFilters(dashboardPatchToViewPatch(patch))}
+      />
+
+      {view.layout === "board" ? (
+        <StatusBoard
+          marks={visibleMarks}
           workspace={workspace}
-          filters={filters}
-          userId={userId}
-          config={config}
-          onConfigChange={setConfig}
+          displayNamePreference={displayNamePreference}
+          onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
         />
       ) : (
-        <>
-          <MarkFilters
-            filters={dashboardFilters}
-            visibleCount={visibleMarks.length}
-            labels={workspace.labels}
-            onChange={(patch) => updateFilters(dashboardPatchToViewPatch(patch))}
-          />
-
-          {view.layout === "board" ? (
-            <StatusBoard
-              marks={visibleMarks}
-              workspace={workspace}
-              displayNamePreference={displayNamePreference}
-              onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
-            />
-          ) : (
-            <ViewList
-              marks={visibleMarks}
-              workspace={workspace}
-              displayNamePreference={displayNamePreference}
-              page={page}
-              onPageChange={setPage}
-              onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
-            />
-          )}
-        </>
+        <ViewList
+          marks={visibleMarks}
+          workspace={workspace}
+          displayNamePreference={displayNamePreference}
+          page={page}
+          onPageChange={setPage}
+          onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
+        />
       )}
     </PageContainer>
   );
@@ -322,7 +300,7 @@ function StatusBoard({
         },
         {
           id: "closed",
-          title: "Resolved",
+          title: "Closed",
           marks: marks.filter((mark) => mark.status === "closed"),
         },
       ];
@@ -403,89 +381,6 @@ function BoardColumn({
   );
 }
 
-function ViewAnalytics({
-  workspace,
-  filters,
-  userId,
-  config,
-  onConfigChange,
-}: {
-  workspace: Workspace;
-  filters: WorkspaceViewFilters;
-  userId: string | null;
-  config: WorkspaceViewConfig;
-  onConfigChange: (config: WorkspaceViewConfig) => void;
-}) {
-  const timeframe = (config.analyticsTimeframe ?? "30d") as AnalyticsTimeframe;
-  const filteredWorkspace = useMemo(
-    () => filterWorkspaceForView(workspace, filters, userId),
-    [filters, userId, workspace],
-  );
-  const stats = useAnalyticsStats(filteredWorkspace, timeframe);
-  const totalMarks = stats.headline.openTotal + stats.headline.closedTotal;
-  const showPeriodTiles = timeframe !== "all";
-
-  return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-paper-2 p-1.5">
-        <p className="px-1.5 text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
-          Analytics
-        </p>
-        <TimeframeFilter
-          value={timeframe}
-          onChange={(next) => onConfigChange({ ...config, analyticsTimeframe: next })}
-        />
-      </div>
-
-      {totalMarks === 0 ? (
-        <ViewEmptyState />
-      ) : (
-        <>
-          <section className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Open"
-              value={stats.headline.openTotal}
-              accent="mark"
-              hint={`of ${totalMarks} total`}
-            />
-            <StatTile
-              label="Resolved"
-              value={stats.headline.closedTotal}
-              accent="ok"
-              hint={`${Math.round((stats.headline.closedTotal / totalMarks) * 100)}% of total`}
-            />
-            {showPeriodTiles ? (
-              <>
-                <StatTile
-                  label={`Opened · ${timeframe}`}
-                  value={stats.headline.openedInPeriod.current}
-                  delta={stats.headline.openedInPeriod.delta}
-                  deltaSemantic="neutral"
-                  hint={`${stats.headline.openedInPeriod.prior} prior period`}
-                />
-                <StatTile
-                  label={`Resolved · ${timeframe}`}
-                  value={stats.headline.closedInPeriod.current}
-                  delta={stats.headline.closedInPeriod.delta}
-                  deltaSemantic="up-good"
-                  hint={`${stats.headline.closedInPeriod.prior} prior period`}
-                />
-              </>
-            ) : (
-              <>
-                <StatTile label="Total marks" value={totalMarks} />
-                <StatTile label="Spaces" value={filteredWorkspace.spaces.length} />
-              </>
-            )}
-          </section>
-          <ThroughputChart data={stats.throughput} />
-          <ActivityHeatmap data={stats.heatmap} />
-        </>
-      )}
-    </section>
-  );
-}
-
 function ViewNotFound() {
   return (
     <PageContainer>
@@ -514,7 +409,7 @@ function ViewEmptyState() {
       className="rounded-none border-0 px-6 py-16"
       icon={CircleDashed}
       title="No marks match this view."
-      description="Broaden the filters or capture a new mark in the matching project or space."
+      description="Broaden the filters or capture a new mark in the matching project."
       action={
         <Button asChild variant="outline" size="sm" className="h-9">
           <Link href="/dashboard">
@@ -530,7 +425,6 @@ function ViewEmptyState() {
 function toDashboardFilters(filters: WorkspaceViewFilters, page: number): DashboardFilters {
   return {
     projectId: filters.projectId,
-    spaceId: filters.spaceId,
     markId: null,
     status: filters.status,
     workflowStatus: filters.workflowStatus,
@@ -549,7 +443,6 @@ function dashboardPatchToViewPatch(
 ): Partial<WorkspaceViewFilters> {
   const out: Partial<WorkspaceViewFilters> = {};
   if (typeof patch.projectId === "string") out.projectId = patch.projectId;
-  if (typeof patch.spaceId === "string") out.spaceId = patch.spaceId;
   if (typeof patch.status === "string") out.status = patch.status as WorkspaceViewFilters["status"];
   if (typeof patch.workflowStatus === "string") out.workflowStatus = patch.workflowStatus;
   if (typeof patch.priority === "string") out.priority = patch.priority as WorkspaceViewFilters["priority"];
@@ -565,7 +458,7 @@ function searchParamsFromFilters(filters: WorkspaceViewFilters): URLSearchParams
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
     if (typeof value === "string" && value && value !== "all" && value !== "recent") {
-      params.set(key === "projectId" ? "project" : key === "spaceId" ? "space" : key, value);
+      params.set(key === "projectId" ? "project" : key, value);
     }
   }
   return params;

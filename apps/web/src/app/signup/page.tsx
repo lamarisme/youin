@@ -60,7 +60,7 @@ function SignUpPageContent() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [workspaceName, setWorkspaceName] = useState("");
-  const [firstSpaceName, setFirstSpaceName] = useState("");
+  const [firstProjectName, setFirstProjectName] = useState("");
   const [workspaceNameTouched, setWorkspaceNameTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
@@ -145,7 +145,7 @@ function SignUpPageContent() {
             workspace_name: isInvited ? undefined : workspaceName.trim(),
             workspace_username: username.trim().toLowerCase(),
             invite_token: inviteToken,
-            first_space_name: isInvited ? undefined : firstSpaceName.trim() || "General",
+            first_project_name: isInvited ? undefined : firstProjectName.trim() || "General",
             workspace_goal: undefined,
             teammate_invites: [],
           },
@@ -388,18 +388,18 @@ function SignUpPageContent() {
               </Field>
 
               <Field
-                id="space"
-                label="First space"
+                id="project"
+                label="First project"
                 hint={
                   <p className="text-ui-xs text-ink-3">
-                    Optional. Spaces scope reviews to a release, project, or sprint.
+                    Optional. Marks land inside projects, and you can add more later.
                   </p>
                 }
               >
                 <Input
-                  id="space"
-                  value={firstSpaceName}
-                  onChange={(e) => setFirstSpaceName(e.target.value)}
+                  id="project"
+                  value={firstProjectName}
+                  onChange={(e) => setFirstProjectName(e.target.value)}
                   placeholder="General"
                   className="h-10 bg-paper text-ui-md"
                 />

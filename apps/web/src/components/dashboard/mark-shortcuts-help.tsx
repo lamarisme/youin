@@ -33,7 +33,7 @@ const GROUPS: ShortcutGroup[] = [
   {
     heading: "Actions",
     rows: [
-      { keys: ["X"], label: "Toggle resolve / reopen" },
+      { keys: ["X"], label: "Toggle close / reopen" },
       { keys: ["B"], label: "Toggle bookmark" },
       { keys: ["E"], label: "Edit title and description" },
     ],
@@ -44,7 +44,7 @@ const GROUPS: ShortcutGroup[] = [
       { keys: ["C"], label: "Focus comment composer" },
       { keys: ["A"], label: "Open assignee picker" },
       { keys: ["P"], label: "Open priority picker" },
-      { keys: ["S"], label: "Open space picker" },
+      { keys: ["S"], label: "Open project picker" },
     ],
   },
   {

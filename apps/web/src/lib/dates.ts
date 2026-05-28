@@ -21,7 +21,7 @@ export function formatDate(value: string | Date): string {
   return format(asDate(value), "MMM d, yyyy");
 }
 
-/** "May 8" — short date, used in compact lists like the spaces grid. */
+/** "May 8" — short date, used in compact workspace lists. */
 export function formatDateShort(value: string | Date): string {
   return format(asDate(value), "MMM d");
 }

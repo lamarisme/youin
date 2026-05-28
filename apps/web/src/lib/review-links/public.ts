@@ -4,15 +4,14 @@ import { and, eq, gt, isNull, or } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { getDb } from "@/db/client";
-import { spaces, workspaceReviewLinks, workspaces } from "@/db/schema";
+import { projects, workspaceReviewLinks, workspaces } from "@/db/schema";
 
 export type ActiveReviewLink = {
   id: string;
   workspaceId: string;
   workspaceName: string;
-  spaceId: string;
-  spaceName: string;
-  spaceCode: string;
+  projectId: string;
+  projectName: string;
   targetOrigin: string;
   token: string;
   createdByUserId: string;
@@ -33,16 +32,15 @@ export async function getActiveReviewLinkByToken(
       id: workspaceReviewLinks.id,
       workspaceId: workspaceReviewLinks.workspaceId,
       workspaceName: workspaces.name,
-      spaceId: workspaceReviewLinks.spaceId,
-      spaceName: spaces.name,
-      spaceCode: spaces.code,
+      projectId: workspaceReviewLinks.projectId,
+      projectName: projects.name,
       targetOrigin: workspaceReviewLinks.targetOrigin,
       token: workspaceReviewLinks.token,
       createdByUserId: workspaceReviewLinks.createdByUserId,
     })
     .from(workspaceReviewLinks)
     .innerJoin(workspaces, eq(workspaces.id, workspaceReviewLinks.workspaceId))
-    .innerJoin(spaces, eq(spaces.id, workspaceReviewLinks.spaceId))
+    .innerJoin(projects, eq(projects.id, workspaceReviewLinks.projectId))
     .where(
       and(
         eq(workspaceReviewLinks.token, token),

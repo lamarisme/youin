@@ -101,7 +101,6 @@ export function ViewsClient() {
           filters: {
             ...DEFAULT_WORKSPACE_VIEW_FILTERS,
             ...local.filters,
-            spaceId: "all",
           },
           config: DEFAULT_WORKSPACE_VIEW_CONFIG,
         });
@@ -277,7 +276,7 @@ function EmptyViews({ onCreate }: { onCreate: () => void }) {
       className="rounded-none border-0 px-6 py-16"
       icon={CircleDashed}
       title="No workspace views yet."
-      description="Create one lens for the work your team checks often: a list, board, or analytics view."
+      description="Create one lens for the work your team checks often: a list or board view."
       action={
         <Button type="button" variant="mark" size="sm" className="h-9" onClick={onCreate}>
           <Plus className="size-3.5" aria-hidden />
@@ -312,7 +311,7 @@ function CreateViewDialog({
   const initialTemplate = VIEW_TEMPLATES.find((item) => item.layout === initialLayout) ?? VIEW_TEMPLATES[0];
   const [name, setName] = useState(initialTemplate.defaultName);
   const [filters, setFilters] = useState<WorkspaceViewFilters>(DEFAULT_WORKSPACE_VIEW_FILTERS);
-  const [config, setConfig] = useState<WorkspaceViewConfig>(DEFAULT_WORKSPACE_VIEW_CONFIG);
+  const [config] = useState<WorkspaceViewConfig>(DEFAULT_WORKSPACE_VIEW_CONFIG);
 
   const selectedTemplate = useMemo(
     () => VIEW_TEMPLATES.find((template) => template.layout === layout) ?? VIEW_TEMPLATES[0],
@@ -406,26 +405,6 @@ function CreateViewDialog({
                 onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
               />
             </div>
-
-            {layout === "analytics" ? (
-              <div className="space-y-1.5">
-                <p className="text-ui-xs font-medium text-ink-3">Analytics window</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {(["7d", "30d", "90d", "all"] as const).map((timeframe) => (
-                    <Button
-                      key={timeframe}
-                      type="button"
-                      size="sm"
-                      variant={config.analyticsTimeframe === timeframe ? "secondary" : "ghost"}
-                      className="h-8"
-                      onClick={() => setConfig((current) => ({ ...current, analyticsTimeframe: timeframe }))}
-                    >
-                      {timeframe}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
 
             <p className="text-ui-xs text-ink-3">{viewLayoutDescription(layout)}</p>
           </div>

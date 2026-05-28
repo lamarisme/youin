@@ -166,6 +166,7 @@ const PinBadges = () => {
 
   return (
     <div
+      data-youin-extension-ui=""
       className="pointer-events-none fixed inset-0"
       style={{ zIndex: Z_BADGES }}>
       {items.map(
@@ -181,7 +182,7 @@ const PinBadges = () => {
               top,
               width: HIT,
               height: HIT,
-              zIndex: Z_BADGES + stackOrder
+              zIndex: stackOrder
             }}
             onClick={(e) => {
               e.preventDefault()

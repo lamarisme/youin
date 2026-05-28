@@ -93,8 +93,8 @@ interface NewMarkFormProps {
   open?: boolean;
   /** `surface`: legacy inline card. `plain`: body only for dialog content. */
   variant?: "surface" | "plain";
-  /** Name of the space the mark will land in, shown in the live preview row. */
-  targetSpaceLabel?: string;
+  /** Name of the project the mark will land in, shown in the live preview row. */
+  targetProjectLabel?: string;
 }
 
 export function NewMarkForm({
@@ -105,7 +105,7 @@ export function NewMarkForm({
   onCancel,
   open,
   variant = "surface",
-  targetSpaceLabel,
+  targetProjectLabel,
 }: NewMarkFormProps) {
   const { mutateAsync: createLabel } = useCreateLabelMutation();
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
@@ -282,9 +282,9 @@ export function NewMarkForm({
             <span className="text-ink-2">{previewAssigneeParts.primary}</span>
           </span>
         ) : null}
-        {targetSpaceLabel ? (
+        {targetProjectLabel ? (
           <span className="ml-auto truncate text-ui-xs text-ink-3">
-            in <span className="font-medium text-ink">{targetSpaceLabel}</span>
+            in <span className="font-medium text-ink">{targetProjectLabel}</span>
           </span>
         ) : null}
       </div>

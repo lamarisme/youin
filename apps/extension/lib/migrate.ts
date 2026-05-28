@@ -1,4 +1,4 @@
-// One-shot migration of locally-stored spaces and marks into the user's
+// One-shot migration of locally-stored project selections and marks into the user's
 // workspace after they sign in for the first time. Runs from the popup so
 // errors surface to the user; idempotent via the local migration flag.
 
@@ -11,7 +11,6 @@ import {
   getSpaces,
   saveMarks,
   type LocalThreadMessage,
-  type Mark,
   type Space
 } from "./storage"
 import { getSupabase } from "./supabase"
@@ -25,35 +24,6 @@ export interface MigrationResult {
   marksImported: number
   commentsImported: number
   error?: string
-}
-
-function proposeSpaceCode(name: string): string {
-  const cleaned = name.toUpperCase().replace(/[^A-Z0-9]/g, "")
-  const trimmed = cleaned.slice(0, 8)
-  return trimmed.length >= 2 ? trimmed : "SP"
-}
-
-export async function allocateSpaceCode(
-  workspaceId: string,
-  name: string,
-  existingCodes: Set<string>
-): Promise<string> {
-  const base = proposeSpaceCode(name)
-  if (!existingCodes.has(base)) {
-    existingCodes.add(base)
-    return base
-  }
-  for (let n = 2; n < 2000; n++) {
-    const cand = `${base}${n}`.slice(0, 12).toUpperCase()
-    if (!existingCodes.has(cand)) {
-      existingCodes.add(cand)
-      return cand
-    }
-  }
-  const salt = Math.random().toString(36).slice(2, 8).toUpperCase()
-  const cand = `SP${salt}`.slice(0, 12)
-  existingCodes.add(cand)
-  return cand
 }
 
 async function ensureDefaultProjectId(
@@ -104,10 +74,10 @@ async function markMigrationDone(userId: string): Promise<void> {
 }
 
 /**
- * Migrate local spaces+marks into the signed-in user's workspace.
+ * Migrate local projects+marks into the signed-in user's workspace.
  *
- * Spaces are matched by exact name (case-insensitive); missing ones are
- * created. Marks import as marks under the resolved space. Thread messages
+ * Projects are matched by exact name (case-insensitive); missing ones are
+ * created. Marks import under the resolved project. Thread messages
  * become mark_comments authored by the signed-in user.
  *
  * Re-running for the same user is a no-op once the flag is set.
@@ -167,7 +137,7 @@ export async function migrateLocalDataToWorkspace(
     }
   }
 
-  const [localSpaces, localMarks] = await Promise.all([getSpaces(), getMarks()])
+  const [localProjects, localMarks] = await Promise.all([getSpaces(), getMarks()])
   if (!localMarks.length) {
     await markMigrationDone(userId)
     return {
@@ -179,58 +149,100 @@ export async function migrateLocalDataToWorkspace(
     }
   }
 
-  const { data: remoteSpaces, error: spErr } = await supabase
-    .from("spaces")
-    .select("id, name, code")
+  const { data: remoteProjects, error: projectErr } = await supabase
+    .from("projects")
+    .select("id, name")
     .eq("workspace_id", workspaceId)
-  if (spErr) {
+  if (projectErr) {
     return {
       ok: false,
       spacesCreated: 0,
       spacesMatched: 0,
       marksImported: 0,
       commentsImported: 0,
-      error: spErr.message
+      error: projectErr.message
     }
   }
 
-  const codes = new Set(
-    (remoteSpaces ?? []).map((r) => String(r.code).toUpperCase())
-  )
   const remoteByName = new Map<string, string>()
-  for (const r of remoteSpaces ?? []) {
+  const remoteIds = new Set<string>()
+  for (const r of remoteProjects ?? []) {
+    remoteIds.add(r.id as string)
     remoteByName.set(String(r.name).trim().toLowerCase(), r.id as string)
   }
 
-  // Resolve a remote space id for every distinct local space referenced by marks.
-  const localSpaceById = new Map<string, Space>()
-  for (const s of localSpaces) localSpaceById.set(s.id, s)
-  const usedLocalSpaceIds = new Set(localMarks.map((p) => p.spaceId))
+  const { data: defaultStatuses, error: statusErr } = await supabase
+    .from("mark_workflow_statuses")
+    .select("id,lifecycle_status,is_default_open,is_default_closed,position")
+    .eq("workspace_id", workspaceId)
+    .in("lifecycle_status", ["open", "closed"])
+    .is("archived_at", null)
+    .order("position", { ascending: true })
+  if (statusErr) {
+    return {
+      ok: false,
+      spacesCreated: 0,
+      spacesMatched: 0,
+      marksImported: 0,
+      commentsImported: 0,
+      error: statusErr.message
+    }
+  }
+  const defaultStatusByLifecycle = new Map<string, string>()
+  for (const lifecycle of ["open", "closed"]) {
+    const rows = (defaultStatuses ?? []).filter(
+      (status) => status.lifecycle_status === lifecycle
+    )
+    const preferred =
+      rows.find((status) =>
+        lifecycle === "open"
+          ? Boolean(status.is_default_open)
+          : Boolean(status.is_default_closed)
+      ) ?? rows[0]
+    if (preferred?.id) defaultStatusByLifecycle.set(lifecycle, preferred.id as string)
+  }
+  if (!defaultStatusByLifecycle.has("open") || !defaultStatusByLifecycle.has("closed")) {
+    return {
+      ok: false,
+      spacesCreated: 0,
+      spacesMatched: 0,
+      marksImported: 0,
+      commentsImported: 0,
+      error: "Workspace is missing a required open or closed workflow status."
+    }
+  }
 
-  const localToRemoteSpaceId = new Map<string, string>()
+  // Resolve a remote project id for every distinct local project referenced by marks.
+  const localProjectById = new Map<string, Space>()
+  for (const project of localProjects) localProjectById.set(project.id, project)
+  const usedLocalProjectIds = new Set(
+    localMarks.map((mark) => mark.projectId || mark.spaceId || project.projectId)
+  )
+
+  const localToRemoteProjectId = new Map<string, string>()
   let spacesCreated = 0
   let spacesMatched = 0
 
-  for (const localId of usedLocalSpaceIds) {
-    const localSpace = localSpaceById.get(localId)
-    const name = localSpace?.name?.trim() || "Imported"
-    const existing = remoteByName.get(name.toLowerCase())
-    if (existing) {
-      localToRemoteSpaceId.set(localId, existing)
+  for (const localId of usedLocalProjectIds) {
+    if (remoteIds.has(localId)) {
+      localToRemoteProjectId.set(localId, localId)
       spacesMatched++
       continue
     }
-    const code = await allocateSpaceCode(workspaceId, name, codes)
+    const localProject = localProjectById.get(localId)
+    const name = localProject?.name?.trim() || "Imported"
+    const existing = remoteByName.get(name.toLowerCase())
+    if (existing) {
+      localToRemoteProjectId.set(localId, existing)
+      spacesMatched++
+      continue
+    }
     const { data: created, error: createErr } = await supabase
-      .from("spaces")
+      .from("projects")
       .insert({
         workspace_id: workspaceId,
-        project_id: project.projectId,
-        code,
         name,
-        notes: "",
-        priority: "medium",
-        pinned: false
+        description: ""
       })
       .select("id")
       .single()
@@ -241,10 +253,10 @@ export async function migrateLocalDataToWorkspace(
         spacesMatched,
         marksImported: 0,
         commentsImported: 0,
-        error: createErr?.message ?? "Failed to create space."
+        error: createErr?.message ?? "Failed to create project."
       }
     }
-    localToRemoteSpaceId.set(localId, created.id as string)
+    localToRemoteProjectId.set(localId, created.id as string)
     remoteByName.set(name.toLowerCase(), created.id as string)
     spacesCreated++
   }
@@ -255,25 +267,31 @@ export async function migrateLocalDataToWorkspace(
   /** Local chrome mark id → row written to Postgres */
   const linked: Array<{
     markId: string
-    spaceId: string
+    projectId: string
     remoteMarkId: string
     screenshotUploaded: boolean
   }> = []
 
   for (const localMark of localMarks) {
-    const remoteSpaceId = localToRemoteSpaceId.get(localMark.spaceId)
-    if (!remoteSpaceId) continue
+    const remoteProjectId =
+      localToRemoteProjectId.get(localMark.projectId || localMark.spaceId) ??
+      project.projectId
+    if (!remoteProjectId) continue
 
     const description = buildMarkDescription(localMark)
+    const status = normalizeMarkStatus(localMark.status)
+    const workflowStatusId = defaultStatusByLifecycle.get(status)
+    if (!workflowStatusId) continue
     const { data: createdMark, error: markErr } = await supabase
       .from("marks")
       .insert({
         workspace_id: workspaceId,
-        space_id: remoteSpaceId,
+        project_id: remoteProjectId,
+        workflow_status_id: workflowStatusId,
         title: localMark.title.trim() || "Untitled mark",
         description,
         page: localMark.url,
-        status: normalizeMarkStatus(localMark.status),
+        status,
         priority: normalizeMarkPriority(localMark.priority),
         pinned: false,
         created_by_user_id: userId,
@@ -297,7 +315,7 @@ export async function migrateLocalDataToWorkspace(
     marksImported++
     linked.push({
       markId: localMark.id,
-      spaceId: remoteSpaceId,
+      projectId: remoteProjectId,
       remoteMarkId: createdMark.id as string,
       screenshotUploaded: false
     })
@@ -349,7 +367,8 @@ export async function migrateLocalDataToWorkspace(
       if (!upd) return p
       return {
         ...p,
-        spaceId: upd.spaceId,
+        projectId: upd.projectId,
+        spaceId: upd.projectId,
         remoteMarkId: upd.remoteMarkId,
         screenshotDataUrl: upd.screenshotUploaded
           ? undefined

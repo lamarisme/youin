@@ -9,8 +9,7 @@ import { Button } from "@/components/ui/button";
 interface MarkDetailNavProps {
   markLabel: string;
   positionLabel: string;
-  spaceHref?: string;
-  spaceName?: string;
+  projectName?: string;
   canPrev: boolean;
   canNext: boolean;
   onBack: () => void;
@@ -22,8 +21,7 @@ interface MarkDetailNavProps {
 export function MarkDetailNav({
   markLabel,
   positionLabel,
-  spaceHref,
-  spaceName,
+  projectName,
   canPrev,
   canNext,
   onBack,
@@ -37,7 +35,7 @@ export function MarkDetailNav({
         <Breadcrumbs
           items={[
             { label: "Triage", onClick: onBack },
-            ...(spaceName ? [{ label: spaceName, href: spaceHref }] : []),
+            ...(projectName ? [{ label: projectName }] : []),
             { label: markLabel, current: true },
           ]}
         />

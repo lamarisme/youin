@@ -10,14 +10,14 @@ import {
 
 function mark(input: Partial<MarkItem> & Pick<MarkItem, "id">): MarkItem {
   return {
-    spaceId: "space-a",
-    spaceCode: "WEB",
+    projectId: "project-a",
     seq: 1,
     displayKey: input.id.toUpperCase(),
     title: input.id,
     page: "https://example.com",
     description: "",
     status: "open",
+    workflowStatusId: "workflow-open",
     priority: "medium",
     pinned: false,
     labelIds: [],

@@ -53,7 +53,11 @@ html:has(#__plasmo),
   );
   --yi-ext-surface-panel: var(--yi-paper-elevated);
   --yi-ext-surface-shade: var(--yi-paper-2);
-  --yi-ext-surface-input: color-mix(in oklch, var(--yi-paper-3) 46%, var(--yi-paper));
+  --yi-ext-surface-input: color-mix(
+    in oklch,
+    var(--yi-paper-3) 46%,
+    var(--yi-paper)
+  );
   --yi-ext-surface-quote: var(--yi-paper-2);
   --yi-ext-surface-hover: color-mix(in oklch, var(--yi-ink) 5.5%, transparent);
   --yi-ext-badge-bg: var(--yi-paper-2);
@@ -70,7 +74,11 @@ html:has(#__plasmo),
     var(--yi-paper)
   );
   --yi-ext-open-emphasis: var(--yi-mark-bright);
-  --yi-ext-danger-border: color-mix(in oklch, var(--yi-destructive) 38%, transparent);
+  --yi-ext-danger-border: color-mix(
+    in oklch,
+    var(--yi-destructive) 38%,
+    transparent
+  );
   --yi-ext-danger-bg: var(--yi-destructive-soft);
   --yi-ext-danger-text: var(--yi-destructive);
   --yi-ext-btn-primary-bg: var(--yi-mark);
@@ -79,8 +87,7 @@ html:has(#__plasmo),
   --yi-ext-link: var(--yi-mark);
   --yi-ext-shadow-panel: var(--yi-shadow-hairline), var(--yi-shadow-panel);
   /* Dock: soft cast to the left + leading hairline (Linear-light, not heavy card shadow). */
-  --yi-ext-shadow-dock:
-    -16px 0 40px -14px oklch(18.4% 0.018 62 / 0.16),
+  --yi-ext-shadow-dock: -16px 0 40px -14px oklch(18.4% 0.018 62 / 0.16),
     -6px 0 16px -8px oklch(18.4% 0.018 62 / 0.1),
     inset 1px 0 0 var(--yi-ext-border-hairline);
   --yi-ext-surface-low: var(--yi-paper);
@@ -256,12 +263,10 @@ html:has(#__plasmo) body {
   max-width: 344px;
 }
 
-/* Refined input: borderless, focuses with mark ring */
 .youin-input {
   background: var(--yi-ext-surface-input);
-  border: 1px solid var(--yi-ext-border);
+  border: 0;
   transition:
-    border-color 160ms var(--yi-ease-out-expo),
     box-shadow 160ms var(--yi-ease-out-expo),
     background-color 160ms var(--yi-ease-out-expo);
 }
@@ -270,7 +275,6 @@ html:has(#__plasmo) body {
 }
 .youin-input:focus {
   outline: none;
-  border-color: var(--yi-mark);
   background: var(--yi-paper);
   box-shadow: 0 0 0 3px oklch(from var(--yi-mark) l c h / 0.18);
 }

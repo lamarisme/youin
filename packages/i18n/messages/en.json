@@ -1,7 +1,7 @@
 {
   "metadata": {
     "title": "Product backlog, pinned to your UI",
-    "description": "Turn any part of your web app into a task with screenshots, selectors, browser metadata, and Linear-ready context attached."
+    "description": "Turn any part of your web app into a project-scoped mark with screenshots, selectors, browser metadata, and discussion attached."
   },
   "brand": {
     "name": "youin",
@@ -16,7 +16,7 @@
   "nav": {
     "triage": "Triage",
     "inbox": "Inbox",
-    "spaces": "Spaces",
+    "spaces": "Projects",
     "views": "Views"
   },
   "sidebar": {
@@ -51,7 +51,7 @@
     "shortcutsTitle": "Operational shortcuts",
     "productOverview": "Product overview",
     "dashboardLink": "Dashboard",
-    "spacesLink": "Spaces",
+    "spacesLink": "Projects",
     "accountSettingsLink": "Account settings",
     "footer": "youin — feedback on the live web",
     "signInInstead": "Sign in instead"
@@ -101,25 +101,25 @@
     "groups": {
       "navigate": "Navigate",
       "views": "Views",
-      "spaces": "Spaces",
+      "projects": "Projects",
       "theme": "Theme"
     },
     "nav": {
       "triage": "Triage",
-      "triageSub": "Review marks across your spaces",
+      "triageSub": "Review marks across your projects",
       "inbox": "Inbox",
       "inboxUnread": "Inbox · {count} unread",
       "inboxSub": "Activity on marks you follow",
       "views": "Views",
       "viewsSub": "Saved lenses for backlog work",
-      "spaces": "Spaces",
-      "spacesSub": "Spaces in the selected project",
+      "spaces": "Projects",
+      "spacesSub": "Projects in this workspace",
       "account": "Account settings",
       "accountSub": "Profile, team, integrations, and labels",
       "themeLight": "Switch to light mode",
       "themeDark": "Switch to dark mode"
     },
-    "spaceSub": "Filter triage to this space"
+    "projectSub": "Filter triage to this project"
   },
   "landing": {
     "skipLink": "Skip to main content",
@@ -148,7 +148,7 @@
     "hero": {
       "eyebrow": "Spatial backlog",
       "title": "Your product backlog, pinned to your actual UI.",
-      "subtitle": "YouIn turns your web app into a spatial backlog. Click any element, create the task, discuss it in context, and send it to Linear or Jira with screenshots, selectors, and browser metadata included.",
+      "subtitle": "YouIn turns your web app into a spatial backlog. Click any element, create the mark, discuss it in context, and keep screenshots, selectors, and browser metadata attached.",
       "chromeCta": "Join free beta",
       "secondaryCta": "See the backlog"
     },
@@ -158,7 +158,7 @@
       "overlayLabel": "youin overlay",
       "workspaceName": "Client portal",
       "workspaceSubtitle": "Website QA",
-      "navItems": ["Inbox", "Triage", "Spaces", "Views"],
+      "navItems": ["Inbox", "Triage", "Projects", "Views"],
       "triageLabel": "Triage",
       "triageTitle": "Pricing review",
       "newMark": "New mark",
@@ -187,14 +187,14 @@
       ],
       "statsOpen": "Open",
       "statsResolved": "Resolved",
-      "statsSynced": "Synced",
+      "statsSynced": "Marked",
       "statsOpenValue": "18",
       "statsResolvedValue": "42",
       "statsSyncedValue": "31",
       "commentPreview": "Low contrast on primary CTA",
       "detailId": "YIN-114",
       "detailTitle": "Pricing card CTA has low contrast",
-      "detailBody": "Captured selector, viewport, screenshot, and browser metadata. Ready for Linear.",
+      "detailBody": "Captured selector, viewport, screenshot, and browser metadata.",
       "detailComments": "3 comments",
       "mobileRowTitle": "Pricing card CTA has low contrast",
       "mobileRowMeta": "YIN-114 · /pricing"
@@ -218,11 +218,11 @@
         "footerNote": "Anchor survives DOM drift"
       },
       "sync": {
-        "issueId": "LIN-4821",
+        "issueId": "YIN-114",
         "title": "Pricing card CTA has low contrast",
         "meta": "Synced from YIN-114",
-        "status": "Ready for dev",
-        "destination": "Linear"
+        "status": "Ready for review",
+        "destination": "YouIn"
       }
     },
     "problem": {
@@ -235,7 +235,7 @@
     },
     "loop": {
       "eyebrow": "Spatial backlog",
-      "title": "Linear-style work, mapped onto the product.",
+      "title": "Project-scoped work, mapped onto the product.",
       "steps": [
         {
           "title": "Turn any element into a task",
@@ -247,7 +247,7 @@
         },
         {
           "title": "Sync with your dev workflow",
-          "body": "Push ready work into Linear or Jira. Developers get the task, the visual context, and the discussion thread without translating from a screenshot."
+          "body": "Open a focused mark detail with the task, visual context, workflow status, and discussion thread without translating from a screenshot."
         }
       ]
     },
@@ -287,7 +287,7 @@
         {
           "role": "Product teams",
           "detail": "3-15 people",
-          "body": "Let PMs, designers, and developers manage UI debt directly on the live product while Linear stays in sync."
+          "body": "Let PMs, designers, and developers manage UI debt directly on the live product with statuses and views that fit the team."
         },
         {
           "role": "Solo builders",
@@ -304,8 +304,8 @@
       "glanceTitle": "At a glance",
       "onboardingLabel": "Onboarding",
       "onboardingValue": "Under 2 minutes",
-      "tabsLabel": "Primary sync",
-      "tabsValue": "Linear first",
+      "tabsLabel": "Organization",
+      "tabsValue": "Projects + views",
       "connectorsLabel": "Anchoring",
       "connectorsValue": "Selector + viewport + screenshot"
     },
@@ -331,8 +331,10 @@
       "badgeSyncedAria": "Signed in and connected to your workspace",
       "inspect": "Inspect",
       "screenshot": "Screenshot",
+      "inspectStartHint": "Pick an element",
+      "screenshotStartHint": "Drag an area",
       "disabledOnSite": "YouIn is disabled on this site.",
-      "noSpaceSelected": "Create a space in this project before reviewing.",
+      "noSpaceSelected": "Choose a project before reviewing.",
       "floatingCapture": "Floating capture",
       "floatingReady": "Ready on this page",
       "floatingHidden": "Hidden on pages",
@@ -343,18 +345,18 @@
       "open": "Open",
       "openPageFeedback": "Open page feedback",
       "openFeedbackCount": "{count} open",
-      "resolved": "Resolved",
+      "resolved": "Closed",
       "destination": "Destination",
       "dashboard": "Dashboard",
       "openWorkspaceDashboardAria": "Open {workspace} dashboard",
       "projectLabel": "Project",
-      "spaceLabel": "Space",
+      "spaceLabel": "Project",
       "noProjectLabel": "No project",
-      "noSpaceLabel": "No space selected",
+      "noSpaceLabel": "No project selected",
       "localFeedback": "Local feedback",
       "localFeedbackHint": "Saved on this device. Sign in to share it.",
       "signIn": "Sign in",
-      "signInHint": "Use your workspace account to sync review spaces and feedback.",
+      "signInHint": "Use your workspace account to sync projects and feedback.",
       "signInFailed": "Sign-in failed.",
       "continueGoogle": "Continue with Google",
       "continueGoogleAria": "Continue with Google in a new tab",
@@ -366,7 +368,7 @@
       "signedInFallback": "Signed in",
       "migrationFailed": "Migration failed.",
       "migrationImportFailed": "Import failed: {error}",
-      "migrationSuccess": "Imported {count} feedback item{plural}{spaces}.",
+      "migrationSuccess": "Imported {count} feedback item{plural}.",
       "migrationTryAgain": "Try again",
       "migrationDismiss": "Dismiss",
       "syncingWorkspace": "Syncing workspace…",
@@ -384,19 +386,19 @@
       "syncNow": "Sync now",
       "retrySync": "Retry sync",
       "syncing": "Syncing",
-      "setupSpaceTitle": "Set up a review space",
-      "setupSpaceBody": "Create a space in the web app to sync feedback with your team.",
+      "setupSpaceTitle": "Set up a review project",
+      "setupSpaceBody": "Create a project in the web app to sync feedback with your team.",
       "openWebApp": "Open web app",
       "noWorkspaceTitle": "Workspace not ready",
       "noWorkspaceBody": "Open the web app once to finish workspace setup, then reopen the popup.",
-      "newReviewSpace": "New review space",
-      "newReviewSpaceAria": "Create new review space",
-      "createSpace": "Create space",
+      "newReviewSpace": "New review project",
+      "newReviewSpaceAria": "Create new review project",
+      "createSpace": "Create project",
       "chooseProjectFirst": "Choose a project first.",
-      "couldNotCreateSpace": "Could not create space. Try the web app.",
-      "couldNotSaveSpace": "Couldn't save space.",
+      "couldNotCreateSpace": "Could not create project. Try the web app.",
+      "couldNotSaveSpace": "Couldn't save project.",
       "spaceNamePlaceholder": "Client homepage review",
-      "newSpaceNameAria": "New review space name",
+      "newSpaceNameAria": "New review project name",
       "accountMenuAria": "Account and settings",
       "accountMenuLabel": "Account",
       "signOut": "Sign out",
@@ -413,6 +415,7 @@
       "floatingToggleAria": "Show floating button on pages",
       "settingsSaveError": "Could not save. Try again.",
       "openDrawerFailed": "Reload the page, then try again.",
+      "startReviewFailed": "Reload the page, then try again.",
       "reloadPageHint": "Reload the page, then try again."
     },
     "widget": {
@@ -429,17 +432,17 @@
       "reviewMenuAria": "Youin review — hover for capture modes",
       "openFeedbackAria": "{count} open feedback item{plural}",
       "showPageFeedback": "Show page feedback",
-      "chooseSpace": "Choose a space",
+      "chooseSpace": "Choose a project",
       "spaceSaveError": "Couldn't save. Try again.",
       "spaceCreated": "Created. Select it in the list.",
       "createSpaceError": "Could not create in your workspace—try signing in via the popup first.",
       "openYouinAria": "Open Youin",
       "closeMenuAria": "Close menu",
       "marksTitle": "Marks on this page",
-      "spaceNamePlaceholder": "Space name",
-      "newSpaceNameAria": "New space name",
-      "saveSpaceAria": "Save new space",
-      "addSpaceAria": "Add a space"
+      "spaceNamePlaceholder": "Project name",
+      "newSpaceNameAria": "New project name",
+      "saveSpaceAria": "Save new project",
+      "addSpaceAria": "Add a project"
     },
     "panel": {
       "leaveFeedback": "Leave feedback",
@@ -450,14 +453,16 @@
       "regionScreenshotAlt": "Captured area screenshot",
       "elementScreenshotAlt": "Captured element screenshot",
       "viewFull": "View full",
+      "capturingScreenshot": "Capturing screenshot…",
+      "capturing": "Capturing…",
       "noScreenshot": "No screenshot available for this capture.",
       "feedback": "Feedback",
       "whatShouldChange": "What should change?",
       "options": "Options",
-      "optionsSummary": "Space, priority, selector",
+      "optionsSummary": "Project, priority, selector",
       "project": "Project",
-      "reviewSpace": "Review space",
-      "createSpaceInPopup": "Create a space for this project from the extension popup.",
+      "reviewSpace": "Review project",
+      "createSpaceInPopup": "Create a project from the extension popup.",
       "priority": "Priority",
       "area": "Area",
       "element": "Element",
@@ -470,12 +475,13 @@
       "otherOnPage": "Other feedback on this page ({count})",
       "savedWithLimitations": "Saved with limitations.",
       "feedbackPosted": "Feedback posted.",
-      "chooseSpaceFirst": "Choose or create a review space first.",
+      "chooseSpaceFirst": "Choose or create a review project first.",
       "couldNotSave": "Couldn't save. Try again.",
+      "waitForScreenshot": "Wait for the screenshot to finish, then post.",
       "regionCaptureFailed": "Could not capture that area. Try the screenshot again.",
       "savedLocallySync": "Saved locally. {error} Use Retry sync below or open the extension popup.",
       "threadTitle": "Feedback thread",
-      "resolved": "Resolved",
+      "resolved": "Closed",
       "open": "Open",
       "pending": "Pending",
       "syncFailed": "Sync failed",
@@ -504,14 +510,14 @@
     },
     "drawer": {
       "pageFeedback": "Page feedback",
-      "openResolved": "{open} open · {resolved} resolved",
+      "openResolved": "{open} open · {resolved} closed",
       "close": "Close page feedback",
       "empty": "No feedback on this page yet.",
       "openSection": "Open",
       "noOpenFeedback": "No open feedback",
-      "resolvedSection": "Resolved",
+      "resolvedSection": "Closed",
       "reopen": "Reopen",
-      "resolve": "Resolve",
+      "resolve": "Close",
       "delete": "Delete",
       "confirmDeleteTitle": "Delete this feedback?",
       "confirmDeleteBody": "This removes the thread from this page.",
@@ -538,18 +544,18 @@
     },
     "sync": {
       "noWorkspace": "No workspace found for this user. Use the web app once to finish setup.",
-      "noSpaces": "No spaces in your workspace yet. Create one in the web app, then reopen the popup.",
+      "noSpaces": "No projects in your workspace yet. Create one in the web app, then reopen the popup.",
       "imported": "Imported",
       "markNeedsTitle": "Mark needs a title before sync.",
-      "spaceLocal": "Space is still local-only. Reload the popup after signing in to sync workspaces.",
+      "spaceLocal": "Project is still local-only. Reload the popup after signing in to sync projects.",
       "noWorkspaceAccount": "No workspace for this account. Open youin once in the browser.",
       "syncFailed": "Could not sync mark.",
       "nameRequired": "Name is required.",
-      "createSpaceFailed": "Could not create space (name may already exist)."
+      "createSpaceFailed": "Could not create project (name may already exist)."
     },
     "migrate": {
       "noWorkspace": "No workspace found for this user. Open the web app once to set one up.",
-      "createSpaceFailed": "Failed to create space.",
+      "createSpaceFailed": "Failed to create project.",
       "untitledMark": "Untitled mark",
       "importMarkFailed": "Failed to import a mark."
     },

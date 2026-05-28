@@ -2,7 +2,7 @@
 
 import { and, desc, eq, isNull } from "drizzle-orm";
 
-import { spaces, workspaceReviewLinks } from "@/db/schema";
+import { projects, workspaceReviewLinks } from "@/db/schema";
 import type { WorkspaceReviewLink } from "@/lib/collab-types";
 import { assertWorkspaceOwner } from "@/lib/workspace/authz";
 
@@ -52,7 +52,7 @@ function toReviewLink(row: typeof workspaceReviewLinks.$inferSelect): WorkspaceR
   return {
     id: row.id,
     name: row.name,
-    spaceId: row.spaceId,
+    projectId: row.projectId,
     targetOrigin: row.targetOrigin,
     token: row.token,
     createdAt: toIso(row.createdAt) ?? new Date().toISOString(),
@@ -65,7 +65,7 @@ function toReviewLink(row: typeof workspaceReviewLinks.$inferSelect): WorkspaceR
 export async function createReviewLinkAction(input: {
   name?: string;
   targetOrigin: string;
-  spaceId: string;
+  projectId: string;
 }): Promise<WorkspaceReviewLink> {
   const ctx = await requireWorkspaceContext();
   assertWorkspaceOwner(ctx);
@@ -74,12 +74,12 @@ export async function createReviewLinkAction(input: {
   const name = input.name?.trim() || fallbackNameForOrigin(targetOrigin);
   if (name.length > 80) throw new Error("Review link name is too long.");
 
-  const [space] = await ctx.db
-    .select({ id: spaces.id })
-    .from(spaces)
-    .where(and(eq(spaces.id, input.spaceId), eq(spaces.workspaceId, ctx.workspaceId)))
+  const [project] = await ctx.db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, input.projectId), eq(projects.workspaceId, ctx.workspaceId)))
     .limit(1);
-  if (!space) throw new Error("Choose a valid destination space.");
+  if (!project) throw new Error("Choose a valid destination project.");
 
   const activeLinks = await ctx.db
     .select({ id: workspaceReviewLinks.id })
@@ -99,7 +99,7 @@ export async function createReviewLinkAction(input: {
     .insert(workspaceReviewLinks)
     .values({
       workspaceId: ctx.workspaceId,
-      spaceId: input.spaceId,
+      projectId: input.projectId,
       name,
       targetOrigin,
       token: token(),

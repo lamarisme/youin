@@ -28,7 +28,7 @@ export function workflowStatusLabel(
 ): string {
   const status = statuses.find((item) => item.id === statusId);
   if (status) return status.name;
-  return lifecycle === "closed" ? "Resolved" : "Open";
+  return lifecycle === "closed" ? "Closed" : "Open";
 }
 
 export function defaultWorkflowStatusForLifecycle(

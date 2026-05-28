@@ -21,17 +21,16 @@ import {
   type ReviewStateDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { generateSelector } from "../lib/selector"
 import {
   CAPTURE_PANEL_SCRIPT,
   MESSAGE_ENSURE_REVIEW_SCRIPTS
 } from "../lib/review-scripts"
+import { generateSelector } from "../lib/selector"
 import {
   getActiveProjectId,
   getActiveSpaceId,
   getMarksForPage,
   getProjects,
-  getSpaces,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
@@ -54,6 +53,7 @@ export const config: PlasmoCSConfig = {
 
 const HOST_ID = "youin-review-host"
 const CURSOR_STYLE_ID = "youin-review-cursor"
+const YOUIN_UI_ATTR = "data-youin-extension-ui"
 const Z_TOP = EXTENSION_LAYER.reviewOverlay
 const MIN_REGION_SIZE = 8
 const SCREENSHOT_CAPTURE_TIMEOUT_MS = 1500
@@ -87,26 +87,19 @@ let regionRect: {
   width: number
   height: number
 } | null = null
+let pausedReviewMode: ReviewMode | null = null
 
 async function refreshToolbarLabels() {
   if (!toolbarNsEl || !toolbarCountEl) return
   try {
-    const [activeProjectId, spaceId, projects, spaces] = await Promise.all([
+    const [activeProjectId, projectId, projects] = await Promise.all([
       getActiveProjectId(),
       getActiveSpaceId(),
-      getProjects(),
-      getSpaces()
+      getProjects()
     ])
-    const space = spaces.find((s) => s.id === spaceId)
-    const project = projects.find(
-      (p) => p.id === (space?.projectId ?? activeProjectId)
-    )
-    const ns =
-      project && space
-        ? `${project.name} / ${space.name}`
-        : space?.name || project?.name || "—"
-    toolbarNsEl.textContent = ns
-    const marks = await getMarksForPage(spaceId, location.href)
+    const project = projects.find((p) => p.id === (projectId || activeProjectId))
+    toolbarNsEl.textContent = project?.name || "—"
+    const marks = await getMarksForPage(projectId || activeProjectId, location.href)
     const open = marks.filter((p) => p.status !== "closed").length
     toolbarCountEl.textContent = `${open} open`
   } catch {
@@ -405,6 +398,16 @@ function isOwnElement(node: Node | null): boolean {
   return host.contains(node)
 }
 
+function isYouInExtensionEvent(e: Event): boolean {
+  if (isOwnElement(e.target as Node | null)) return true
+  const path = e.composedPath()
+  return path.some(
+    (node) =>
+      node instanceof Element &&
+      (node.id === HOST_ID || node.hasAttribute(YOUIN_UI_ATTR))
+  )
+}
+
 function cancelHoverRaf() {
   if (hoverRaf != null) {
     cancelAnimationFrame(hoverRaf)
@@ -532,7 +535,7 @@ function flushHoverRect() {
 
 function onMouseOver(e: MouseEvent) {
   const target = e.target as Element | null
-  if (!target || isOwnElement(target) || !highlight) return
+  if (!target || isYouInExtensionEvent(e) || !highlight) return
 
   const rect = target.getBoundingClientRect()
   pendingHoverRect = {
@@ -588,9 +591,12 @@ function enrichCaptureAsync(
   if (!settings.captureScreenshots) return
   void (async () => {
     let elementScreenshotDataUrl: string | undefined
+    let screenshotCaptureError: string | undefined
     try {
       elementScreenshotDataUrl = await captureElementViaTab(rect)
-    } catch {
+    } catch (e) {
+      screenshotCaptureError =
+        e instanceof Error ? e.message : "Could not capture screenshot."
       /* captureVisibleTab / message channel failures */
     }
     if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
@@ -602,12 +608,19 @@ function enrichCaptureAsync(
           }),
           SCREENSHOT_CAPTURE_TIMEOUT_MS
         )
-      } catch {
+      } catch (e) {
+        screenshotCaptureError =
+          e instanceof Error ? e.message : "Could not capture screenshot."
         /* DOM / CORS snapshot fallback not possible */
       }
     }
-    if (!elementScreenshotDataUrl) return
-    const patch = { elementScreenshotDataUrl }
+    const patch: Partial<ReviewCaptureDetail> = {
+      elementScreenshotDataUrl,
+      screenshotPending: false,
+      screenshotCaptureError: elementScreenshotDataUrl
+        ? undefined
+        : screenshotCaptureError ?? "Could not capture screenshot."
+    }
     window.dispatchEvent(
       new CustomEvent(EVENT_REVIEW_CAPTURE_UPDATE, { detail: patch })
     )
@@ -651,7 +664,8 @@ async function captureAndDispatch(target: Element) {
     viewport,
     url: location.href,
     outerHTML: target.outerHTML.slice(0, 400),
-    domSnapshot
+    domSnapshot,
+    screenshotPending: settings.captureScreenshots
   }
 
   await dispatchReviewCapture(detail)
@@ -683,7 +697,8 @@ async function captureRegionAndDispatch(rect: {
     viewport,
     url: location.href,
     pageTitle: document.title,
-    outerHTML: ""
+    outerHTML: "",
+    screenshotPending: true
   }
 
   await dispatchReviewCapture(detail)
@@ -692,6 +707,7 @@ async function captureRegionAndDispatch(rect: {
     const captureResult = await captureRegionViaTab(rect)
     const patch: Partial<ReviewCaptureDetail> = {
       elementScreenshotDataUrl: captureResult.dataUrl,
+      screenshotPending: false,
       screenshotCaptureError: captureResult.error
     }
     window.dispatchEvent(
@@ -702,7 +718,7 @@ async function captureRegionAndDispatch(rect: {
 
 function onClick(e: MouseEvent) {
   const target = e.target as Element | null
-  if (!target || isOwnElement(target)) return
+  if (!target || isYouInExtensionEvent(e)) return
 
   e.preventDefault()
   e.stopImmediatePropagation()
@@ -710,7 +726,7 @@ function onClick(e: MouseEvent) {
 }
 
 function swallow(e: Event) {
-  if (isOwnElement(e.target as Node)) return
+  if (isYouInExtensionEvent(e)) return
   e.preventDefault()
   e.stopImmediatePropagation()
 }
@@ -750,7 +766,7 @@ function resetRegionSelection() {
 }
 
 function onRegionMouseDown(e: MouseEvent) {
-  if (isOwnElement(e.target as Node)) return
+  if (isYouInExtensionEvent(e)) return
   e.preventDefault()
   e.stopImmediatePropagation()
   regionStart = { x: e.clientX, y: e.clientY }
@@ -789,7 +805,8 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function reviewModeFromState(): ReviewMode | undefined {
-  if (mode === "active" || mode === "paused") return "inspect"
+  if (mode === "active") return "inspect"
+  if (mode === "paused") return pausedReviewMode ?? "inspect"
   if (mode === "region") return "screenshot"
   return undefined
 }
@@ -856,6 +873,7 @@ function activate() {
     const settings = await getWidgetSettings()
     if (isHostDisabled(location.href, settings)) return
     mode = "active"
+    pausedReviewMode = null
     ensureHost()
     if (toolbarModeEl)
       toolbarModeEl.textContent = "Click an element to leave feedback"
@@ -876,11 +894,13 @@ function activateRegion() {
   if (mode === "active") detachCaptureListeners()
   if (mode === "paused") {
     mode = "inactive"
+    pausedReviewMode = null
   }
   void (async () => {
     const settings = await getWidgetSettings()
     if (isHostDisabled(location.href, settings)) return
     mode = "region"
+    pausedReviewMode = null
     ensureHost()
     if (host) host.style.display = ""
     if (highlight) highlight.style.display = "none"
@@ -898,6 +918,7 @@ function activateRegion() {
 
 function pause() {
   if (mode !== "active" && mode !== "region") return
+  pausedReviewMode = mode === "region" ? "screenshot" : "inspect"
   mode = "paused"
   detachCaptureListeners()
   detachRegionListeners()
@@ -910,20 +931,30 @@ function pause() {
 
 function resume() {
   if (mode !== "paused") return
-  mode = "active"
+  const nextMode = pausedReviewMode ?? "inspect"
+  mode = nextMode === "screenshot" ? "region" : "active"
+  pausedReviewMode = null
   if (host) host.style.display = ""
-  if (regionDim) regionDim.style.display = "none"
+  if (regionDim)
+    regionDim.style.display = nextMode === "screenshot" ? "block" : "none"
   if (regionBox) regionBox.style.display = "none"
-  if (toolbarModeEl)
-    toolbarModeEl.textContent = "Click an element to leave feedback"
+  if (toolbarModeEl) {
+    toolbarModeEl.textContent =
+      nextMode === "screenshot"
+        ? "Drag to capture an area"
+        : "Click an element to leave feedback"
+  }
   void refreshToolbarLabels()
   applyCursorOverride()
-  attachCaptureListeners()
+  if (nextMode === "screenshot") attachRegionListeners()
+  else attachCaptureListeners()
+  emitState()
 }
 
 function deactivate() {
   if (mode === "inactive") return
   mode = "inactive"
+  pausedReviewMode = null
   detachCaptureListeners()
   detachRegionListeners()
   removeCursorOverride()

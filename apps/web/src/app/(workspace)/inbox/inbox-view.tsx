@@ -32,9 +32,9 @@ export function InboxView() {
     () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
     [workspace.members],
   );
-  const spaceLookup = useMemo(
-    () => new Map(workspace.spaces.map((s) => [s.id, s.name])),
-    [workspace.spaces],
+  const projectLookup = useMemo(
+    () => new Map(workspace.projects.map((project) => [project.id, project.name])),
+    [workspace.projects],
   );
 
   return (
@@ -113,7 +113,7 @@ export function InboxView() {
             <InboxGroupRow
               key={group.markId}
               group={group}
-              spaceName={spaceLookup.get(group.spaceId) ?? null}
+              projectName={projectLookup.get(group.projectId) ?? null}
               members={memberLookup}
               displayNamePreference={displayNamePreference}
               dataUpdatedAt={inbox.dataUpdatedAt}
@@ -127,13 +127,13 @@ export function InboxView() {
 
 function InboxGroupRow({
   group,
-  spaceName,
+  projectName,
   members,
   displayNamePreference,
   dataUpdatedAt,
 }: {
   group: InboxGroup;
-  spaceName: string | null;
+  projectName: string | null;
   members: Map<string, { name: string; username: string }>;
   displayNamePreference: DisplayNamePreference;
   dataUpdatedAt: number;
@@ -170,8 +170,8 @@ function InboxGroupRow({
             >
               {formatRelative(group.latestAt, dataUpdatedAt)}
             </time>
-            {spaceName ? (
-              <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{spaceName}</span>
+            {projectName ? (
+              <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{projectName}</span>
             ) : null}
           </div>
 

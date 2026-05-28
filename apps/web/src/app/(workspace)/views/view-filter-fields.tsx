@@ -43,26 +43,6 @@ export function ViewScopeFields({
     [workspace.projects],
   );
 
-  const spaceOptions = useMemo<ReadonlyArray<FilterOption>>(() => {
-    const projectById = new Map(workspace.projects.map((project) => [project.id, project.name]));
-    const scopedSpaces =
-      filters.projectId === "all"
-        ? workspace.spaces
-        : workspace.spaces.filter((space) => space.projectId === filters.projectId);
-    return [
-      { value: "all", label: "All spaces" },
-      ...scopedSpaces.map((space) => {
-        const projectName = projectById.get(space.projectId);
-        return {
-          value: space.id,
-          label: projectName
-            ? `${projectName} / ${space.code} · ${space.name}`
-            : `${space.code} · ${space.name}`,
-        };
-      }),
-    ];
-  }, [filters.projectId, workspace.projects, workspace.spaces]);
-
   const labelOptions = useMemo<ReadonlyArray<FilterOption>>(
     () => [
       { value: "all", label: "All labels" },
@@ -92,23 +72,10 @@ export function ViewScopeFields({
     <div className="flex flex-wrap items-center gap-1.5">
       <FilterSelect
         value={filters.projectId}
-        onValueChange={(value) => onChange({ projectId: value, spaceId: "all" })}
+        onValueChange={(value) => onChange({ projectId: value })}
         options={projectOptions}
         ariaLabel="Filter view by project"
         triggerClassName="h-11 w-[min(100%,180px)] sm:h-9"
-      />
-      <FilterSelect
-        value={filters.spaceId}
-        onValueChange={(value) => {
-          const space = workspace.spaces.find((item) => item.id === value);
-          onChange({
-            spaceId: value,
-            ...(space ? { projectId: space.projectId } : {}),
-          });
-        }}
-        options={spaceOptions}
-        ariaLabel="Filter view by space"
-        triggerClassName="h-11 w-[min(100%,230px)] sm:h-9"
       />
       {includeAdvanced ? (
         <>

@@ -12,7 +12,6 @@ import {
   marksToLabels,
   profiles,
   projects,
-  spaces,
   workspaceInvites,
   workspaceMembers,
   workspaceReviewLinks,
@@ -24,7 +23,6 @@ import type {
   MarkEventType,
   MarkComment,
   MarkItem,
-  SpacePriority,
   TeamInvite,
   TeamMember,
   TeamRole,
@@ -34,7 +32,6 @@ import type {
   WorkspaceProject,
   WorkspaceReviewLink,
   WorkspaceView,
-  WorkspaceSpace,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 
@@ -129,7 +126,6 @@ export async function loadWorkspaceAggregate(
   const [
     wsRows,
     projectRows,
-    spacesRows,
     viewRows,
     labelsRows,
     membersRows,
@@ -148,11 +144,6 @@ export async function loadWorkspaceAggregate(
       .from(projects)
       .where(eq(projects.workspaceId, workspaceId))
       .orderBy(asc(projects.createdAt)),
-    db
-      .select()
-      .from(spaces)
-      .where(eq(spaces.workspaceId, workspaceId))
-      .orderBy(desc(spaces.createdAt)),
     db
       .select()
       .from(workspaceViews)
@@ -206,8 +197,6 @@ export async function loadWorkspaceAggregate(
     description: p.description ?? "",
     createdAt: toIso(p.createdAt),
   }));
-
-  const fallbackProjectId = projectsOut[0]?.id ?? "";
 
   const userIds = membersRows.map((m) => m.userId);
   const profilesByUserId = new Map<
@@ -271,19 +260,6 @@ export async function loadWorkspaceAggregate(
     if (!labelsByMark.has(row.markId)) labelsByMark.set(row.markId, []);
     labelsByMark.get(row.markId)!.push(row.labelId);
   }
-
-  const spacesOut: WorkspaceSpace[] = spacesRows.map((s) => ({
-    id: s.id,
-    projectId: s.projectId ?? fallbackProjectId,
-    code: String(s.code ?? "SP").toUpperCase(),
-    name: s.name,
-    notes: s.notes || "",
-    createdAt: toIso(s.createdAt),
-    priority: (s.priority as SpacePriority) ?? "medium",
-    pinned: Boolean(s.pinned),
-  }));
-
-  const codeBySpaceId = new Map(spacesOut.map((s) => [s.id, s.code]));
 
   const viewsOut: WorkspaceView[] = viewRows.map((view) => {
     const layout = normalizeWorkspaceViewLayout(view.layout);
@@ -373,7 +349,7 @@ export async function loadWorkspaceAggregate(
   const reviewLinks: WorkspaceReviewLink[] = reviewLinkRows.map((link) => ({
     id: link.id,
     name: link.name,
-    spaceId: link.spaceId,
+    projectId: link.projectId,
     targetOrigin: link.targetOrigin,
     token: link.token,
     createdAt: toIso(link.createdAt),
@@ -425,20 +401,19 @@ export async function loadWorkspaceAggregate(
             }
           : undefined;
 
-    const spaceCode = codeBySpaceId.get(mark.spaceId) ?? "UNKN";
     const seq = Number(mark.seq ?? 0);
 
     return {
       id: mark.id,
-      spaceId: mark.spaceId,
-      spaceCode,
+      projectId: mark.projectId,
       seq,
-      displayKey: formatMarkDisplayKey(spaceCode, seq),
+      displayKey: formatMarkDisplayKey(seq),
+      legacyDisplayKey: mark.legacyDisplayKey ?? undefined,
       title: mark.title,
       page: mark.page,
       description: mark.description ?? "",
       status: normalizeMarkStatus(mark.status),
-      workflowStatusId: mark.workflowStatusId ?? undefined,
+      workflowStatusId: mark.workflowStatusId,
       priority: normalizeMarkPriority(mark.priority),
       pinned: Boolean(mark.pinned),
       labelIds: labelsByMark.get(mark.id) ?? [],
@@ -485,7 +460,6 @@ export async function loadWorkspaceAggregate(
     id: wsRow.id,
     name: wsRow.name,
     projects: projectsOut,
-    spaces: spacesOut,
     views: viewsOut,
     labels,
     workflowStatuses,

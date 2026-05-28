@@ -81,12 +81,6 @@ export default function NotFound() {
                 </li>
                 <li className="flex items-baseline gap-2">
                   <span className="text-mark">/</span>
-                  <Link href="/spaces" className="text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline">
-                    {t("spacesLink")}
-                  </Link>
-                </li>
-                <li className="flex items-baseline gap-2">
-                  <span className="text-mark">/</span>
                   <Link href="/account" className="text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline">
                     {t("accountSettingsLink")}
                   </Link>

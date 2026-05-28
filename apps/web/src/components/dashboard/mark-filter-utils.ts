@@ -6,7 +6,7 @@ import type { DashboardFilters, SortMode } from "./use-dashboard-filters";
 /** URL-driven dashboard filters applied to marks (marks). */
 export type MarkDashboardFilterSlice = Pick<
   DashboardFilters,
-  "spaceId" | "status" | "workflowStatus" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
+  "projectId" | "status" | "workflowStatus" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
 >;
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -24,7 +24,7 @@ export function filterMarksByDashboardFilters(
   const query = filters.q.trim().toLowerCase();
   const viewerId = context?.viewerId ?? null;
   const filtered = marks.filter((mark) => {
-    if (filters.spaceId !== "all" && mark.spaceId !== filters.spaceId) return false;
+    if (filters.projectId !== "all" && mark.projectId !== filters.projectId) return false;
     if (filters.status !== "all" && mark.status !== filters.status) return false;
     if (filters.workflowStatus !== "all" && mark.workflowStatusId !== filters.workflowStatus) return false;
     if (filters.priority !== "all" && mark.priority !== filters.priority) return false;
@@ -39,7 +39,7 @@ export function filterMarksByDashboardFilters(
     }
     if (query) {
       const haystack =
-        `${mark.title} ${markDescriptionPlainText(mark.description)} ${mark.page} ${mark.id}`.toLowerCase();
+        `${mark.title} ${markDescriptionPlainText(mark.description)} ${mark.page} ${mark.displayKey} ${mark.legacyDisplayKey ?? ""} ${mark.id}`.toLowerCase();
       if (!haystack.includes(query)) return false;
     }
     return true;

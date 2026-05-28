@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-
-import SpacesClient from "./spaces-client";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Spaces",
+  title: "Dashboard",
 };
 
 export default function SpacesPage() {
-  return <SpacesClient />;
+  redirect("/dashboard");
 }

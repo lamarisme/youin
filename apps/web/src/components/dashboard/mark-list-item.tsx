@@ -83,7 +83,7 @@ export function MarkListItem({
       <button
         type="button"
         onClick={onSelect}
-        aria-label={`Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Resolved"}.`}
+        aria-label={`Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`}
         className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
         {mark.status === "open" ? (
@@ -91,7 +91,7 @@ export function MarkListItem({
         ) : (
           <CheckCircle2 className="mt-px size-3.5 shrink-0 text-ok" aria-hidden />
         )}
-        <span className="sr-only">{mark.status === "open" ? "Open." : "Resolved."}</span>
+        <span className="sr-only">{mark.status === "open" ? "Open." : "Closed."}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
             <p className="truncate text-ui-md font-semibold text-ink group-hover/row:text-mark">{mark.title}</p>

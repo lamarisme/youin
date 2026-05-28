@@ -13,6 +13,7 @@ import {
 import type { ElementDomSnapshot } from "./dom-snapshot"
 import { normalizePageUrlForMatch } from "./page-url"
 
+// Deprecated storage mirror kept so old installs and listeners keep working.
 export const KEY_SPACES = "youin:spaces"
 export const KEY_PROJECTS = "youin:projects"
 export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
@@ -102,6 +103,8 @@ export type MarkSyncOperation =
 
 export interface Mark {
   id: string
+  projectId: string
+  /** @deprecated Project ids replaced spaces; kept as a local compatibility alias. */
   spaceId: string
   /** Distinguishes attached DOM marks from freeform screenshot rectangles. */
   captureKind?: "element" | "region"
@@ -155,19 +158,7 @@ const DEFAULT_PROJECTS: Project[] = [
 ]
 
 const DEFAULT_SPACES: Space[] = [
-  { id: "default", projectId: "local-general", name: "Default", createdAt: 0 },
-  {
-    id: "q4-review",
-    projectId: "local-general",
-    name: "Q4 Review",
-    createdAt: 0
-  },
-  {
-    id: "design-qa",
-    projectId: "local-general",
-    name: "Design QA",
-    createdAt: 0
-  }
+  { id: "local-general", projectId: "local-general", name: "General", createdAt: 0 }
 ]
 
 /** Client-side caps; enforced again on persist in {@link addMark}. */
@@ -331,7 +322,7 @@ function legacyMarkStableId(
   p: Record<string, unknown>,
   createdAt: number
 ): string {
-  const seed = `${createdAt}\0${String(p.spaceId ?? "")}\0${String(p.url ?? "")}`
+  const seed = `${createdAt}\0${String(p.projectId ?? p.spaceId ?? "")}\0${String(p.url ?? "")}`
   let h = 2166136261
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i)
@@ -414,13 +405,15 @@ function migrateRawMark(raw: unknown): Mark {
     typeof p.syncError === "string" && p.syncError
       ? p.syncError.slice(0, 300)
       : undefined
+  const projectId = String(p.projectId ?? p.spaceId ?? "")
 
   const base: Omit<Mark, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
       typeof p.id === "string" && p.id.length > 0
         ? p.id
         : legacyMarkStableId(p, createdAt),
-    spaceId: String(p.spaceId ?? ""),
+    projectId,
+    spaceId: projectId,
     captureKind: p.captureKind === "region" ? "region" : "element",
     url,
     pageTitle:
@@ -491,19 +484,12 @@ async function write(key: string, value: unknown): Promise<boolean> {
 }
 
 export async function getSpaces(): Promise<Space[]> {
-  const stored = await read<Space[] | null>(KEY_SPACES, null)
-  if (!stored) {
-    // First run — seed and persist so all contexts converge on the same set
-    await write(KEY_SPACES, DEFAULT_SPACES)
-    return DEFAULT_SPACES
-  }
-  return stored.map((space) => ({
-    ...space,
-    projectId:
-      typeof (space as { projectId?: unknown }).projectId === "string" &&
-      (space as { projectId?: string }).projectId
-        ? (space as { projectId: string }).projectId
-        : DEFAULT_PROJECTS[0].id
+  const projects = await getProjects()
+  return projects.map((project) => ({
+    id: project.id,
+    projectId: project.id,
+    name: project.name,
+    createdAt: project.createdAt
   }))
 }
 
@@ -511,19 +497,21 @@ export async function setSpaces(spaces: Space[]): Promise<boolean> {
   return write(
     KEY_SPACES,
     spaces.map((space) => ({
-      ...space,
-      projectId: space.projectId || DEFAULT_PROJECTS[0].id
+      id: space.projectId || space.id,
+      projectId: space.projectId || space.id,
+      name: space.name || "General",
+      createdAt: space.createdAt || Date.now()
     }))
   )
 }
 
 export async function addSpace(space: Space): Promise<boolean> {
-  const spaces = await getSpaces()
-  const next = [
-    ...spaces,
-    { ...space, projectId: space.projectId || DEFAULT_PROJECTS[0].id }
-  ]
-  return write(KEY_SPACES, next)
+  return addProject({
+    id: space.projectId || space.id,
+    name: space.name,
+    description: "",
+    createdAt: space.createdAt || Date.now()
+  })
 }
 
 export async function getProjects(): Promise<Project[]> {
@@ -551,21 +539,25 @@ export async function addProject(project: Project): Promise<boolean> {
 
 export async function getActiveProjectId(): Promise<string> {
   const id = await read<string | null>(KEY_ACTIVE_PROJECT, null)
-  if (id) return id
-  return DEFAULT_PROJECTS[0].id
+  const projects = await getProjects()
+  if (id && projects.some((project) => project.id === id)) return id
+  return projects[0]?.id ?? DEFAULT_PROJECTS[0].id
 }
 
 export async function setActiveProjectId(id: string): Promise<boolean> {
+  await write(KEY_ACTIVE_SPACE, id)
   return write(KEY_ACTIVE_PROJECT, id)
 }
 
 export async function getActiveSpaceId(): Promise<string> {
+  const projectId = await getActiveProjectId()
   const id = await read<string | null>(KEY_ACTIVE_SPACE, null)
-  if (id !== null) return id
-  return DEFAULT_SPACES[0].id
+  if (id !== projectId) await write(KEY_ACTIVE_SPACE, projectId)
+  return projectId
 }
 
 export async function setActiveSpaceId(id: string): Promise<boolean> {
+  if (id) await write(KEY_ACTIVE_PROJECT, id)
   return write(KEY_ACTIVE_SPACE, id)
 }
 
@@ -675,8 +667,11 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
     mark.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
       ? mark.screenshotDataUrl
       : undefined
+  const projectId = mark.projectId || mark.spaceId
   return {
     ...mark,
+    projectId,
+    spaceId: projectId,
     url: normalizePageUrlForMatch(mark.url) || mark.url,
     pageTitle: mark.pageTitle?.slice(0, 280),
     title: mark.title.slice(0, STORAGE_LIMITS.markTitle),
@@ -774,7 +769,9 @@ export async function patchMark(
   const marks = await getMarks()
   const ix = marks.findIndex((p) => p.id === markId)
   if (ix < 0) return false
-  const merged = { ...marks[ix], ...patch }
+  const projectId =
+    patch.projectId ?? patch.spaceId ?? marks[ix].projectId ?? marks[ix].spaceId
+  const merged = { ...marks[ix], ...patch, projectId, spaceId: projectId }
   marks[ix] = merged
   return saveMarks(marks)
 }
@@ -954,7 +951,7 @@ export async function markSynced(markId: string): Promise<boolean> {
 }
 
 export async function getMarksForPage(
-  spaceId: string,
+  projectId: string,
   url: string
 ): Promise<Mark[]> {
   const n = normalizePageUrlForMatch(url)
@@ -965,7 +962,7 @@ export async function getMarksForPage(
     const p = row as Record<string, unknown>
     const urlRaw = typeof p.url === "string" ? p.url : ""
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
-    if (String(p.spaceId ?? "") !== spaceId) continue
+    if (String(p.projectId ?? p.spaceId ?? "") !== projectId) continue
     if (typeof p.localHiddenAt === "number") continue
     matching.push(row)
   }
@@ -992,7 +989,7 @@ export async function getMarkCountsByPage(
     const p = row as Record<string, unknown>
     const urlRaw = typeof p.url === "string" ? p.url : ""
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
-    const sid = String(p.spaceId ?? "")
+    const sid = String(p.projectId ?? p.spaceId ?? "")
     counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts
@@ -1004,7 +1001,7 @@ export async function getMarkCountsBySpace(): Promise<Map<string, number>> {
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    const sid = String(p.spaceId ?? "")
+    const sid = String(p.projectId ?? p.spaceId ?? "")
     counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts

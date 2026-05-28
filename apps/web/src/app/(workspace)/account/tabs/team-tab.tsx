@@ -44,12 +44,12 @@ function reviewLinkState(link: WorkspaceReviewLink): "active" | "expired" | "rev
 }
 
 export function TeamTab() {
-  const { members, invites, reviewLinks, spaces, userId, isOwner, displayNamePreference } =
+  const { members, invites, reviewLinks, projects, userId, isOwner, displayNamePreference } =
     useWorkspaceData((s) => ({
       members: s.workspace.members,
       invites: s.workspace.invites,
       reviewLinks: s.workspace.reviewLinks,
-      spaces: s.workspace.spaces,
+      projects: s.workspace.projects,
       userId: s.userId,
       displayNamePreference: s.profile.displayNamePreference,
       isOwner:
@@ -93,22 +93,22 @@ export function TeamTab() {
       ? "Username must be at least 2 characters."
       : null;
   const usernameFieldError = usernameError ?? usernameLengthError;
-  const defaultReviewSpaceId = spaces[0]?.id ?? "";
+  const defaultReviewProjectId = projects[0]?.id ?? "";
   const [reviewLinkName, setReviewLinkName] = useState("");
   const [reviewTargetOrigin, setReviewTargetOrigin] = useState("");
-  const [reviewSpaceId, setReviewSpaceId] = useState(defaultReviewSpaceId);
+  const [reviewProjectId, setReviewProjectId] = useState(defaultReviewProjectId);
   const [reviewLinkError, setReviewLinkError] = useState<string | null>(null);
   const [copiedReviewLinkId, setCopiedReviewLinkId] = useState<string | null>(null);
   const [appOrigin, setAppOrigin] = useState("");
   if (!appOrigin && typeof window !== "undefined") {
     setAppOrigin(window.location.origin);
   }
-  if (!reviewSpaceId && defaultReviewSpaceId) {
-    setReviewSpaceId(defaultReviewSpaceId);
+  if (!reviewProjectId && defaultReviewProjectId) {
+    setReviewProjectId(defaultReviewProjectId);
   }
   const reviewTargetReady = reviewTargetOrigin.trim().length > 0;
   const canCreateReviewLink =
-    isOwner && reviewTargetReady && Boolean(reviewSpaceId) && !isCreatingReviewLink;
+    isOwner && reviewTargetReady && Boolean(reviewProjectId) && !isCreatingReviewLink;
 
   async function handleSaveUsername() {
     if (!me || isSavingUsername) return;
@@ -159,7 +159,7 @@ export function TeamTab() {
       await createReviewLink({
         name: reviewLinkName,
         targetOrigin: reviewTargetOrigin,
-        spaceId: reviewSpaceId,
+        projectId: reviewProjectId,
       });
       setReviewLinkName("");
       setReviewTargetOrigin("");
@@ -326,23 +326,23 @@ export function TeamTab() {
                 />
               </div>
               <div>
-                <Label htmlFor="review-space" className="text-ui-xs font-medium text-ink-2">
-                  Destination space
+                <Label htmlFor="review-project" className="text-ui-xs font-medium text-ink-2">
+                  Destination project
                 </Label>
                 <select
-                  id="review-space"
-                  value={reviewSpaceId}
-                  onChange={(e) => setReviewSpaceId(e.target.value)}
+                  id="review-project"
+                  value={reviewProjectId}
+                  onChange={(e) => setReviewProjectId(e.target.value)}
                   className="mt-1 h-10 w-full rounded-md border-0 bg-paper-elevated px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper-3 focus:ring-2 focus:ring-mark/20"
                 >
-                  {spaces.length > 0 ? (
-                    spaces.map((space) => (
-                      <option key={space.id} value={space.id}>
-                        {space.name}
+                  {projects.length > 0 ? (
+                    projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
                       </option>
                     ))
                   ) : (
-                    <option value="">Create a space first</option>
+                    <option value="">Create a project first</option>
                   )}
                 </select>
               </div>
@@ -378,7 +378,7 @@ export function TeamTab() {
           <ProductList>
             {reviewLinks.map((link) => {
               const state = reviewLinkState(link);
-              const space = spaces.find((item) => item.id === link.spaceId);
+              const project = projects.find((item) => item.id === link.projectId);
               const muted = state !== "active";
               return (
                 <ProductListItem
@@ -398,7 +398,7 @@ export function TeamTab() {
                       </p>
                       <p className="mt-0.5 truncate text-ui-xs text-ink-3">
                         {link.targetOrigin}
-                        {space ? ` -> ${space.name}` : ""}
+                        {project ? ` -> ${project.name}` : ""}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">

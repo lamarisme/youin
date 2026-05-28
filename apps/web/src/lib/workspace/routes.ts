@@ -40,20 +40,6 @@ export function markHref(
   );
 }
 
-export function spaceHref(
-  spaceCode: string,
-  searchParams: { toString: () => string } | URLSearchParams,
-): string {
-  return withQuery(
-    `/spaces/${encodeURIComponent(spaceCode.toUpperCase())}`,
-    queryWithout(searchParams, ["space"]),
-  );
-}
-
-export function spacesHref(searchParams: { toString: () => string } | URLSearchParams): string {
-  return withQuery("/spaces", queryWithout(searchParams, ["space"]));
-}
-
 export function accountHref(section: AccountSection): string {
   return section === "overview" ? "/account" : `/account/${section}`;
 }

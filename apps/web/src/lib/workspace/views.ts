@@ -4,7 +4,6 @@ import type {
   MarkItem,
   Workspace,
   WorkspaceView,
-  WorkspaceViewAnalyticsTimeframe,
   WorkspaceViewAssigneeFilter,
   WorkspaceViewConfig,
   WorkspaceViewFilters,
@@ -16,13 +15,12 @@ import type {
 } from "../collab-types.ts";
 import { markDescriptionPlainText } from "../mark-description.ts";
 
-const VIEW_LAYOUTS = ["list", "board", "analytics"] as const;
 const STATUS_FILTERS = ["all", "open", "closed"] as const;
 const PRIORITY_FILTERS = ["all", "low", "medium", "high", "critical"] as const;
 const PINNED_FILTERS = ["all", "pinned", "unpinned"] as const;
 const ASSIGNEE_FILTERS = ["all", "me", "unassigned"] as const;
 const SORT_MODES = ["recent", "oldest", "priority", "status"] as const;
-const ANALYTICS_TIMEFRAMES = ["7d", "30d", "90d", "all"] as const;
+const VIEW_LAYOUTS_ACTIVE = ["list", "board"] as const;
 
 const PRIORITY_RANK: Record<string, number> = {
   critical: 0,
@@ -33,7 +31,6 @@ const PRIORITY_RANK: Record<string, number> = {
 
 export const DEFAULT_WORKSPACE_VIEW_FILTERS: WorkspaceViewFilters = {
   projectId: "all",
-  spaceId: "all",
   status: "all",
   workflowStatus: "all",
   priority: "all",
@@ -45,12 +42,11 @@ export const DEFAULT_WORKSPACE_VIEW_FILTERS: WorkspaceViewFilters = {
 };
 
 export const DEFAULT_WORKSPACE_VIEW_CONFIG: WorkspaceViewConfig = {
-  analyticsTimeframe: "30d",
   boardGroupBy: "status",
 };
 
 export function isWorkspaceViewLayout(value: unknown): value is WorkspaceViewLayout {
-  return typeof value === "string" && VIEW_LAYOUTS.includes(value as WorkspaceViewLayout);
+  return typeof value === "string" && VIEW_LAYOUTS_ACTIVE.includes(value as WorkspaceViewLayout);
 }
 
 function isStringIn<T extends readonly string[]>(value: unknown, values: T): value is T[number] {
@@ -62,6 +58,7 @@ function stringOrAll(value: unknown): string {
 }
 
 export function normalizeWorkspaceViewLayout(value: unknown): WorkspaceViewLayout {
+  if (value === "analytics") return "list";
   if (!isWorkspaceViewLayout(value)) throw new Error("Unsupported view layout.");
   return value;
 }
@@ -82,7 +79,6 @@ export function normalizeWorkspaceViewFilters(value: unknown): WorkspaceViewFilt
 
   return {
     projectId: stringOrAll(raw.projectId),
-    spaceId: stringOrAll(raw.spaceId),
     status: status as WorkspaceViewStatusFilter,
     workflowStatus: stringOrAll(raw.workflowStatus),
     priority: priority as WorkspaceViewPriorityFilter,
@@ -104,15 +100,9 @@ export function normalizeWorkspaceViewConfig(
   layout: WorkspaceViewLayout,
   value: unknown,
 ): WorkspaceViewConfig {
-  const raw =
-    value && typeof value === "object"
-      ? (value as Record<string, unknown>)
-      : {};
+  void layout;
+  void value;
   return {
-    analyticsTimeframe:
-      layout === "analytics" && isStringIn(raw.analyticsTimeframe, ANALYTICS_TIMEFRAMES)
-        ? (raw.analyticsTimeframe as WorkspaceViewAnalyticsTimeframe)
-        : "30d",
     boardGroupBy: "status",
   };
 }
@@ -133,17 +123,11 @@ export function workspaceViewPayload(
 export function filterMarksForWorkspaceView(
   marks: readonly MarkItem[],
   filters: WorkspaceViewFilters,
-  context: {
-    spaces: readonly { id: string; projectId: string }[];
-    viewerId: string | null;
-  },
+  context: { viewerId: string | null },
 ): MarkItem[] {
   const query = filters.q.trim().toLowerCase();
-  const spaceProjectById = new Map(context.spaces.map((space) => [space.id, space.projectId]));
   const filtered = marks.filter((mark) => {
-    const projectId = spaceProjectById.get(mark.spaceId);
-    if (filters.spaceId !== "all" && mark.spaceId !== filters.spaceId) return false;
-    if (filters.spaceId === "all" && filters.projectId !== "all" && projectId !== filters.projectId) return false;
+    if (filters.projectId !== "all" && mark.projectId !== filters.projectId) return false;
     if (filters.status !== "all" && mark.status !== filters.status) return false;
     if (filters.workflowStatus !== "all" && mark.workflowStatusId !== filters.workflowStatus) return false;
     if (filters.priority !== "all" && mark.priority !== filters.priority) return false;
@@ -169,7 +153,6 @@ export function filterWorkspaceForView(
   viewerId: string | null,
 ): Workspace {
   const marks = filterMarksForWorkspaceView(workspace.marks, filters, {
-    spaces: workspace.spaces,
     viewerId,
   });
   const markIds = new Set(marks.map((mark) => mark.id));
@@ -184,7 +167,6 @@ export function filterWorkspaceForView(
 export function describeWorkspaceViewFilters(filters: WorkspaceViewFilters): string {
   const parts: string[] = [];
   if (filters.projectId !== "all") parts.push("Project");
-  if (filters.spaceId !== "all") parts.push("Space");
   if (filters.status !== "all") parts.push(normalizeMarkStatus(filters.status));
   if (filters.workflowStatus !== "all") parts.push("Workflow");
   if (filters.priority !== "all") parts.push(normalizeMarkPriority(filters.priority));

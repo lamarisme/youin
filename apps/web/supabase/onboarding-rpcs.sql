@@ -5,9 +5,9 @@
 
   Provides two SECURITY DEFINER functions used during user creation:
 
-    bootstrap_workspace(name, space_name, space_notes, invite_emails)
+    bootstrap_workspace(name, project_name, project_description, invite_emails)
       Atomically creates a workspace, adds the caller as owner,
-      creates a default space, seeds default tags, and fans out invites.
+      creates a default project, seeds default tags/statuses, and fans out invites.
 
     attach_user_via_invite()
       If the caller's email matches a pending invite, attach them
@@ -67,8 +67,8 @@ REVOKE ALL ON FUNCTION public.member_username_from_email(uuid, text) FROM PUBLIC
 
 CREATE OR REPLACE FUNCTION public.bootstrap_workspace(
   p_workspace_name text,
-  p_space_name text DEFAULT 'General',
-  p_space_notes text DEFAULT '',
+  p_project_name text DEFAULT 'General',
+  p_project_description text DEFAULT '',
   p_invite_emails text[] DEFAULT ARRAY[]::text[],
   p_username text DEFAULT NULL
 )
@@ -82,7 +82,6 @@ DECLARE
   v_workspace_id uuid;
   v_project_id uuid;
   v_invite_email text;
-  v_space_code text;
   v_resolved_username text;
   v_user_email text;
 BEGIN
@@ -130,34 +129,12 @@ BEGIN
   );
 
   INSERT INTO public.projects (workspace_id, name, description)
-  VALUES (v_workspace_id, 'General', '')
-  RETURNING id INTO v_project_id;
-
-  v_space_code :=
-    upper(substring(
-      regexp_replace(
-        COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
-        '[^a-zA-Z0-9]',
-        '',
-        'g'
-      ),
-      1,
-      8
-    ));
-  IF length(v_space_code) < 2 THEN
-    v_space_code := 'GN';
-  END IF;
-
-  INSERT INTO public.spaces (workspace_id, project_id, code, name, notes, priority, pinned)
   VALUES (
     v_workspace_id,
-    v_project_id,
-    v_space_code,
-    COALESCE(NULLIF(TRIM(p_space_name), ''), 'General'),
-    COALESCE(p_space_notes, ''),
-    'medium'::public.mark_priority,
-    false
-  );
+    COALESCE(NULLIF(TRIM(p_project_name), ''), 'General'),
+    COALESCE(p_project_description, '')
+  )
+  RETURNING id INTO v_project_id;
 
   INSERT INTO public.mark_labels (workspace_id, name)
   SELECT v_workspace_id, name

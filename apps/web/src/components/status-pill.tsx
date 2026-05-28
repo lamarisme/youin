@@ -7,7 +7,7 @@ export function StatusPill({ status }: { status: MarkStatus }) {
   if (status === "closed") {
     return (
       <Pill variant="ok" size="md" icon={<CheckCircle2 className="size-3.5" />}>
-        Resolved
+        Closed
       </Pill>
     );
   }

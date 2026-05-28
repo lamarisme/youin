@@ -76,7 +76,7 @@ export function BulkActionBar({
             </>
           ) : (
             <>
-              <CheckCircle2 className="size-3.5" /> Resolve
+              <CheckCircle2 className="size-3.5" /> Close
             </>
           )}
         </Button>

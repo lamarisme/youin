@@ -1,16 +1,14 @@
-// Pull workspace spaces from Supabase into chrome.storage + push local captures as marks.
+// Pull workspace projects from Supabase into chrome.storage + push local captures as marks.
 
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
 import { getSession } from "./auth"
 import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
-import { allocateSpaceCode } from "./migrate"
 import {
   getActiveProjectId,
-  getActiveSpaceId,
+  getProjects,
   getMarks,
-  getSpaces,
   markSynced,
   markSyncFailure,
   patchMark,
@@ -22,8 +20,7 @@ import {
   setSpaces,
   type Mark,
   type MarkPriority,
-  type Project,
-  type Space
+  type Project
 } from "./storage"
 import { getSupabase, WEB_APP_URL } from "./supabase"
 
@@ -88,8 +85,8 @@ export interface SyncWorkspaceResult {
 }
 
 /**
- * Fetch spaces for the user's workspace from Postgres, replace chrome.storage mirrors,
- * and remap mark {@link Mark.spaceId} from legacy local IDs to UUIDs by space name match.
+ * Fetch projects for the user's workspace from Postgres, replace chrome.storage mirrors,
+ * and remap marks from legacy local ids to remote project UUIDs by project name match.
  */
 export async function syncWorkspaceFromRemote(
   userId: string
@@ -115,6 +112,7 @@ export async function syncWorkspaceFromRemote(
   }
 
   const supabase = getSupabase()
+  const prevProjects = await getProjects()
   const { data: projectRows, error: projectErr } = await supabase
     .from("projects")
     .select("id,name,description,created_at")
@@ -139,105 +137,57 @@ export async function syncWorkspaceFromRemote(
   }))
   await setProjects(nextProjects)
 
-  const { data: remoteRows, error: spErr } = await supabase
-    .from("spaces")
-    .select("id,project_id,name,created_at,pinned,priority")
-    .eq("workspace_id", workspaceId)
-    .order("pinned", { ascending: false })
-    .order("priority", { ascending: true })
-    .order("name", { ascending: true })
-  if (spErr) {
-    return {
-      ok: false,
-      error: spErr.message,
-      projectCount: nextProjects.length,
-      spaceCount: 0
-    }
-  }
-  if (!remoteRows?.length) {
-    const activeProject = await getActiveProjectId()
-    if (!nextProjects.some((project) => project.id === activeProject)) {
-      await setActiveProjectId(nextProjects[0]?.id ?? ensuredProject.projectId)
-    }
-    await setSpaces([])
-    await setActiveSpaceId("")
-    return {
-      ok: true,
-      projectCount: nextProjects.length,
-      spaceCount: 0
-    }
-  }
+  const projectIds = new Set(nextProjects.map((project) => project.id))
+  const projectByNameLc = new Map(
+    nextProjects.map((project) => [project.name.trim().toLowerCase(), project.id])
+  )
+  const fallbackProjectId =
+    ensuredProject.projectId ?? nextProjects[0]?.id ?? prevProjects[0]?.id ?? ""
 
-  const prevSpaces = await getSpaces()
-  const remoteByProjectNameLc = new Map<string, string>()
-  const remoteByNameLc = new Map<string, string>()
-  const remoteIds = new Set<string>()
-  const nextSpaces: Space[] = []
-  for (const r of remoteRows) {
-    const id = r.id as string
-    const projectId =
-      (r.project_id as string | null) ?? ensuredProject.projectId
-    const name = String(r.name)
-    remoteIds.add(id)
-    remoteByProjectNameLc.set(`${projectId}:${name.trim().toLowerCase()}`, id)
-    if (!remoteByNameLc.has(name.trim().toLowerCase())) {
-      remoteByNameLc.set(name.trim().toLowerCase(), id)
-    }
-    nextSpaces.push({
-      id,
-      projectId,
-      name,
-      createdAt: r.created_at
-        ? new Date(r.created_at as string).getTime()
-        : Date.now()
-    })
-  }
+  await setSpaces(
+    nextProjects.map((project) => ({
+      id: project.id,
+      projectId: project.id,
+      name: project.name,
+      createdAt: project.createdAt
+    }))
+  )
 
-  await setSpaces(nextSpaces)
-
-  function remapSpaceId(spaceId: string): string {
-    if (remoteIds.has(spaceId)) return spaceId
-    const meta = prevSpaces.find((s) => s.id === spaceId)
-    const label = meta?.name?.trim() ?? "Imported"
-    const projectId = meta?.projectId
-    if (projectId) {
-      const exact = remoteByProjectNameLc.get(
-        `${projectId}:${label.toLowerCase()}`
-      )
-      if (exact) return exact
-    }
-    return remoteByNameLc.get(label.toLowerCase()) ?? spaceId
+  function remapProjectId(projectId: string): string {
+    if (projectIds.has(projectId)) return projectId
+    const meta = prevProjects.find((project) => project.id === projectId)
+    const byName = meta
+      ? projectByNameLc.get(meta.name.trim().toLowerCase())
+      : undefined
+    return byName ?? fallbackProjectId ?? projectId
   }
 
   const marks = await getMarks()
   let changed = false
   const mapped = marks.map((p) => {
-    const nu = remapSpaceId(p.spaceId)
-    if (nu === p.spaceId) return p
+    const projectId = remapProjectId(p.projectId || p.spaceId)
+    if (projectId === p.projectId && projectId === p.spaceId) return p
     changed = true
-    return { ...p, spaceId: nu }
+    return { ...p, projectId, spaceId: projectId }
   })
   if (changed) {
     await saveMarks(mapped)
   }
 
-  const active = await getActiveSpaceId()
-  const nextActive = remapSpaceId(active)
+  const active = await getActiveProjectId()
+  const nextActive = remapProjectId(active)
   if (nextActive !== active) {
+    await setActiveProjectId(nextActive)
     await setActiveSpaceId(nextActive)
-  }
-  const activeSpace = nextSpaces.find((space) => space.id === nextActive)
-  const activeProject = await getActiveProjectId()
-  if (activeSpace && activeSpace.projectId !== activeProject) {
-    await setActiveProjectId(activeSpace.projectId)
-  } else if (!nextProjects.some((project) => project.id === activeProject)) {
+  } else if (!nextProjects.some((project) => project.id === active)) {
     await setActiveProjectId(nextProjects[0]?.id ?? ensuredProject.projectId)
+    await setActiveSpaceId(nextProjects[0]?.id ?? ensuredProject.projectId ?? "")
   }
 
   return {
     ok: true,
     projectCount: nextProjects.length,
-    spaceCount: nextSpaces.length
+    spaceCount: nextProjects.length
   }
 }
 
@@ -271,7 +221,8 @@ interface RemoteComment {
 
 interface RemoteMark {
   id: string
-  spaceId: string
+  projectId: string
+  spaceId?: string
   title: string
   page: string
   status: Mark["status"]
@@ -308,7 +259,6 @@ async function uploadLocalMarkScreenshot(
     .from("marks")
     .update({ screenshot_url: upload.path })
     .eq("id", mark.remoteMarkId)
-    .eq("space_id", mark.spaceId)
   if (error) return { ok: false, error: error.message }
 
   await patchMark(mark.id, {
@@ -435,16 +385,17 @@ export async function pushMarkToWorkspace(
       error: "Mark needs a title before sync."
     }
   }
-  if (!isUuidLike(mark.spaceId)) {
+  const projectId = mark.projectId || mark.spaceId
+  if (!isUuidLike(projectId)) {
     await markSyncFailure(
       mark.id,
-      "Space is still local-only. Reload the popup after signing in to sync workspaces."
+      "Project is still local-only. Reload the popup after signing in to sync projects."
     )
     return {
       ok: false,
       skipped: false,
       error:
-        "Space is still local-only. Reload the popup after signing in to sync workspaces."
+        "Project is still local-only. Reload the popup after signing in to sync projects."
     }
   }
 
@@ -458,7 +409,7 @@ export async function pushMarkToWorkspace(
         authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
-        spaceId: mark.spaceId,
+        projectId,
         title: mark.title.trim(),
         description,
         page: mark.url,
@@ -611,7 +562,8 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
   return {
     id: `remote_${mark.id}`,
     remoteMarkId: mark.id,
-    spaceId: mark.spaceId,
+    projectId: mark.projectId || mark.spaceId || "",
+    spaceId: mark.projectId || mark.spaceId || "",
     url: raw,
     origin,
     pathname,
@@ -661,6 +613,8 @@ function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
   return {
     ...local,
     title: hasPendingEdit ? local.title : mark.title || local.title,
+    projectId: mark.projectId || mark.spaceId || local.projectId,
+    spaceId: mark.projectId || mark.spaceId || local.spaceId,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
     screenshotUrl: mark.screenshotUrl || local.screenshotUrl,
@@ -758,7 +712,7 @@ export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksRes
   const pending = marks.filter(
     (mark) =>
       !mark.localHiddenAt &&
-      ((!mark.remoteMarkId && isUuidLike(mark.spaceId)) ||
+      ((!mark.remoteMarkId && isUuidLike(mark.projectId || mark.spaceId)) ||
         Boolean(mark.remoteMarkId && mark.screenshotDataUrl) ||
         Boolean(mark.remoteMarkId && mark.pendingSyncOps?.length))
   )
@@ -812,6 +766,7 @@ export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksRes
 export interface CreateSpaceResult {
   ok: boolean
   spaceId?: string
+  projectId?: string
   error?: string
 }
 
@@ -852,60 +807,13 @@ export async function createRemoteWorkspaceProject(
   return { ok: true, projectId: project.id as string }
 }
 
-/** Create a space in Supabase while signed in; call {@link syncWorkspaceFromRemote} to refresh UX. */
+/** Backward-compatible alias: the old "new space" control now creates projects. */
 export async function createRemoteWorkspaceSpace(
   userId: string,
-  projectId: string,
+  _projectId: string,
   nameTrimmed: string
 ): Promise<CreateSpaceResult> {
-  const trimmed = nameTrimmed.trim().slice(0, 120)
-  if (!trimmed) return { ok: false, error: "Name is required." }
-
-  const workspaceId = await workspaceIdForUser(userId)
-  if (!workspaceId) {
-    return { ok: false, error: "No workspace for this account." }
-  }
-  const targetProjectId =
-    projectId || (await ensureDefaultProjectId(workspaceId)).projectId
-  if (!targetProjectId) {
-    return { ok: false, error: "Failed to resolve project." }
-  }
-
-  const supabase = getSupabase()
-  const { data: existingCodes, error: codesErr } = await supabase
-    .from("spaces")
-    .select("code")
-    .eq("workspace_id", workspaceId)
-  if (codesErr) return { ok: false, error: codesErr.message }
-
-  const codes = new Set(
-    (existingCodes ?? []).map((r: { code: string }) =>
-      String(r.code).toUpperCase()
-    )
-  )
-  const code = await allocateSpaceCode(workspaceId, trimmed, codes)
-
-  const { data: sp, error: insErr } = await supabase
-    .from("spaces")
-    .insert({
-      workspace_id: workspaceId,
-      project_id: targetProjectId,
-      code,
-      name: trimmed,
-      notes: "",
-      priority: "medium",
-      pinned: false
-    })
-    .select("id")
-    .single()
-
-  if (insErr || !sp?.id) {
-    return {
-      ok: false,
-      error:
-        insErr?.message ?? "Could not create space (name may already exist)."
-    }
-  }
-
-  return { ok: true, spaceId: sp.id as string }
+  const created = await createRemoteWorkspaceProject(userId, nameTrimmed)
+  if (!created.ok || !created.projectId) return created
+  return { ok: true, projectId: created.projectId, spaceId: created.projectId }
 }

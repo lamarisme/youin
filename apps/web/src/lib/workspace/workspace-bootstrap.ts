@@ -37,7 +37,7 @@ export async function syncProfileFromUser(supabase: SupabaseClient, user: User):
  *   1. Existing membership → return its workspace_id.
  *   2. Pending invite for this user's email → attach via RPC, return workspace_id.
  *   3. Otherwise → bootstrap a fresh workspace via RPC (creates workspace, adds
- *      the user as owner, seeds default space + labels, fans out signup invites).
+ *      the user as owner, seeds default project + labels, fans out signup invites).
  *
  * The two RPCs are SECURITY DEFINER (see supabase/onboarding-rpcs.sql); they are
  * required to atomically work around the RLS chicken-and-egg problem where a
@@ -61,7 +61,12 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
 
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const wsNameRaw = typeof meta.workspace_name === "string" ? meta.workspace_name.trim() : "";
-  const fsNameRaw = typeof meta.first_space_name === "string" ? meta.first_space_name.trim() : "";
+  const projectNameRaw =
+    typeof meta.first_project_name === "string"
+      ? meta.first_project_name.trim()
+      : typeof meta.first_space_name === "string"
+        ? meta.first_space_name.trim()
+        : "";
   const goalRaw = typeof meta.workspace_goal === "string" ? meta.workspace_goal.trim() : "";
   const usernameRaw = typeof meta.workspace_username === "string" ? meta.workspace_username.trim() : undefined;
 
@@ -73,8 +78,8 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
 
   const { data: wid, error: bsErr } = await supabase.rpc("bootstrap_workspace", {
     p_workspace_name: wsNameRaw || fallbackName,
-    p_space_name: fsNameRaw || "General",
-    p_space_notes: goalRaw,
+    p_project_name: projectNameRaw || "General",
+    p_project_description: goalRaw,
     p_invite_emails: teammateInvites,
     p_username: usernameRaw && usernameRaw.length >= 2 ? usernameRaw : null,
   });

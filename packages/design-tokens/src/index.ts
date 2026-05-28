@@ -10,7 +10,7 @@
 /* ─── Primitive palette ────────────────────────────────────────── */
 
 export const color = {
-  /* Paper — Linear-light inspection surfaces with a faint warm cast */
+  /* Paper — light inspection surfaces with a faint warm cast */
   paper:   "oklch(98.7% 0.003 78)",
   paper2:  "oklch(96.4% 0.004 78)",
   paper3:  "oklch(93.8% 0.005 78)",

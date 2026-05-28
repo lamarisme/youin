@@ -31,6 +31,8 @@ type ExtensionMarkInput = {
   title?: unknown;
   description?: unknown;
   page?: unknown;
+  projectId?: unknown;
+  /** Legacy extension payloads used spaceId. New captures should send projectId. */
   spaceId?: unknown;
   status?: unknown;
   priority?: unknown;
@@ -230,6 +232,66 @@ async function resolveImageUrls(
   return out;
 }
 
+async function firstWorkspaceProjectId(
+  supabase: SupabaseClient,
+  workspaceId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data?.id as string | undefined) ?? null;
+}
+
+async function resolveProjectId(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  rawProjectId: unknown,
+): Promise<string> {
+  const projectId = asString(rawProjectId);
+  if (!projectId) {
+    const fallback = await firstWorkspaceProjectId(supabase, workspaceId);
+    if (!fallback) throw new Error("Create a project before capturing marks.");
+    return fallback;
+  }
+
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Project was not found in this workspace.");
+  return data.id as string;
+}
+
+async function defaultWorkflowStatusId(
+  supabase: SupabaseClient,
+  workspaceId: string,
+  lifecycle: "open" | "closed",
+): Promise<string> {
+  const defaultColumn =
+    lifecycle === "open" ? "is_default_open" : "is_default_closed";
+  const { data, error } = await supabase
+    .from("mark_workflow_statuses")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("lifecycle_status", lifecycle)
+    .is("archived_at", null)
+    .order(defaultColumn, { ascending: false })
+    .order("position", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error(`Workspace is missing a ${lifecycle} status.`);
+  return data.id as string;
+}
+
 export function OPTIONS(): NextResponse {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
@@ -242,7 +304,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const { data: marks, error: markError } = await supabase
     .from("marks")
     .select(
-      "id,space_id,title,page,status,priority,selector,viewport,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
+      "id,project_id,title,page,status,priority,selector,viewport,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
     )
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false })
@@ -313,7 +375,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             (mark.screenshot_url as string)
           : (mark.screenshot_url as string | null) ?? undefined,
         id: mark.id as string,
-        spaceId: mark.space_id as string,
+        projectId: mark.project_id as string,
         title: String(mark.title ?? ""),
         page: String(mark.page ?? ""),
         status: String(mark.status ?? "open"),
@@ -347,21 +409,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return jsonError("Page must be a full http or https URL.", 400);
   }
 
-  const spaceId = asString(input.spaceId);
-  if (!spaceId) return jsonError("Space is required.", 400);
-
   const auth = await createAuthorizedClient(request);
   if ("error" in auth) return auth.error;
   const { supabase, user, workspaceId } = auth;
 
-  const { data: space, error: spaceError } = await supabase
-    .from("spaces")
-    .select("id")
-    .eq("id", spaceId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (spaceError) return jsonError(spaceError.message, 400);
-  if (!space) return jsonError("Space was not found in this workspace.", 404);
+  let projectId: string;
+  let workflowStatusId: string;
+  const status = normalizeMarkStatus(asString(input.status));
+  try {
+    projectId = await resolveProjectId(supabase, workspaceId, input.projectId);
+    workflowStatusId = await defaultWorkflowStatusId(supabase, workspaceId, status);
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Project is invalid.", 400);
+  }
 
   const description = normalizeDescriptionForStorage(
     asString(input.description),
@@ -374,11 +434,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .from("marks")
     .insert({
       workspace_id: workspaceId,
-      space_id: spaceId,
+      project_id: projectId,
       title,
       description,
       page,
-      status: normalizeMarkStatus(asString(input.status)),
+      status,
+      workflow_status_id: workflowStatusId,
       priority: normalizeMarkPriority(asString(input.priority)),
       pinned: false,
       created_by_user_id: user.id,
@@ -507,10 +568,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   if (statusInput) {
     if (!isMarkStatus(statusInput)) return jsonError("Status is invalid.", 400);
+    const status = normalizeMarkStatus(statusInput);
+    let workflowStatusId: string;
+    try {
+      workflowStatusId = await defaultWorkflowStatusId(supabase, workspaceId, status);
+    } catch (error) {
+      return jsonError(error instanceof Error ? error.message : "Status is invalid.", 400);
+    }
     const { error: statusError } = await supabase
       .from("marks")
       .update({
-        status: normalizeMarkStatus(statusInput),
+        status,
+        workflow_status_id: workflowStatusId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", markId)

@@ -33,7 +33,6 @@ import {
   getMarks,
   getMarksForPage,
   getProjects,
-  getSpaces,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_MARKS,
@@ -51,8 +50,7 @@ import {
   type Mark,
   type MarkPriority,
   type MarkStatus,
-  type Project,
-  type Space
+  type Project
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
 import {
@@ -76,6 +74,7 @@ export const getStyle: PlasmoGetStyle = () => {
 }
 
 const Z_PANEL = EXTENSION_LAYER.panel
+const Z_MODAL = EXTENSION_LAYER.modal
 const OPEN_MARK_EVENTS = [
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_OPEN_PIN_LEGACY
@@ -91,25 +90,27 @@ declare global {
 
 if (!window.__youinCapturePanelMessageListener) {
   window.__youinCapturePanelMessageListener = true
-  chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
-    if (!msg || typeof msg !== "object") return false
-    const t = (msg as { type?: string }).type
-    if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL) {
-      sendResponse({ ok: true })
-      return true
+  chrome.runtime.onMessage.addListener(
+    (msg: unknown, _sender, sendResponse) => {
+      if (!msg || typeof msg !== "object") return false
+      const t = (msg as { type?: string }).type
+      if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL) {
+        sendResponse({ ok: true })
+        return true
+      }
+      if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY) {
+        sendResponse({ ok: isCapturePanelHandlerReady() })
+        return true
+      }
+      if (t === MESSAGE_OPEN_CAPTURE_PANEL) {
+        const detail = (msg as { detail?: ReviewCaptureDetail }).detail
+        if (detail) deliverCapture(detail)
+        sendResponse({ ok: true })
+        return true
+      }
+      return false
     }
-    if (t === MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY) {
-      sendResponse({ ok: isCapturePanelHandlerReady() })
-      return true
-    }
-    if (t === MESSAGE_OPEN_CAPTURE_PANEL) {
-      const detail = (msg as { detail?: ReviewCaptureDetail }).detail
-      if (detail) deliverCapture(detail)
-      sendResponse({ ok: true })
-      return true
-    }
-    return false
-  })
+  )
 }
 
 type PanelMode = "create" | "thread"
@@ -156,7 +157,7 @@ function titleFromBody(body: string): string {
 
 function buildMarkFromCapture(
   detail: ReviewCaptureDetail,
-  spaceId: string,
+  projectId: string,
   body: string,
   priority: MarkPriority
 ): Mark {
@@ -176,7 +177,8 @@ function buildMarkFromCapture(
   const now = Date.now()
   return {
     id: makeMarkId(),
-    spaceId,
+    projectId,
+    spaceId: projectId,
     url: href,
     pageTitle: detail.pageTitle,
     origin,
@@ -745,7 +747,6 @@ const CapturePanel = () => {
   const [pageMarks, setPageMarks] = useState<Mark[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
-  const [spaces, setSpaces] = useState<Space[]>([])
   const [spaceId, setSpaceId] = useState<string>("")
   const [body, setBody] = useState("")
   const [priority, setPriority] = useState<MarkPriority>("medium")
@@ -822,28 +823,21 @@ const CapturePanel = () => {
   )
 
   const loadSpaces = useCallback(async () => {
-    const [projectRows, spaceRows, activeProject, activeSpace] =
-      await Promise.all([
-        getProjects(),
-        getSpaces(),
-        getActiveProjectId(),
-        getActiveSpaceId()
-      ])
-    const activeSpaceRow = spaceRows.find((space) => space.id === activeSpace)
+    const [projectRows, activeProject, activeSpace] = await Promise.all([
+      getProjects(),
+      getActiveProjectId(),
+      getActiveSpaceId()
+    ])
     const nextProjectId = projectRows.some(
       (project) => project.id === activeProject
     )
       ? activeProject
-      : activeSpaceRow?.projectId || projectRows[0]?.id || ""
-    const projectSpaces = spaceRows.filter(
-      (space) => space.projectId === nextProjectId
-    )
-    const nextSpaceId = projectSpaces.some((space) => space.id === activeSpace)
-      ? activeSpace
-      : projectSpaces[0]?.id || ""
+      : projectRows.some((project) => project.id === activeSpace)
+        ? activeSpace
+        : projectRows[0]?.id || ""
+    const nextSpaceId = nextProjectId
 
     setProjects(projectRows)
-    setSpaces(spaceRows)
     setProjectId(nextProjectId)
     setSpaceId(nextSpaceId)
     if (nextProjectId && nextProjectId !== activeProject) {
@@ -1034,6 +1028,10 @@ const CapturePanel = () => {
 
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
+    if (capture.screenshotPending) {
+      setSaveError(t("extension.panel.waitForScreenshot"))
+      return
+    }
     if (capture.captureKind === "region" && !capture.elementScreenshotDataUrl) {
       setSaveError(
         capture.screenshotCaptureError ??
@@ -1049,6 +1047,7 @@ const CapturePanel = () => {
     setSaveError(null)
     setSaveWarning(null)
     try {
+      await setActiveProjectId(spaceId)
       await setActiveSpaceId(spaceId)
       const mark = buildMarkFromCapture(capture, spaceId, body.trim(), priority)
       const saved = await addMarkWithFallback(mark)
@@ -1258,6 +1257,7 @@ const CapturePanel = () => {
   if (!open) {
     return undoAction ? (
       <div
+        data-youin-extension-ui=""
         role="status"
         className="pointer-events-auto fixed bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-panel)] px-3 py-2 font-sans text-[12px] text-[color:var(--yi-ext-text-muted)] shadow-[var(--yi-ext-shadow-panel)] ring-1 ring-[color:var(--yi-ext-border-hairline)]"
         style={{ zIndex: Z_PANEL }}>
@@ -1277,13 +1277,11 @@ const CapturePanel = () => {
     ) : null
   }
 
-  const projectSpaces = spaces.filter((space) => space.projectId === projectId)
   const selectProject = (id: string) => {
     setProjectId(id)
     void setActiveProjectId(id)
-    const nextSpace = spaces.find((space) => space.projectId === id)
-    setSpaceId(nextSpace?.id ?? "")
-    void setActiveSpaceId(nextSpace?.id ?? "")
+    setSpaceId(id)
+    void setActiveSpaceId(id)
   }
 
   const panelSurface =
@@ -1291,9 +1289,11 @@ const CapturePanel = () => {
 
   if (mode === "create" && capture) {
     const isRegionCapture = capture.captureKind === "region"
+    const screenshotPending = Boolean(capture.screenshotPending)
     return (
       <>
         <div
+          data-youin-extension-ui=""
           ref={panelRef}
           role="dialog"
           aria-modal="true"
@@ -1333,7 +1333,14 @@ const CapturePanel = () => {
 
           <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
             <div className="flex flex-col gap-5 px-4 pb-6 pt-4">
-              {capture.elementScreenshotDataUrl ? (
+              {screenshotPending ? (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2.5 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+                  {t("extension.panel.capturingScreenshot")}
+                </div>
+              ) : capture.elementScreenshotDataUrl ? (
                 <div className="overflow-hidden rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-shade)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
                   <button
                     type="button"
@@ -1373,14 +1380,14 @@ const CapturePanel = () => {
                     </button>
                   </div>
                 </div>
-              ) : (
+              ) : capture.screenshotCaptureError || isRegionCapture ? (
                 <p
                   role={capture.screenshotCaptureError ? "alert" : undefined}
                   className="rounded-[var(--yi-radius-lg)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5 text-[12px] leading-snug text-[color:var(--yi-ext-danger-text)]">
                   {capture.screenshotCaptureError ??
-                    "No screenshot available for this capture."}
+                    t("extension.panel.noScreenshot")}
                 </p>
-              )}
+              ) : null}
 
               {!isRegionCapture ? (
                 <DomContextPreview
@@ -1445,7 +1452,7 @@ const CapturePanel = () => {
                 <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
                   <span>Options</span>
                   <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-placeholder)] group-open:hidden">
-                    Project, space, priority
+                    Project, priority
                   </span>
                 </summary>
                 <div className="flex flex-col gap-4 px-3 pb-3 pt-2">
@@ -1462,30 +1469,6 @@ const CapturePanel = () => {
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  <div>
-                    <span className={fieldLabel}>Review space</span>
-                    <select
-                      id="capture-namespace"
-                      className={selectCls}
-                      value={spaceId}
-                      onChange={(e) => {
-                        setSpaceId(e.target.value)
-                        void setActiveSpaceId(e.target.value)
-                      }}>
-                      {projectSpaces.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
-                    {!projectSpaces.length ? (
-                      <p className="mt-1.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
-                        Create a space for this project from the extension
-                        popup.
-                      </p>
-                    ) : null}
                   </div>
 
                   <div>
@@ -1532,13 +1515,17 @@ const CapturePanel = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={saving || !body.trim() || !spaceId}
+                  disabled={
+                    saving || screenshotPending || !body.trim() || !spaceId
+                  }
                   aria-busy={saving}
                   className={btnPrimary}
                   onClick={() => void handleSave()}>
-                  {saving
-                    ? t("extension.panel.posting")
-                    : t("extension.panel.postFeedback")}
+                  {screenshotPending
+                    ? t("extension.panel.capturing")
+                    : saving
+                      ? t("extension.panel.posting")
+                      : t("extension.panel.postFeedback")}
                 </button>
               </div>
               <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
@@ -1572,6 +1559,7 @@ const CapturePanel = () => {
     return (
       <>
         <div
+          data-youin-extension-ui=""
           ref={panelRef}
           role="dialog"
           aria-modal="true"
@@ -1594,7 +1582,7 @@ const CapturePanel = () => {
                       ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
                       : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
                   }`}>
-                  {viewingMark.status === "closed" ? "Resolved" : "Open"}
+                  {viewingMark.status === "closed" ? "Closed" : "Open"}
                 </span>
                 {viewingMark.syncState === "pending" ? (
                   <span
@@ -1822,14 +1810,14 @@ const CapturePanel = () => {
                     disabled={saving || viewingMark.status === "closed"}
                     className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                     onClick={() => void setMarkStatus("closed" as MarkStatus)}>
-                    Resolved
+                    Closed
                   </button>
                 </div>
               </div>
 
               <div className="mt-5 flex flex-col gap-2">
                 <a
-                  href={`${WEB_APP_URL}/dashboard?space=all`}
+                  href={`${WEB_APP_URL}/dashboard`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
@@ -1917,15 +1905,16 @@ function FullImageOverlay({
   if (!image) return null
   return (
     <div
+      data-youin-extension-ui=""
       role="dialog"
       aria-modal="true"
       aria-label="Full image preview"
-      className="youin-full-image pointer-events-auto fixed inset-0 flex items-center justify-center bg-black/75 p-4"
-      style={{ zIndex: Z_PANEL + 1 }}
+      className="youin-full-image pointer-events-auto fixed inset-0 flex items-center justify-center bg-[oklch(18.4%_0.018_62_/_0.76)] p-4"
+      style={{ zIndex: Z_MODAL }}
       onClick={onClose}>
       <button
         type="button"
-        className="absolute right-3 top-3 min-h-11 min-w-11 rounded-full border-0 bg-white/90 text-[18px] font-semibold text-black shadow outline-none hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="absolute right-3 top-3 min-h-11 min-w-11 rounded-full border-0 bg-[color:var(--yi-paper)] text-[18px] font-semibold text-[color:var(--yi-ink)] shadow-[var(--yi-shadow-popover)] outline-none hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-paper)]"
         aria-label="Close full image preview"
         onClick={onClose}>
         ✕

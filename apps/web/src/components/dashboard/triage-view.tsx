@@ -17,7 +17,6 @@ import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
-import { FilterSelect, type FilterOption } from "@/components/filter-select";
 import { FadeIn } from "@/components/motion";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
@@ -88,52 +87,23 @@ export function TriageView({
   const [showListHelp, setShowListHelp] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
-  const selectedSpace = useMemo(() => {
-    if (filters.spaceId === "all") return null;
-    return workspace.spaces.find((s) => s.id === filters.spaceId) ?? null;
-  }, [filters.spaceId, workspace.spaces]);
-
   const selectedProject = useMemo(() => {
-    const projectFromSpace = selectedSpace
-      ? workspace.projects.find((project) => project.id === selectedSpace.projectId)
-      : null;
     return (
-      projectFromSpace ??
       workspace.projects.find((project) => project.id === filters.projectId) ??
       workspace.projects[0] ??
       null
     );
-  }, [filters.projectId, selectedSpace, workspace.projects]);
+  }, [filters.projectId, workspace.projects]);
 
   const activeProjectId = selectedProject?.id ?? null;
-  const projectSpaces = useMemo(
-    () =>
-      activeProjectId
-        ? workspace.spaces.filter((space) => space.projectId === activeProjectId)
-        : [],
-    [activeProjectId, workspace.spaces],
-  );
-
-  const spaceProjectById = useMemo(
-    () => new Map(workspace.spaces.map((space) => [space.id, space.projectId])),
-    [workspace.spaces],
-  );
-  const projectMarks = useMemo(
-    () =>
-      activeProjectId
-        ? workspace.marks.filter((mark) => spaceProjectById.get(mark.spaceId) === activeProjectId)
-        : [],
-    [activeProjectId, spaceProjectById, workspace.marks],
-  );
   const attentionScopeMarks = useMemo(
     () =>
-      filters.spaceId === "all"
-        ? projectMarks
-        : projectMarks.filter((mark) => mark.spaceId === filters.spaceId),
-    [filters.spaceId, projectMarks],
+      activeProjectId
+        ? workspace.marks.filter((mark) => mark.projectId === activeProjectId)
+        : [],
+    [activeProjectId, workspace.marks],
   );
 
-  const newMarkTargetSpace = selectedSpace ?? projectSpaces[0];
   const visibleMarks = useVisibleDashboardMarks();
   const firstMark = firstVisibleMark(visibleMarks);
   const firstMarkKey = firstMark?.displayKey ?? null;
@@ -170,7 +140,6 @@ export function TriageView({
   function clearFilters() {
     update(
       {
-        spaceId: "all",
         status: "all",
         workflowStatus: "all",
         priority: "all",
@@ -243,25 +212,6 @@ export function TriageView({
     return counts;
   }, [workspace.comments]);
 
-  const spaceOptions: ReadonlyArray<FilterOption> = useMemo(
-    () => {
-      const projectById = new Map(workspace.projects.map((p) => [p.id, p.name]));
-      return [
-        { value: "all", label: "All spaces" },
-        ...projectSpaces.map((s) => {
-          const projectName = projectById.get(s.projectId);
-          return {
-            value: s.id,
-            label: projectName
-              ? `${projectName} / ${s.code} · ${s.name}`
-              : `${s.code} · ${s.name}`,
-          };
-        }),
-      ];
-    },
-    [projectSpaces, workspace.projects],
-  );
-
   /** Receives the full new selection set from MarkTable. */
   function handleSelectionChange(ids: Set<string>) {
     setSelectedIds(ids);
@@ -280,7 +230,7 @@ export function TriageView({
     setSelectedIds(new Set());
     if (failed === 0) {
       toast.success(
-        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "resolved" : "reopened"}.`,
+        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
       );
     }
   }
@@ -322,9 +272,9 @@ export function TriageView({
     priority: MarkPriority;
     assigneeId: string | null;
   }) {
-    const targetSpace = selectedSpace ?? projectSpaces[0];
-    if (!targetSpace) {
-      toast.error("Create a space before adding marks.");
+    const targetProject = selectedProject ?? workspace.projects[0];
+    if (!targetProject) {
+      toast.error("Create a project before adding marks.");
       return;
     }
     try {
@@ -332,13 +282,13 @@ export function TriageView({
         title: input.title,
         description: input.description,
         page: input.page,
-        spaceId: targetSpace.id,
+        projectId: targetProject.id,
         labelIds: input.labelIds,
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
       const params = new URLSearchParams(searchParamString);
-      params.set("space", targetSpace.id);
+      params.set("project", targetProject.id);
       router.push(markHref(created.displayKey, params));
       setShowNew(false);
     } catch {
@@ -373,25 +323,24 @@ export function TriageView({
             onApplyQueue={applyQueue}
           />
 
-          <FadeIn className="flex flex-wrap items-center gap-1.5 rounded-md bg-paper-2 p-1.5">
-            <FilterSelect
-              value={filters.spaceId}
-              onValueChange={(v) => update({ spaceId: v, markId: null }, { resetPage: true })}
-              options={spaceOptions}
-              ariaLabel={selectedProject ? `Select space in ${selectedProject.name}` : "Select space"}
-              triggerClassName="h-11 sm:h-9"
-            />
-            <div className="ml-auto flex items-center gap-1.5">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowNew(true)}
-                className="h-11 gap-1.5 bg-paper-3 px-3 text-ui-md text-ink hover:bg-paper-3/80 sm:h-9 sm:text-ui-sm"
-              >
-                <Plus className="size-3.5 shrink-0 opacity-80" />
-                New mark
-              </Button>
+          <FadeIn className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 p-1.5">
+            <div className="min-w-0 flex-1 px-2">
+              <p className="truncate text-ui-xs text-ink-3">
+                Project
+                <span className="ml-1 font-medium text-ink">
+                  {selectedProject?.name ?? "No project"}
+                </span>
+              </p>
             </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowNew(true)}
+              className="h-11 gap-1.5 bg-paper-3 px-3 text-ui-md text-ink hover:bg-paper-3/80 sm:h-9 sm:text-ui-sm"
+            >
+              <Plus className="size-3.5 shrink-0 opacity-80" />
+              New mark
+            </Button>
           </FadeIn>
 
           <MarkFilters
@@ -406,11 +355,9 @@ export function TriageView({
               <DialogHeader>
                 <DialogTitle>New mark</DialogTitle>
                 <DialogDescription>
-                  {newMarkTargetSpace
-                    ? `Will be added to ${newMarkTargetSpace.name}.`
-                    : selectedProject
-                      ? `Create a space in ${selectedProject.name} first.`
-                      : "Create a space first to add marks."}
+                  {selectedProject
+                    ? `Will be added to ${selectedProject.name}.`
+                    : "Create a project first to add marks."}
                 </DialogDescription>
               </DialogHeader>
               <NewMarkForm
@@ -419,7 +366,7 @@ export function TriageView({
                 defaultAssigneeId={userId ?? undefined}
                 open={showNew}
                 variant="plain"
-                targetSpaceLabel={newMarkTargetSpace?.name}
+                targetProjectLabel={selectedProject?.name}
                 onSubmit={handleCreateMark}
                 onCancel={() => setShowNew(false)}
               />

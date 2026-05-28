@@ -43,7 +43,7 @@ export const getStyle: PlasmoGetStyle = () => {
   return style
 }
 
-const Z_DRAWER = EXTENSION_LAYER.panel - 1
+const Z_DRAWER = EXTENSION_LAYER.drawer
 
 chrome.runtime.onMessage.addListener((msg: unknown, _sender, sendResponse) => {
   if (
@@ -302,6 +302,7 @@ const AnnotationDrawer = () => {
 
   return (
     <aside
+      data-youin-extension-ui=""
       role="dialog"
       aria-modal="false"
       aria-label="Page feedback"

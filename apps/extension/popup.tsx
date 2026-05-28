@@ -29,7 +29,6 @@ import {
   getMarks,
   getMarksForPage,
   getProjects,
-  getSpaces,
   getWidgetSettings,
   hostForUrl,
   isHostDisabled,
@@ -57,7 +56,10 @@ import {
 const SYNC_NOW = "youin:sync-now"
 
 type AuthView = "checking" | "signedOut" | "signedIn"
-type ReviewCommandType = "youin:toggle-drawer"
+type ReviewCommandType =
+  | "youin:start-inspect"
+  | "youin:start-screenshot"
+  | "youin:toggle-drawer"
 type ReviewCommandMessage = { type: ReviewCommandType }
 
 type ReviewCommandScripts = {
@@ -67,6 +69,12 @@ type ReviewCommandScripts = {
 
 const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
   {
+    "youin:start-inspect": {
+      required: [REVIEW_MODE_SCRIPT]
+    },
+    "youin:start-screenshot": {
+      required: [REVIEW_MODE_SCRIPT]
+    },
     "youin:toggle-drawer": {
       required: [REVIEW_MODE_SCRIPT, ANNOTATION_DRAWER_SCRIPT]
     }
@@ -170,10 +178,43 @@ async function openDrawerOnActiveTab(): Promise<{
   )
 }
 
+async function startReviewOnActiveTab(mode: "inspect" | "screenshot"): Promise<{
+  ok: boolean
+  error?: string
+}> {
+  return sendReviewCommandToActiveTab(
+    {
+      type:
+        mode === "screenshot" ? "youin:start-screenshot" : "youin:start-inspect"
+    },
+    t("extension.popup.openWebsite"),
+    t("extension.popup.startReviewFailed")
+  )
+}
+
 type SyncActivity = {
   syncing: boolean
   migrating: boolean
 }
+
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ")
+}
+
+const FOCUS_OUTLINE =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+const PRESS_FEEDBACK =
+  "active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+const QUIET_ACTION =
+  "inline-flex min-h-9 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45"
+const PRIMARY_ACTION =
+  "inline-flex min-h-9 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+const QUIET_TILE =
+  "flex min-w-0 flex-col justify-between rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-2)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)] disabled:opacity-70"
+const SELECT_CONTROL =
+  "youin-input min-h-9 w-full cursor-pointer rounded-md px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] disabled:cursor-not-allowed disabled:opacity-60"
+const INLINE_ALERT =
+  "rounded-md bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]"
 
 function IndexPopup() {
   const [view, setView] = useState<AuthView>("checking")
@@ -181,8 +222,6 @@ function IndexPopup() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
-  const [spaces, setSpaces] = useState<Space[]>([])
-  const [spaceId, setSpaceId] = useState<string>("")
   const [workspaceLabel, setWorkspaceLabel] = useState<string>("Local")
   const [pageLabel, setPageLabel] = useState<string>("Current page")
   const [canReviewPage, setCanReviewPage] = useState(false)
@@ -241,28 +280,21 @@ function IndexPopup() {
   }, [])
 
   const refreshSpaces = useCallback(async () => {
-    const [projectRows, spaceRows, activeProject, activeSpace] =
-      await Promise.all([
-        getProjects(),
-        getSpaces(),
-        getActiveProjectId(),
-        getActiveSpaceId()
-      ])
+    const [projectRows, activeProject, activeSpace] = await Promise.all([
+      getProjects(),
+      getActiveProjectId(),
+      getActiveSpaceId()
+    ])
     setProjects(projectRows)
     const nextProjectId = projectRows.some((x) => x.id === activeProject)
       ? activeProject
-      : projectRows[0]?.id ?? ""
+      : projectRows.some((x) => x.id === activeSpace)
+        ? activeSpace
+        : projectRows[0]?.id ?? ""
     setProjectId(nextProjectId)
-    const projectSpaces = spaceRows.filter(
-      (space) => space.projectId === nextProjectId
-    )
-    const nextSpaceId = projectSpaces.some((x) => x.id === activeSpace)
-      ? activeSpace
-      : projectSpaces[0]?.id ?? ""
+    const nextSpaceId = nextProjectId
     if (nextProjectId !== activeProject) void setActiveProjectId(nextProjectId)
     if (nextSpaceId !== activeSpace) void setActiveSpaceId(nextSpaceId)
-    setSpaces(spaceRows)
-    setSpaceId(nextSpaceId)
   }, [])
 
   const refreshWidgetSettings = useCallback(async () => {
@@ -413,6 +445,16 @@ function IndexPopup() {
     })()
   }
 
+  const startPageReview = (mode: "inspect" | "screenshot") => {
+    setActionError(null)
+    void (async () => {
+      const r = await startReviewOnActiveTab(mode)
+      if (!r.ok)
+        setActionError(r.error ?? t("extension.popup.startReviewFailed"))
+      else window.close()
+    })()
+  }
+
   const enableFloatingControl = () => {
     setFloatingControl(true)
     void setWidgetSettings({ fabVisible: true })
@@ -481,15 +523,12 @@ function IndexPopup() {
     })()
   }
 
-  const projectSpaces = spaces.filter((space) => space.projectId === projectId)
   const floatingCaptureStatus = domainDisabled
     ? t("extension.popup.disabledOnSite")
     : !canReviewPage
       ? t("extension.popup.captureUnavailable")
-      : !spaceId
-        ? view === "signedIn" && !projectSpaces.length
-          ? t("extension.popup.setupSpaceBody")
-          : t("extension.popup.noSpaceSelected")
+      : !projectId
+        ? t("extension.popup.noSpaceSelected")
         : floatingControl
           ? t("extension.popup.floatingReady")
           : t("extension.popup.floatingHidden")
@@ -497,17 +536,6 @@ function IndexPopup() {
   const selectProject = (id: string) => {
     setProjectId(id)
     void setActiveProjectId(id)
-    const nextSpace = spaces.find((space) => space.projectId === id)
-    if (nextSpace && nextSpace.id !== spaceId) {
-      selectSpace(nextSpace.id)
-    } else if (!nextSpace) {
-      setSpaceId("")
-      void setActiveSpaceId("")
-    }
-  }
-
-  const selectSpace = (id: string) => {
-    setSpaceId(id)
     void setActiveSpaceId(id)
   }
 
@@ -518,10 +546,6 @@ function IndexPopup() {
       setSpaceErr(null)
       return
     }
-    if (!projectId) {
-      setSpaceErr(t("extension.popup.chooseProjectFirst"))
-      return
-    }
     void (async () => {
       const sess = await getSession()
       if (sess?.user?.id) {
@@ -530,13 +554,15 @@ function IndexPopup() {
           projectId,
           name
         )
-        if (!created.ok || !created.spaceId) {
+        const createdId = created.projectId ?? created.spaceId
+        if (!created.ok || !createdId) {
           setSpaceErr(created.error ?? t("extension.popup.couldNotCreateSpace"))
           return
         }
         await syncWorkspaceFromRemote(sess.user.id)
         await refreshSpaces()
-        await setActiveSpaceId(created.spaceId)
+        await setActiveProjectId(createdId)
+        await setActiveSpaceId(createdId)
         setNewSpaceName("")
         setCreatingSpace(false)
         setSpaceErr(null)
@@ -549,12 +575,13 @@ function IndexPopup() {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "") || "space"
       const id = `${slug}-${Date.now().toString(36)}`
-      const next: Space = { id, projectId, name, createdAt: Date.now() }
+      const next: Space = { id, projectId: id, name, createdAt: Date.now() }
       const added = await addSpace(next)
       if (!added) {
         setSpaceErr(t("extension.popup.couldNotSaveSpace"))
         return
       }
+      await setActiveProjectId(id)
       await setActiveSpaceId(id)
       await refreshSpaces()
       setNewSpaceName("")
@@ -594,7 +621,10 @@ function IndexPopup() {
             </div>
             <button
               type="button"
-              className="min-h-8 rounded-md border-0 bg-transparent px-2 text-[11px] font-semibold text-[color:var(--yi-ext-accent)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              className={cx(
+                "min-h-8 rounded-md bg-transparent px-2 text-[11px] font-semibold text-[color:var(--yi-ext-accent)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)]",
+                FOCUS_OUTLINE
+              )}
               onClick={() => setShowAuth(false)}>
               {t("extension.popup.closeSignIn")}
             </button>
@@ -620,7 +650,10 @@ function IndexPopup() {
           <button
             ref={gearRef}
             type="button"
-            className="flex size-8 items-center justify-center rounded-md bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            className={cx(
+              "flex size-8 items-center justify-center rounded-md bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)]",
+              FOCUS_OUTLINE
+            )}
             aria-controls="youin-popup-account-menu"
             aria-expanded={menuOpen}
             aria-label={t("extension.popup.accountMenuAria")}
@@ -633,7 +666,7 @@ function IndexPopup() {
               id="youin-popup-account-menu"
               role="menu"
               aria-label={t("extension.popup.accountMenuLabel")}
-              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-md bg-[color:var(--yi-paper-elevated)] py-1 shadow-[var(--yi-shadow-popover)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+              className="absolute end-0 top-[calc(100%+6px)] z-10 min-w-[11rem] rounded-md bg-[color:var(--yi-paper-elevated)] py-1 shadow-[var(--yi-shadow-popover)]">
               {view === "signedIn" ? (
                 <>
                   <p
@@ -647,7 +680,7 @@ function IndexPopup() {
                     }}
                     type="button"
                     role="menuitem"
-                    className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
+                    className="block w-full cursor-pointer bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                     onClick={() => {
                       setMenuOpen(false)
                       void signOut()
@@ -662,7 +695,7 @@ function IndexPopup() {
                   }}
                   type="button"
                   role="menuitem"
-                  className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
+                  className="block w-full cursor-pointer bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                   onClick={() => {
                     setMenuOpen(false)
                     setShowAuth(true)
@@ -675,7 +708,7 @@ function IndexPopup() {
                   menuItemRefs.current[1] = node
                 }}
                 role="menuitem"
-                href={`${WEB_APP_URL}/dashboard?space=all`}
+                href={`${WEB_APP_URL}/dashboard`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-between gap-3 px-3 py-2 text-[12px] text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
@@ -700,18 +733,18 @@ function IndexPopup() {
           </div>
           <span
             aria-label={badgeAria}
-            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ring-1 ${
+            className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
               view === "signedIn"
                 ? isSyncingBadge
-                  ? "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)] ring-[color:var(--yi-ext-border-hairline)]"
-                  : "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)] ring-[color:var(--yi-ok-soft)]"
-                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)] ring-[color:var(--yi-ext-danger-border)]"
+                  ? "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
+                  : "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
             }`}>
             {badgeLabel}
           </span>
         </div>
 
-        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2.5 ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2.5">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color:var(--yi-mark-soft)]">
               <YouInMark />
@@ -727,35 +760,74 @@ function IndexPopup() {
             {!floatingControl && canReviewPage && !domainDisabled ? (
               <button
                 type="button"
-                className="min-h-8 shrink-0 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+                className={cx(QUIET_ACTION, FOCUS_OUTLINE, PRESS_FEEDBACK)}
                 onClick={enableFloatingControl}>
                 {t("extension.popup.enableFloatingButton")}
               </button>
             ) : null}
           </div>
           {actionError ? (
-            <p
-              role="alert"
-              className="mt-2 rounded-md bg-[color:var(--yi-ext-danger-bg)] px-2 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
+            <p role="alert" className={cx("mt-2", INLINE_ALERT)}>
               {actionError}
             </p>
           ) : null}
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={!canReviewPage || domainDisabled || !projectId}
+            className={cx(
+              "flex min-h-[58px] min-w-0 flex-col justify-between rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-left text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)]",
+              FOCUS_OUTLINE,
+              PRESS_FEEDBACK
+            )}
+            onClick={() => startPageReview("inspect")}>
+            <span className="block truncate text-[12px] font-semibold">
+              {t("extension.popup.inspect")}
+            </span>
+            <span className="mt-1 block text-[10px] font-medium opacity-80">
+              {t("extension.popup.inspectStartHint")}
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={!canReviewPage || domainDisabled || !projectId}
+            className={cx(
+              QUIET_TILE,
+              "min-h-[58px]",
+              FOCUS_OUTLINE,
+              PRESS_FEEDBACK
+            )}
+            onClick={() => startPageReview("screenshot")}>
+            <span className="block truncate text-[12px] font-semibold">
+              {t("extension.popup.screenshot")}
+            </span>
+            <span className="mt-1 block text-[10px] font-medium text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.popup.screenshotStartHint")}
+            </span>
+          </button>
         </div>
 
         <div className="mt-2 grid grid-cols-[minmax(0,1fr)_6.25rem] gap-2">
           <button
             type="button"
             disabled={!canReviewPage || domainDisabled}
-            className="flex min-h-[54px] min-w-0 flex-col justify-between rounded-md border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-left text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+            className={cx(
+              QUIET_TILE,
+              "min-h-[50px]",
+              FOCUS_OUTLINE,
+              PRESS_FEEDBACK
+            )}
             onClick={openPageFeedback}>
             <span className="block truncate text-[12px] font-semibold">
               {t("extension.popup.openPageFeedback")}
             </span>
-            <span className="mt-1 block text-[10px] font-medium opacity-80">
+            <span className="mt-1 block text-[10px] font-medium text-[color:var(--yi-mark)]">
               {t("extension.popup.openFeedbackCount", { count: openCount })}
             </span>
           </button>
-          <div className="flex min-h-[54px] flex-col justify-between rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+          <div className="flex min-h-[54px] flex-col justify-between rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left">
             <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
               {t("extension.popup.resolved")}
             </span>
@@ -776,12 +848,12 @@ function IndexPopup() {
               {workspaceLabel}
             </p>
             <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
-              {projectSpaces.find((space) => space.id === spaceId)?.name ??
+              {projects.find((project) => project.id === projectId)?.name ??
                 t("extension.popup.noSpaceLabel")}
             </p>
           </div>
           <a
-            href={`${WEB_APP_URL}/dashboard?space=all`}
+            href={`${WEB_APP_URL}/dashboard${projectId ? `?project=${encodeURIComponent(projectId)}` : ""}`}
             target="_blank"
             rel="noreferrer"
             className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
@@ -793,8 +865,8 @@ function IndexPopup() {
           </a>
         </div>
 
-        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2 ring-1 ring-[color:var(--yi-ext-border-hairline)]">
-          <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-center gap-2">
+        <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2">
+          <div className="grid grid-cols-[4.25rem_minmax(0,1fr)_2.25rem] items-center gap-2">
             <label
               htmlFor="youin-popup-project"
               className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
@@ -802,7 +874,7 @@ function IndexPopup() {
             </label>
             <select
               id="youin-popup-project"
-              className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+              className={SELECT_CONTROL}
               value={projectId}
               disabled={!projects.length}
               onChange={(e) => selectProject(e.target.value)}>
@@ -816,36 +888,15 @@ function IndexPopup() {
                 <option value="">{t("extension.popup.noProjectLabel")}</option>
               )}
             </select>
-          </div>
-
-          <div className="mt-1.5 grid grid-cols-[4.25rem_minmax(0,1fr)_2.25rem] items-center gap-2">
-            <label
-              htmlFor="youin-popup-space"
-              className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              {t("extension.popup.spaceLabel")}
-            </label>
-            <select
-              id="youin-popup-space"
-              className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
-              value={spaceId}
-              disabled={!projectSpaces.length}
-              onChange={(e) => selectSpace(e.target.value)}>
-              {projectSpaces.length ? (
-                projectSpaces.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">{t("extension.popup.noSpaceLabel")}</option>
-              )}
-            </select>
             <button
               type="button"
               title={t("extension.popup.newReviewSpace")}
               aria-label={t("extension.popup.newReviewSpaceAria")}
-              disabled={!projectId}
-              className="flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+              className={cx(
+                "flex min-h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45",
+                FOCUS_OUTLINE,
+                PRESS_FEEDBACK
+              )}
               onClick={() => {
                 setCreatingSpace((c) => !c)
                 setSpaceErr(null)
@@ -854,11 +905,9 @@ function IndexPopup() {
             </button>
           </div>
           {creatingSpace ? (
-            <div className="mt-2 flex flex-col gap-1.5 border-t border-[color:var(--yi-ext-border-hairline)] pt-2">
+            <div className="mt-2 flex flex-col gap-1.5 pt-2">
               {spaceErr ? (
-                <p
-                  role="alert"
-                  className="rounded-md bg-[color:var(--yi-ext-danger-bg)] px-2 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
+                <p role="alert" className={INLINE_ALERT}>
                   {spaceErr}
                 </p>
               ) : null}
@@ -875,7 +924,7 @@ function IndexPopup() {
               />
               <button
                 type="button"
-                className="min-h-9 rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+                className={cx(PRIMARY_ACTION, FOCUS_OUTLINE, PRESS_FEEDBACK)}
                 onClick={() => submitNewSpace()}>
                 {t("extension.popup.createSpace")}
               </button>
@@ -886,7 +935,7 @@ function IndexPopup() {
 
       {view === "signedIn" && workspaceMissing ? (
         <div className="px-4 py-2">
-          <div className="rounded-md bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5 ring-1 ring-[color:var(--yi-ext-danger-border)]">
+          <div className="rounded-md bg-[color:var(--yi-ext-danger-bg)] px-3 py-2.5">
             <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
               {t("extension.popup.noWorkspaceTitle")}
             </p>
@@ -904,9 +953,9 @@ function IndexPopup() {
         </div>
       ) : null}
 
-      {view === "signedIn" && !workspaceMissing && !projectSpaces.length ? (
+      {view === "signedIn" && !workspaceMissing && !projects.length ? (
         <div className="px-4 py-2">
-          <div className="rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2.5 ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+          <div className="rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2.5">
             <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
               {t("extension.popup.setupSpaceTitle")}
             </p>
@@ -926,7 +975,7 @@ function IndexPopup() {
 
       {view === "signedOut" && !showAuth ? (
         <div className="px-4 py-2.5">
-          <div className="flex items-center justify-between gap-3 rounded-md bg-[color:var(--yi-mark-soft)] px-3 py-2 ring-1 ring-[color:var(--yi-ext-danger-border)]">
+          <div className="flex items-center justify-between gap-3 rounded-md bg-[color:var(--yi-mark-soft)] px-3 py-2">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
                 {t("extension.popup.localFeedback")}
@@ -937,7 +986,11 @@ function IndexPopup() {
             </div>
             <button
               type="button"
-              className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
+              className={cx(
+                "inline-flex min-h-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)]",
+                FOCUS_OUTLINE,
+                PRESS_FEEDBACK
+              )}
               onClick={() => setShowAuth(true)}>
               {t("extension.popup.signIn")}
             </button>
@@ -946,8 +999,12 @@ function IndexPopup() {
       ) : null}
 
       <section className="px-4 py-2">
-        <details className="group rounded-md bg-transparent open:bg-[color:var(--yi-paper-2)] open:ring-1 open:ring-[color:var(--yi-ext-border-hairline)]">
-          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
+        <details className="group rounded-md bg-transparent open:bg-[color:var(--yi-paper-2)]">
+          <summary
+            className={cx(
+              "flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] [&::-webkit-details-marker]:hidden",
+              FOCUS_OUTLINE
+            )}>
             <span>{t("extension.popup.options")}</span>
             <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:hidden">
               {t("extension.popup.optionsSummary")}
@@ -981,13 +1038,13 @@ function IndexPopup() {
               <button
                 type="button"
                 disabled={syncingNow || view !== "signedIn"}
-                className="min-h-9 shrink-0 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1.5 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                className={cx(QUIET_ACTION, FOCUS_OUTLINE)}
                 onClick={runManualSync}>
                 {syncButtonLabel}
               </button>
             </div>
 
-            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-md bg-[color:var(--yi-paper-elevated)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+            <div className="mt-2 divide-y divide-[color:var(--yi-ext-border-hairline)] rounded-md bg-[color:var(--yi-paper-elevated)]">
               <ToggleRow
                 label={t("extension.popup.floatingReviewButton")}
                 checked={floatingControl}
@@ -1020,7 +1077,7 @@ function IndexPopup() {
               </span>
               <select
                 value={widgetCorner}
-                className="min-h-9 w-full cursor-pointer rounded-md border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2 py-2 text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+                className={SELECT_CONTROL}
                 onChange={(e) => {
                   const next = e.target.value as WidgetCorner
                   setWidgetCorner(next)
@@ -1034,7 +1091,7 @@ function IndexPopup() {
             </label>
 
             {currentHost ? (
-              <div className="mt-2 rounded-md bg-[color:var(--yi-paper-elevated)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+              <div className="mt-2 rounded-md bg-[color:var(--yi-paper-elevated)]">
                 <ToggleRow
                   label={t("extension.popup.disableOnHost", {
                     host: currentHost
@@ -1130,7 +1187,10 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         type="button"
         onClick={handleGoogle}
         disabled={waitingGoogle}
-        className="inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+        className={cx(
+          "inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-3)] disabled:cursor-not-allowed disabled:opacity-60",
+          FOCUS_OUTLINE
+        )}
         aria-label={t("extension.popup.continueGoogleAria")}>
         <GoogleIcon />
         {t("extension.popup.continueGoogle")}
@@ -1178,9 +1238,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         </label>
 
         {error ? (
-          <p
-            role="alert"
-            className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-1.5 text-[11px] text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
+          <p role="alert" className={INLINE_ALERT}>
             {error}
           </p>
         ) : null}
@@ -1188,7 +1246,7 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
         <button
           type="submit"
           disabled={loading || !email.trim() || !password}
-          className="mt-1 inline-flex min-h-9 items-center justify-center rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-accent)] px-3 py-1.5 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-mark-bright)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:translate-y-0">
+          className={cx("mt-1", PRIMARY_ACTION, FOCUS_OUTLINE, PRESS_FEEDBACK)}>
           {loading
             ? t("extension.popup.signingIn")
             : t("extension.popup.signIn")}
@@ -1321,7 +1379,7 @@ function SignedInBlock({
         <p
           role="status"
           aria-live="polite"
-          className="rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+          className="rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
           {migrating
             ? t("extension.popup.importingFeedback")
             : t("extension.popup.syncingWorkspace")}
@@ -1356,9 +1414,7 @@ function MigrationBanner({
 }) {
   if ("error" in status && status.error) {
     return (
-      <div
-        role="alert"
-        className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)] ring-1 ring-[color:var(--yi-ext-danger-border)]">
+      <div role="alert" className={INLINE_ALERT}>
         {t("extension.popup.migrationImportFailed", { error: status.error })}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
@@ -1383,12 +1439,12 @@ function MigrationBanner({
   }
   const spacesPart =
     r.spacesCreated > 0
-      ? ` into ${r.spacesCreated} new space${r.spacesCreated === 1 ? "" : "s"}`
+      ? ` into ${r.spacesCreated} new project${r.spacesCreated === 1 ? "" : "s"}`
       : r.spacesMatched > 0
-        ? ` into ${r.spacesMatched} existing space${r.spacesMatched === 1 ? "" : "s"}`
+        ? ` into ${r.spacesMatched} existing project${r.spacesMatched === 1 ? "" : "s"}`
         : ""
   return (
-    <div className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ok-soft)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ok)] ring-1 ring-[color:var(--yi-ok-soft)]">
+    <div className="rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ok-soft)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ok)]">
       {t("extension.popup.migrationSuccess", {
         count: r.marksImported,
         plural: r.marksImported === 1 ? "" : "s",

@@ -8,12 +8,10 @@ import type {
   MarkComment,
   MarkItem,
   MarkPriority,
-  SpacePriority,
   Workspace,
   WorkspaceLabel,
   WorkspaceProject,
   WorkspaceReviewLink,
-  WorkspaceSpace,
   WorkspaceView,
   WorkspaceViewConfig,
   WorkspaceViewFilters,
@@ -181,7 +179,7 @@ export function useDeleteWorkspaceViewMutation() {
 }
 
 // ---------------------------------------------------------------------------
-// Spaces
+// Projects
 // ---------------------------------------------------------------------------
 
 export function useCreateProjectMutation() {
@@ -202,143 +200,6 @@ export function useCreateProjectMutation() {
   });
 }
 
-export function useCreateSpaceMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      projectId,
-      name,
-      notes,
-    }: {
-      projectId: string;
-      name: string;
-      notes: string;
-    }) => ws.createSpaceAction(projectId, name, notes),
-    onSuccess: (space: WorkspaceSpace) => {
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        spaces: [...workspace.spaces, space],
-      }));
-      toast.success(`Created “${space.name}”.`);
-    },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this space.")),
-    onSettled: () => invalidateWorkspace(queryClient),
-  });
-}
-
-export function useUpdateSpaceMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      spaceId,
-      name,
-      notes,
-    }: {
-      spaceId: string;
-      name: string;
-      notes: string;
-    }) => ws.updateSpaceAction(spaceId, { name, notes }),
-    onMutate: async ({ spaceId, name, notes }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        spaces: workspace.spaces.map((space) =>
-          space.id === spaceId ? { ...space, name, notes } : space,
-        ),
-      }));
-      return context;
-    },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't save these details."));
-    },
-    onSuccess: () => toast.success("Space updated."),
-    onSettled: () => invalidateWorkspace(queryClient),
-  });
-}
-
-export function useToggleSpacePinnedMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ws.toggleSpacePinnedAction,
-    onMutate: async (spaceId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        spaces: workspace.spaces.map((space) =>
-          space.id === spaceId ? { ...space, pinned: !space.pinned } : space,
-        ),
-      }));
-      return context;
-    },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't update pinned state."));
-    },
-    onSettled: () => invalidateWorkspace(queryClient),
-  });
-}
-
-export function useUpdateSpacePriorityMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      spaceId,
-      priority,
-    }: {
-      spaceId: string;
-      priority: SpacePriority;
-    }) => ws.updateSpacePriorityAction(spaceId, priority),
-    onMutate: async ({ spaceId, priority }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        spaces: workspace.spaces.map((space) =>
-          space.id === spaceId ? { ...space, priority } : space,
-        ),
-      }));
-      return context;
-    },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't update priority."));
-    },
-    onSettled: () => invalidateWorkspace(queryClient),
-  });
-}
-
-export function useDeleteSpaceMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ws.deleteSpaceAction,
-    onMutate: async (spaceId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        spaces: workspace.spaces.filter((space) => space.id !== spaceId),
-        marks: workspace.marks.filter((mark) => mark.spaceId !== spaceId),
-        comments: workspace.comments.filter(
-          (comment) =>
-            workspace.marks.find((mark) => mark.id === comment.markId)?.spaceId !==
-            spaceId,
-        ),
-      }));
-      return context;
-    },
-    onSuccess: () => toast.success("Space deleted."),
-    onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't delete this space."));
-    },
-    onSettled: () => invalidateWorkspace(queryClient),
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Marks
 // ---------------------------------------------------------------------------
@@ -347,7 +208,7 @@ export interface CreateMarkInput {
   title: string;
   description: string;
   page: string;
-  spaceId: string;
+  projectId: string;
   labelIds: string[];
   assigneeId?: string | null;
   priority?: MarkPriority;
@@ -358,26 +219,16 @@ export function useCreateMarkMutation() {
   return useMutation({
     mutationFn: async (input: CreateMarkInput): Promise<MarkItem> => {
       const created = await ws.createMarkAction(input);
-      const bundle = getWorkspaceQueryData(queryClient);
-      const space = bundle?.workspace.spaces.find((s) => s.id === input.spaceId);
-      const spaceCode = space?.code ?? "?";
-      const workflowStatusId =
-        created.workflowStatusId ??
-        defaultWorkflowStatusForLifecycle(
-          bundle?.workspace.workflowStatuses ?? [],
-          "open",
-        )?.id;
       return {
         id: created.id,
-        spaceId: input.spaceId,
-        spaceCode,
+        projectId: input.projectId,
         seq: created.seq,
-        displayKey: formatMarkDisplayKey(spaceCode, created.seq),
+        displayKey: formatMarkDisplayKey(created.seq),
         title: input.title.trim(),
         page: normalizeMarkPageUrl(input.page),
         description: input.description || "",
         status: "open",
-        workflowStatusId,
+        workflowStatusId: created.workflowStatusId,
         priority: input.priority ?? "medium",
         pinned: false,
         labelIds: [...input.labelIds],
@@ -416,7 +267,7 @@ export function useToggleMarkStatusMutation() {
             workflowStatusId: defaultWorkflowStatusForLifecycle(
               workspace.workflowStatuses,
               status,
-            )?.id,
+            )?.id ?? mark.workflowStatusId,
           };
         }),
       }));
@@ -518,16 +369,13 @@ export function useUpdateMarkMutation() {
         title?: string;
         description?: string;
         page?: string;
-        spaceId?: string;
+        projectId?: string;
       };
     }) => ws.updateMarkFieldsAction(markId, updates),
     onMutate: async ({ markId, updates }) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => {
-        const nextSpace = updates.spaceId
-          ? workspace.spaces.find((space) => space.id === updates.spaceId)
-          : undefined;
         return {
           ...workspace,
           marks: workspace.marks.map((mark) =>
@@ -543,15 +391,8 @@ export function useUpdateMarkMutation() {
                   ...(typeof updates.page === "string"
                     ? { page: normalizeMarkPageUrl(updates.page) }
                     : {}),
-                  ...(updates.spaceId
-                    ? {
-                        spaceId: updates.spaceId,
-                        spaceCode: nextSpace?.code ?? mark.spaceCode,
-                        displayKey: formatMarkDisplayKey(
-                          nextSpace?.code ?? mark.spaceCode,
-                          mark.seq,
-                        ),
-                      }
+                  ...(updates.projectId
+                    ? { projectId: updates.projectId }
                     : {}),
                 }
               : mark,

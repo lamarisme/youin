@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-
-import SpacesClient from "../spaces-client";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Space",
+  title: "Dashboard",
 };
 
-export default async function SpacePage({
-  params,
-}: {
-  params: Promise<{ space: string }>;
-}) {
-  const { space } = await params;
-  return <SpacesClient spaceParam={space} />;
+export default function SpacePage() {
+  redirect("/dashboard");
 }

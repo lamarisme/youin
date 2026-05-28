@@ -6,7 +6,7 @@ export interface InboxEvent {
   id: string;
   markId: string;
   markTitle: string;
-  spaceId: string;
+  projectId: string;
   actorId: string;
   actorName: string;
   actorUsername: string;
@@ -22,7 +22,7 @@ export interface InboxGroup {
   markId: string;
   markDisplayKey: string;
   markTitle: string;
-  spaceId: string;
+  projectId: string;
   events: InboxEvent[];
   latestAt: string;
   unreadCount: number;
@@ -81,7 +81,7 @@ export function buildInboxSnapshot({
         id: event.id,
         markId: event.markId,
         markTitle: mark.title?.trim() || "(untitled)",
-        spaceId: mark.spaceId,
+        projectId: mark.projectId,
         actorId: event.actorId,
         actorName,
         actorUsername: member?.username?.trim() ?? "",
@@ -109,9 +109,9 @@ export function buildInboxSnapshot({
     const mark = markById.get(event.markId);
     groupMap.set(event.markId, {
       markId: event.markId,
-      markDisplayKey: mark?.displayKey ?? formatMarkDisplayKey(mark?.spaceCode ?? "UNKN", mark?.seq ?? 0),
+      markDisplayKey: mark?.displayKey ?? formatMarkDisplayKey(mark?.seq ?? 0),
       markTitle: event.markTitle,
-      spaceId: event.spaceId,
+      projectId: event.projectId,
       events: [event],
       latestAt: event.createdAt,
       unreadCount: event.unread ? 1 : 0,

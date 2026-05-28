@@ -7,7 +7,6 @@ import {
   Check,
   ChevronsUpDown,
   Inbox as InboxIcon,
-  Layers,
   LayoutGrid,
   Loader2,
   LogOut,
@@ -59,7 +58,6 @@ import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 const NAV_ITEMS = [
   { href: "/inbox", labelKey: "inbox" as const, icon: InboxIcon, shortcut: "I", exactOnly: false },
   { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
-  { href: "/spaces", labelKey: "spaces" as const, icon: Layers, shortcut: "S", exactOnly: false },
   { href: "/views", labelKey: "views" as const, icon: View, shortcut: "V", exactOnly: false },
 ] as const;
 
@@ -378,10 +376,9 @@ function ProjectSwitcher({
   searchParams: { get: (name: string) => string | null; toString: () => string };
   onNavigate: (href: string) => void;
 }) {
-  const { projects, spaces, marks, workspaceName } = useWorkspaceData((s) => ({
+  const { projects, marks, workspaceName } = useWorkspaceData((s) => ({
       workspaceName: s.workspace.name,
       projects: s.workspace.projects,
-      spaces: s.workspace.spaces,
       marks: s.workspace.marks,
     }));
   const { mutateAsync: createProject, isPending: isCreating } =
@@ -391,47 +388,33 @@ function ProjectSwitcher({
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const spaceById = useMemo(
-    () => new Map(spaces.map((space) => [space.id, space])),
-    [spaces],
-  );
   const projectStats = useMemo(() => {
-    const map = new Map<string, { spaces: number; marks: number }>();
-    for (const project of projects) map.set(project.id, { spaces: 0, marks: 0 });
-    for (const space of spaces) {
-      const stats = map.get(space.projectId);
-      if (stats) stats.spaces += 1;
-    }
+    const map = new Map<string, { marks: number }>();
+    for (const project of projects) map.set(project.id, { marks: 0 });
     for (const mark of marks) {
-      const projectId = spaceById.get(mark.spaceId)?.projectId;
-      const stats = projectId ? map.get(projectId) : null;
+      const stats = map.get(mark.projectId);
       if (stats) stats.marks += 1;
     }
     return map;
-  }, [marks, projects, spaceById, spaces]);
+  }, [marks, projects]);
 
   const urlProjectId = searchParams.get("project");
-  const urlSpaceId = searchParams.get("space");
   const selectedFromProject = projects.find((project) => project.id === urlProjectId);
-  const selectedFromSpace = urlSpaceId
-    ? projects.find((project) => project.id === spaceById.get(urlSpaceId)?.projectId)
-    : null;
-  const selectedProject = selectedFromProject ?? selectedFromSpace ?? projects[0] ?? null;
+  const selectedProject = selectedFromProject ?? projects[0] ?? null;
   const selectedProjectId = selectedProject?.id ?? null;
   const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
   const switcherLabel = selectedProject?.name ?? "No project";
   const switcherMeta = selectedProject
-    ? `${selectedStats?.spaces ?? 0} spaces · ${selectedStats?.marks ?? 0} marks`
+    ? `${selectedStats?.marks ?? 0} mark${(selectedStats?.marks ?? 0) === 1 ? "" : "s"}`
     : "Create a project to start";
 
   function hrefForProject(projectId: string): string {
     const params = new URLSearchParams(searchParams.toString());
     params.set("project", projectId);
-    params.delete("space");
     params.delete("mark");
     params.delete("page");
 
-    const base = pathname.startsWith("/spaces") || pathname.startsWith("/dashboard")
+    const base = pathname.startsWith("/dashboard")
       ? pathname
       : "/dashboard";
     const query = params.toString();
@@ -453,7 +436,7 @@ function ProjectSwitcher({
       setName("");
       setDescription("");
       setCreateOpen(false);
-      onNavigate(`/spaces?project=${encodeURIComponent(project.id)}`);
+      onNavigate(`/dashboard?project=${encodeURIComponent(project.id)}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't create this project.");
     }
@@ -520,7 +503,7 @@ function ProjectSwitcher({
                 <div className="min-w-0">
                   <p className="truncate">{project.name}</p>
                   <p className="text-ui-xs text-muted-foreground">
-                    {stats?.spaces ?? 0} spaces · {stats?.marks ?? 0} marks
+                    {stats?.marks ?? 0} mark{(stats?.marks ?? 0) === 1 ? "" : "s"}
                   </p>
                 </div>
               </DropdownMenuItem>
@@ -554,7 +537,7 @@ function ProjectSwitcher({
           <DialogHeader>
             <DialogTitle>New project</DialogTitle>
             <DialogDescription>
-              Group spaces for one client, release, product area, or review stream.
+              Group marks for one client, release, product area, or review stream.
             </DialogDescription>
           </DialogHeader>
           <div

@@ -16,7 +16,6 @@ import { Command } from "cmdk";
 import {
   Hash,
   Inbox,
-  Layers,
   LayoutGrid,
   Moon,
   Search,
@@ -37,7 +36,7 @@ interface PaletteCommand {
   id: string;
   title: string;
   subtitle?: string;
-  group: "navigate" | "views" | "spaces" | "theme";
+  group: "navigate" | "views" | "projects" | "theme";
   keywords?: string[];
   shortcut?: string;
   icon?: LucideIcon;
@@ -90,8 +89,8 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { spaces, views, workspaceId, userId } = useWorkspaceData((s) => ({
-      spaces: s.workspace.spaces,
+  const { projects, views, workspaceId, userId } = useWorkspaceData((s) => ({
+      projects: s.workspace.projects,
       views: s.workspace.views,
       workspaceId: s.workspaceId,
       userId: s.userId,
@@ -132,7 +131,6 @@ function CommandPaletteDialog({
       const navMap: Record<string, string> = {
         d: "/dashboard",
         i: "/inbox",
-        s: "/spaces",
         v: "/views",
         c: "/account",
       };
@@ -191,15 +189,6 @@ function CommandPaletteDialog({
         run: () => router.push("/views"),
       },
       {
-        id: "nav-spaces",
-        title: t("nav.spaces"),
-        subtitle: t("nav.spacesSub"),
-        group: "navigate",
-        shortcut: "G S",
-        icon: Layers,
-        run: () => router.push("/spaces"),
-      },
-      {
         id: "nav-account",
         title: t("nav.account"),
         subtitle: t("nav.accountSub"),
@@ -217,14 +206,14 @@ function CommandPaletteDialog({
         run: () => toggleTheme(),
       },
     ];
-    const spaceCommands: PaletteCommand[] = spaces.map((s) => ({
-      id: `space-${s.id}`,
-      title: s.name,
-      subtitle: t("spaceSub"),
-      group: "spaces" as const,
-      keywords: ["space", "jump"],
+    const projectCommands: PaletteCommand[] = projects.map((project) => ({
+      id: `project-${project.id}`,
+      title: project.name,
+      subtitle: t("projectSub"),
+      group: "projects" as const,
+      keywords: ["project", "jump"],
       icon: Hash,
-      run: () => router.push(`/dashboard?space=${s.id}`),
+      run: () => router.push(`/dashboard?project=${project.id}`),
     }));
     const viewCommands: PaletteCommand[] = views.map((view) => ({
       id: `view-${view.id}`,
@@ -235,8 +224,8 @@ function CommandPaletteDialog({
       icon: View,
       run: () => router.push(`/views/${view.id}`),
     }));
-    return [...base, ...viewCommands, ...spaceCommands];
-  }, [router, theme, toggleTheme, spaces, views, inbox.unreadCount, t]);
+    return [...base, ...viewCommands, ...projectCommands];
+  }, [router, theme, toggleTheme, projects, views, inbox.unreadCount, t]);
 
   const onSelect = useCallback(
     (id: string) => {
@@ -277,7 +266,7 @@ function CommandPaletteDialog({
           {t("empty")}
         </Command.Empty>
 
-        {(["navigate", "views", "spaces", "theme"] as const).map((groupId) => {
+        {(["navigate", "views", "projects", "theme"] as const).map((groupId) => {
           const items = allCommands.filter((c) => c.group === groupId);
           if (items.length === 0) return null;
           return (

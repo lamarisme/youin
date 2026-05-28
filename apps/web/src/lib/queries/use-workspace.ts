@@ -31,7 +31,6 @@ function emptyWorkspace(): Workspace {
     id: "",
     name: "",
     projects: [],
-    spaces: [],
     views: [],
     labels: [],
     workflowStatuses: [],

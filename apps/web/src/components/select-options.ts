@@ -1,11 +1,11 @@
 import type { FilterOption } from "@/components/filter-select";
 import type { PinnedFilter, PriorityFilter, SortMode, StatusFilter } from "@/components/dashboard/use-dashboard-filters";
-import type { MarkPriority, SpacePriority } from "@/lib/collab-types";
+import type { MarkPriority } from "@/lib/collab-types";
 
 export const DASHBOARD_STATUS_FILTER_OPTIONS: ReadonlyArray<FilterOption<StatusFilter>> = [
   { value: "all", label: "All statuses" },
   { value: "open", label: "Open" },
-  { value: "closed", label: "Resolved" },
+  { value: "closed", label: "Closed" },
 ];
 
 export const DASHBOARD_PRIORITY_FILTER_OPTIONS: ReadonlyArray<FilterOption<PriorityFilter>> = [
@@ -37,7 +37,7 @@ export const PIN_PRIORITY_OPTIONS_TRIAGE: ReadonlyArray<FilterOption<MarkPriorit
   { value: "critical", label: "Critical" },
 ];
 
-/** Forms and space editor: critical first (action-first ordering). */
+/** Forms: critical first (action-first ordering). */
 export const CANONICAL_PIN_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<MarkPriority>> = [
   { value: "critical", label: "Critical" },
   { value: "high", label: "High" },
@@ -50,18 +50,4 @@ export const NEW_MARK_PRIORITY_OPTIONS: ReadonlyArray<FilterOption<MarkPriority>
   { value: "high", label: "High priority" },
   { value: "medium", label: "Medium priority" },
   { value: "low", label: "Low priority" },
-];
-
-export const SPACE_PRIORITY_FILTER_OPTIONS: ReadonlyArray<FilterOption<"all" | SpacePriority>> = [
-  { value: "all", label: "All priorities" },
-  { value: "critical", label: "Critical" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
-export const SPACE_PINNED_FILTER_OPTIONS: ReadonlyArray<FilterOption<"all" | "pinned" | "unpinned">> = [
-  { value: "all", label: "All spaces" },
-  { value: "pinned", label: "Pinned" },
-  { value: "unpinned", label: "Not pinned" },
 ];

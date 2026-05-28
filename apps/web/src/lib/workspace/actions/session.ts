@@ -11,10 +11,8 @@ import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
 export function revalidateWorkspaceViews(): void {
   revalidatePath("/dashboard");
-  revalidatePath("/spaces");
   revalidatePath("/account");
   revalidatePath("/inbox");
-  revalidatePath("/analytics");
   revalidatePath("/views");
 }
 

@@ -20,7 +20,6 @@ import type {
   MarkPriority,
   WorkspaceProject,
   TeamMember,
-  WorkspaceSpace,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import {
@@ -38,8 +37,7 @@ interface MarkDetailActionsProps {
   mark: MarkItem;
   members: TeamMember[];
   workflowStatuses: WorkspaceWorkflowStatus[];
-  projects?: WorkspaceProject[];
-  spaces: WorkspaceSpace[];
+  projects: WorkspaceProject[];
   displayNamePreference: DisplayNamePreference;
   onConfirmDelete: () => void;
 }
@@ -48,8 +46,7 @@ export function MarkDetailActions({
   mark,
   members,
   workflowStatuses,
-  projects = [],
-  spaces,
+  projects,
   displayNamePreference,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
@@ -59,7 +56,6 @@ export function MarkDetailActions({
   const { mutate: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutate: assignMark } = useAssignMarkMutation();
   const { mutate: updateMark } = useUpdateMarkMutation();
-  const projectById = new Map(projects.map((project) => [project.id, project.name]));
   const workflowStatusOptions = workflowStatuses.map((status) => ({
     value: status.id,
     label: status.name,
@@ -97,13 +93,13 @@ export function MarkDetailActions({
             variant="ghost"
             onClick={() => toggleMarkStatus(mark.id)}
             aria-keyshortcuts="X"
-            aria-label={mark.status === "open" ? "Resolve mark" : "Reopen mark"}
+            aria-label={mark.status === "open" ? "Close mark" : "Reopen mark"}
             className={cn(
               "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
               mark.status === "open" ? "text-mark" : "text-ok",
             )}
           >
-            {mark.status === "open" ? "Open" : "Resolved"}
+            {mark.status === "open" ? "Open" : "Closed"}
           </Button>
         )}
       </PropertyGroup>
@@ -141,21 +137,18 @@ export function MarkDetailActions({
         />
       </PropertyGroup>
 
-      <PropertyGroup label="Space" icon={<Folder className="size-3.5" aria-hidden />}>
+      <PropertyGroup label="Project" icon={<Folder className="size-3.5" aria-hidden />}>
         <FilterSelect
-          value={mark.spaceId}
+          value={mark.projectId}
           onValueChange={(v) => {
-            if (v === mark.spaceId) return;
-            updateMark({ markId: mark.id, updates: { spaceId: v } });
+            if (v === mark.projectId) return;
+            updateMark({ markId: mark.id, updates: { projectId: v } });
           }}
-          options={spaces.map((s) => {
-            const projectName = projectById.get(s.projectId);
-            return {
-              value: s.id,
-              label: projectName ? `${projectName} / ${s.name}` : s.name,
-            };
-          })}
-          ariaLabel="Mark space"
+          options={projects.map((project) => ({
+            value: project.id,
+            label: project.name,
+          }))}
+          ariaLabel="Mark project"
           triggerClassName="h-11 w-[150px] sm:h-8"
           variant="inline"
         />

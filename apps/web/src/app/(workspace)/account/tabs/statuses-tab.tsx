@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 const LIFECYCLE_OPTIONS: ReadonlyArray<{ value: MarkStatus; label: string }> = [
   { value: "open", label: "Open" },
-  { value: "closed", label: "Resolved" },
+  { value: "closed", label: "Closed" },
 ];
 
 export function StatusesTab() {
@@ -114,7 +114,7 @@ export function StatusesTab() {
     <div className="space-y-6">
       <ProductSectionHeader
         title="Workflow statuses"
-        description="Custom stages decide what teams see while each stage still maps to open or resolved."
+        description="Custom stages decide what teams see while each stage still maps to open or closed."
       />
 
       {!isOwner ? (
@@ -222,7 +222,7 @@ export function StatusesTab() {
                           : "bg-ok-soft text-ok",
                       )}
                     >
-                      {status.lifecycleStatus === "open" ? "Open" : "Resolved"}
+                      {status.lifecycleStatus === "open" ? "Open" : "Closed"}
                     </span>
                     {isDefault ? (
                       <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">

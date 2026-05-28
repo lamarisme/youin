@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   ListTree,
   SquareKanban,
   View,
@@ -25,16 +24,9 @@ export const VIEW_TEMPLATES: ReadonlyArray<{
   {
     layout: "board",
     label: "Board",
-    description: "Open and resolved marks grouped into workflow columns.",
+    description: "Open and closed marks grouped into workflow columns.",
     defaultName: "Status board",
     icon: SquareKanban,
-  },
-  {
-    layout: "analytics",
-    label: "Analytics",
-    description: "Throughput and activity for the marks in this view.",
-    defaultName: "Workspace analytics",
-    icon: BarChart3,
   },
 ];
 

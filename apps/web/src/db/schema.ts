@@ -28,7 +28,6 @@ export const markEventTypeEnum = pgEnum("mark_event_type", [
   "status_changed",
   "priority_changed",
   "pinned_changed",
-  "linear_link_updated",
   "comment_added",
   "assignee_changed",
   "label_changed",
@@ -40,7 +39,6 @@ export const markCommentTypeEnum = pgEnum("mark_comment_type", [
 export const workspaceViewLayoutEnum = pgEnum("workspace_view_layout", [
   "list",
   "board",
-  "analytics",
 ]);
 export const workspaceInviteStatusEnum = pgEnum("workspace_invite_status", [
   "pending",
@@ -81,6 +79,7 @@ export const workspaces = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
+    nextMarkSeq: integer("next_mark_seq").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -108,6 +107,10 @@ export const projects = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("projects_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
     uniqueIndex("projects_workspace_name_unique").on(
       table.workspaceId,
       table.name,
@@ -148,51 +151,6 @@ export const workspaceMembers = pgTable(
       table.workspaceId,
       sql`lower(${table.username})`,
     ),
-  ],
-);
-
-export const spaces = pgTable(
-  "spaces",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    workspaceId: uuid("workspace_id")
-      .notNull()
-      .references(() => workspaces.id, { onDelete: "cascade" }),
-    projectId: uuid("project_id")
-      .notNull()
-      .references(() => projects.id, { onDelete: "cascade" }),
-    /** Short uppercase key for mark display ids (e.g. WEB-42), unique per workspace. */
-    code: text("code").notNull(),
-    /**
-     * Running counter for mark numbers in this space. Maintained by the
-     * `set_mark_seq` trigger on `marks` (BEFORE INSERT OR UPDATE OF space_id).
-     */
-    nextMarkSeq: integer("next_mark_seq").notNull().default(0),
-    name: text("name").notNull(),
-    notes: text("notes").notNull().default(""),
-    priority: markPriorityEnum("priority").notNull().default("medium"),
-    pinned: boolean("pinned").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("spaces_workspace_code_unique").on(table.workspaceId, table.code),
-    uniqueIndex("spaces_project_name_unique").on(
-      table.workspaceId,
-      table.projectId,
-      table.name,
-    ),
-    index("spaces_project_created_at_idx").on(table.projectId, table.createdAt),
-    index("spaces_workspace_priority_idx").on(
-      table.workspaceId,
-      table.priority,
-    ),
-    index("spaces_workspace_pinned_idx").on(table.workspaceId, table.pinned),
-    check("spaces_code_format", sql`${table.code} ~ '^[A-Z0-9]{1,12}$'`),
   ],
 );
 
@@ -256,24 +214,23 @@ export const marks = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    spaceId: uuid("space_id")
-      .notNull()
-      .references(() => spaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").notNull(),
     title: text("title").notNull(),
     page: text("page").notNull(),
     description: text("description").notNull().default(""),
     status: markStatusEnum("status").notNull().default("open"),
-    workflowStatusId: uuid("workflow_status_id"),
+    workflowStatusId: uuid("workflow_status_id").notNull(),
     priority: markPriorityEnum("priority").notNull().default("medium"),
     pinned: boolean("pinned").notNull().default(false),
     assigneeUserId: uuid("assignee_user_id").references(() => profiles.id, {
       onDelete: "set null",
     }),
     /**
-     * Monotonic sequence number within {@link spaceId} (e.g. key WEB-{@link seq}).
+     * Monotonic sequence number within the workspace (e.g. key YIN-{@link seq}).
      * Assigned by the `set_mark_seq` trigger; do not set from application code.
      */
     seq: integer("seq").notNull().default(0),
+    legacyDisplayKey: text("legacy_display_key"),
     selector: text("selector"),
     viewport: text("viewport"),
     browser: text("browser"),
@@ -292,12 +249,13 @@ export const marks = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("marks_space_seq_unique").on(table.spaceId, table.seq),
-    index("marks_space_status_priority_idx").on(
-      table.spaceId,
+    uniqueIndex("marks_workspace_seq_unique").on(table.workspaceId, table.seq),
+    index("marks_project_status_priority_idx").on(
+      table.projectId,
       table.status,
       table.priority,
     ),
+    index("marks_workspace_project_idx").on(table.workspaceId, table.projectId),
     index("marks_workspace_pinned_idx").on(table.workspaceId, table.pinned),
     index("marks_workspace_created_at_idx").on(
       table.workspaceId,
@@ -320,6 +278,11 @@ export const marks = pgTable(
       ],
       name: "marks_workflow_status_workspace_fk",
     }),
+    foreignKey({
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projects.workspaceId, projects.id],
+      name: "marks_project_workspace_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -528,9 +491,7 @@ export const workspaceReviewLinks = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    spaceId: uuid("space_id")
-      .notNull()
-      .references(() => spaces.id, { onDelete: "cascade" }),
+    projectId: uuid("project_id").notNull(),
     name: text("name").notNull(),
     /** Allowed site origin for guest submissions, e.g. https://staging.example.com. */
     targetOrigin: text("target_origin").notNull(),
@@ -558,6 +519,11 @@ export const workspaceReviewLinks = pgTable(
       table.revokedAt,
       table.expiresAt,
     ),
+    foreignKey({
+      columns: [table.workspaceId, table.projectId],
+      foreignColumns: [projects.workspaceId, projects.id],
+      name: "workspace_review_links_project_workspace_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -580,7 +546,6 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
 export const workspacesRelations = relations(workspaces, ({ many }) => ({
   members: many(workspaceMembers),
   projects: many(projects),
-  spaces: many(spaces),
   views: many(workspaceViews),
   marks: many(marks),
   workflowStatuses: many(markWorkflowStatuses),
@@ -596,7 +561,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     fields: [projects.workspaceId],
     references: [workspaces.id],
   }),
-  spaces: many(spaces),
+  marks: many(marks),
 }));
 
 export const workspaceMembersRelations = relations(
@@ -612,18 +577,6 @@ export const workspaceMembersRelations = relations(
     }),
   }),
 );
-
-export const spacesRelations = relations(spaces, ({ one, many }) => ({
-  workspace: one(workspaces, {
-    fields: [spaces.workspaceId],
-    references: [workspaces.id],
-  }),
-  project: one(projects, {
-    fields: [spaces.projectId],
-    references: [projects.id],
-  }),
-  marks: many(marks),
-}));
 
 export const markWorkflowStatusesRelations = relations(
   markWorkflowStatuses,
@@ -641,9 +594,9 @@ export const marksRelations = relations(marks, ({ one, many }) => ({
     fields: [marks.workspaceId],
     references: [workspaces.id],
   }),
-  space: one(spaces, {
-    fields: [marks.spaceId],
-    references: [spaces.id],
+  project: one(projects, {
+    fields: [marks.projectId],
+    references: [projects.id],
   }),
   workflowStatus: one(markWorkflowStatuses, {
     fields: [marks.workflowStatusId],
@@ -752,9 +705,9 @@ export const workspaceReviewLinksRelations = relations(
       fields: [workspaceReviewLinks.workspaceId],
       references: [workspaces.id],
     }),
-    space: one(spaces, {
-      fields: [workspaceReviewLinks.spaceId],
-      references: [spaces.id],
+    project: one(projects, {
+      fields: [workspaceReviewLinks.projectId],
+      references: [projects.id],
     }),
     createdBy: one(profiles, {
       fields: [workspaceReviewLinks.createdByUserId],
@@ -767,7 +720,6 @@ export type Profile = typeof profiles.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
-export type Space = typeof spaces.$inferSelect;
 export type Mark = typeof marks.$inferSelect;
 export type NewMark = typeof marks.$inferInsert;
 export type MarkWorkflowStatus = typeof markWorkflowStatuses.$inferSelect;

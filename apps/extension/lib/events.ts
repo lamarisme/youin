@@ -47,5 +47,6 @@ export interface ReviewCaptureDetail {
   domSnapshot?: import("./dom-snapshot").ElementDomSnapshot
   /** Element screenshot (PNG data URL), when capture succeeds. */
   elementScreenshotDataUrl?: string
+  screenshotPending?: boolean
   screenshotCaptureError?: string
 }

@@ -1,9 +1,14 @@
-import { eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getDb } from "@/db/client";
-import { markComments, marks, workspaceReviewLinks } from "@/db/schema";
+import {
+  markComments,
+  marks,
+  markWorkflowStatuses,
+  workspaceReviewLinks,
+} from "@/db/schema";
 import {
   normalizeCommentForStorage,
   normalizeDescriptionForStorage,
@@ -164,15 +169,33 @@ export async function POST(
   try {
     const created = await db.transaction(async (tx) => {
       await setDbRequestUser(tx, link.createdByUserId);
+      const [workflowStatus] = await tx
+        .select({ id: markWorkflowStatuses.id })
+        .from(markWorkflowStatuses)
+        .where(
+          and(
+            eq(markWorkflowStatuses.workspaceId, link.workspaceId),
+            eq(markWorkflowStatuses.lifecycleStatus, "open"),
+            isNull(markWorkflowStatuses.archivedAt),
+          ),
+        )
+        .orderBy(
+          desc(markWorkflowStatuses.isDefaultOpen),
+          asc(markWorkflowStatuses.position),
+        )
+        .limit(1);
+      if (!workflowStatus) throw new Error("Workspace is missing an open status.");
+
       const [mark] = await tx
         .insert(marks)
         .values({
           workspaceId: link.workspaceId,
-          spaceId: link.spaceId,
+          projectId: link.projectId,
           title,
           description,
           page,
           status: "open",
+          workflowStatusId: workflowStatus.id,
           priority: "medium",
           pinned: false,
           createdByUserId: link.createdByUserId,

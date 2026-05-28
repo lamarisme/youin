@@ -737,8 +737,8 @@ function RowStatusAction({
         event.stopPropagation();
         void onToggle(mark);
       }}
-      aria-label={open ? `Resolve ${mark.title}` : `Reopen ${mark.title}`}
-      title={open ? "Resolve" : "Reopen"}
+      aria-label={open ? `Close ${mark.title}` : `Reopen ${mark.title}`}
+      title={open ? "Close" : "Reopen"}
       className={cn(
         "inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 outline-none transition-colors hover:bg-paper-3 hover:text-ink focus-visible:bg-paper-3 focus-visible:text-ink focus-visible:ring-2 focus-visible:ring-mark/25 md:size-7 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100",
         open && "hover:text-ok focus-visible:text-ok",
@@ -842,7 +842,7 @@ function StatusInline({
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
       <CheckCircle2 className="size-3" aria-hidden />
-      {label ?? "Resolved"}
+      {label ?? "Closed"}
     </span>
   );
 }

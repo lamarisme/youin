@@ -1,9 +1,9 @@
 "use server";
 
 import { normalizeMarkPriority } from "@youin/domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
-import { markLabels, marks, marksToLabels, spaces, workspaceMembers } from "@/db/schema";
+import { markLabels, markWorkflowStatuses, marks, marksToLabels, projects, workspaceMembers } from "@/db/schema";
 import type { MarkPriority } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -18,11 +18,11 @@ const BAD_PAGE =
   "Page must be a full http or https URL (for example https://app.example.com/pricing).";
 
 export interface CreatedMark {
-    id: string;
-    /** Per-space sequence assigned by the set_mark_seq trigger. */
-    seq: number;
-    workflowStatusId?: string;
-    createdAt: string;
+  id: string;
+  /** Workspace-level sequence assigned by the set_mark_seq trigger. */
+  seq: number;
+  workflowStatusId: string;
+  createdAt: string;
 }
 
 function toIso(value: Date | string): string {
@@ -69,11 +69,34 @@ async function assertAssigneeInWorkspace(
   if (!member) throw new Error("Assignee is not a member of this workspace.");
 }
 
+async function defaultOpenWorkflowStatusId(
+  db: ReturnType<typeof import("@/db/client").getDb>,
+  workspaceId: string,
+): Promise<string> {
+  const rows = await db
+    .select({
+      id: markWorkflowStatuses.id,
+      isDefaultOpen: markWorkflowStatuses.isDefaultOpen,
+    })
+    .from(markWorkflowStatuses)
+    .where(
+      and(
+        eq(markWorkflowStatuses.workspaceId, workspaceId),
+        eq(markWorkflowStatuses.lifecycleStatus, "open"),
+        isNull(markWorkflowStatuses.archivedAt),
+      ),
+    )
+    .orderBy(asc(markWorkflowStatuses.position), asc(markWorkflowStatuses.createdAt));
+  const status = rows.find((row) => row.isDefaultOpen) ?? rows[0];
+  if (!status) throw new Error("Workspace is missing an open workflow status.");
+  return status.id;
+}
+
 export async function createMarkAction(input: {
   title: string;
   description: string;
   page: string;
-  spaceId: string;
+  projectId: string;
   labelIds: string[];
   assigneeId?: string | null;
   priority?: MarkPriority;
@@ -83,27 +106,29 @@ export async function createMarkAction(input: {
   if (!isValidMarkPageUrl(pageNormalized)) {
     throw new Error(BAD_PAGE);
   }
-  const [space] = await ctx.db
-    .select({ id: spaces.id })
-    .from(spaces)
-    .where(and(eq(spaces.id, input.spaceId), eq(spaces.workspaceId, ctx.workspaceId)))
+  const [project] = await ctx.db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, input.projectId), eq(projects.workspaceId, ctx.workspaceId)))
     .limit(1);
-  if (!space) throw new Error("Space not found.");
+  if (!project) throw new Error("Project not found.");
 
   const labelIds = Array.from(new Set(input.labelIds));
   await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, labelIds);
   await assertAssigneeInWorkspace(ctx.db, ctx.workspaceId, input.assigneeId);
+  const workflowStatusId = await defaultOpenWorkflowStatusId(ctx.db, ctx.workspaceId);
 
   const mk = await withWorkspaceActor(ctx, async (tx) => {
     const [created] = await tx
       .insert(marks)
       .values({
         workspaceId: ctx.workspaceId,
-        spaceId: input.spaceId,
+        projectId: input.projectId,
         title: input.title.trim(),
         description: normalizeDescriptionForStorage(input.description),
         page: pageNormalized,
         status: "open",
+        workflowStatusId,
         priority: normalizeMarkPriority(input.priority),
         pinned: false,
         createdByUserId: ctx.userId,
@@ -131,7 +156,7 @@ export async function createMarkAction(input: {
   return {
     id: mk.id,
     seq: Number(mk.seq ?? 0),
-    workflowStatusId: mk.workflowStatusId ?? undefined,
+    workflowStatusId: mk.workflowStatusId,
     createdAt: toIso(mk.createdAt),
   };
 }
@@ -154,7 +179,7 @@ export async function updateMarkFieldsAction(
     title?: string;
     description?: string;
     page?: string;
-    spaceId?: string;
+    projectId?: string;
   },
 ): Promise<void> {
   const ctx = await requireWorkspaceContext();
@@ -168,14 +193,14 @@ export async function updateMarkFieldsAction(
     if (!isValidMarkPageUrl(normalized)) throw new Error(BAD_PAGE);
     patch.page = normalized;
   }
-  if (typeof updates.spaceId === "string") {
-    const [space] = await ctx.db
-      .select({ id: spaces.id })
-      .from(spaces)
-      .where(and(eq(spaces.id, updates.spaceId), eq(spaces.workspaceId, ctx.workspaceId)))
+  if (typeof updates.projectId === "string") {
+    const [project] = await ctx.db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, updates.projectId), eq(projects.workspaceId, ctx.workspaceId)))
       .limit(1);
-    if (!space) throw new Error("Space not found.");
-    patch.spaceId = updates.spaceId;
+    if (!project) throw new Error("Project not found.");
+    patch.projectId = updates.projectId;
   }
   if (!Object.keys(patch).length) return;
   await withWorkspaceActor(ctx, async (tx) => {
@@ -198,9 +223,30 @@ export async function toggleMarkStatusAction(markId: string): Promise<void> {
       .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .limit(1);
     if (!row) throw new Error("Mark not found.");
+    const nextStatus = row.status === "closed" ? "open" : "closed";
+    const statusRows = await tx
+      .select({
+        id: markWorkflowStatuses.id,
+        isDefaultOpen: markWorkflowStatuses.isDefaultOpen,
+        isDefaultClosed: markWorkflowStatuses.isDefaultClosed,
+      })
+      .from(markWorkflowStatuses)
+      .where(
+        and(
+          eq(markWorkflowStatuses.workspaceId, ctx.workspaceId),
+          eq(markWorkflowStatuses.lifecycleStatus, nextStatus),
+          isNull(markWorkflowStatuses.archivedAt),
+        ),
+      )
+      .orderBy(asc(markWorkflowStatuses.position), asc(markWorkflowStatuses.createdAt));
+    const workflowStatus =
+      statusRows.find((status) =>
+        nextStatus === "open" ? status.isDefaultOpen : status.isDefaultClosed,
+      ) ?? statusRows[0];
+    if (!workflowStatus) throw new Error("Workspace is missing a workflow status.");
     await tx
       .update(marks)
-      .set({ status: row.status === "closed" ? "open" : "closed" })
+      .set({ status: nextStatus, workflowStatusId: workflowStatus.id })
       .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)));
   });
   revalidateWorkspaceViews();

@@ -18,9 +18,6 @@ export function formatMarkEvent(
   if (type === "pinned_changed") {
     return toValue === "true" ? "Pinned this mark." : "Unpinned this mark.";
   }
-  if (type === "linear_link_updated") {
-    return toValue ? "Updated the Linear ticket link." : "Removed the Linear ticket link.";
-  }
   if (type === "assignee_changed") {
     if (!toValue) return "Unassigned this mark.";
     if (!fromValue) return "Assigned this mark.";

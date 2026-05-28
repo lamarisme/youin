@@ -1,6 +1,10 @@
+const EXTENSION_LAYER_BASE = 2147483000
+
 export const EXTENSION_LAYER = {
-  widget: 2147483642,
-  panel: 2147483644,
-  badges: 2147483645,
-  reviewOverlay: 2147483647
+  badges: EXTENSION_LAYER_BASE + 10,
+  widget: EXTENSION_LAYER_BASE + 20,
+  reviewOverlay: EXTENSION_LAYER_BASE + 30,
+  drawer: EXTENSION_LAYER_BASE + 40,
+  panel: EXTENSION_LAYER_BASE + 50,
+  modal: EXTENSION_LAYER_BASE + 60
 } as const

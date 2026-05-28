@@ -1,5 +1,5 @@
-import tailwindCss from "data-text:~/globals.css"
 import { t } from "@youin/i18n/t"
+import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import { useCallback, useEffect, useState } from "react"
 
@@ -265,6 +265,7 @@ function Widget() {
 
   return (
     <div
+      data-youin-extension-ui=""
       className={`pointer-events-none fixed ${cornerClass(settings.corner)}`}
       style={{ zIndex: Z_WIDGET }}>
       {active ? (

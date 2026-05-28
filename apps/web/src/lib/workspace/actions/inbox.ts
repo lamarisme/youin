@@ -8,7 +8,6 @@ import {
   markEvents,
   marks,
   profiles,
-  spaces,
   workspaceMembers,
 } from "@/db/schema";
 import type { MarkEventType } from "@/lib/collab-types";
@@ -25,7 +24,7 @@ import { requireWorkspaceContext } from "./session";
 type MarkRow = {
   id: string;
   title: string | null;
-  spaceId: string;
+  projectId: string;
   seq: number | null;
 };
 
@@ -48,11 +47,6 @@ type ProfileRow = {
   id: string;
   fullName: string | null;
   email: string | null;
-};
-
-type SpaceRow = {
-  id: string;
-  code: string | null;
 };
 
 function toIso(value: Date | string): string {
@@ -82,7 +76,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
         .select({
           id: marks.id,
           title: marks.title,
-          spaceId: marks.spaceId,
+          projectId: marks.projectId,
           seq: marks.seq,
         })
         .from(marks)
@@ -115,7 +109,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
     .select({
       id: marks.id,
       title: marks.title,
-      spaceId: marks.spaceId,
+      projectId: marks.projectId,
       seq: marks.seq,
     })
     .from(marks)
@@ -125,32 +119,25 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
   const validMarkIds = unique(markRows.map((m) => m.id));
   if (validMarkIds.length === 0) return emptyInboxSnapshot(lastReadAt);
 
-  const spaceIds = unique(markRows.map((m) => m.spaceId));
-  const [events, spaceRows] = await Promise.all([
-    db
-      .select({
-        id: markEvents.id,
-        markId: markEvents.markId,
-        actorUserId: markEvents.actorUserId,
-        type: markEvents.type,
-        fromValue: markEvents.fromValue,
-        toValue: markEvents.toValue,
-        createdAt: markEvents.createdAt,
-      })
-      .from(markEvents)
-      .where(
-        and(
-          eq(markEvents.workspaceId, workspaceId),
-          inArray(markEvents.markId, validMarkIds),
-          ne(markEvents.actorUserId, userId),
-        ),
-      )
-      .orderBy(desc(markEvents.createdAt)),
-    db
-      .select({ id: spaces.id, code: spaces.code })
-      .from(spaces)
-      .where(and(eq(spaces.workspaceId, workspaceId), inArray(spaces.id, spaceIds))),
-  ]);
+  const events = await db
+    .select({
+      id: markEvents.id,
+      markId: markEvents.markId,
+      actorUserId: markEvents.actorUserId,
+      type: markEvents.type,
+      fromValue: markEvents.fromValue,
+      toValue: markEvents.toValue,
+      createdAt: markEvents.createdAt,
+    })
+    .from(markEvents)
+    .where(
+      and(
+        eq(markEvents.workspaceId, workspaceId),
+        inArray(markEvents.markId, validMarkIds),
+        ne(markEvents.actorUserId, userId),
+      ),
+    )
+    .orderBy(desc(markEvents.createdAt));
 
   const eventRows = events.map((event) => ({
     ...event,
@@ -183,9 +170,6 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
   ]);
 
   const markById = new Map(markRows.map((m) => [m.id, m]));
-  const spaceCodeById = new Map(
-    (spaceRows as SpaceRow[]).map((s) => [s.id, s.code?.trim() || "UNKN"]),
-  );
   const memberById = new Map((members as MemberRow[]).map((m) => [m.userId, m]));
   const profileById = new Map((profileRows as ProfileRow[]).map((p) => [p.id, p]));
 
@@ -201,7 +185,7 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
       id: e.id,
       markId: e.markId,
       markTitle: mark.title?.trim() || "(untitled)",
-      spaceId: mark.spaceId,
+      projectId: mark.projectId,
       actorId: e.actorUserId,
       actorName,
       actorUsername: member?.username?.trim() ?? "",
@@ -224,12 +208,11 @@ export async function getInboxAction(): Promise<InboxSnapshot> {
       continue;
     }
     const mark = markById.get(ev.markId);
-    const code = spaceCodeById.get(ev.spaceId) ?? "UNKN";
     groupMap.set(ev.markId, {
       markId: ev.markId,
-      markDisplayKey: formatMarkDisplayKey(code, mark?.seq ?? 0),
+      markDisplayKey: formatMarkDisplayKey(mark?.seq ?? 0),
       markTitle: ev.markTitle,
-      spaceId: ev.spaceId,
+      projectId: ev.projectId,
       events: [ev],
       latestAt: ev.createdAt,
       unreadCount: ev.unread ? 1 : 0,
