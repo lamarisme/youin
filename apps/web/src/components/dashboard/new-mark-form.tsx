@@ -202,7 +202,7 @@ export function NewMarkForm({
           onChange={(e) => dispatch({ type: "set_title", value: e.target.value })}
           placeholder="What needs attention?"
           maxLength={180}
-          className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
+          className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
           autoFocus
         />
       </Field>
@@ -218,7 +218,7 @@ export function NewMarkForm({
           }}
           placeholder="https://app.example.com/pricing"
           maxLength={300}
-          className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
+          className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
         />
       </Field>
       <div className="sm:col-span-2">
@@ -251,7 +251,7 @@ export function NewMarkForm({
           options={NEW_MARK_PRIORITY_OPTIONS}
           ariaLabel="Choose priority"
           size="sm"
-          triggerClassName="h-11 sm:h-9"
+          triggerClassName="h-10 sm:h-8"
         />
       </div>
       <div className="space-y-1.5">
@@ -262,11 +262,11 @@ export function NewMarkForm({
           options={assigneeOptions}
           ariaLabel="Choose assignee"
           size="sm"
-          triggerClassName="h-11 sm:h-9"
+          triggerClassName="h-10 sm:h-8"
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg bg-paper-2 px-3 py-2 sm:col-span-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 px-3 py-2 ring-1 ring-rule/45 sm:col-span-2">
         <span className="font-mono text-ui-2xs uppercase tracking-[0.14em] text-ink-3">
           Preview
         </span>
@@ -293,11 +293,11 @@ export function NewMarkForm({
         <KeyboardHint keys={["⌘", "Enter"]} action="to create" />
         <div className="flex items-center gap-2">
           {onCancel ? (
-            <Button variant="ghost" onClick={onCancel} className="h-11 sm:h-9">
+            <Button variant="ghost" onClick={onCancel} className="h-10 sm:h-8">
               Cancel
             </Button>
           ) : null}
-          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-11 sm:h-9">
+          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-10 sm:h-8">
             Create mark
           </SubmitButton>
         </div>

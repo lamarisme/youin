@@ -37,6 +37,7 @@ import type {
   WorkspaceLabel,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { formatDateShort } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -145,14 +146,15 @@ function buildColumns({
   // ── Workflow status column ─────────
   cols.push({
     accessorKey: "status",
-    header: "Stage",
-    size: density === "compact" ? 98 : 112,
+    header: "Status",
+    size: density === "compact" ? 36 : 44,
     enableSorting: false,
     cell: ({ row }) => {
       const mark = row.original;
       return (
         <StatusInline
           status={mark.status}
+          compact={true}
           label={
             mark.workflowStatusId
               ? workflowStatusesById.get(mark.workflowStatusId)?.name
@@ -172,7 +174,7 @@ function buildColumns({
       const mark = row.original;
       const active = activeMarkId === mark.id;
       return (
-        <div className="-mx-1 flex min-w-0 items-start gap-1 rounded-md px-1 py-1">
+        <div className="-mx-1 flex min-w-0 items-start gap-1 rounded-md px-1 py-0.5">
           <button
             type="button"
             data-mark-id={mark.id}
@@ -183,18 +185,17 @@ function buildColumns({
               active && "text-mark",
             )}
           >
-            <p className="flex min-w-0 items-center gap-1 truncate text-ui-sm font-semibold text-ink">
-              <span className="truncate">{mark.title}</span>
+            <p className="flex min-w-0 items-center gap-2 truncate text-ui-sm text-ink">
+              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
+              <span className="truncate font-semibold">{mark.title}</span>
               {density === "compact" && mark.pinned ? (
                 <Bookmark className="size-3 shrink-0 text-mark" aria-label="Pinned" />
               ) : null}
             </p>
             {density === "compact" ? (
               <p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-ui-xs text-ink-3">
-                <span className="shrink-0 font-mono">{mark.displayKey}</span>
                 {mark.page.trim() ? (
                   <>
-                    <span aria-hidden>·</span>
                     <span className="truncate" title={mark.page}>
                       {formatMarkPageLabel(mark.page)}
                     </span>
@@ -214,17 +215,19 @@ function buildColumns({
   });
 
   // ── Priority ──────────────
-  cols.push({
-    accessorKey: "priority",
-    header: "Priority",
-    size: density === "compact" ? 76 : 90,
-    sortingFn: (a, b) =>
-      (PRIORITY_ORDER[a.original.priority] ?? 99) -
-      (PRIORITY_ORDER[b.original.priority] ?? 99),
-    cell: ({ row }) => (
-      <PriorityBadge priority={row.original.priority} size="sm" />
-    ),
-  });
+  if (density === "default") {
+    cols.push({
+      accessorKey: "priority",
+      header: "Priority",
+      size: 90,
+      sortingFn: (a, b) =>
+        (PRIORITY_ORDER[a.original.priority] ?? 99) -
+        (PRIORITY_ORDER[b.original.priority] ?? 99),
+      cell: ({ row }) => (
+        <PriorityBadge priority={row.original.priority} size="sm" />
+      ),
+    });
+  }
 
   // ── Labels ────────────────
   if (density === "default") {
@@ -259,8 +262,8 @@ function buildColumns({
   // ── Assignee ──────────────
   cols.push({
     id: "assignee",
-    header: "Assignee",
-    size: 44,
+    header: "",
+    size: 36,
     enableSorting: false,
     cell: ({ row }) => {
       const assignee = row.original.assigneeId
@@ -302,7 +305,7 @@ function buildColumns({
   cols.push({
     id: "comments",
     header: "",
-    size: 44,
+    size: 36,
     enableSorting: false,
     cell: ({ row }) => {
       const count = commentCountByMarkId.get(row.original.id) ?? 0;
@@ -317,6 +320,21 @@ function buildColumns({
         </span>
       );
     },
+  });
+
+  // ── Created date ──────────
+  cols.push({
+    accessorKey: "createdAt",
+    header: "Created",
+    size: 72,
+    cell: ({ row }) => (
+      <span
+        className="shrink-0 whitespace-nowrap text-ui-sm tabular-nums text-ink-3"
+        title={row.original.createdAt}
+      >
+        {formatDateShort(row.original.createdAt)}
+      </span>
+    ),
   });
 
   // ── Page open ─────────────
@@ -335,20 +353,6 @@ function buildColumns({
         />
       ) : null,
   });
-
-  // ── Display key ───────────
-  if (density === "default") {
-    cols.push({
-      accessorKey: "displayKey",
-      header: "ID",
-      size: 72,
-      cell: ({ row }) => (
-        <span className="shrink-0 whitespace-nowrap font-mono text-ui-2xs text-ink-3">
-          {row.original.displayKey}
-        </span>
-      ),
-    });
-  }
 
   return cols;
 }
@@ -498,7 +502,7 @@ export function MarkTable({
                             ? "descending"
                             : undefined
                       }
-                      className="h-8 bg-paper-2 px-3 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3"
+                      className="h-7 border-b border-rule/60 bg-paper-2/70 px-3 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3"
                     >
                       {header.column.getCanSort() ? (
                         <button
@@ -532,7 +536,7 @@ export function MarkTable({
                   data-state={selected ? "selected" : undefined}
                   aria-current={active ? "true" : undefined}
                   className={cn(
-                    "group/row transition-colors",
+                    "group/row border-b border-rule/45 transition-colors last:border-b-0",
                     active && "[&>td]:bg-paper-2 hover:[&>td]:bg-paper-3/60",
                     selected && "[&>td]:bg-mark-soft/35 hover:[&>td]:bg-mark-soft/45",
                   )}
@@ -541,7 +545,7 @@ export function MarkTable({
                     <TableCell
                       key={cell.id}
                       style={{ width: cell.column.getSize() === 999 ? undefined : cell.column.getSize() }}
-                      className={density === "compact" ? "py-2" : "py-2.5"}
+                      className={density === "compact" ? "py-1.5" : "py-2"}
                       onClick={
                         cell.column.id === "select"
                           ? (e) => e.stopPropagation()
@@ -610,7 +614,7 @@ function MobileMarkList({
             data-state={selected ? "selected" : undefined}
             aria-current={active ? "true" : undefined}
             className={cn(
-              "px-3 py-3 transition-colors hover:bg-paper-2",
+              "border-b border-rule/50 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-paper-2",
               active && "bg-paper-2",
               selected && "bg-mark-soft/40 hover:bg-mark-soft/45",
             )}
@@ -630,10 +634,13 @@ function MobileMarkList({
                     type="button"
                     onClick={() => onSelectMark(mark)}
                     aria-current={active ? "true" : undefined}
-                    className="min-h-11 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
+                    className="min-h-10 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
                   >
-                    <span className="block break-words text-ui-lg font-semibold leading-snug text-ink">
-                      {mark.title}
+                    <span className="flex min-w-0 items-center gap-2 break-words text-ui-md font-semibold leading-snug text-ink">
+                      <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
+                        {mark.displayKey}
+                      </span>
+                      <span className="min-w-0 flex-1">{mark.title}</span>
                     </span>
                     {pageLabel ? (
                       <span className="mt-1 block truncate text-ui-xs text-ink-3" title={mark.page}>
@@ -688,8 +695,8 @@ function MobileMarkList({
                       </Avatar>
                     </span>
                   ) : null}
-                  <span className="font-mono text-ui-xs text-ink-3">
-                    {mark.displayKey}
+                  <span className="text-ui-xs tabular-nums text-ink-3">
+                    {formatDateShort(mark.createdAt)}
                   </span>
                 </div>
 
@@ -830,17 +837,39 @@ function isEditableTarget(target: EventTarget) {
 function StatusInline({
   status,
   label,
+  compact = false,
 }: {
   status: MarkItem["status"];
   label?: string;
+  compact?: boolean;
 }) {
+  if (compact) {
+    const open = status === "open";
+    return (
+      <span
+        className={cn(
+          "inline-flex size-5 items-center justify-center rounded-full bg-paper-2",
+          open ? "text-mark" : "text-ok",
+        )}
+        title={label ?? (open ? "Open" : "Closed")}
+        aria-label={label ?? (open ? "Open" : "Closed")}
+      >
+        {open ? (
+          <CircleDashed className="size-3" aria-hidden />
+        ) : (
+          <CheckCircle2 className="size-3" aria-hidden />
+        )}
+      </span>
+    );
+  }
+
   return status === "open" ? (
-    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
+    <span className="inline-flex items-center gap-1 rounded-full border border-rule/55 bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
       <CircleDashed className="size-3" aria-hidden />
       {label ?? "Open"}
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
+    <span className="inline-flex items-center gap-1 rounded-full border border-rule/55 bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
       <CheckCircle2 className="size-3" aria-hidden />
       {label ?? "Closed"}
     </span>

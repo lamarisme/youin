@@ -14,9 +14,9 @@ import {
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
+  CircleDashed,
   Hash,
   Inbox,
-  LayoutGrid,
   Moon,
   Search,
   Sun,
@@ -129,8 +129,8 @@ function CommandPaletteDialog({
         return;
       }
       const navMap: Record<string, string> = {
-        d: "/dashboard",
         i: "/inbox",
+        m: "/dashboard?assignee=me",
         v: "/views",
         c: "/account",
       };
@@ -160,12 +160,12 @@ function CommandPaletteDialog({
     const base: PaletteCommand[] = [
       {
         id: "nav-dashboard",
-        title: t("nav.triage"),
-        subtitle: t("nav.triageSub"),
+        title: t("nav.myMarks"),
+        subtitle: t("nav.myMarksSub"),
         group: "navigate",
-        shortcut: "G D",
-        icon: LayoutGrid,
-        run: () => router.push("/dashboard"),
+        shortcut: "G M",
+        icon: CircleDashed,
+        run: () => router.push("/dashboard?assignee=me"),
       },
       {
         id: "nav-inbox",
@@ -254,7 +254,7 @@ function CommandPaletteDialog({
           ref={inputRef}
           autoFocus
           placeholder={t("placeholder")}
-          className="flex-1 bg-transparent text-ui-lg text-ink outline-none placeholder:text-ink-3"
+          className="flex-1 bg-transparent text-ui-md text-ink outline-none placeholder:text-ink-3"
         />
         <Kbd>
           esc

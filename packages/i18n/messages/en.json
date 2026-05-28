@@ -15,6 +15,7 @@
   },
   "nav": {
     "triage": "Triage",
+    "myMarks": "My marks",
     "inbox": "Inbox",
     "spaces": "Projects",
     "views": "Views"
@@ -107,6 +108,8 @@
     "nav": {
       "triage": "Triage",
       "triageSub": "Review marks across your projects",
+      "myMarks": "My marks",
+      "myMarksSub": "Marks assigned to you",
       "inbox": "Inbox",
       "inboxUnread": "Inbox · {count} unread",
       "inboxSub": "Activity on marks you follow",
@@ -119,7 +122,7 @@
       "themeLight": "Switch to light mode",
       "themeDark": "Switch to dark mode"
     },
-    "projectSub": "Filter triage to this project"
+    "projectSub": "Filter marks to this project"
   },
   "landing": {
     "skipLink": "Skip to main content",

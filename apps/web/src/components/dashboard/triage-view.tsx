@@ -1,16 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   CircleDashed,
   Flame,
   Inbox,
-  LayoutGrid,
   Plus,
   UserRound,
-  View,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -27,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { MarkItem, MarkPriority, WorkspaceView } from "@/lib/collab-types";
+import type { MarkItem, MarkPriority } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateMarkMutation,
@@ -96,12 +93,15 @@ export function TriageView({
   }, [filters.projectId, workspace.projects]);
 
   const activeProjectId = selectedProject?.id ?? null;
+  const isMyMarksPage = filters.assignee === "me";
   const attentionScopeMarks = useMemo(
-    () =>
-      activeProjectId
-        ? workspace.marks.filter((mark) => mark.projectId === activeProjectId)
-        : [],
-    [activeProjectId, workspace.marks],
+    () => {
+      if (!activeProjectId) return [];
+      const projectMarks = workspace.marks.filter((mark) => mark.projectId === activeProjectId);
+      if (!isMyMarksPage) return projectMarks;
+      return userId ? projectMarks.filter((mark) => mark.assigneeId === userId) : [];
+    },
+    [activeProjectId, isMyMarksPage, userId, workspace.marks],
   );
 
   const visibleMarks = useVisibleDashboardMarks();
@@ -115,6 +115,7 @@ export function TriageView({
     () => getTriageAttentionCounts(attentionScopeMarks, userId),
     [attentionScopeMarks, userId],
   );
+  const pageTitle = isMyMarksPage ? "My marks" : "Marks";
 
   useEffect(() => {
     if (!isDesktop || selectedMark || selectedMarkParam || !firstMarkKey) return;
@@ -133,7 +134,7 @@ export function TriageView({
     filters.priority !== "all" ||
     filters.pinned !== "all" ||
     filters.label !== "all" ||
-    filters.assignee !== "all" ||
+    (!isMyMarksPage && filters.assignee !== "all") ||
     filters.sort !== "recent" ||
     filters.q.trim().length > 0;
 
@@ -145,7 +146,7 @@ export function TriageView({
         priority: "all",
         pinned: "all",
         label: "all",
-        assignee: "all",
+        assignee: isMyMarksPage ? "me" : "all",
         sort: "recent",
         q: null,
       },
@@ -160,7 +161,7 @@ export function TriageView({
       priority: "all",
       pinned: "all",
       label: "all",
-      assignee: "all",
+      assignee: isMyMarksPage ? "me" : "all",
       q: null,
     };
     if (queue === "critical") base.priority = "critical";
@@ -312,18 +313,28 @@ export function TriageView({
             showDesktopPane && "lg:max-h-[calc(100vh-2rem)] lg:min-h-0 lg:overflow-y-auto lg:pr-1",
           )}
         >
-          <BreadcrumbHeader items={[{ label: "Triage", current: true }]} />
+          <BreadcrumbHeader items={[{ label: pageTitle, current: true }]} />
 
-          <WorkspaceViewRail views={workspace.views} searchParams={searchParams} />
+          <FadeIn className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/70 pb-2">
+            <AttentionStrip
+              counts={attentionCounts}
+              filters={filters}
+              hasViewer={Boolean(userId)}
+              compact={isMyMarksPage}
+              onApplyQueue={applyQueue}
+            />
+            <Button
+              size="sm"
+              variant="mark"
+              onClick={() => setShowNew(true)}
+              className="h-10 gap-1.5 px-3 text-ui-md sm:h-8 sm:text-ui-sm"
+            >
+              <Plus className="size-3.5 shrink-0 opacity-90" />
+              New mark
+            </Button>
+          </FadeIn>
 
-          <AttentionStrip
-            counts={attentionCounts}
-            filters={filters}
-            hasViewer={Boolean(userId)}
-            onApplyQueue={applyQueue}
-          />
-
-          <FadeIn className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 p-1.5">
+          <FadeIn className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
             <div className="min-w-0 flex-1 px-2">
               <p className="truncate text-ui-xs text-ink-3">
                 Project
@@ -332,27 +343,19 @@ export function TriageView({
                 </span>
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowNew(true)}
-              className="h-11 gap-1.5 bg-paper-3 px-3 text-ui-md text-ink hover:bg-paper-3/80 sm:h-9 sm:text-ui-sm"
-            >
-              <Plus className="size-3.5 shrink-0 opacity-80" />
-              New mark
-            </Button>
           </FadeIn>
 
           <MarkFilters
             filters={filters}
             visibleCount={visibleMarks.length}
             labels={workspace.labels}
+            lockedAssignee={isMyMarksPage ? "me" : undefined}
             onChange={update}
           />
 
           <Dialog open={showNew} onOpenChange={setShowNew}>
-            <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-lg">
-              <DialogHeader>
+            <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+              <DialogHeader className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
                 <DialogTitle>New mark</DialogTitle>
                 <DialogDescription>
                   {selectedProject
@@ -360,20 +363,22 @@ export function TriageView({
                     : "Create a project first to add marks."}
                 </DialogDescription>
               </DialogHeader>
-              <NewMarkForm
-                labels={workspace.labels}
-                members={workspace.members}
-                defaultAssigneeId={userId ?? undefined}
-                open={showNew}
-                variant="plain"
-                targetProjectLabel={selectedProject?.name}
-                onSubmit={handleCreateMark}
-                onCancel={() => setShowNew(false)}
-              />
+              <div className="max-h-[min(78vh,38rem)] overflow-y-auto p-4">
+                <NewMarkForm
+                  labels={workspace.labels}
+                  members={workspace.members}
+                  defaultAssigneeId={userId ?? undefined}
+                  open={showNew}
+                  variant="plain"
+                  targetProjectLabel={selectedProject?.name}
+                  onSubmit={handleCreateMark}
+                  onCancel={() => setShowNew(false)}
+                />
+              </div>
             </DialogContent>
           </Dialog>
 
-          <div className="overflow-hidden rounded-md bg-paper-elevated">
+          <div className="overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60">
             {visibleMarks.length === 0 ? (
               <EmptyState
                 variant="plain"
@@ -435,7 +440,7 @@ export function TriageView({
         ) : null}
 
         {showDesktopPane && isDesktop ? (
-          <aside className="hidden max-h-[calc(100vh-2rem)] min-h-0 overflow-y-auto rounded-md bg-paper-elevated p-3 lg:block">
+          <aside className="hidden max-h-[calc(100vh-2rem)] min-h-0 overflow-y-auto rounded-lg bg-paper-elevated p-3 ring-1 ring-rule/60 lg:block">
             {selectedMark ? (
               <>
                 {!selectedMarkVisible ? (
@@ -491,55 +496,24 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-function WorkspaceViewRail({
-  views,
-  searchParams,
-}: {
-  views: WorkspaceView[];
-  searchParams: { toString: () => string };
-}) {
-  return (
-    <FadeIn className="-mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-0.5">
-      <Link
-        href={dashboardHref(searchParams)}
-        aria-current="page"
-        className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-paper-2 px-2.5 text-ui-sm font-medium text-ink outline-none transition-colors hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25"
-      >
-        <LayoutGrid className="size-3.5 text-ink-3" aria-hidden />
-        All marks
-      </Link>
-      {views.map((view) => (
-        <Link
-          key={view.id}
-          href={`/views/${view.id}`}
-          className="inline-flex h-8 max-w-[13rem] shrink-0 items-center gap-1.5 rounded-md px-2.5 text-ui-sm text-ink-2 outline-none transition-colors hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/25"
-          title={view.name}
-        >
-          <View className="size-3.5 text-ink-3" aria-hidden />
-          <span className="truncate">{view.name}</span>
-        </Link>
-      ))}
-      <Button asChild size="sm" variant="ghost" className="ml-auto h-8 shrink-0 px-2 text-ui-sm text-ink-3">
-        <Link href="/views">{views.length > 0 ? "Manage" : "Create view"}</Link>
-      </Button>
-    </FadeIn>
-  );
-}
-
 function AttentionStrip({
   counts,
   filters,
   hasViewer,
+  compact,
   onApplyQueue,
 }: {
   counts: TriageAttentionCounts;
   filters: DashboardFilters;
   hasViewer: boolean;
+  compact?: boolean;
   onApplyQueue: (queue: AttentionQueue) => void;
 }) {
   const activeQueue =
     filters.status === "open" && filters.priority === "critical"
       ? "critical"
+      : filters.status === "open" && compact
+        ? "open"
       : filters.status === "open" && filters.assignee === "me"
         ? "mine"
         : filters.status === "open" && filters.assignee === "unassigned"
@@ -549,7 +523,7 @@ function AttentionStrip({
             : null;
 
   return (
-    <FadeIn className="grid gap-1.5 sm:grid-cols-4">
+    <FadeIn className="flex min-w-0 flex-wrap items-center gap-1.5">
       <AttentionButton
         label="Open"
         count={counts.open}
@@ -564,21 +538,25 @@ function AttentionStrip({
         icon={<Flame className="size-3.5" aria-hidden />}
         onClick={() => onApplyQueue("critical")}
       />
-      <AttentionButton
-        label="Mine"
-        count={counts.mine}
-        active={activeQueue === "mine"}
-        disabled={!hasViewer}
-        icon={<UserRound className="size-3.5" aria-hidden />}
-        onClick={() => onApplyQueue("mine")}
-      />
-      <AttentionButton
-        label="Unassigned"
-        count={counts.unassigned}
-        active={activeQueue === "unassigned"}
-        icon={<CircleDashed className="size-3.5" aria-hidden />}
-        onClick={() => onApplyQueue("unassigned")}
-      />
+      {compact ? null : (
+        <>
+          <AttentionButton
+            label="Mine"
+            count={counts.mine}
+            active={activeQueue === "mine"}
+            disabled={!hasViewer}
+            icon={<UserRound className="size-3.5" aria-hidden />}
+            onClick={() => onApplyQueue("mine")}
+          />
+          <AttentionButton
+            label="Unassigned"
+            count={counts.unassigned}
+            active={activeQueue === "unassigned"}
+            icon={<CircleDashed className="size-3.5" aria-hidden />}
+            onClick={() => onApplyQueue("unassigned")}
+          />
+        </>
+      )}
     </FadeIn>
   );
 }
@@ -605,8 +583,8 @@ function AttentionButton({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "flex min-h-11 items-center gap-2 rounded-md bg-paper-2 px-3 text-left text-ui-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-50 sm:min-h-9",
-        active ? "bg-mark-soft text-ink" : "text-ink-2 hover:bg-paper-3 hover:text-ink",
+        "inline-flex h-10 min-w-0 items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-3 text-left text-ui-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-50 sm:h-8 sm:text-ui-sm",
+        active ? "border-mark/20 bg-mark-soft text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
       )}
     >
       <span className={cn("text-ink-3", active && "text-mark")}>{icon}</span>

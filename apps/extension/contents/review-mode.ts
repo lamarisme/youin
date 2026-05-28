@@ -158,7 +158,7 @@ function ensureHost() {
       pointer-events: none;
       border: 1.5px solid var(--yi-mark);
       background: color-mix(in oklch, var(--yi-mark) 7%, transparent);
-      border-radius: 4px;
+      border-radius: 8px;
       display: none;
       box-shadow: 0 0 0 1px color-mix(in oklch, var(--yi-paper) 78%, transparent);
     }
@@ -168,7 +168,7 @@ function ensureHost() {
       z-index: 0;
       display: none;
       pointer-events: none;
-      background: oklch(18.4% 0.018 62 / 0.42);
+      background: oklch(18% 0.012 264 / 0.42);
     }
     .region-box {
       position: fixed;
@@ -178,8 +178,9 @@ function ensureHost() {
       pointer-events: none;
       border: 1.5px solid var(--yi-mark);
       background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
+      border-radius: 8px;
       box-shadow:
-        0 0 0 9999px oklch(18.4% 0.018 62 / 0.42),
+        0 0 0 9999px oklch(18% 0.012 264 / 0.42),
         0 0 0 1px color-mix(in oklch, var(--yi-paper) 82%, transparent);
     }
     .toolbar {
@@ -192,8 +193,8 @@ function ensureHost() {
       align-items: center;
       gap: 8px;
       max-width: min(calc(100vw - 24px), 640px);
-      min-height: 48px;
-      padding: 6px 7px 6px 14px;
+      min-height: 40px;
+      padding: 4px 5px 4px 12px;
       border-radius: 999px;
       pointer-events: auto;
       background: color-mix(in oklch, var(--yi-paper) 94%, var(--yi-paper-2));
@@ -202,9 +203,8 @@ function ensureHost() {
       letter-spacing: 0;
       border: 1px solid color-mix(in oklch, var(--yi-ink) 8%, transparent);
       box-shadow:
-        0 18px 48px -32px oklch(18.4% 0.018 62 / 0.44),
+        0 18px 48px -32px oklch(18% 0.012 264 / 0.34),
         0 1px 0 color-mix(in oklch, var(--yi-paper) 72%, transparent) inset;
-      backdrop-filter: blur(14px) saturate(1.04);
     }
     .toolbar .status,
     .toolbar .meta {
@@ -261,10 +261,10 @@ function ensureHost() {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 44px;
-      min-height: 44px;
-      width: 44px;
-      height: 44px;
+      min-width: 32px;
+      min-height: 32px;
+      width: 32px;
+      height: 32px;
       padding: 0;
       border: 0;
       border-radius: 999px;
@@ -282,7 +282,7 @@ function ensureHost() {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 32px;
+      min-height: 28px;
       padding: 0 12px;
       border: 0;
       border-radius: 999px;

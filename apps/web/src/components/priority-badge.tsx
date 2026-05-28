@@ -5,7 +5,7 @@ import type { MarkPriority } from "@/lib/collab-types";
 import { cn } from "@/lib/utils";
 
 const PRIORITY_CLASS: Record<MarkPriority, string> = {
-  critical: "border-mark/35 bg-mark-soft text-mark",
+  critical: "border-destructive-token/25 bg-destructive-soft text-destructive-token",
   high: "bg-paper-3 text-ink",
   medium: "bg-paper-3 text-ink-2",
   low: "bg-paper-3 text-ink-3",

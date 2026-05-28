@@ -120,7 +120,7 @@ function ScreenshotIcon() {
 
 function modeButtonClass(): string {
   return [
-    "youin-widget-mode inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] shadow-[0_12px_26px_-22px_oklch(18.4%_0.018_62_/_0.42)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+    "youin-widget-mode inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] shadow-[0_12px_26px_-22px_oklch(18%_0.012_264_/_0.32)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
   ].join(" ")
 }
 
@@ -274,7 +274,7 @@ function Widget() {
             type="button"
             aria-pressed
             aria-label={t("extension.widget.exitReviewAria")}
-            className="youin-widget-active inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_14px_34px_-24px_oklch(18.4%_0.018_62_/_0.46),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-elevated)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="youin-widget-active inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_14px_34px_-24px_oklch(18%_0.012_264_/_0.34),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-elevated)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={() => {
               window.dispatchEvent(new CustomEvent(EVENT_REVIEW_EXIT))
             }}>
@@ -303,7 +303,7 @@ function Widget() {
               type="button"
               aria-label={openFeedbackLabel}
               title={t("extension.widget.showPageFeedback")}
-              className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-mark-soft)] px-2 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] shadow-[0_10px_24px_-20px_oklch(18.4%_0.018_62_/_0.42)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+              className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-mark-soft)] px-2 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] shadow-[0_10px_24px_-20px_oklch(18%_0.012_264_/_0.32)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
               onClick={toggleDrawer}>
               {openCount}
             </button>
@@ -336,7 +336,7 @@ function Widget() {
               type="button"
               aria-label={openFeedbackLabel}
               title={t("extension.widget.showPageFeedback")}
-              className="absolute -right-1 -top-1 z-20 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border border-[color:var(--yi-paper)] bg-[color:var(--yi-mark)] px-1 font-mono text-[9px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.5)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
+              className="absolute -right-1 -top-1 z-20 inline-flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full border border-[color:var(--yi-paper)] bg-[color:var(--yi-mark)] px-1 font-mono text-[9px] font-semibold leading-none text-[color:var(--yi-paper)] shadow-[0_8px_18px_-12px_oklch(18%_0.012_264_/_0.38)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100"
               onClick={toggleDrawer}>
               {openCount}
             </button>

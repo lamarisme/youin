@@ -7,26 +7,26 @@
 
 :root {
   /* ── Paper ── */
-  --yi-paper:      oklch(98.7% 0.003 78);
-  --yi-paper-2:    oklch(96.4% 0.004 78);
-  --yi-paper-3:    oklch(93.8% 0.005 78);
-  --yi-paper-elevated: oklch(99.2% 0.002 78);
+  --yi-paper:      oklch(98.81% 0.0005 197);
+  --yi-paper-2:    oklch(97.24% 0.0011 197.14);
+  --yi-paper-3:    oklch(96.04% 0.0011 197.14);
+  --yi-paper-elevated: oklch(99.25% 0.0005 197);
 
   /* ── Ink ── */
-  --yi-ink:        oklch(18.8% 0.01 62);
-  --yi-ink-hover:  oklch(23% 0.012 62);
-  --yi-ink-2:      oklch(42% 0.009 62);
-  --yi-ink-3:      oklch(57% 0.007 62);
+  --yi-ink:        oklch(23.20% 0.0057 285.95);
+  --yi-ink-hover:  oklch(28% 0.007 285.95);
+  --yi-ink-2:      oklch(52.71% 0.0135 264.45);
+  --yi-ink-3:      oklch(64.88% 0.0146 262.36);
 
   /* ── Rule (visible hairlines) ── */
-  --yi-rule:       oklch(88.6% 0.005 78 / 0.55);
-  --yi-rule-strong: oklch(80.8% 0.007 78 / 0.72);
+  --yi-rule:       oklch(88% 0.004 264 / 0.62);
+  --yi-rule-strong: oklch(80% 0.006 264 / 0.76);
 
   /* ── Mark ── */
-  --yi-mark:       oklch(53.5% 0.19 24);
-  --yi-mark-bright: oklch(59% 0.2 24);
-  --yi-mark-soft:  oklch(95.8% 0.032 24);
-  --yi-mark-ink:   oklch(42% 0.14 24);
+  --yi-mark:       oklch(56.74% 0.1585 275.21);
+  --yi-mark-bright: oklch(69.06% 0.1637 276.24);
+  --yi-mark-soft:  oklch(94.6% 0.035 276);
+  --yi-mark-ink:   oklch(45% 0.135 275.21);
 
   /* ── Destructive (not brand mark) ── */
   --yi-destructive: oklch(48% 0.16 28);
@@ -40,7 +40,7 @@
   --yi-info:       oklch(48% 0.04 62);
   --yi-info-soft:  oklch(95.5% 0.012 62);
 
-  --yi-focus-ring: oklch(53.5% 0.19 24 / 0.35);
+  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.42);
 
   /* ── Typography scale ── */
   --yi-font-ui-2xs: 0.5625rem;
@@ -69,11 +69,12 @@
   --yi-space-4xl:  6rem;
 
   /* ── Radius ── */
-  --yi-radius-sm:  0.25rem;
-  --yi-radius-md:  0.375rem;
-  --yi-radius-lg:  0.5rem;
-  --yi-radius-xl:  0.625rem;
-  --yi-radius-2xl: 0.75rem;
+  --yi-radius-xs:  0.25rem;
+  --yi-radius-sm:  0.375rem;
+  --yi-radius-md:  0.5rem;
+  --yi-radius-lg:  0.75rem;
+  --yi-radius-xl:  1rem;
+  --yi-radius-2xl: 1.5rem;
   --yi-radius-pill: 999px;
 
   /* ── Easing ── */
@@ -88,28 +89,28 @@
   /* ── Elevation ── */
   --yi-shadow-hairline: none;
   --yi-shadow-panel: none;
-  --yi-shadow-popover: 0 16px 40px -24px oklch(12% 0.02 62 / 0.48);
-  --yi-shadow-mark: 0 10px 24px -16px oklch(from var(--yi-mark) l c h / 0.72);
+  --yi-shadow-popover: 0 16px 36px -28px oklch(12% 0.02 264 / 0.42);
+  --yi-shadow-mark: 0 10px 24px -16px oklch(from var(--yi-mark) l c h / 0.42);
 }
 
 .dark {
-  --yi-paper:      oklch(13.5% 0.018 62);
-  --yi-paper-2:    oklch(17.2% 0.02 62);
-  --yi-paper-3:    oklch(22.5% 0.022 62);
-  --yi-paper-elevated: oklch(15.8% 0.02 62);
+  --yi-paper:      oklch(6.92% 0.0080 284.11);
+  --yi-paper-2:    oklch(17.23% 0.0026 247.98);
+  --yi-paper-3:    oklch(19.50% 0.0026 247.96);
+  --yi-paper-elevated: oklch(21.27% 0.0025 247.94);
 
-  --yi-ink:        oklch(91.8% 0.008 78);
-  --yi-ink-hover:  oklch(84% 0.01 78);
-  --yi-ink-2:      oklch(70% 0.012 78);
-  --yi-ink-3:      oklch(56% 0.014 78);
+  --yi-ink:        oklch(97.8% 0.003 197);
+  --yi-ink-hover:  oklch(90% 0.006 264);
+  --yi-ink-2:      oklch(84% 0.012 264);
+  --yi-ink-3:      oklch(64.88% 0.0146 262.36);
 
-  --yi-rule:       oklch(28% 0.024 62 / 0.65);
-  --yi-rule-strong: oklch(36% 0.027 62 / 0.85);
+  --yi-rule:       oklch(26.45% 0.0098 268.31);
+  --yi-rule-strong: oklch(32.74% 0.0105 285.81);
 
-  --yi-mark:       oklch(63% 0.21 24);
-  --yi-mark-bright: oklch(69% 0.22 24);
-  --yi-mark-soft:  oklch(25.5% 0.075 24);
-  --yi-mark-ink:   oklch(78% 0.12 24);
+  --yi-mark:       oklch(56.74% 0.1585 275.21);
+  --yi-mark-bright: oklch(69.06% 0.1637 276.24);
+  --yi-mark-soft:  oklch(27% 0.075 276);
+  --yi-mark-ink:   oklch(78% 0.095 276);
 
   --yi-destructive: oklch(62% 0.17 28);
   --yi-destructive-soft: oklch(24% 0.06 28);
@@ -121,5 +122,5 @@
   --yi-info:       oklch(68% 0.04 78);
   --yi-info-soft:  oklch(24% 0.02 62);
 
-  --yi-focus-ring: oklch(63% 0.21 24 / 0.4);
+  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.5);
 }

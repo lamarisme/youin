@@ -8,20 +8,20 @@
 /* Shadow DOM :host cannot inherit page :root — mirror @youin/design-tokens/css palette here. */
 html:has(#__plasmo),
 :host {
-  --yi-paper: oklch(98.7% 0.003 78);
-  --yi-paper-2: oklch(96.4% 0.004 78);
-  --yi-paper-3: oklch(93.8% 0.005 78);
-  --yi-paper-elevated: oklch(99.2% 0.002 78);
-  --yi-ink: oklch(18.8% 0.01 62);
-  --yi-ink-hover: oklch(23% 0.012 62);
-  --yi-ink-2: oklch(42% 0.009 62);
-  --yi-ink-3: oklch(57% 0.007 62);
-  --yi-rule: oklch(88.6% 0.005 78 / 0.55);
-  --yi-rule-strong: oklch(80.8% 0.007 78 / 0.72);
-  --yi-mark: oklch(53.5% 0.19 24);
-  --yi-mark-bright: oklch(59% 0.2 24);
-  --yi-mark-soft: oklch(95.8% 0.032 24);
-  --yi-mark-ink: oklch(42% 0.14 24);
+  --yi-paper: oklch(98.81% 0.0005 197);
+  --yi-paper-2: oklch(97.24% 0.0011 197.14);
+  --yi-paper-3: oklch(96.04% 0.0011 197.14);
+  --yi-paper-elevated: oklch(99.25% 0.0005 197);
+  --yi-ink: oklch(23.20% 0.0057 285.95);
+  --yi-ink-hover: oklch(28% 0.007 285.95);
+  --yi-ink-2: oklch(52.71% 0.0135 264.45);
+  --yi-ink-3: oklch(64.88% 0.0146 262.36);
+  --yi-rule: oklch(88% 0.004 264 / 0.62);
+  --yi-rule-strong: oklch(80% 0.006 264 / 0.76);
+  --yi-mark: oklch(56.74% 0.1585 275.21);
+  --yi-mark-bright: oklch(69.06% 0.1637 276.24);
+  --yi-mark-soft: oklch(94.6% 0.035 276);
+  --yi-mark-ink: oklch(45% 0.135 275.21);
   --yi-destructive: oklch(48% 0.16 28);
   --yi-destructive-soft: oklch(96% 0.03 28);
   --yi-ok: oklch(51% 0.12 154);
@@ -30,7 +30,7 @@ html:has(#__plasmo),
   --yi-warn-soft: oklch(95.2% 0.045 82);
   --yi-info: oklch(48% 0.04 62);
   --yi-info-soft: oklch(95.5% 0.012 62);
-  --yi-focus-ring: oklch(53.5% 0.19 24 / 0.35);
+  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.42);
 
   --yi-ext-border-hairline: color-mix(
     in oklch,
@@ -87,8 +87,8 @@ html:has(#__plasmo),
   --yi-ext-link: var(--yi-mark);
   --yi-ext-shadow-panel: var(--yi-shadow-hairline), var(--yi-shadow-panel);
   /* Dock: soft cast to the left + leading hairline (Linear-light, not heavy card shadow). */
-  --yi-ext-shadow-dock: -16px 0 40px -14px oklch(18.4% 0.018 62 / 0.16),
-    -6px 0 16px -8px oklch(18.4% 0.018 62 / 0.1),
+  --yi-ext-shadow-dock: -16px 0 40px -14px oklch(18% 0.012 264 / 0.14),
+    -6px 0 16px -8px oklch(18% 0.012 264 / 0.08),
     inset 1px 0 0 var(--yi-ext-border-hairline);
   --yi-ext-surface-low: var(--yi-paper);
   --yi-ext-surface-mid: var(--yi-paper-2);
@@ -97,6 +97,11 @@ html:has(#__plasmo),
   --yi-ext-surface-stat: var(--yi-paper-2);
   --yi-ext-hit-target: 44px;
 
+  --yi-font-ui-2xs: 0.5625rem;
+  --yi-font-ui-xs: 0.6875rem;
+  --yi-font-ui-sm: 0.8125rem;
+  --yi-font-ui-md: 0.875rem;
+  --yi-font-ui-lg: 0.9375rem;
   --yi-space-2xs: 0.25rem;
   --yi-space-xs: 0.5rem;
   --yi-space-sm: 0.75rem;
@@ -106,18 +111,19 @@ html:has(#__plasmo),
   --yi-space-2xl: 3rem;
   --yi-space-3xl: 4rem;
   --yi-space-4xl: 6rem;
-  --yi-radius-sm: 0.25rem;
-  --yi-radius-md: 0.375rem;
-  --yi-radius-lg: 0.5rem;
-  --yi-radius-xl: 0.625rem;
-  --yi-radius-2xl: 0.75rem;
+  --yi-radius-xs: 0.25rem;
+  --yi-radius-sm: 0.375rem;
+  --yi-radius-md: 0.5rem;
+  --yi-radius-lg: 0.75rem;
+  --yi-radius-xl: 1rem;
+  --yi-radius-2xl: 1.5rem;
   --yi-radius-pill: 999px;
   --yi-ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --yi-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --yi-shadow-hairline: none;
   --yi-shadow-panel: none;
-  --yi-shadow-popover: 0 16px 40px -24px oklch(12% 0.02 62 / 0.48);
-  --yi-shadow-mark: 0 10px 24px -16px oklch(from var(--yi-mark) l c h / 0.72);
+  --yi-shadow-popover: 0 16px 36px -28px oklch(12% 0.02 264 / 0.42);
+  --yi-shadow-mark: 0 10px 24px -16px oklch(from var(--yi-mark) l c h / 0.42);
 
   color-scheme: light;
 }
@@ -142,7 +148,7 @@ html:has(#__plasmo),
 .youin-widget-fab {
   animation: youin-widget-in 220ms var(--yi-ease-out-expo);
   box-shadow:
-    0 14px 34px -24px oklch(18.4% 0.018 62 / 0.46),
+    0 14px 34px -24px oklch(18% 0.012 264 / 0.34),
     0 0 0 1px var(--yi-ext-border-hairline);
 }
 
@@ -265,18 +271,22 @@ html:has(#__plasmo) body {
 
 .youin-input {
   background: var(--yi-ext-surface-input);
-  border: 0;
+  border: 1px solid var(--yi-ext-border);
+  box-sizing: border-box;
   transition:
+    border-color 160ms var(--yi-ease-out-expo),
     box-shadow 160ms var(--yi-ease-out-expo),
     background-color 160ms var(--yi-ease-out-expo);
 }
 .youin-input:hover {
+  border-color: var(--yi-ext-border-strong);
   background: var(--yi-paper-3);
 }
 .youin-input:focus {
   outline: none;
-  background: var(--yi-paper);
-  box-shadow: 0 0 0 3px oklch(from var(--yi-mark) l c h / 0.18);
+  border-color: color-mix(in oklch, var(--yi-mark) 45%, var(--yi-rule));
+  background: var(--yi-paper-elevated);
+  box-shadow: 0 0 0 2px oklch(from var(--yi-mark) l c h / 0.18);
 }
 
 @keyframes youin-panel-in {

@@ -55,7 +55,7 @@ export function InboxView() {
                 size="sm"
                 onClick={inbox.markAllRead}
                 disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
-                className="h-11 gap-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-9"
+                className="h-10 gap-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8"
               >
                 <CheckCheck className="size-3.5" aria-hidden />
                 {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
@@ -71,7 +71,7 @@ export function InboxView() {
           title="Inbox unavailable."
           description="The latest inbox activity could not be loaded."
           action={
-            <Button type="button" size="sm" variant="outline" className="h-11 sm:h-8" onClick={inbox.refetch}>
+            <Button type="button" size="sm" variant="outline" className="h-10 sm:h-8" onClick={inbox.refetch}>
               Try again
             </Button>
           }
@@ -90,14 +90,14 @@ export function InboxView() {
           }
           action={
             userId ? (
-              <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
+              <Button asChild size="sm" variant="outline" className="h-10 sm:h-8">
                 <Link href="/dashboard" className="inline-flex items-center gap-1.5">
                   Go to dashboard
                   <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
               </Button>
             ) : (
-              <Button asChild variant="mark" size="sm" className="h-11 sm:h-8">
+              <Button asChild variant="mark" size="sm" className="h-10 sm:h-8">
                 <Link href="/login?next=%2Finbox" className="inline-flex items-center gap-1.5">
                   Sign in
                   <ArrowRight className="size-3.5" aria-hidden />

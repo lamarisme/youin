@@ -1,13 +1,14 @@
 "use client";
 
 import {
+  Check,
   ListFilter,
   Search,
   UserCheck,
   UserRound,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 
 import { FilterSelect, type FilterOption } from "@/components/filter-select";
 import { FadeIn } from "@/components/motion";
@@ -39,17 +40,23 @@ import type {
   PinnedFilter,
   PriorityFilter,
   SortMode,
-  StatusFilter,
 } from "./use-dashboard-filters";
 
 interface MarkFiltersProps {
   filters: DashboardFilters;
   visibleCount: number;
   labels: WorkspaceLabel[];
+  lockedAssignee?: AssigneeFilter;
   onChange: (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => void;
 }
 
-export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFiltersProps) {
+export function MarkFilters({
+  filters,
+  visibleCount,
+  labels,
+  lockedAssignee,
+  onChange,
+}: MarkFiltersProps) {
   const { viewerId, workflowStatuses } = useWorkspaceData((s) => ({
     viewerId: s.userId,
     workflowStatuses: s.workspace.workflowStatuses,
@@ -58,6 +65,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
   const [queryDraft, setQueryDraft] = useState(filters.q);
   const [lastSyncedQ, setLastSyncedQ] = useState(filters.q);
   const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
+  const showAssigneeFilter = lockedAssignee === undefined;
 
   function setAssignee(next: AssigneeFilter) {
     onChange({ assignee: next }, { resetPage: true });
@@ -157,7 +165,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
         },
       });
     }
-    if (filters.assignee === "me") {
+    if (showAssigneeFilter && filters.assignee === "me") {
       out.push({
         key: "assignee",
         label: "Assignee",
@@ -165,7 +173,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
         reset: () => onChange({ assignee: "all" }, { resetPage: true }),
       });
     }
-    if (filters.assignee === "unassigned") {
+    if (showAssigneeFilter && filters.assignee === "unassigned") {
       out.push({
         key: "assignee-unassigned",
         label: "Assignee",
@@ -182,7 +190,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
       });
     }
     return out;
-  }, [filters, labelsById, onChange, workflowStatusOptions]);
+  }, [filters, labelsById, onChange, showAssigneeFilter, workflowStatusOptions]);
 
   const hiddenControlCount =
     (filters.status !== "all" ? 1 : 0) +
@@ -190,7 +198,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     (filters.workflowStatus !== "all" ? 1 : 0) +
     (filters.priority !== "all" ? 1 : 0) +
     (filters.pinned !== "all" ? 1 : 0) +
-    (filters.assignee !== "all" ? 1 : 0) +
+    (showAssigneeFilter && filters.assignee !== "all" ? 1 : 0) +
     (filters.sort !== "recent" ? 1 : 0);
 
   function clearAll() {
@@ -201,7 +209,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
         priority: "all",
         pinned: "all",
         label: "all",
-        assignee: "all",
+        assignee: lockedAssignee ?? "all",
         q: null,
         sort: "recent",
       },
@@ -210,16 +218,16 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
     setQueryDraft("");
   }
 
-  const dialogSelectClass = "h-9 w-full justify-between bg-paper-2 text-ui-sm";
-  const dialogLabelClass = "text-ui-xs font-medium text-ink-3";
+  const dialogSelectClass = "h-8 w-full justify-between bg-paper-elevated text-ui-sm shadow-none sm:w-[11rem]";
+  const dialogLabelClass = "text-ui-sm font-medium text-ink-2";
   const assigneeButtonClass =
-    "h-8 min-w-0 gap-1 rounded-[5px] px-2 text-ui-sm font-normal shadow-none";
+    "h-8 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none";
   const assigneeIdleClass = "text-ink-2 hover:bg-paper-elevated hover:text-ink";
-  const assigneeActiveClass = "bg-paper-elevated text-ink hover:bg-paper-elevated";
+  const assigneeActiveClass = "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated";
 
   return (
-    <FadeIn className="w-full space-y-1.5">
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5">
+    <FadeIn className="w-full space-y-2">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
         <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
           <Input
@@ -236,7 +244,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             }}
             placeholder="Search marks"
             aria-label="Search marks by title, description, or page"
-            className="h-11 rounded-md bg-paper-2 pl-8 pr-8 text-ui-lg shadow-none sm:h-8 sm:text-ui-sm"
+            className="h-10 rounded-md bg-paper-elevated pl-8 pr-8 text-ui-md shadow-none sm:h-8 sm:text-ui-sm"
           />
           {queryDraft ? (
             <button
@@ -246,7 +254,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                 onChange({ q: null }, { resetPage: true });
               }}
               aria-label="Clear search"
-              className="absolute right-1.5 inline-flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink sm:size-7"
+              className="absolute right-1.5 inline-flex size-7 items-center justify-center rounded-sm text-ink-3 hover:bg-paper-2 hover:text-ink"
             >
               <X className="size-3.5 sm:size-3" />
             </button>
@@ -264,7 +272,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                   ? `Open dashboard filters (${hiddenControlCount} active)`
                   : "Open dashboard filters"
               }
-              className="h-11 gap-1.5 bg-transparent px-3 text-ui-lg font-normal text-ink-2 shadow-none hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2.5 sm:text-ui-sm"
+              className="h-10 gap-1.5 px-3 text-ui-md font-normal sm:h-8 sm:px-2.5 sm:text-ui-sm"
             >
               <ListFilter className="size-3.5 opacity-75 sm:size-3" aria-hidden />
               <span className="tabular-nums">
@@ -275,28 +283,48 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
               </span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[34rem]">
-            <div className="px-4 pb-3 pt-4">
-              <DialogTitle>Filter marks</DialogTitle>
+          <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[32rem]">
+            <div className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
+              <DialogTitle>View options</DialogTitle>
               <DialogDescription className="sr-only">
                 Adjust dashboard filters and sort order.
               </DialogDescription>
+              <p className="mt-1 text-ui-sm text-ink-3">
+                Tune the list without leaving the dashboard.
+              </p>
             </div>
 
-            <div className="grid gap-4 border-y border-rule/70 px-4 py-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Status</span>
-                  <FilterSelect<StatusFilter>
-                    value={filters.status}
-                    onValueChange={(v) => onChange({ status: v }, { resetPage: true })}
-                    options={DASHBOARD_STATUS_FILTER_OPTIONS}
-                    ariaLabel="Filter by status"
-                    triggerClassName={dialogSelectClass}
-                  />
+            <div className="max-h-[min(70vh,34rem)] overflow-y-auto">
+              <section className="px-4 py-3">
+                <span className={dialogLabelClass}>Status</span>
+                <div className="mt-2 grid grid-cols-3 gap-1 rounded-md bg-paper-2 p-1">
+                  {DASHBOARD_STATUS_FILTER_OPTIONS.map((option) => {
+                    const active = filters.status === option.value;
+                    return (
+                      <Button
+                        key={option.value}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        aria-pressed={active}
+                        onClick={() => onChange({ status: option.value }, { resetPage: true })}
+                        className={cn(
+                          "h-8 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none",
+                          active
+                            ? "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated"
+                            : "text-ink-2 hover:bg-paper-elevated hover:text-ink",
+                        )}
+                      >
+                        {active ? <Check className="size-3 text-mark" aria-hidden /> : null}
+                        <span className="truncate">{option.label.replace("All statuses", "All")}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Stage</span>
+              </section>
+
+              <section className="divide-y divide-rule/60 border-t border-rule/70">
+                <FilterRow label="Stage">
                   <FilterSelect
                     value={filters.workflowStatus}
                     onValueChange={(v) => onChange({ workflowStatus: v }, { resetPage: true })}
@@ -304,19 +332,8 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                     ariaLabel="Filter by workflow stage"
                     triggerClassName={dialogSelectClass}
                   />
-                </div>
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Label</span>
-                  <FilterSelect
-                    value={filters.label}
-                    onValueChange={(v) => onChange({ label: v }, { resetPage: true })}
-                    options={labelOptions}
-                    ariaLabel="Filter by label"
-                    triggerClassName={dialogSelectClass}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Priority</span>
+                </FilterRow>
+                <FilterRow label="Priority">
                   <FilterSelect<PriorityFilter>
                     value={filters.priority}
                     onValueChange={(v) => onChange({ priority: v }, { resetPage: true })}
@@ -324,9 +341,17 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                     ariaLabel="Filter by priority"
                     triggerClassName={dialogSelectClass}
                   />
-                </div>
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Pinned</span>
+                </FilterRow>
+                <FilterRow label="Label">
+                  <FilterSelect
+                    value={filters.label}
+                    onValueChange={(v) => onChange({ label: v }, { resetPage: true })}
+                    options={labelOptions}
+                    ariaLabel="Filter by label"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </FilterRow>
+                <FilterRow label="Pinned">
                   <FilterSelect<PinnedFilter>
                     value={filters.pinned}
                     onValueChange={(v) => onChange({ pinned: v }, { resetPage: true })}
@@ -334,9 +359,8 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                     ariaLabel="Filter by pinned"
                     triggerClassName={dialogSelectClass}
                   />
-                </div>
-                <div className="grid gap-1.5">
-                  <span className={dialogLabelClass}>Sort</span>
+                </FilterRow>
+                <FilterRow label="Sort">
                   <FilterSelect<SortMode>
                     value={filters.sort}
                     onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
@@ -344,60 +368,68 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
                     ariaLabel="Sort marks"
                     triggerClassName={dialogSelectClass}
                   />
-                </div>
-              </div>
+                </FilterRow>
+              </section>
 
-              <div className="grid gap-1.5">
-                <span className={dialogLabelClass}>Assignee</span>
-                <div className="grid grid-cols-3 gap-1 rounded-md bg-paper-2 p-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    aria-pressed={filters.assignee === "all"}
-                    onClick={() => setAssignee("all")}
-                    className={cn(
-                      assigneeButtonClass,
-                      filters.assignee === "all" ? assigneeActiveClass : assigneeIdleClass,
-                    )}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={!viewerId}
-                    title={!viewerId ? "Sign in to filter by assignee." : undefined}
-                    aria-pressed={filters.assignee === "me"}
-                    onClick={() => viewerId && setAssignee("me")}
-                    className={cn(
-                      assigneeButtonClass,
-                      filters.assignee === "me" ? assigneeActiveClass : assigneeIdleClass,
-                    )}
-                  >
-                    <UserCheck className="size-3 opacity-70" aria-hidden />
-                    Mine
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    aria-pressed={filters.assignee === "unassigned"}
-                    onClick={() => setAssignee("unassigned")}
-                    className={cn(
-                      assigneeButtonClass,
-                      filters.assignee === "unassigned" ? assigneeActiveClass : assigneeIdleClass,
-                    )}
-                  >
-                    <UserRound className="size-3 opacity-70" aria-hidden />
-                    Unassigned
-                  </Button>
-                </div>
-              </div>
+              {showAssigneeFilter ? (
+                <section className="border-t border-rule/70 px-4 py-3">
+                  <span className={dialogLabelClass}>Assignee</span>
+                  <div className="mt-2 grid grid-cols-3 gap-1 rounded-md bg-paper-2 p-1">
+                    <AssigneeButton
+                      active={filters.assignee === "all"}
+                      className={cn(assigneeButtonClass, filters.assignee === "all" ? assigneeActiveClass : assigneeIdleClass)}
+                      onClick={() => setAssignee("all")}
+                    >
+                      All
+                    </AssigneeButton>
+                    <AssigneeButton
+                      active={filters.assignee === "me"}
+                      disabled={!viewerId}
+                      title={!viewerId ? "Sign in to filter by assignee." : undefined}
+                      className={cn(assigneeButtonClass, filters.assignee === "me" ? assigneeActiveClass : assigneeIdleClass)}
+                      onClick={() => viewerId && setAssignee("me")}
+                    >
+                      <UserCheck className="size-3 opacity-70" aria-hidden />
+                      Mine
+                    </AssigneeButton>
+                    <AssigneeButton
+                      active={filters.assignee === "unassigned"}
+                      className={cn(assigneeButtonClass, filters.assignee === "unassigned" ? assigneeActiveClass : assigneeIdleClass)}
+                      onClick={() => setAssignee("unassigned")}
+                    >
+                      <UserRound className="size-3 opacity-70" aria-hidden />
+                      Unassigned
+                    </AssigneeButton>
+                  </div>
+                </section>
+              ) : null}
+
+              {activeFilters.length > 0 ? (
+                <section className="border-t border-rule/70 px-4 py-3">
+                  <span className={dialogLabelClass}>Applied</span>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {activeFilters.map((f) => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={f.reset}
+                        className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-2 text-ui-xs text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
+                        aria-label={`Clear ${f.label} filter (${f.value})`}
+                      >
+                        <span className="truncate text-ink-3">{f.label}</span>
+                        <span className="text-rule-strong" aria-hidden>
+                          ·
+                        </span>
+                        <span className="truncate font-medium text-ink">{f.value}</span>
+                        <X className="size-3 opacity-65" aria-hidden />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
             </div>
 
-            <div className="flex items-center justify-between gap-2 bg-paper-2/70 px-4 py-3">
+            <div className="flex items-center justify-between gap-2 border-t border-rule/70 bg-paper-2/70 px-4 py-3">
               <Button
                 type="button"
                 variant="ghost"
@@ -433,7 +465,7 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
               <button
                 type="button"
                 onClick={f.reset}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-md py-0.5 max-sm:px-0.5 sm:min-h-8 sm:py-1"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-md py-0.5 max-sm:px-0.5 sm:min-h-8 sm:py-1"
                 aria-label={`Clear ${f.label} filter (${f.value})`}
               >
                 <span className="max-w-[10rem] truncate text-ink-3 sm:max-w-none">{f.label}</span>
@@ -449,13 +481,44 @@ export function MarkFilters({ filters, visibleCount, labels, onChange }: MarkFil
             type="button"
             variant="ghost"
             onClick={clearAll}
-            className="h-11 px-2 text-ui-xs font-medium text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2"
+            className="h-10 px-2 text-ui-xs font-medium text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-8 sm:px-2"
           >
             Clear all
           </Button>
         </div>
       ) : null}
     </FadeIn>
+  );
+}
+
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <span className="text-ui-sm font-medium text-ink-2">{label}</span>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function AssigneeButton({
+  active,
+  className,
+  children,
+  ...props
+}: ComponentProps<typeof Button> & {
+  active: boolean;
+}) {
+  return (
+    <Button type="button" size="sm" variant="ghost" aria-pressed={active} className={className} {...props}>
+      {active ? <Check className="size-3 text-mark" aria-hidden /> : null}
+      {children}
+    </Button>
   );
 }
 

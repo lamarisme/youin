@@ -101,7 +101,7 @@ function MarkRow({
   const health = computeMarkHealth(mark)
   const image = mark.screenshotUrl ?? mark.screenshotDataUrl
   return (
-    <li className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+    <li className="rounded-md bg-[color:var(--yi-ext-surface-low)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
       <button
         type="button"
         className="grid w-full grid-cols-[minmax(0,1fr)_48px] gap-3 border-0 bg-transparent p-3 text-left outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
@@ -154,7 +154,7 @@ function MarkRow({
             </button>
             <button
               type="button"
-              className="inline-flex min-h-9 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
+              className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-danger-text)] hover:bg-[color:var(--yi-ext-danger-bg)]"
               onClick={() => onConfirmDelete(mark)}>
               {t("extension.drawer.confirmDelete")}
             </button>
@@ -173,7 +173,7 @@ function MarkRow({
             </button>
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-mark)] hover:bg-[color:var(--yi-mark-soft)]"
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-danger-text)] hover:bg-[color:var(--yi-ext-danger-bg)]"
               onClick={() => onDelete(mark)}>
               {t("extension.drawer.delete")}
             </button>
@@ -330,7 +330,7 @@ const AnnotationDrawer = () => {
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 [scrollbar-gutter:stable]">
         {marks.length === 0 ? (
-          <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-6 text-center text-[12px] text-[color:var(--yi-ext-text-muted)]">
+          <p className="rounded-md bg-[color:var(--yi-ext-surface-low)] px-3 py-6 text-center text-[12px] text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
             {t("extension.drawer.empty")}
           </p>
         ) : (
@@ -340,7 +340,7 @@ const AnnotationDrawer = () => {
                 {t("extension.drawer.openSection")}
               </h3>
               {openMarks.length === 0 ? (
-                <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] px-3 py-4 text-center text-[11px] text-[color:var(--yi-ext-text-muted)]">
+                <p className="rounded-md bg-[color:var(--yi-ext-surface-low)] px-3 py-4 text-center text-[11px] text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
                   {t("extension.drawer.noOpenFeedback")}
                 </p>
               ) : (

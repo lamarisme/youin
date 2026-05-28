@@ -11,8 +11,8 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       className="relative w-full overflow-x-auto"
     >
       <table
-        data-slot="table"
-        className={cn("w-full border-collapse caption-bottom text-sm", className)}
+      data-slot="table"
+        className={cn("w-full border-collapse caption-bottom text-ui-sm", className)}
         {...props}
       />
     </div>
@@ -83,7 +83,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "bg-transparent p-3 align-middle whitespace-nowrap transition-colors group-hover/row:bg-paper-2 [&:has([role=checkbox])]:pr-0",
+        "bg-transparent px-3 py-2 align-middle whitespace-nowrap transition-colors group-hover/row:bg-paper-2 [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -98,7 +98,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      className={cn("mt-4 text-ui-sm text-muted-foreground", className)}
       {...props}
     />
   )

@@ -195,7 +195,7 @@ const PinBadges = () => {
               )
             }}>
             <span
-              className={`relative flex h-6 w-6 select-none items-center justify-center rounded-full shadow-[0_8px_18px_-12px_oklch(18.4%_0.018_62_/_0.55),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${
+              className={`relative flex h-6 w-6 select-none items-center justify-center rounded-full shadow-[0_8px_18px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${
                 health === "attached"
                   ? "bg-[color:var(--yi-mark)]"
                   : health === "approximate"

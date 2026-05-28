@@ -61,7 +61,7 @@ export function MarkShortcutsHelp({ open, onOpenChange }: MarkShortcutsHelpProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="inline-flex items-center gap-2 text-base font-semibold text-ink">
+          <DialogTitle className="inline-flex items-center gap-2 text-title-sm font-semibold text-ink">
             <Keyboard className="size-4 text-ink-3" aria-hidden />
             Mark shortcuts
           </DialogTitle>

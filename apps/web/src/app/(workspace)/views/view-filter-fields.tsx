@@ -75,7 +75,7 @@ export function ViewScopeFields({
         onValueChange={(value) => onChange({ projectId: value })}
         options={projectOptions}
         ariaLabel="Filter view by project"
-        triggerClassName="h-11 w-[min(100%,180px)] sm:h-9"
+        triggerClassName="h-10 w-[min(100%,180px)] sm:h-8"
       />
       {includeAdvanced ? (
         <>
@@ -84,42 +84,42 @@ export function ViewScopeFields({
             onValueChange={(value) => onChange({ status: value })}
             options={DASHBOARD_STATUS_FILTER_OPTIONS}
             ariaLabel="Filter view by status"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
           <FilterSelect
             value={filters.workflowStatus}
             onValueChange={(value) => onChange({ workflowStatus: value })}
             options={workflowStatusOptions}
             ariaLabel="Filter view by workflow stage"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
           <FilterSelect<WorkspaceViewPriorityFilter>
             value={filters.priority}
             onValueChange={(value) => onChange({ priority: value })}
             options={DASHBOARD_PRIORITY_FILTER_OPTIONS}
             ariaLabel="Filter view by priority"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
           <FilterSelect
             value={filters.label}
             onValueChange={(value) => onChange({ label: value })}
             options={labelOptions}
             ariaLabel="Filter view by label"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
           <FilterSelect<WorkspaceViewPinnedFilter>
             value={filters.pinned}
             onValueChange={(value) => onChange({ pinned: value })}
             options={DASHBOARD_PINNED_FILTER_OPTIONS}
             ariaLabel="Filter view by pinned state"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
           <FilterSelect<WorkspaceViewAssigneeFilter>
             value={filters.assignee}
             onValueChange={(value) => onChange({ assignee: value })}
             options={assigneeOptions}
             ariaLabel="Filter view by assignee"
-            triggerClassName="h-11 w-[150px] sm:h-9"
+            triggerClassName="h-10 w-[150px] sm:h-8"
           />
         </>
       ) : null}

@@ -392,7 +392,7 @@ function CreateViewDialog({
                 onChange={(event) => setName(event.target.value)}
                 placeholder={selectedTemplate.defaultName}
                 maxLength={80}
-                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
+                className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
               />
             </Field>
 

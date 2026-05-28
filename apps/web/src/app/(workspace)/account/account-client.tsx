@@ -65,7 +65,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
                 href={accountHref(section.value)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-left transition-colors",
+                  "group flex min-h-10 shrink-0 items-center justify-between gap-3 rounded-md px-3 py-2 text-left transition-colors",
                   "lg:min-h-8 lg:w-full lg:px-2.5 lg:py-1.5",
                   active
                     ? "bg-paper-3 text-ink"

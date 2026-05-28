@@ -211,19 +211,19 @@ function buildMarkFromCapture(
 }
 
 const btnPrimary =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2.5 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
+  "flex w-full cursor-pointer items-center justify-center rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
 
 const btnGhost =
-  "flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color] motion-reduce:transition-none hover:bg-[color:var(--yi-ext-surface-hover)] active:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+  "flex w-full cursor-pointer items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color] motion-reduce:transition-none hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] active:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
 const fieldLabel =
   "mb-1.5 block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-label)]"
 
 const selectCls =
-  "box-border min-h-[2.5rem] w-full cursor-pointer rounded-[var(--yi-radius-lg)] border border-transparent bg-[color:var(--yi-ext-surface-input)] px-2.5 py-2 text-[13px] text-[color:var(--yi-ext-text)] outline-none transition-colors hover:bg-[color:var(--yi-paper-3)] focus-visible:border-[color:var(--yi-mark)] focus-visible:ring-2 focus-visible:ring-[color:var(--yi-ext-accent-ring-soft)]"
+  "youin-input box-border min-h-9 w-full cursor-pointer rounded-md px-2.5 py-1.5 text-[13px] text-[color:var(--yi-ext-text)] outline-none"
 
 const headerCloseBtn =
-  "flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+  "flex min-h-10 min-w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
 
 const threadBadge =
   "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold leading-none whitespace-nowrap"
@@ -457,10 +457,10 @@ function flashSelection(selector: string, bbox?: Mark["bbox"]): boolean {
       width: `${Math.max(1, rect.width)}px`,
       height: `${Math.max(1, rect.height)}px`,
       boxSizing: "border-box",
-      border: "2px solid oklch(53.5% 0.19 24)",
-      borderRadius: "6px",
-      background: "oklch(53.5% 0.19 24 / 0.08)",
-      boxShadow: "0 0 0 9999px oklch(18.4% 0.018 62 / 0.16)",
+      border: "2px solid oklch(56.74% 0.1585 275.21)",
+      borderRadius: "8px",
+      background: "oklch(56.74% 0.1585 275.21 / 0.08)",
+      boxShadow: "0 0 0 9999px oklch(18% 0.012 264 / 0.16)",
       pointerEvents: "none",
       zIndex: String(Z_PANEL - 1),
       transition: "opacity 220ms ease"
@@ -560,7 +560,7 @@ function CommentComposer({
         }}
         placeholder={placeholder}
         aria-invalid={invalid ? true : undefined}
-        className="youin-input box-border min-h-[var(--composer-min-h,7rem)] w-full resize-y rounded-[var(--yi-radius-lg)] px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="youin-input box-border min-h-[var(--composer-min-h,7rem)] w-full resize-y rounded-md px-3 py-2.5 text-[13px] leading-snug text-[color:var(--yi-ext-text)] placeholder:text-[color:var(--yi-ext-text-placeholder)] disabled:cursor-not-allowed disabled:opacity-60"
         style={
           {
             "--composer-min-h": rows <= 3 ? "4.5rem" : "7rem"
@@ -1623,7 +1623,7 @@ const CapturePanel = () => {
                       value={editTitle}
                       maxLength={STORAGE_LIMITS.markTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
-                      className="youin-input box-border min-h-10 w-full rounded-[var(--yi-radius-lg)] px-3 text-[13px] text-[color:var(--yi-ext-text)]"
+                      className="youin-input box-border min-h-9 w-full rounded-md px-3 text-[13px] text-[color:var(--yi-ext-text)]"
                     />
                   </label>
                   <div className="mt-3">
@@ -1789,7 +1789,7 @@ const CapturePanel = () => {
                 <button
                   type="button"
                   disabled={saving || !replyDraft.trim()}
-                  className="rounded-lg bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-40"
+                  className="rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-40"
                   onClick={() => void sendReply()}>
                   Send reply
                 </button>
@@ -1801,14 +1801,14 @@ const CapturePanel = () => {
                   <button
                     type="button"
                     disabled={saving || viewingMark.status === "open"}
-                    className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                    className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                     onClick={() => void setMarkStatus("open" as MarkStatus)}>
                     Open
                   </button>
                   <button
                     type="button"
                     disabled={saving || viewingMark.status === "closed"}
-                    className="min-h-10 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                    className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                     onClick={() => void setMarkStatus("closed" as MarkStatus)}>
                     Closed
                   </button>
@@ -1820,7 +1820,7 @@ const CapturePanel = () => {
                   href={`${WEB_APP_URL}/dashboard`}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-transparent bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
+                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
                   {t("extension.panel.openDashboard")}
                 </a>
                 {confirmDelete ? (
@@ -1841,7 +1841,7 @@ const CapturePanel = () => {
                       <button
                         type="button"
                         disabled={saving}
-                        className="flex w-full cursor-pointer items-center justify-center rounded-lg border-0 bg-[color:var(--yi-mark)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-50"
+                        className="flex w-full cursor-pointer items-center justify-center rounded-md border border-[color:var(--yi-ext-danger-text)] bg-[color:var(--yi-ext-danger-text)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-paper)] outline-none hover:bg-[color:var(--yi-destructive)] disabled:opacity-50"
                         onClick={() => void deleteMark()}>
                         {t("extension.panel.confirmDelete")}
                       </button>
@@ -1851,7 +1851,7 @@ const CapturePanel = () => {
                   <button
                     type="button"
                     disabled={saving}
-                    className="flex w-full cursor-pointer items-center justify-center rounded-lg border border-transparent bg-[color:var(--yi-mark-soft)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-mark)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
+                    className="flex w-full cursor-pointer items-center justify-center rounded-md border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2 text-[12.5px] font-semibold text-[color:var(--yi-ext-danger-text)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] disabled:opacity-50"
                     onClick={() => void deleteMark()}>
                     {t("extension.panel.deleteFeedback")}
                   </button>
@@ -1909,12 +1909,12 @@ function FullImageOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Full image preview"
-      className="youin-full-image pointer-events-auto fixed inset-0 flex items-center justify-center bg-[oklch(18.4%_0.018_62_/_0.76)] p-4"
+      className="youin-full-image pointer-events-auto fixed inset-0 flex items-center justify-center bg-[oklch(18%_0.012_264_/_0.76)] p-4"
       style={{ zIndex: Z_MODAL }}
       onClick={onClose}>
       <button
         type="button"
-        className="absolute right-3 top-3 min-h-11 min-w-11 rounded-full border-0 bg-[color:var(--yi-paper)] text-[18px] font-semibold text-[color:var(--yi-ink)] shadow-[var(--yi-shadow-popover)] outline-none hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-paper)]"
+        className="absolute right-3 top-3 min-h-10 min-w-10 rounded-full border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-paper)] text-[18px] font-semibold text-[color:var(--yi-ink)] shadow-[var(--yi-shadow-popover)] outline-none hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-paper)]"
         aria-label="Close full image preview"
         onClick={onClose}>
         ✕

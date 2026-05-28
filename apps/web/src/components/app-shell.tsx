@@ -12,7 +12,7 @@ export function AppShell({ children }: AppShellProps) {
         <div className="grid w-full gap-0 lg:grid-cols-[auto_minmax(0,1fr)]">
           <AppSidebar />
           <main className="min-h-screen min-w-0 bg-paper-2 p-1.5 sm:p-2 lg:pl-0">
-            <div className="min-h-[calc(100vh-0.75rem)] overflow-hidden rounded-lg bg-paper sm:min-h-[calc(100vh-1rem)] lg:rounded-xl">
+            <div className="min-h-[calc(100vh-0.75rem)] overflow-hidden rounded-lg bg-paper sm:min-h-[calc(100vh-1rem)]">
               {children}
             </div>
           </main>

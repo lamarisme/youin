@@ -45,7 +45,7 @@ export default async function Home() {
         {t("skipLink")}
       </a>
       <LandingAuthProvider>
-        <header className="sticky top-0 z-20 border-b border-rule bg-paper/95 supports-[backdrop-filter]:bg-paper/80 supports-[backdrop-filter]:backdrop-blur-sm">
+        <header className="sticky top-0 z-20 border-b border-rule bg-paper/95">
           <div className="shell flex min-h-14 items-center justify-between gap-3 py-2">
             <Link
               href="/"

@@ -5,7 +5,7 @@ import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { markHref } from "@/lib/workspace/routes";
 
 export const metadata: Metadata = {
-  title: "Triage",
+  title: "Marks",
 };
 
 export default async function DashboardPage({

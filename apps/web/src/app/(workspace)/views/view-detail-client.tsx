@@ -172,7 +172,7 @@ function ViewDetail({
               onChange={(event) => setName(event.target.value)}
               aria-label="View name"
               maxLength={80}
-              className="h-11 bg-paper text-ui-lg font-medium sm:h-9 sm:text-ui-sm"
+              className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-8 sm:text-ui-sm"
             />
           </div>
           <span className="self-start rounded bg-paper-3 px-2 py-1 text-ui-xs font-medium text-ink-3 sm:self-auto">

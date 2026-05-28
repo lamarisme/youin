@@ -34,7 +34,7 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
 
   return (
     <>
-      <div className={cn("overflow-hidden rounded-lg bg-paper-2", isHero ? "mt-4" : "mt-5")}>
+      <div className={cn("overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45", isHero ? "mt-4" : "mt-5")}>
         <div className="flex items-center gap-2 px-3 py-2">
           <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
           <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
@@ -130,7 +130,7 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
           </dl>
 
           {domContext ? (
-            <div className="mt-3 overflow-hidden rounded-lg bg-paper-2">
+            <div className="mt-3 overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45">
               <div className="flex items-center gap-2 px-3 py-2 text-ui-xs font-medium text-ink-2">
                 <Code2 className="size-3.5 text-ink-3" aria-hidden />
                 <span>DOM context</span>

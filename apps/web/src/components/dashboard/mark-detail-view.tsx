@@ -259,7 +259,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   maxLength={180}
                   autoFocus
                   aria-invalid={titleInvalid || undefined}
-                  className="h-11 rounded-md border-transparent bg-transparent px-1 py-0 text-lg font-semibold leading-[1.15] shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8 sm:text-xl"
+                  className="h-10 rounded-md border-transparent bg-transparent px-1 py-0 text-title-md font-semibold leading-[1.15] shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
                 />
                 <InlineEditActions
                   field="title"
@@ -270,7 +270,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 />
               </div>
             ) : (
-              <h1 className="mt-0.5 text-lg font-semibold leading-[1.15] text-ink sm:text-xl">
+              <h1 className="mt-0.5 text-title-md font-semibold leading-[1.15] text-ink">
                 <button
                   type="button"
                   onClick={() => startEdit("title")}
@@ -295,8 +295,8 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
 
           {isPane ? <MarkDetailCapture mark={mark} variant="hero" /> : null}
 
-          <div className="mt-3 rounded-md bg-paper-2">
-            <div className="grid min-h-11 gap-1 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
+          <div className="mt-3 rounded-md bg-paper-2 ring-1 ring-rule/45">
+            <div className="grid min-h-10 gap-1 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
               <span
                 className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
                 aria-label="Page"
@@ -318,7 +318,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     maxLength={300}
                     autoFocus
                     aria-invalid={pageInvalid || undefined}
-                    className="h-11 rounded-md border-transparent bg-transparent px-1 py-0 font-mono text-ui-sm shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
+                    className="h-10 rounded-md border-transparent bg-transparent px-1 py-0 font-mono text-ui-sm shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
                   />
                   <InlineEditActions
                     field="page"
@@ -332,7 +332,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <button
                   type="button"
                   onClick={() => startEdit("page")}
-                  className="group flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-md text-left outline-none hover:text-ink focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
+                  className="group flex min-h-10 min-w-0 items-center justify-between gap-2 rounded-md text-left outline-none hover:text-ink focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
                 >
                   <span className="min-w-0 truncate font-mono text-ui-xs text-ink-2">
                     {mark.page}
@@ -346,7 +346,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               <MarkPageOpenButton
                 page={mark.page}
                 appearance="icon"
-                className="size-11 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 sm:size-8"
+                className="size-10 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 sm:size-8"
               />
             </div>
           </div>
@@ -397,7 +397,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <button
                   type="button"
                   onClick={() => startEdit("description")}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8 sm:min-w-8"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8 sm:min-w-8"
                   aria-label="Edit notes"
                 >
                   <Pencil className="size-3.5" aria-hidden />
@@ -409,7 +409,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
             <button
               type="button"
               onClick={() => startEdit("description")}
-              className="mt-5 flex min-h-11 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-ui-sm text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
+              className="mt-5 flex min-h-10 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-ui-sm text-ink-3 ring-1 ring-rule/45 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
             >
               <span>Add notes</span>
               <Pencil className="size-3.5" aria-hidden />
@@ -526,7 +526,7 @@ function InlineEditActions({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="inline-flex size-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 disabled:pointer-events-none disabled:opacity-50 sm:size-8"
+        className="inline-flex size-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 disabled:pointer-events-none disabled:opacity-50 sm:size-8"
         aria-label={`Cancel ${field} edit`}
       >
         <X className="size-3.5" aria-hidden />
@@ -537,7 +537,7 @@ function InlineEditActions({
         size="icon"
         onClick={() => onSave(field)}
         disabled={saving || disabled}
-        className="size-11 sm:size-8"
+        className="size-10 sm:size-8"
         aria-label={`Save ${field}`}
       >
         <Check className="size-3.5" aria-hidden />

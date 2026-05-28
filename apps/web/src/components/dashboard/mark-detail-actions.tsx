@@ -84,7 +84,7 @@ export function MarkDetailActions({
             }
             options={workflowStatusOptions}
             ariaLabel="Mark workflow status"
-            triggerClassName="h-11 w-[132px] sm:h-8"
+            triggerClassName="h-10 w-[132px] sm:h-8"
             variant="inline"
           />
         ) : (
@@ -95,7 +95,7 @@ export function MarkDetailActions({
             aria-keyshortcuts="X"
             aria-label={mark.status === "open" ? "Close mark" : "Reopen mark"}
             className={cn(
-              "h-11 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+              "h-10 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
               mark.status === "open" ? "text-mark" : "text-ok",
             )}
           >
@@ -110,7 +110,7 @@ export function MarkDetailActions({
           onValueChange={(v) => updateMarkPriority({ markId: mark.id, priority: v })}
           options={PIN_PRIORITY_OPTIONS_TRIAGE}
           ariaLabel="Mark priority"
-          triggerClassName="h-11 w-[104px] sm:h-8"
+          triggerClassName="h-10 w-[104px] sm:h-8"
           variant="inline"
         />
       </PropertyGroup>
@@ -132,7 +132,7 @@ export function MarkDetailActions({
             })),
           ]}
           ariaLabel="Mark assignee"
-          triggerClassName="h-11 w-[134px] sm:h-8"
+          triggerClassName="h-10 w-[134px] sm:h-8"
           variant="inline"
         />
       </PropertyGroup>
@@ -149,7 +149,7 @@ export function MarkDetailActions({
             label: project.name,
           }))}
           ariaLabel="Mark project"
-          triggerClassName="h-11 w-[150px] sm:h-8"
+          triggerClassName="h-10 w-[150px] sm:h-8"
           variant="inline"
         />
       </PropertyGroup>
@@ -161,7 +161,7 @@ export function MarkDetailActions({
         aria-pressed={mark.pinned}
         aria-keyshortcuts="B"
         className={cn(
-          "h-11 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+          "h-10 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
           mark.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
         )}
       >
@@ -179,7 +179,7 @@ export function MarkDetailActions({
         variant="ghost"
         onClick={onConfirmDelete}
         aria-label="Delete mark"
-        className="h-11 px-1.5 text-ink-3 hover:bg-paper-2 hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8"
+        className="h-10 px-1.5 text-ink-3 hover:bg-destructive-soft hover:text-destructive-token focus-visible:ring-2 focus-visible:ring-destructive/20 sm:h-8"
       >
         <Trash2 className="size-3.5" aria-hidden />
       </Button>
@@ -197,7 +197,7 @@ function PropertyGroup({
   children: ReactNode;
 }) {
   return (
-    <span className="inline-flex min-h-11 items-center gap-1 sm:min-h-8">
+    <span className="inline-flex min-h-10 items-center gap-1 sm:min-h-8">
       <span
         className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 sm:size-6"
         aria-hidden

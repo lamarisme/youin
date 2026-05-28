@@ -43,7 +43,13 @@
   --color-destructive-soft: var(--yi-destructive-soft);
   --color-focus-ring: var(--yi-focus-ring);
 
-  --radius-pill: 999px;
+  --radius-xs: var(--yi-radius-xs);
+  --radius-sm: var(--yi-radius-sm);
+  --radius-md: var(--yi-radius-md);
+  --radius-lg: var(--yi-radius-lg);
+  --radius-xl: var(--yi-radius-xl);
+  --radius-2xl: var(--yi-radius-2xl);
+  --radius-pill: var(--yi-radius-pill);
   --shadow-hairline: var(--yi-shadow-hairline);
   --shadow-panel: var(--yi-shadow-panel);
   --shadow-popover: var(--yi-shadow-popover);
@@ -96,7 +102,7 @@
   --chart-3: var(--yi-ok);
   --chart-4: var(--yi-warn);
   --chart-5: var(--yi-ink-3);
-  --radius: var(--yi-radius-lg);
+  --radius: var(--yi-radius-md);
   --sidebar: var(--yi-paper-2);
   --sidebar-foreground: var(--yi-ink);
   --sidebar-primary: var(--yi-mark);

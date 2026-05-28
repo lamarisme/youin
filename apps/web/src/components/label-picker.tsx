@@ -122,7 +122,7 @@ export function LabelPicker({
       <div
         className={cn(
           "flex flex-wrap items-center gap-1.5",
-          variant === "inline" ? "min-h-11 px-1.5 py-1 sm:min-h-8" : "px-2 py-1.5",
+          variant === "inline" ? "min-h-10 px-1.5 py-1 sm:min-h-8" : "px-2 py-1.5",
         )}
         onClick={() => inputRef.current?.focus()}
       >
@@ -141,7 +141,7 @@ export function LabelPicker({
                 e.stopPropagation();
                 remove(label.id);
               }}
-              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-paper hover:text-mark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/20"
               aria-label={`Remove ${label.name}`}
               disabled={disabled}
             >

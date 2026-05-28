@@ -6,10 +6,10 @@ type PillVariant = "neutral" | "mark" | "ok" | "outline";
 type PillSize = "sm" | "md";
 
 const VARIANT_CLASS: Record<PillVariant, string> = {
-  neutral: "bg-paper-2 text-ink-2",
-  mark: "bg-mark-soft/75 text-mark",
-  ok: "bg-ok-soft/75 text-ok",
-  outline: "bg-paper-2 text-ink-2",
+  neutral: "border-rule/55 bg-paper-2 text-ink-2",
+  mark: "border-mark/15 bg-mark-soft/75 text-mark",
+  ok: "border-ok/15 bg-ok-soft/75 text-ok",
+  outline: "border-rule/70 bg-paper-elevated text-ink-2",
 };
 
 const SIZE_CLASS: Record<PillSize, string> = {
@@ -29,6 +29,7 @@ export const Pill = React.forwardRef<HTMLSpanElement, PillProps>(
       ref={ref}
       className={cn(
         "inline-flex items-center gap-1 rounded-md font-medium",
+        "border",
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
         className,

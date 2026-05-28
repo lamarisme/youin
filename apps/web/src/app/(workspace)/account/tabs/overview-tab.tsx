@@ -57,7 +57,7 @@ export function OverviewTab() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               autoFocus
-              className="h-8 max-w-md rounded-none border-transparent bg-transparent px-0 py-0 text-lg font-semibold leading-tight shadow-none focus-visible:border-transparent focus-visible:ring-0"
+              className="h-8 max-w-md rounded-none border-transparent bg-transparent px-0 py-0 text-title-sm font-semibold leading-tight shadow-none focus-visible:border-transparent focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter") void save();
                 if (e.key === "Escape") {
@@ -92,7 +92,7 @@ export function OverviewTab() {
           </div>
         ) : (
           <div className="mt-1 flex items-center gap-1.5">
-            <h2 className="text-lg font-semibold leading-tight text-ink">
+            <h2 className="text-title-sm font-semibold leading-tight text-ink">
               {isOwner ? (
                 <button
                   type="button"

@@ -120,7 +120,7 @@ export function MarkDescriptionEditor({
     return (
       <div
         className={cn(
-          "rounded-md bg-paper-2",
+          "rounded-md border border-rule/60 bg-paper-2",
           "animate-pulse",
           minHeightClassName,
           className,
@@ -135,7 +135,7 @@ export function MarkDescriptionEditor({
   return (
     <div
       className={cn(
-        "rounded-md bg-paper-2",
+        "rounded-md border border-rule/60 bg-paper-2 transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:border-rule-strong/60 hover:bg-paper-3 focus-within:border-ring/45 focus-within:bg-paper-elevated focus-within:ring-2 focus-within:ring-ring/30",
         disabled && "pointer-events-none opacity-60",
         className,
       )}

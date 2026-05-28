@@ -66,7 +66,7 @@ export function LabelsTab() {
           title="No labels yet."
           description="Open a mark in the dashboard and add a label. It will show up here."
           action={
-            <Button asChild size="sm" variant="outline" className="h-11 sm:h-8">
+            <Button asChild size="sm" variant="outline" className="h-10 sm:h-8">
               <Link href="/dashboard" className="inline-flex items-center gap-1.5">
                 Open dashboard
                 <ArrowRight className="size-3.5" aria-hidden />
@@ -96,7 +96,7 @@ export function LabelsTab() {
                   variant="ghost"
                   onClick={() => setPending(label)}
                   aria-label={`Delete label ${label.name}`}
-                  className="h-11 px-3 text-ink-3 hover:text-mark sm:h-8 sm:px-2.5"
+                  className="h-10 px-3 text-ink-3 hover:text-destructive-token sm:h-8 sm:px-2.5"
                 >
                   <Trash2 className="size-3.5" />
                 </Button>

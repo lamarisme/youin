@@ -202,7 +202,7 @@ export function CommentThread({
         ))}
       </div>
 
-      <div className="mt-3 rounded-lg bg-paper-2 p-2">
+      <div className="mt-3 rounded-md bg-paper-2 p-2 ring-1 ring-rule/45">
         <label htmlFor="comment-composer" className="sr-only">
           Add a comment
         </label>
@@ -235,7 +235,7 @@ export function CommentThread({
                 e.currentTarget.value = "";
               }
             }}
-            className="h-11 max-w-[190px] text-ui-md sm:h-8 sm:max-w-[160px] sm:text-ui-xs"
+            className="h-10 max-w-[190px] text-ui-sm sm:h-8 sm:max-w-[160px] sm:text-ui-xs"
           />
           <SubmitButton
             size="sm"
@@ -243,7 +243,7 @@ export function CommentThread({
             loading={submitting}
             disabled={!hasText && !image}
             loadingText="Sending..."
-            className="h-11 px-3 text-ui-lg sm:h-8 sm:px-2.5 sm:text-ui-sm"
+            className="h-10 px-3 text-ui-md sm:h-8 sm:px-2.5 sm:text-ui-sm"
           >
             <MessageCircle className="size-3.5" />
             Send
@@ -370,7 +370,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark"
+                  className="rounded p-1 text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token"
                   aria-label="Delete comment"
                 >
                   <Trash2 className="size-3" aria-hidden />

@@ -10,28 +10,28 @@
 /* ─── Primitive palette ────────────────────────────────────────── */
 
 export const color = {
-  /* Paper — light inspection surfaces with a faint warm cast */
-  paper:   "oklch(98.7% 0.003 78)",
-  paper2:  "oklch(96.4% 0.004 78)",
-  paper3:  "oklch(93.8% 0.005 78)",
-  paperElevated: "oklch(99.2% 0.002 78)",
+  /* Paper — Linear-inspired inverse surfaces for light product UI */
+  paper:   "oklch(98.81% 0.0005 197)",
+  paper2:  "oklch(97.24% 0.0011 197.14)",
+  paper3:  "oklch(96.04% 0.0011 197.14)",
+  paperElevated: "oklch(99.25% 0.0005 197)",
 
   /* Ink — foreground text */
-  ink:     "oklch(18.8% 0.01 62)",
+  ink:     "oklch(23.20% 0.0057 285.95)",
   /** Filled control hover (primary buttons on paper) */
-  inkHover: "oklch(23% 0.012 62)",
-  ink2:    "oklch(42% 0.009 62)",
-  ink3:    "oklch(57% 0.007 62)",
+  inkHover: "oklch(28% 0.007 285.95)",
+  ink2:    "oklch(52.71% 0.0135 264.45)",
+  ink3:    "oklch(64.88% 0.0146 262.36)",
 
   /* Rule — hairline dividers; panels use ruleStrong */
-  rule:    "oklch(88.6% 0.005 78 / 0.55)",
-  ruleStrong: "oklch(80.8% 0.007 78 / 0.72)",
+  rule:    "oklch(88% 0.004 264 / 0.62)",
+  ruleStrong: "oklch(80% 0.006 264 / 0.76)",
 
-  /* Mark — annotation ink, not generic danger red */
-  mark:       "oklch(53.5% 0.19 24)",
-  markBright: "oklch(59% 0.2 24)",
-  markSoft:   "oklch(95.8% 0.032 24)",
-  markInk:    "oklch(42% 0.14 24)",
+  /* Mark — Linear lavender accent, used sparingly for primary/focus/active */
+  mark:       "oklch(56.74% 0.1585 275.21)",
+  markBright: "oklch(69.06% 0.1637 276.24)",
+  markSoft:   "oklch(94.6% 0.035 276)",
+  markInk:    "oklch(45% 0.135 275.21)",
 
   /* Destructive — separate from brand mark */
   destructive: "oklch(48% 0.16 28)",
@@ -45,27 +45,27 @@ export const color = {
   info:     "oklch(48% 0.04 62)",
   infoSoft: "oklch(95.5% 0.012 62)",
 
-  focusRing: "oklch(53.5% 0.19 24 / 0.35)",
+  focusRing: "oklch(56.48% 0.1585 275.56 / 0.42)",
 } as const;
 
 export const colorDark = {
-  paper:   "oklch(13.5% 0.018 62)",
-  paper2:  "oklch(17.2% 0.02 62)",
-  paper3:  "oklch(22.5% 0.022 62)",
-  paperElevated: "oklch(15.8% 0.02 62)",
+  paper:   "oklch(6.92% 0.0080 284.11)",
+  paper2:  "oklch(17.23% 0.0026 247.98)",
+  paper3:  "oklch(19.50% 0.0026 247.96)",
+  paperElevated: "oklch(21.27% 0.0025 247.94)",
 
-  ink:     "oklch(91.8% 0.008 78)",
-  inkHover: "oklch(84% 0.01 78)",
-  ink2:    "oklch(70% 0.012 78)",
-  ink3:    "oklch(56% 0.014 78)",
+  ink:     "oklch(97.8% 0.003 197)",
+  inkHover: "oklch(90% 0.006 264)",
+  ink2:    "oklch(84% 0.012 264)",
+  ink3:    "oklch(64.88% 0.0146 262.36)",
 
-  rule:    "oklch(28% 0.024 62 / 0.65)",
-  ruleStrong: "oklch(36% 0.027 62 / 0.85)",
+  rule:    "oklch(26.45% 0.0098 268.31)",
+  ruleStrong: "oklch(32.74% 0.0105 285.81)",
 
-  mark:       "oklch(63% 0.21 24)",
-  markBright: "oklch(69% 0.22 24)",
-  markSoft:   "oklch(25.5% 0.075 24)",
-  markInk:    "oklch(78% 0.12 24)",
+  mark:       "oklch(56.74% 0.1585 275.21)",
+  markBright: "oklch(69.06% 0.1637 276.24)",
+  markSoft:   "oklch(27% 0.075 276)",
+  markInk:    "oklch(78% 0.095 276)",
 
   destructive: "oklch(62% 0.17 28)",
   destructiveSoft: "oklch(24% 0.06 28)",
@@ -77,7 +77,7 @@ export const colorDark = {
   info:     "oklch(68% 0.04 78)",
   infoSoft: "oklch(24% 0.02 62)",
 
-  focusRing: "oklch(63% 0.21 24 / 0.4)",
+  focusRing: "oklch(56.48% 0.1585 275.56 / 0.5)",
 } as const;
 
 /* ─── Typography ───────────────────────────────────────────────── */
@@ -125,11 +125,12 @@ export const space = {
 /* ─── Radius ───────────────────────────────────────────────────── */
 
 export const radius = {
-  sm:   "0.25rem",
-  md:   "0.375rem",
-  lg:   "0.5rem",
-  xl:   "0.625rem",
-  "2xl": "0.75rem",
+  xs:   "0.25rem",
+  sm:   "0.375rem",
+  md:   "0.5rem",
+  lg:   "0.75rem",
+  xl:   "1rem",
+  "2xl": "1.5rem",
   pill: "999px",
 } as const;
 
@@ -154,9 +155,9 @@ export const shadow = {
   panel:
     "none",
   popover:
-    "0 16px 40px -24px oklch(12% 0.02 62 / 0.48)",
+    "0 16px 36px -28px oklch(12% 0.02 264 / 0.42)",
   fab:
-    "0 10px 24px -16px oklch(52.5% 0.205 24 / 0.72)",
+    "0 10px 24px -16px oklch(56.74% 0.1585 275.21 / 0.42)",
   banner:
     "none",
   reviewFab:

@@ -6,8 +6,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Check,
   ChevronsUpDown,
+  CircleDashed,
   Inbox as InboxIcon,
-  LayoutGrid,
   Loader2,
   LogOut,
   Moon,
@@ -18,6 +18,7 @@ import {
   Sun,
   User,
   View,
+  type LucideIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -49,17 +50,12 @@ import {
 } from "@/components/ui/tooltip";
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
+import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
-
-const NAV_ITEMS = [
-  { href: "/inbox", labelKey: "inbox" as const, icon: InboxIcon, shortcut: "I", exactOnly: false },
-  { href: "/dashboard", labelKey: "triage" as const, icon: LayoutGrid, shortcut: "D", exactOnly: false },
-  { href: "/views", labelKey: "views" as const, icon: View, shortcut: "V", exactOnly: false },
-] as const;
 
 const SIDEBAR_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
@@ -92,13 +88,14 @@ export function AppSidebar() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
 
-  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId } =
+  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId, views } =
     useWorkspaceData((s) => ({
       profileName: s.profile.name,
       profileEmail: s.profile.email,
       displayNamePreference: s.profile.displayNamePreference,
       workspaceName: s.workspace.name,
       members: s.workspace.members,
+      views: s.workspace.views,
       workspaceId: s.workspaceId,
       userId: s.userId,
     }));
@@ -114,6 +111,15 @@ export function AppSidebar() {
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
   const workspaceLabel = workspaceName || tCommon("workspaceFallback");
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
+  const myMarksHref = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("assignee", "me");
+    params.delete("mark");
+    params.delete("page");
+    const query = params.toString();
+    return query ? `/dashboard?${query}` : "/dashboard?assignee=me";
+  }, [searchParams]);
+  const myMarksActive = pathname.startsWith("/dashboard") && searchParams.get("assignee") === "me";
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -239,96 +245,29 @@ export function AppSidebar() {
           "lg:block lg:overflow-visible lg:pb-0",
           collapsed ? "lg:space-y-0.5" : "lg:space-y-0.5",
         )}
+        aria-label="Primary"
       >
-        <div
-          className={cn(
-            "hidden px-2 pb-1 pt-1 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3 lg:block",
-            collapsed && "lg:sr-only",
-          )}
-        >
-          {tCommon("workspaceFallback")}
-        </div>
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.exactOnly
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(item.href + "/");
-          const showInboxBadge = item.href === "/inbox" && inbox.unreadCount > 0;
-
-          if (collapsed) {
-            return (
-              <Tooltip key={item.href}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    aria-label={tNav(item.labelKey)}
-                    className={cn(
-                      "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
-                      isActive
-                        ? "bg-paper text-ink"
-                        : "text-ink-3 hover:bg-paper-3/80 hover:text-ink",
-                      SIDEBAR_FOCUS,
-                    )}
-                  >
-                    <Icon className="size-[1.1rem]" />
-                    {showInboxBadge && (
-                      <span
-                        aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                        className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-mark-soft px-1 text-ui-2xs font-semibold leading-none tabular-nums text-mark-ink ring-1 ring-mark/15"
-                      >
-                        {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
-                      </span>
-                    )}
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="flex items-center gap-1.5">
-                  {tNav(item.labelKey)}
-                  <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs text-ink-3">
-                    G {item.shortcut}
-                  </kbd>
-                </TooltipContent>
-              </Tooltip>
-            );
-          }
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "group relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-md transition-colors",
-                "lg:flex lg:h-8 lg:w-full lg:min-h-0 lg:gap-2 lg:px-2.5 lg:py-0 lg:text-ui-sm",
-                SIDEBAR_FOCUS,
-                isActive
-                  ? "bg-paper font-medium text-ink"
-                  : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-[1rem] shrink-0 transition-colors",
-                  isActive ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
-                )}
-              />
-              <span className="flex-1">{tNav(item.labelKey)}</span>
-              {showInboxBadge ? (
-                <span
-                  aria-label={tSide("unreadBadge", { count: inbox.unreadCount })}
-                  className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-mark-soft px-1.5 text-ui-2xs font-semibold tabular-nums text-mark-ink ring-1 ring-mark/15"
-                >
-                  {inbox.unreadCount > 99 ? "99+" : inbox.unreadCount}
-                </span>
-              ) : (
-                <kbd className="hidden rounded-[4px] bg-paper-3/70 px-1 py-0.5 font-mono text-ui-2xs text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 lg:inline">
-                  G {item.shortcut}
-                </kbd>
-              )}
-            </Link>
-          );
-        })}
+        <SidebarNavLink
+          href="/inbox"
+          label={tNav("inbox")}
+          icon={InboxIcon}
+          shortcut="I"
+          active={pathname === "/inbox" || pathname.startsWith("/inbox/")}
+          collapsed={collapsed}
+          badgeCount={inbox.unreadCount}
+          badgeLabel={tSide("unreadBadge", { count: inbox.unreadCount })}
+        />
+        <SidebarNavLink
+          href={myMarksHref}
+          label={tNav("myMarks")}
+          icon={CircleDashed}
+          shortcut="M"
+          active={myMarksActive}
+          collapsed={collapsed}
+        />
       </nav>
+
+      <SidebarViewsSection views={views} pathname={pathname} collapsed={collapsed} />
 
       {/* Bottom section, desktop */}
       <div className="mt-auto hidden pt-2 lg:block">
@@ -362,6 +301,265 @@ export function AppSidebar() {
         )}
       </div>
     </aside>
+  );
+}
+
+function SidebarNavLink({
+  href,
+  label,
+  icon: Icon,
+  shortcut,
+  active,
+  collapsed,
+  badgeCount = 0,
+  badgeLabel,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  shortcut?: string;
+  active: boolean;
+  collapsed: boolean;
+  badgeCount?: number;
+  badgeLabel?: string;
+}) {
+  const showBadge = badgeCount > 0;
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            href={href}
+            aria-current={active ? "page" : undefined}
+            aria-label={label}
+            className={cn(
+              "relative hidden size-8 items-center justify-center rounded-md transition-colors lg:flex",
+              active ? "bg-paper text-ink" : "text-ink-3 hover:bg-paper-3/80 hover:text-ink",
+              SIDEBAR_FOCUS,
+            )}
+          >
+            <Icon className="size-[1.1rem]" />
+            {showBadge ? <SidebarBadge count={badgeCount} label={badgeLabel} compact /> : null}
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="flex items-center gap-1.5">
+          {label}
+          {shortcut ? (
+            <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs text-ink-3">
+              G {shortcut}
+            </kbd>
+          ) : null}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-md transition-colors",
+        "lg:flex lg:h-8 lg:w-full lg:min-h-0 lg:gap-2 lg:px-2.5 lg:py-0 lg:text-ui-sm",
+        SIDEBAR_FOCUS,
+        active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
+      )}
+    >
+      <Icon
+        className={cn(
+          "size-[1rem] shrink-0 transition-colors",
+          active ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
+        )}
+      />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {showBadge ? (
+        <SidebarBadge count={badgeCount} label={badgeLabel} />
+      ) : shortcut ? (
+        <kbd className="hidden rounded-[4px] bg-paper-3/70 px-1 py-0.5 font-mono text-ui-2xs text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 lg:inline">
+          G {shortcut}
+        </kbd>
+      ) : null}
+    </Link>
+  );
+}
+
+function SidebarBadge({
+  count,
+  label,
+  compact = false,
+}: {
+  count: number;
+  label?: string;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      aria-label={label}
+      className={cn(
+        "inline-flex items-center justify-center rounded-full bg-mark-soft text-ui-2xs font-semibold leading-none tabular-nums text-mark-ink ring-1 ring-mark/15",
+        compact
+          ? "absolute -top-0.5 -right-0.5 h-4 min-w-[1rem] px-1"
+          : "min-w-[1.25rem] px-1.5 py-0.5",
+      )}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function SidebarViewsSection({
+  views,
+  pathname,
+  collapsed,
+}: {
+  views: WorkspaceView[];
+  pathname: string;
+  collapsed: boolean;
+}) {
+  const hasViews = views.length > 0;
+  const actionLabel = hasViews ? "Manage views" : "Create view";
+
+  return (
+    <section
+      className={cn(
+        "mt-3 hidden min-h-0 flex-1 overflow-y-auto lg:block",
+        collapsed && "lg:flex-none lg:overflow-visible",
+      )}
+      aria-label="Views"
+    >
+      {collapsed ? (
+        <div className="space-y-0.5">
+          <p className="sr-only">Views</p>
+          {views.map((view) => (
+            <SidebarViewIconLink
+              key={view.id}
+              view={view}
+              active={pathname === `/views/${view.id}`}
+            />
+          ))}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/views"
+                aria-label={actionLabel}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                  pathname === "/views" && "bg-paper text-ink",
+                  SIDEBAR_FOCUS,
+                )}
+              >
+                <Plus className="size-[1rem]" aria-hidden />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">{actionLabel}</TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <>
+          <div className="flex h-7 items-center justify-between px-2">
+            <p className="text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
+              Views
+            </p>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/views"
+                  aria-label={actionLabel}
+                  className={cn(
+                    "flex size-6 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                    SIDEBAR_FOCUS,
+                  )}
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>{actionLabel}</TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="space-y-0.5">
+            {hasViews ? (
+              views.map((view) => (
+                <SidebarViewLink
+                  key={view.id}
+                  view={view}
+                  active={pathname === `/views/${view.id}`}
+                />
+              ))
+            ) : (
+              <Link
+                href="/views"
+                className={cn(
+                  "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-sm text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                  SIDEBAR_FOCUS,
+                )}
+              >
+                <Plus className="size-[1rem] shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1 truncate">Create view</span>
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function SidebarViewIconLink({
+  view,
+  active,
+}: {
+  view: WorkspaceView;
+  active: boolean;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link
+          href={`/views/${view.id}`}
+          aria-current={active ? "page" : undefined}
+          aria-label={view.name}
+          className={cn(
+            "flex size-8 items-center justify-center rounded-md transition-colors",
+            active ? "bg-paper text-ink" : "text-ink-3 hover:bg-paper-3/80 hover:text-ink",
+            SIDEBAR_FOCUS,
+          )}
+        >
+          <View className="size-[1rem]" aria-hidden />
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="right">{view.name}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SidebarViewLink({
+  view,
+  active,
+}: {
+  view: WorkspaceView;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={`/views/${view.id}`}
+      aria-current={active ? "page" : undefined}
+      title={view.name}
+      className={cn(
+        "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-sm transition-colors",
+        active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
+        SIDEBAR_FOCUS,
+      )}
+    >
+      <View
+        className={cn(
+          "size-[1rem] shrink-0 transition-colors",
+          active ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
+        )}
+        aria-hidden
+      />
+      <span className="min-w-0 flex-1 truncate">{view.name}</span>
+    </Link>
   );
 }
 
@@ -555,7 +753,7 @@ function ProjectSwitcher({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Website QA"
-                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
+                className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
                 autoFocus
               />
             </Field>
@@ -565,13 +763,13 @@ function ProjectSwitcher({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 placeholder="What this project is collecting"
-                className="h-11 bg-paper text-ui-lg sm:h-9 sm:text-ui-sm"
+                className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
               />
             </Field>
             {error ? (
               <p
                 role="alert"
-                className="rounded-md border border-mark/30 bg-mark-soft px-3 py-2 text-ui-xs text-mark"
+                className="rounded-md border border-destructive-token/30 bg-destructive-soft px-3 py-2 text-ui-xs text-destructive-token"
               >
                 {error}
               </p>
@@ -582,7 +780,7 @@ function ProjectSwitcher({
                 variant="ghost"
                 onClick={() => setCreateOpen(false)}
                 disabled={isCreating}
-                className="h-11 sm:h-9"
+                className="h-10 sm:h-8"
               >
                 Cancel
               </Button>
@@ -590,7 +788,7 @@ function ProjectSwitcher({
                 type="button"
                 onClick={handleCreateProject}
                 disabled={!name.trim() || isCreating}
-                className="h-11 sm:h-9"
+                className="h-10 sm:h-8"
               >
                 {isCreating ? "Creating..." : "Create"}
               </Button>
@@ -626,7 +824,7 @@ function MobileAccountMenu({
         <button
           aria-label={t("openAccountMenu")}
           className={cn(
-            "inline-flex min-h-11 min-w-11 items-center justify-center rounded-md ring-2 ring-transparent transition-shadow",
+            "inline-flex min-h-10 min-w-10 items-center justify-center rounded-md ring-2 ring-transparent transition-shadow",
             "hover:bg-paper-3/80 hover:ring-mark/20",
             "focus-visible:outline-none focus-visible:ring-focus-ring",
           )}

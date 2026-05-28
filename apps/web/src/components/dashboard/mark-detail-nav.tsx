@@ -34,7 +34,7 @@ export function MarkDetailNav({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Breadcrumbs
           items={[
-            { label: "Triage", onClick: onBack },
+            { label: "Marks", onClick: onBack },
             ...(projectName ? [{ label: projectName }] : []),
             { label: markLabel, current: true },
           ]}
@@ -49,7 +49,7 @@ export function MarkDetailNav({
             disabled={!canPrev}
             aria-label="Go to previous mark"
             aria-keyshortcuts="K"
-            className="h-11 px-3 sm:h-8 sm:px-2.5"
+            className="h-10 px-3 sm:h-8 sm:px-2.5"
           >
             <ArrowLeft className="size-3.5" />
           </Button>
@@ -61,7 +61,7 @@ export function MarkDetailNav({
             disabled={!canNext}
             aria-label="Go to next mark"
             aria-keyshortcuts="J"
-            className="h-11 px-3 sm:h-8 sm:px-2.5"
+            className="h-10 px-3 sm:h-8 sm:px-2.5"
           >
             <ArrowRight className="size-3.5" />
           </Button>
@@ -72,7 +72,7 @@ export function MarkDetailNav({
             onClick={onShowHelp}
             aria-label="Show keyboard shortcuts"
             aria-keyshortcuts="?"
-            className="h-11 px-2.5 text-ink-3 hover:text-ink sm:h-8 sm:px-2"
+            className="h-10 px-2.5 text-ink-3 hover:text-ink sm:h-8 sm:px-2"
           >
             <span className="font-mono text-ui-xs">?</span>
           </Button>

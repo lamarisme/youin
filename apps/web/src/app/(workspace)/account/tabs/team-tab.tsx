@@ -222,7 +222,7 @@ export function TeamTab() {
                   maxLength={32}
                   aria-invalid={Boolean(usernameFieldError) || undefined}
                   aria-describedby={usernameFieldError ? "workspace-username-error" : undefined}
-                  className="h-11 rounded-none border-transparent bg-transparent pl-7 font-mono text-ui-lg shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-9 sm:text-ui-sm"
+                  className="h-10 rounded-none border-transparent bg-transparent pl-7 font-mono text-ui-md shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-8 sm:text-ui-sm"
                 />
               </div>
               <SubmitButton
@@ -236,7 +236,7 @@ export function TeamTab() {
                 }
                 onClick={() => void handleSaveUsername()}
                 loadingText="Saving…"
-                className="h-11 shrink-0 sm:h-9 sm:px-3"
+                className="h-10 shrink-0 sm:h-8 sm:px-3"
               >
                 Save
               </SubmitButton>
@@ -245,7 +245,7 @@ export function TeamTab() {
               <p
                 id="workspace-username-error"
                 role="alert"
-                className="mt-1.5 text-ui-xs text-mark"
+                className="mt-1.5 text-ui-xs text-destructive-token"
               >
                 {usernameFieldError}
               </p>
@@ -275,7 +275,7 @@ export function TeamTab() {
               aria-describedby={
                 inviteFieldError || inviteError ? "invite-email-error" : undefined
               }
-              className="h-11 flex-1 rounded-md border-transparent bg-transparent text-ui-lg shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-9 sm:text-ui-sm"
+              className="h-10 flex-1 rounded-md border-transparent bg-transparent text-ui-md shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-8 sm:text-ui-sm"
               onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
             />
             <SubmitButton
@@ -283,7 +283,7 @@ export function TeamTab() {
               loading={isInviting}
               disabled={!canInvite}
               loadingText="Sending…"
-              className="h-11 shrink-0 sm:h-9 sm:px-4"
+              className="h-10 shrink-0 sm:h-8 sm:px-4"
             >
               <UserPlus className="size-3.5" />
               Send invite
@@ -415,7 +415,7 @@ export function TeamTab() {
                           type="button"
                           onClick={() => handleRevokeReviewLink(link)}
                           disabled={state !== "active"}
-                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark disabled:cursor-not-allowed disabled:opacity-40"
+                          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label={`Revoke review link ${link.name}`}
                         >
                           <X className="size-3.5" />
@@ -495,7 +495,7 @@ export function TeamTab() {
                       handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
                     }
                     aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark sm:min-h-8 sm:min-w-8"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
                   >
                     <Trash2 className="size-3.5" />
                   </button>
@@ -524,7 +524,7 @@ export function TeamTab() {
                   type="button"
                   onClick={() => handleCancel(inv.id, inv.email)}
                   aria-label={`Cancel invite for ${inv.email}`}
-                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-mark sm:min-h-8 sm:min-w-8"
+                  className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
                 >
                   <X className="size-3.5" />
                 </button>

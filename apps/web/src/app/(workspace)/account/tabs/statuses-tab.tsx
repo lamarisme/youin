@@ -133,7 +133,7 @@ export function StatusesTab() {
             placeholder="Blocked"
             maxLength={40}
             disabled={!isOwner || isCreating}
-            className="h-11 bg-paper-elevated sm:h-9"
+            className="h-10 bg-paper-elevated sm:h-8"
           />
         </label>
         <label>
@@ -143,7 +143,7 @@ export function StatusesTab() {
             onValueChange={setLifecycleStatus}
             options={LIFECYCLE_OPTIONS}
             ariaLabel="Workflow status lifecycle"
-            triggerClassName="h-11 w-[142px] bg-paper-elevated sm:h-9"
+            triggerClassName="h-10 w-[142px] bg-paper-elevated sm:h-8"
             disabled={!isOwner || isCreating}
           />
         </label>
@@ -154,7 +154,7 @@ export function StatusesTab() {
           loadingText="Adding..."
           disabled={!isOwner || !name.trim()}
           variant="mark"
-          className="h-11 gap-1.5 sm:h-9"
+          className="h-10 gap-1.5 sm:h-8"
         >
           <Plus className="size-3.5" aria-hidden />
           Add status
@@ -179,7 +179,7 @@ export function StatusesTab() {
                       onChange={(event) => setEditName(event.target.value)}
                       maxLength={40}
                       autoFocus
-                      className="h-11 bg-paper-2 sm:h-8"
+                      className="h-10 bg-paper-2 sm:h-8"
                     />
                     <Button
                       type="button"
@@ -189,7 +189,7 @@ export function StatusesTab() {
                         setEditing(null);
                         setEditName("");
                       }}
-                      className="size-11 sm:size-8"
+                      className="size-10 sm:size-8"
                       aria-label="Cancel edit"
                     >
                       <X className="size-3.5" aria-hidden />
@@ -200,7 +200,7 @@ export function StatusesTab() {
                       variant="mark"
                       onClick={saveEdit}
                       disabled={!editName.trim() || isUpdating}
-                      className="size-11 sm:size-8"
+                      className="size-10 sm:size-8"
                       aria-label="Save workflow status"
                     >
                       <Check className="size-3.5" aria-hidden />
@@ -245,7 +245,7 @@ export function StatusesTab() {
                       variant="ghost"
                       onClick={() => makeDefault(status)}
                       disabled={!isOwner || isUpdating}
-                      className="h-11 px-2.5 text-ink-3 hover:text-ink sm:h-8"
+                      className="h-10 px-2.5 text-ink-3 hover:text-ink sm:h-8"
                     >
                       Make default
                     </Button>
@@ -256,7 +256,7 @@ export function StatusesTab() {
                     variant="ghost"
                     onClick={() => startEditing(status)}
                     disabled={!isOwner}
-                    className="size-11 text-ink-3 hover:text-ink sm:size-8"
+                    className="size-10 text-ink-3 hover:text-ink sm:size-8"
                     aria-label={`Rename ${status.name}`}
                   >
                     <Pencil className="size-3.5" aria-hidden />
@@ -267,7 +267,7 @@ export function StatusesTab() {
                     variant="ghost"
                     onClick={() => handleArchive(status)}
                     disabled={!isOwner || isDefault || isArchiving}
-                    className="size-11 text-ink-3 hover:text-mark sm:size-8"
+                    className="size-10 text-ink-3 hover:text-destructive-token sm:size-8"
                     aria-label={`Archive ${status.name}`}
                   >
                     <Trash2 className="size-3.5" aria-hidden />
