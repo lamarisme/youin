@@ -1,4 +1,15 @@
-export { getWorkspaceBootstrap } from "./bootstrap";
+export {
+  getWorkspaceBootstrap,
+  getWorkspaceShellBootstrap,
+} from "./bootstrap";
+
+export {
+  getAccountReadModelAction,
+  getCommandPaletteIndexReadModelAction,
+  getDashboardReadModelAction,
+  getViewDetailReadModelAction,
+  getViewsIndexReadModelAction,
+} from "./read-models";
 
 export {
   createProjectAction,

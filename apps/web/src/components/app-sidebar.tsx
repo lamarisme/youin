@@ -56,6 +56,7 @@ import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations"
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
+import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
 
 const SIDEBAR_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
@@ -587,13 +588,13 @@ function ProjectSwitcher({
   const [error, setError] = useState<string | null>(null);
 
   const projectStats = useMemo(() => {
-    const map = new Map<string, { marks: number }>();
-    for (const project of projects) map.set(project.id, { marks: 0 });
-    for (const mark of marks) {
-      const stats = map.get(mark.projectId);
-      if (stats) stats.marks += 1;
-    }
-    return map;
+    const counts = projectMarkCountsFromMarks(projects, marks);
+    return new Map(
+      Array.from(counts, ([projectId, markCount]) => [
+        projectId,
+        { marks: markCount },
+      ]),
+    );
   }, [marks, projects]);
 
   const urlProjectId = searchParams.get("project");

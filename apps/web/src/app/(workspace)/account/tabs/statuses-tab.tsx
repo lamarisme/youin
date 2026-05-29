@@ -18,6 +18,7 @@ import {
   useUpdateWorkflowStatusMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
+import { workflowStatusUsageFromMarks } from "@/lib/workspace/read-model-mappers";
 
 const LIFECYCLE_OPTIONS: ReadonlyArray<{ value: MarkStatus; label: string }> = [
   { value: "open", label: "Open" },
@@ -45,15 +46,10 @@ export function StatusesTab() {
   const [editName, setEditName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const usageById = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const mark of marks) {
-      if (mark.workflowStatusId) {
-        counts.set(mark.workflowStatusId, (counts.get(mark.workflowStatusId) ?? 0) + 1);
-      }
-    }
-    return counts;
-  }, [marks]);
+  const usageById = useMemo(
+    () => workflowStatusUsageFromMarks(marks),
+    [marks],
+  );
 
   async function handleCreate() {
     if (!isOwner || isCreating) return;

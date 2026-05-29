@@ -126,6 +126,8 @@ export interface WorkspaceProject {
   name: string;
   description: string;
   createdAt: string;
+  /** Present in shell/read models that need navigation counts without hydrating marks. */
+  markCount?: number;
 }
 
 export interface WorkspaceViewFilters {

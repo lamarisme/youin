@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { workspaceKeys } from "@/lib/queries/keys";
-import { useWorkspaceQuery } from "@/lib/queries/use-workspace";
 import {
   getInboxAction,
   markInboxReadAction,
 } from "@/lib/workspace/actions";
 import {
-  buildInboxSnapshot,
   emptyInboxSnapshot,
   type InboxEvent,
   type InboxGroup,
   type InboxSnapshot,
 } from "@/lib/workspace/inbox-model";
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
 export type { InboxEvent, InboxGroup };
 
@@ -44,82 +41,36 @@ function markSnapshotRead(snapshot: InboxSnapshot, lastReadAt: string): InboxSna
 
 export function useInbox(workspaceId: string, userId: string): InboxData {
   const queryClient = useQueryClient();
-  const { data: bootstrap } = useWorkspaceQuery();
   const queryKey = useMemo(
     () => workspaceKeys.inbox(workspaceId, userId),
     [workspaceId, userId],
   );
   const enabled = Boolean(workspaceId && userId);
-  const bootstrapUpdatedAt = bootstrap?.loadedAt ? Date.parse(bootstrap.loadedAt) : undefined;
-  const initialInboxUpdatedAt = Number.isFinite(bootstrapUpdatedAt)
-    ? bootstrapUpdatedAt
-    : undefined;
-  const initialInbox = useMemo(() => {
-    if (
-      !enabled ||
-      !bootstrap ||
-      bootstrap.workspaceId !== workspaceId ||
-      bootstrap.userId !== userId
-    ) {
-      return undefined;
-    }
-
-    return buildInboxSnapshot({
-      workspace: bootstrap.workspace,
-      userId,
-      lastReadAt: bootstrap.inboxLastReadAt,
-    });
-  }, [bootstrap, enabled, userId, workspaceId]);
 
   const query = useQuery({
     queryKey,
     queryFn: getInboxAction,
     enabled,
-    initialData: initialInbox,
-    initialDataUpdatedAt: initialInbox ? initialInboxUpdatedAt : undefined,
     placeholderData: () => emptyInboxSnapshot(),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
-
-  useEffect(() => {
-    if (!enabled || !initialInbox) return;
-    const state = queryClient.getQueryState<InboxSnapshot>(queryKey);
-    if (state?.data && state.dataUpdatedAt >= (initialInboxUpdatedAt ?? 0)) return;
-    queryClient.setQueryData(queryKey, initialInbox, {
-      updatedAt: initialInboxUpdatedAt,
-    });
-  }, [enabled, initialInbox, initialInboxUpdatedAt, queryClient, queryKey]);
-
-  const snapshot = query.data ?? initialInbox ?? emptyInboxSnapshot();
+  const snapshot = query.data ?? emptyInboxSnapshot();
   const mutation = useMutation({
     mutationFn: markInboxReadAction,
     onMutate: async () => {
       const lastReadAt = new Date().toISOString();
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InboxSnapshot>(queryKey);
-      const previousBootstrap = queryClient.getQueryData<WorkspaceBootstrap>(
-        workspaceKeys.bootstrap(),
-      );
       queryClient.setQueryData<InboxSnapshot>(
         queryKey,
         markSnapshotRead(previous ?? snapshot, lastReadAt),
       );
-      queryClient.setQueryData<WorkspaceBootstrap>(
-        workspaceKeys.bootstrap(),
-        (current) =>
-          current && current.workspaceId === workspaceId && current.userId === userId
-            ? { ...current, inboxLastReadAt: lastReadAt }
-            : current,
-      );
-      return { previous, previousBootstrap };
+      return { previous };
     },
     onError: (_error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
-      }
-      if (context?.previousBootstrap) {
-        queryClient.setQueryData(workspaceKeys.bootstrap(), context.previousBootstrap);
       }
     },
     onSettled: () => {
@@ -129,7 +80,7 @@ export function useInbox(workspaceId: string, userId: string): InboxData {
 
   return {
     ...snapshot,
-    dataUpdatedAt: query.dataUpdatedAt || initialInboxUpdatedAt || 0,
+    dataUpdatedAt: query.dataUpdatedAt || 0,
     isError: query.isError,
     isMarkingAllRead: mutation.isPending,
     isPending: enabled && query.isPending && !query.data,

@@ -20,6 +20,7 @@ import {
 import type { WorkspaceLabel } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useDeleteLabelMutation } from "@/lib/queries/use-workspace-mutations";
+import { labelUsageFromMarks } from "@/lib/workspace/read-model-mappers";
 
 export function LabelsTab() {
   const { labels, marks } = useWorkspaceData((s) => ({
@@ -32,13 +33,7 @@ export function LabelsTab() {
   const [pending, setPending] = useState<WorkspaceLabel | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const usageById = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const mark of marks) {
-      for (const lid of mark.labelIds) counts.set(lid, (counts.get(lid) ?? 0) + 1);
-    }
-    return counts;
-  }, [marks]);
+  const usageById = useMemo(() => labelUsageFromMarks(marks), [marks]);
 
   async function handleDelete() {
     if (!pending || isDeleting) return;

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { AccountClient } from "../account-client";
+import { AccountReadModelProvider } from "@/components/providers/workspace-read-model-provider";
+import { getAccountReadModelAction } from "@/lib/workspace/actions";
 import { isAccountSection } from "@/lib/workspace/routes";
 
 const SECTION_TITLES: Record<string, string> = {
@@ -33,5 +35,11 @@ export default async function AccountSectionPage({
     notFound();
   }
 
-  return <AccountClient section={section} />;
+  const readModel = await getAccountReadModelAction();
+
+  return (
+    <AccountReadModelProvider initialData={readModel}>
+      <AccountClient section={section} />
+    </AccountReadModelProvider>
+  );
 }

@@ -36,7 +36,7 @@ type MutationContext = {
 };
 
 function invalidateWorkspace(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({ queryKey: workspaceKeys.bootstrap() });
+  void queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
 }
 
 function restoreWorkspace(

@@ -2,22 +2,47 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import {
+  createContext,
+  createElement,
+  useContext,
+  type ReactNode,
+} from "react";
 
-import type { UserProfile, Workspace } from "@/lib/collab-types";
 import { workspaceKeys } from "@/lib/queries/keys";
-import { getWorkspaceBootstrap } from "@/lib/workspace/actions";
-import { emptyInboxSnapshot } from "@/lib/workspace/inbox-model";
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+import { getWorkspaceShellBootstrap } from "@/lib/workspace/actions";
+import {
+  composeWorkspaceBootstrap,
+  emptyWorkspaceBootstrap,
+  mergeShellIntoWorkspaceBootstrap,
+  shellBootstrapToWorkspaceBootstrap,
+} from "@/lib/workspace/snapshot";
+import type {
+  WorkspaceBootstrap,
+  WorkspaceShellBootstrap,
+} from "@/lib/workspace/workspace-types";
 
 export function useWorkspaceQuery(
-  initialData?: Awaited<ReturnType<typeof getWorkspaceBootstrap>>,
+  initialData?: WorkspaceBootstrap,
 ) {
   return useQuery({
     queryKey: workspaceKeys.bootstrap(),
+    queryFn: async () => initialData ?? emptyWorkspaceBootstrap(),
+    initialData,
+    enabled: false,
+    staleTime: Number.POSITIVE_INFINITY,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useWorkspaceShellQuery(initialData?: WorkspaceShellBootstrap) {
+  return useQuery({
+    queryKey: workspaceKeys.shell(),
     queryFn: async () => {
-      const bootstrap = await getWorkspaceBootstrap();
-      if (!bootstrap) throw new Error("Workspace not found");
-      return bootstrap;
+      const shell = await getWorkspaceShellBootstrap();
+      if (!shell) throw new Error("Workspace not found");
+      return shell;
     },
     initialData,
     staleTime: 30_000,
@@ -26,52 +51,48 @@ export function useWorkspaceQuery(
   });
 }
 
-function emptyWorkspace(): Workspace {
-  return {
-    id: "",
-    name: "",
-    projects: [],
-    views: [],
-    labels: [],
-    workflowStatuses: [],
-    members: [],
-    invites: [],
-    reviewLinks: [],
-    marks: [],
-    comments: [],
-    markEvents: [],
-  };
+const WorkspaceSnapshotContext = createContext<WorkspaceBootstrap | undefined>(
+  undefined,
+);
+
+export function WorkspaceSnapshotProvider({
+  value,
+  children,
+}: {
+  value: WorkspaceBootstrap | undefined;
+  children: ReactNode;
+}) {
+  return createElement(
+    WorkspaceSnapshotContext.Provider,
+    { value },
+    children,
+  );
 }
 
-function emptyProfile(): UserProfile {
-  return {
-    id: "",
-    name: "",
-    email: "",
-    title: "",
-    about: "",
-    avatarUrl: "",
-    timezone: "UTC",
-    displayNamePreference: "full_name",
-  };
-}
+export {
+  composeWorkspaceBootstrap,
+  emptyWorkspaceBootstrap,
+  mergeShellIntoWorkspaceBootstrap,
+  shellBootstrapToWorkspaceBootstrap,
+};
 
-export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
-  return {
-    workspaceId: "",
-    userId: "",
-    workspace: emptyWorkspace(),
-    profile: emptyProfile(),
-    inboxLastReadAt: emptyInboxSnapshot().lastReadAt,
-    loadedAt: "",
-  };
+
+export function seedWorkspaceBootstrap(
+  queryClient: QueryClient,
+  bootstrap: WorkspaceBootstrap,
+): void {
+  queryClient.setQueryData<WorkspaceBootstrap>(
+    workspaceKeys.bootstrap(),
+    bootstrap,
+  );
 }
 
 export function useWorkspaceData<T>(
   selector: (bundle: WorkspaceBootstrap) => T,
 ): T {
+  const snapshot = useContext(WorkspaceSnapshotContext);
   const { data } = useWorkspaceQuery();
-  return selector(data ?? emptyWorkspaceBootstrap());
+  return selector(snapshot ?? data ?? emptyWorkspaceBootstrap());
 }
 
 export function getWorkspaceQueryData(

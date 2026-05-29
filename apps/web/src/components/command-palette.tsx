@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import {
   CircleDashed,
@@ -32,8 +33,10 @@ import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
+import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
+import { getCommandPaletteIndexReadModelAction } from "@/lib/workspace/actions";
 import { markHref } from "@/lib/workspace/routes";
 
 interface PaletteCommand {
@@ -94,14 +97,23 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { projects, views, marks, workspaceId, userId } = useWorkspaceData((s) => ({
+  const { projects, views, workspaceId, userId } = useWorkspaceData((s) => ({
       projects: s.workspace.projects,
       views: s.workspace.views,
-      marks: s.workspace.marks,
       workspaceId: s.workspaceId,
       userId: s.userId,
     }));
   const inbox = useInbox(workspaceId, userId);
+  const paletteIndex = useQuery({
+    queryKey: workspaceKeys.commandPaletteIndex(),
+    queryFn: getCommandPaletteIndexReadModelAction,
+    enabled: open,
+    staleTime: 30_000,
+  });
+  const marks = useMemo(
+    () => paletteIndex.data?.marks ?? [],
+    [paletteIndex.data?.marks],
+  );
 
   // G + letter uses the same destinations as sidebar and palette.
   useEffect(() => {
@@ -270,7 +282,7 @@ function CommandPaletteDialog({
       icon: View,
       run: () => router.push(`/views/${view.id}`),
     }));
-    const markCommands: PaletteCommand[] = marks.slice(0, 80).map((mark) => ({
+    const markCommands: PaletteCommand[] = marks.map((mark) => ({
       id: `mark-${mark.id}`,
       title: `${mark.displayKey} ${mark.title}`,
       subtitle: mark.page,

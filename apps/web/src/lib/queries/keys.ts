@@ -1,6 +1,14 @@
 export const workspaceKeys = {
   all: ["workspace"] as const,
+  shell: () => [...workspaceKeys.all, "shell"] as const,
   bootstrap: () => [...workspaceKeys.all, "bootstrap"] as const,
+  dashboard: () => [...workspaceKeys.all, "dashboard"] as const,
+  account: () => [...workspaceKeys.all, "account"] as const,
+  viewsIndex: () => [...workspaceKeys.all, "views-index"] as const,
+  viewDetail: (viewId: string) =>
+    [...workspaceKeys.all, "view-detail", viewId] as const,
+  commandPaletteIndex: () =>
+    [...workspaceKeys.all, "command-palette-index"] as const,
   projects: () => [...workspaceKeys.all, "projects"] as const,
   labels: () => [...workspaceKeys.all, "labels"] as const,
   members: () => [...workspaceKeys.all, "members"] as const,

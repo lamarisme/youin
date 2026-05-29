@@ -1,0 +1,124 @@
+import type {
+  UserProfile,
+  Workspace,
+  WorkspaceProject,
+} from "../collab-types.ts";
+import type {
+  WorkspaceBootstrap,
+  WorkspaceShellBootstrap,
+  WorkspaceShellProject,
+} from "./workspace-types.ts";
+
+function emptyWorkspace(): Workspace {
+  return {
+    id: "",
+    name: "",
+    projects: [],
+    views: [],
+    labels: [],
+    workflowStatuses: [],
+    members: [],
+    invites: [],
+    reviewLinks: [],
+    marks: [],
+    comments: [],
+    markEvents: [],
+  };
+}
+
+function emptyProfile(): UserProfile {
+  return {
+    id: "",
+    name: "",
+    email: "",
+    title: "",
+    about: "",
+    avatarUrl: "",
+    timezone: "UTC",
+    displayNamePreference: "full_name",
+  };
+}
+
+export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
+  return {
+    workspaceId: "",
+    userId: "",
+    workspace: emptyWorkspace(),
+    profile: emptyProfile(),
+    inboxLastReadAt: "",
+    loadedAt: "",
+  };
+}
+
+function shellProjectToProject(project: WorkspaceShellProject): WorkspaceProject {
+  return {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    createdAt: project.createdAt,
+    markCount: project.markCount,
+  };
+}
+
+export function shellBootstrapToWorkspaceBootstrap(
+  shell: WorkspaceShellBootstrap,
+): WorkspaceBootstrap {
+  return {
+    workspaceId: shell.workspaceId,
+    userId: shell.userId,
+    profile: shell.profile,
+    inboxLastReadAt: shell.inboxLastReadAt,
+    loadedAt: shell.loadedAt,
+    workspace: {
+      ...emptyWorkspace(),
+      id: shell.workspace.id,
+      name: shell.workspace.name,
+      projects: shell.workspace.projects.map(shellProjectToProject),
+      views: shell.workspace.views,
+      members: shell.workspace.members,
+    },
+  };
+}
+
+export function composeWorkspaceBootstrap(
+  shell: WorkspaceShellBootstrap,
+  workspace: Workspace,
+  loadedAt = new Date().toISOString(),
+): WorkspaceBootstrap {
+  return {
+    ...shellBootstrapToWorkspaceBootstrap(shell),
+    loadedAt,
+    workspace: {
+      ...workspace,
+      id: workspace.id || shell.workspace.id,
+      name: workspace.name || shell.workspace.name,
+      projects: workspace.projects.length
+        ? workspace.projects
+        : shell.workspace.projects.map(shellProjectToProject),
+      views: workspace.views.length ? workspace.views : shell.workspace.views,
+      members: workspace.members.length ? workspace.members : shell.workspace.members,
+    },
+  };
+}
+
+export function mergeShellIntoWorkspaceBootstrap(
+  current: WorkspaceBootstrap | undefined,
+  shell: WorkspaceShellBootstrap,
+): WorkspaceBootstrap {
+  const nextShell = shellBootstrapToWorkspaceBootstrap(shell);
+  if (!current || current.workspaceId !== shell.workspaceId) return nextShell;
+  return {
+    ...current,
+    userId: shell.userId,
+    profile: shell.profile,
+    inboxLastReadAt: current.inboxLastReadAt || shell.inboxLastReadAt,
+    workspace: {
+      ...current.workspace,
+      id: shell.workspace.id,
+      name: shell.workspace.name,
+      projects: shell.workspace.projects.map(shellProjectToProject),
+      views: shell.workspace.views,
+      members: shell.workspace.members,
+    },
+  };
+}

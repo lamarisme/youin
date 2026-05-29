@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { AccountClient } from "./account-client";
+import { AccountReadModelProvider } from "@/components/providers/workspace-read-model-provider";
+import { getAccountReadModelAction } from "@/lib/workspace/actions";
 import { accountHref, isAccountSection } from "@/lib/workspace/routes";
 
 export const metadata: Metadata = {
@@ -19,5 +21,11 @@ export default async function AccountPage({
     redirect(accountHref(tab));
   }
 
-  return <AccountClient />;
+  const readModel = await getAccountReadModelAction();
+
+  return (
+    <AccountReadModelProvider initialData={readModel}>
+      <AccountClient />
+    </AccountReadModelProvider>
+  );
 }

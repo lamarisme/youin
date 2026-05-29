@@ -1,38 +1,11 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
-
-import { getDb } from "@/db/client";
-import { inboxReadStates } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
-import {
-  loadUserProfile,
-  loadWorkspaceAggregate,
-} from "@/lib/workspace/load-workspace";
+import { loadWorkspaceShellBootstrap } from "@/lib/workspace/read-models";
 import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+import type { WorkspaceShellBootstrap } from "@/lib/workspace/workspace-types";
 
-function toIso(value: Date | string): string {
-  return value instanceof Date ? value.toISOString() : value;
-}
-
-async function loadInboxLastReadAt(workspaceId: string, userId: string): Promise<string> {
-  const db = getDb();
-  const [readState] = await db
-    .select({ lastReadAt: inboxReadStates.lastReadAt })
-    .from(inboxReadStates)
-    .where(
-      and(
-        eq(inboxReadStates.workspaceId, workspaceId),
-        eq(inboxReadStates.userId, userId),
-      ),
-    )
-    .limit(1);
-
-  return readState?.lastReadAt ? toIso(readState.lastReadAt) : "";
-}
-
-export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null> {
+export async function getWorkspaceShellBootstrap(): Promise<WorkspaceShellBootstrap | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -40,19 +13,7 @@ export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null
   if (!user) return null;
   try {
     const workspaceId = await ensureWorkspaceForUser(supabase, user);
-    const [workspace, profile, inboxLastReadAt] = await Promise.all([
-      loadWorkspaceAggregate(workspaceId, supabase),
-      loadUserProfile(user.id),
-      loadInboxLastReadAt(workspaceId, user.id),
-    ]);
-    return {
-      workspaceId,
-      userId: user.id,
-      workspace,
-      profile,
-      inboxLastReadAt,
-      loadedAt: new Date().toISOString(),
-    };
+    return loadWorkspaceShellBootstrap(workspaceId, user.id);
   } catch (e) {
     const err = e as Record<string, unknown> | null;
     const dump =
@@ -72,3 +33,5 @@ export async function getWorkspaceBootstrap(): Promise<WorkspaceBootstrap | null
     return null;
   }
 }
+
+export const getWorkspaceBootstrap = getWorkspaceShellBootstrap;

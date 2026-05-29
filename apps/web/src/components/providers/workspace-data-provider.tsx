@@ -2,22 +2,50 @@
 
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
-import { useWorkspaceQuery } from "@/lib/queries/use-workspace";
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+import {
+  mergeShellIntoWorkspaceBootstrap,
+  shellBootstrapToWorkspaceBootstrap,
+  useWorkspaceQuery,
+  WorkspaceSnapshotProvider,
+  useWorkspaceShellQuery,
+} from "@/lib/queries/use-workspace";
+import { workspaceKeys } from "@/lib/queries/keys";
+import type {
+  WorkspaceBootstrap,
+  WorkspaceShellBootstrap,
+} from "@/lib/workspace/workspace-types";
 
 export function WorkspaceDataProvider({
   bootstrap,
   children,
 }: {
-  bootstrap: WorkspaceBootstrap;
+  bootstrap: WorkspaceShellBootstrap;
   children: React.ReactNode;
 }) {
   const t = useTranslations("workspace.bootstrap");
-  const { isPending, isError, error, refetch, isFetching } =
-    useWorkspaceQuery(bootstrap);
+  const queryClient = useQueryClient();
+  const { data, isPending, isError, error, refetch, isFetching } =
+    useWorkspaceShellQuery(bootstrap);
+  const shellSnapshot = useMemo(
+    () => (data ? shellBootstrapToWorkspaceBootstrap(data) : undefined),
+    [data],
+  );
+  const snapshotQuery = useWorkspaceQuery(
+    shellSnapshot ?? shellBootstrapToWorkspaceBootstrap(bootstrap),
+  );
+
+  useEffect(() => {
+    if (!data) return;
+    queryClient.setQueryData<WorkspaceBootstrap>(
+      workspaceKeys.bootstrap(),
+      (current) => mergeShellIntoWorkspaceBootstrap(current, data),
+    );
+  }, [data, queryClient]);
 
   if (isPending) {
     return <WorkspaceMainSkeleton id={t("loadingAria")} />;
@@ -57,5 +85,9 @@ export function WorkspaceDataProvider({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <WorkspaceSnapshotProvider value={snapshotQuery.data ?? shellSnapshot}>
+      {children}
+    </WorkspaceSnapshotProvider>
+  );
 }

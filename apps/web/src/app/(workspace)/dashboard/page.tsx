@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
+import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
+import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import { markHref } from "@/lib/workspace/routes";
 
 export const metadata: Metadata = {
@@ -28,5 +30,11 @@ export default async function DashboardPage({
     redirect(markHref(mark, params));
   }
 
-  return <WorkspaceDashboard />;
+  const readModel = await getDashboardReadModelAction();
+
+  return (
+    <DashboardReadModelProvider initialData={readModel}>
+      <WorkspaceDashboard />
+    </DashboardReadModelProvider>
+  );
 }
