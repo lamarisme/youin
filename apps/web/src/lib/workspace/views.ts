@@ -6,6 +6,8 @@ import type {
   WorkspaceView,
   WorkspaceViewAssigneeFilter,
   WorkspaceViewConfig,
+  WorkspaceViewDashboardGroupBy,
+  WorkspaceViewDensity,
   WorkspaceViewFilters,
   WorkspaceViewLayout,
   WorkspaceViewPinnedFilter,
@@ -21,6 +23,8 @@ const PINNED_FILTERS = ["all", "pinned", "unpinned"] as const;
 const ASSIGNEE_FILTERS = ["all", "me", "unassigned"] as const;
 const SORT_MODES = ["recent", "oldest", "priority", "status"] as const;
 const VIEW_LAYOUTS_ACTIVE = ["list", "board"] as const;
+const DASHBOARD_GROUP_BY = ["none", "status", "page", "assignee", "project"] as const;
+const DASHBOARD_DENSITIES = ["comfortable", "compact"] as const;
 
 const PRIORITY_RANK: Record<string, number> = {
   critical: 0,
@@ -43,6 +47,8 @@ export const DEFAULT_WORKSPACE_VIEW_FILTERS: WorkspaceViewFilters = {
 
 export const DEFAULT_WORKSPACE_VIEW_CONFIG: WorkspaceViewConfig = {
   boardGroupBy: "status",
+  dashboardGroupBy: "none",
+  dashboardDensity: "comfortable",
 };
 
 export function isWorkspaceViewLayout(value: unknown): value is WorkspaceViewLayout {
@@ -101,9 +107,18 @@ export function normalizeWorkspaceViewConfig(
   value: unknown,
 ): WorkspaceViewConfig {
   void layout;
-  void value;
+  const raw =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
   return {
     boardGroupBy: "status",
+    dashboardGroupBy: isStringIn(raw.dashboardGroupBy, DASHBOARD_GROUP_BY)
+      ? (raw.dashboardGroupBy as WorkspaceViewDashboardGroupBy)
+      : "none",
+    dashboardDensity: isStringIn(raw.dashboardDensity, DASHBOARD_DENSITIES)
+      ? (raw.dashboardDensity as WorkspaceViewDensity)
+      : "comfortable",
   };
 }
 

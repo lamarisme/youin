@@ -11,16 +11,19 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
   CircleDashed,
+  Flame,
   Hash,
   Inbox,
   Moon,
+  Plus,
   Search,
   Sun,
   User,
+  UserRound,
   View,
   type LucideIcon,
 } from "lucide-react";
@@ -31,12 +34,13 @@ import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
+import { markHref } from "@/lib/workspace/routes";
 
 interface PaletteCommand {
   id: string;
   title: string;
   subtitle?: string;
-  group: "navigate" | "views" | "projects" | "theme";
+  group: "actions" | "navigate" | "marks" | "views" | "projects" | "theme";
   keywords?: string[];
   shortcut?: string;
   icon?: LucideIcon;
@@ -86,12 +90,14 @@ function CommandPaletteDialog({
 }) {
   const t = useTranslations("commandPalette");
   const router = useRouter();
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { projects, views, workspaceId, userId } = useWorkspaceData((s) => ({
+  const { projects, views, marks, workspaceId, userId } = useWorkspaceData((s) => ({
       projects: s.workspace.projects,
       views: s.workspace.views,
+      marks: s.workspace.marks,
       workspaceId: s.workspaceId,
       userId: s.userId,
     }));
@@ -157,7 +163,47 @@ function CommandPaletteDialog({
   }, [open]);
 
   const allCommands = useMemo<PaletteCommand[]>(() => {
+    const openNewMark = () => {
+      if (pathname.startsWith("/dashboard")) {
+        window.dispatchEvent(new CustomEvent("youin:new-mark"));
+      } else {
+        router.push("/dashboard?new=1");
+      }
+    };
     const base: PaletteCommand[] = [
+      {
+        id: "action-new-mark",
+        title: t("actions.newMark"),
+        subtitle: t("actions.newMarkSub"),
+        group: "actions",
+        shortcut: "C",
+        icon: Plus,
+        run: openNewMark,
+      },
+      {
+        id: "action-triage",
+        title: t("actions.triage"),
+        subtitle: t("actions.triageSub"),
+        group: "actions",
+        icon: Inbox,
+        run: () => router.push("/dashboard?status=open&assignee=unassigned&group=page&density=compact"),
+      },
+      {
+        id: "action-critical",
+        title: t("actions.critical"),
+        subtitle: t("actions.criticalSub"),
+        group: "actions",
+        icon: Flame,
+        run: () => router.push("/dashboard?status=open&priority=critical&sort=priority"),
+      },
+      {
+        id: "action-unassigned",
+        title: t("actions.unassigned"),
+        subtitle: t("actions.unassignedSub"),
+        group: "actions",
+        icon: UserRound,
+        run: () => router.push("/dashboard?status=open&assignee=unassigned"),
+      },
       {
         id: "nav-dashboard",
         title: t("nav.myMarks"),
@@ -224,8 +270,17 @@ function CommandPaletteDialog({
       icon: View,
       run: () => router.push(`/views/${view.id}`),
     }));
-    return [...base, ...viewCommands, ...projectCommands];
-  }, [router, theme, toggleTheme, projects, views, inbox.unreadCount, t]);
+    const markCommands: PaletteCommand[] = marks.slice(0, 80).map((mark) => ({
+      id: `mark-${mark.id}`,
+      title: `${mark.displayKey} ${mark.title}`,
+      subtitle: mark.page,
+      group: "marks" as const,
+      keywords: [mark.displayKey, mark.title, mark.page, mark.status, mark.priority],
+      icon: CircleDashed,
+      run: () => router.push(markHref(mark.displayKey, new URLSearchParams())),
+    }));
+    return [...base, ...markCommands, ...viewCommands, ...projectCommands];
+  }, [router, pathname, theme, toggleTheme, projects, views, marks, inbox.unreadCount, t]);
 
   const onSelect = useCallback(
     (id: string) => {
@@ -266,7 +321,7 @@ function CommandPaletteDialog({
           {t("empty")}
         </Command.Empty>
 
-        {(["navigate", "views", "projects", "theme"] as const).map((groupId) => {
+        {(["actions", "navigate", "marks", "views", "projects", "theme"] as const).map((groupId) => {
           const items = allCommands.filter((c) => c.group === groupId);
           if (items.length === 0) return null;
           return (

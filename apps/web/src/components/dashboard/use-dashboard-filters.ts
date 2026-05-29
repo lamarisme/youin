@@ -15,6 +15,8 @@ export type PriorityFilter = "all" | MarkPriority;
 export type PinnedFilter = "all" | "pinned" | "unpinned";
 export type SortMode = "recent" | "oldest" | "priority" | "status";
 export type AssigneeFilter = "all" | "me" | "unassigned";
+export type DashboardGroupBy = "none" | "status" | "page" | "assignee" | "project";
+export type DashboardDensity = "comfortable" | "compact";
 
 export interface DashboardFilters {
   projectId: string;
@@ -27,6 +29,8 @@ export interface DashboardFilters {
   assignee: AssigneeFilter;
   q: string;
   sort: SortMode;
+  groupBy: DashboardGroupBy;
+  density: DashboardDensity;
   page: number;
 }
 
@@ -35,6 +39,8 @@ const priorityParser = parseAsStringLiteral(["all", "low", "medium", "high", "cr
 const pinnedParser = parseAsStringLiteral(["all", "pinned", "unpinned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
 const sortParser = parseAsStringLiteral(["recent", "oldest", "priority", "status"] as const).withDefault("recent").withOptions({ clearOnDefault: true });
 const assigneeParser = parseAsStringLiteral(["all", "me", "unassigned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
+const groupByParser = parseAsStringLiteral(["none", "status", "page", "assignee", "project"] as const).withDefault("none").withOptions({ clearOnDefault: true });
+const densityParser = parseAsStringLiteral(["comfortable", "compact"] as const).withDefault("comfortable").withOptions({ clearOnDefault: true });
 
 const projectParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const markParser = parseAsString;
@@ -54,6 +60,8 @@ export function useDashboardFilters() {
   const [assignee, setAssignee] = useQueryState("assignee", assigneeParser);
   const [q, setQ] = useQueryState("q", queryParser);
   const [sort, setSort] = useQueryState("sort", sortParser);
+  const [groupBy, setGroupBy] = useQueryState("group", groupByParser);
+  const [density, setDensity] = useQueryState("density", densityParser);
   const [page, setPage] = useQueryState("page", pageParser);
 
   const filters: DashboardFilters = useMemo(
@@ -68,9 +76,11 @@ export function useDashboardFilters() {
       assignee,
       q,
       sort,
+      groupBy,
+      density,
       page,
     }),
-    [project, mark, status, workflowStatus, priority, pinned, label, assignee, q, sort, page],
+    [project, mark, status, workflowStatus, priority, pinned, label, assignee, q, sort, groupBy, density, page],
   );
 
   const update = useCallback(
@@ -110,6 +120,12 @@ export function useDashboardFilters() {
       if (patch.sort !== undefined) {
         void setSort(patch.sort as SortMode);
       }
+      if (patch.groupBy !== undefined) {
+        void setGroupBy(patch.groupBy as DashboardGroupBy);
+      }
+      if (patch.density !== undefined) {
+        void setDensity(patch.density as DashboardDensity);
+      }
       if (patch.page !== undefined) {
         void setPage((patch.page as number) ?? 1);
       }
@@ -117,7 +133,7 @@ export function useDashboardFilters() {
         void setPage(1);
       }
     },
-    [setProject, setMark, setStatus, setWorkflowStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setPage],
+    [setProject, setMark, setStatus, setWorkflowStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setGroupBy, setDensity, setPage],
   );
 
   return { filters, update };

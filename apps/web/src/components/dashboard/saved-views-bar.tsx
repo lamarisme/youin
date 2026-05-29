@@ -162,6 +162,8 @@ function snapshotsEqual(a: SavedViewFilters, b: SavedViewFilters): boolean {
     a.label === b.label &&
     a.assignee === b.assignee &&
     a.q.trim() === b.q.trim() &&
-    a.sort === b.sort
+    a.sort === b.sort &&
+    a.groupBy === b.groupBy &&
+    a.density === b.density
   );
 }

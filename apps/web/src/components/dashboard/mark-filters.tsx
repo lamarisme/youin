@@ -36,11 +36,26 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import type {
   AssigneeFilter,
+  DashboardDensity,
   DashboardFilters,
+  DashboardGroupBy,
   PinnedFilter,
   PriorityFilter,
   SortMode,
 } from "./use-dashboard-filters";
+
+const DASHBOARD_GROUP_OPTIONS: ReadonlyArray<FilterOption<DashboardGroupBy>> = [
+  { value: "none", label: "No grouping" },
+  { value: "status", label: "Workflow stage" },
+  { value: "page", label: "Page" },
+  { value: "assignee", label: "Assignee" },
+  { value: "project", label: "Project" },
+];
+
+const DASHBOARD_DENSITY_OPTIONS: ReadonlyArray<FilterOption<DashboardDensity>> = [
+  { value: "comfortable", label: "Comfortable" },
+  { value: "compact", label: "Compact" },
+];
 
 interface MarkFiltersProps {
   filters: DashboardFilters;
@@ -114,6 +129,12 @@ export function MarkFilters({
       workflowStatusOptions.find((o) => o.value === filters.workflowStatus)?.label ??
       filters.workflowStatus;
     const sortLabel = MARK_SORT_OPTIONS.find((o) => o.value === filters.sort)?.label ?? filters.sort;
+    const groupLabel =
+      DASHBOARD_GROUP_OPTIONS.find((o) => o.value === filters.groupBy)?.label ??
+      filters.groupBy;
+    const densityLabel =
+      DASHBOARD_DENSITY_OPTIONS.find((o) => o.value === filters.density)?.label ??
+      filters.density;
     if (filters.status !== "all") {
       out.push({
         key: "status",
@@ -189,6 +210,22 @@ export function MarkFilters({
         reset: () => onChange({ sort: "recent" }, { resetPage: true }),
       });
     }
+    if (filters.groupBy !== "none") {
+      out.push({
+        key: "groupBy",
+        label: "Group",
+        value: groupLabel,
+        reset: () => onChange({ groupBy: "none" }, { resetPage: true }),
+      });
+    }
+    if (filters.density !== "comfortable") {
+      out.push({
+        key: "density",
+        label: "Density",
+        value: densityLabel,
+        reset: () => onChange({ density: "comfortable" }, { resetPage: true }),
+      });
+    }
     return out;
   }, [filters, labelsById, onChange, showAssigneeFilter, workflowStatusOptions]);
 
@@ -199,7 +236,9 @@ export function MarkFilters({
     (filters.priority !== "all" ? 1 : 0) +
     (filters.pinned !== "all" ? 1 : 0) +
     (showAssigneeFilter && filters.assignee !== "all" ? 1 : 0) +
-    (filters.sort !== "recent" ? 1 : 0);
+    (filters.sort !== "recent" ? 1 : 0) +
+    (filters.groupBy !== "none" ? 1 : 0) +
+    (filters.density !== "comfortable" ? 1 : 0);
 
   function clearAll() {
     onChange(
@@ -212,6 +251,8 @@ export function MarkFilters({
         assignee: lockedAssignee ?? "all",
         q: null,
         sort: "recent",
+        groupBy: "none",
+        density: "comfortable",
       },
       { resetPage: true },
     );
@@ -366,6 +407,24 @@ export function MarkFilters({
                     onValueChange={(v) => onChange({ sort: v }, { resetPage: true })}
                     options={MARK_SORT_OPTIONS}
                     ariaLabel="Sort marks"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </FilterRow>
+                <FilterRow label="Grouping">
+                  <FilterSelect<DashboardGroupBy>
+                    value={filters.groupBy}
+                    onValueChange={(v) => onChange({ groupBy: v }, { resetPage: true })}
+                    options={DASHBOARD_GROUP_OPTIONS}
+                    ariaLabel="Group dashboard marks"
+                    triggerClassName={dialogSelectClass}
+                  />
+                </FilterRow>
+                <FilterRow label="Density">
+                  <FilterSelect<DashboardDensity>
+                    value={filters.density}
+                    onValueChange={(v) => onChange({ density: v }, { resetPage: true })}
+                    options={DASHBOARD_DENSITY_OPTIONS}
+                    ariaLabel="Set dashboard density"
                     triggerClassName={dialogSelectClass}
                   />
                 </FilterRow>

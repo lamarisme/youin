@@ -102,7 +102,11 @@ export function ViewsClient() {
             ...DEFAULT_WORKSPACE_VIEW_FILTERS,
             ...local.filters,
           },
-          config: DEFAULT_WORKSPACE_VIEW_CONFIG,
+          config: {
+            ...DEFAULT_WORKSPACE_VIEW_CONFIG,
+            dashboardGroupBy: local.filters.groupBy,
+            dashboardDensity: local.filters.density,
+          },
         });
       }
       localStorage.removeItem(`${LOCAL_SAVED_VIEWS_PREFIX}${workspaceId}`);

@@ -12,6 +12,8 @@ export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
 export type WorkspaceViewPinnedFilter = "all" | "pinned" | "unpinned";
 export type WorkspaceViewAssigneeFilter = "all" | "me" | "unassigned";
 export type WorkspaceViewSortMode = "recent" | "oldest" | "priority" | "status";
+export type WorkspaceViewDashboardGroupBy = "none" | "status" | "page" | "assignee" | "project";
+export type WorkspaceViewDensity = "comfortable" | "compact";
 export type MarkEventType =
   | "created"
   | "status_changed"
@@ -140,6 +142,8 @@ export interface WorkspaceViewFilters {
 
 export interface WorkspaceViewConfig {
   boardGroupBy?: "status";
+  dashboardGroupBy?: WorkspaceViewDashboardGroupBy;
+  dashboardDensity?: WorkspaceViewDensity;
 }
 
 export interface WorkspaceView {

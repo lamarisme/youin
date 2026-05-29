@@ -4,8 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   CircleDashed,
+  Folder,
   Flame,
   Inbox,
+  Link2,
   Plus,
   UserRound,
 } from "lucide-react";
@@ -24,22 +26,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { MarkItem, MarkPriority } from "@/lib/collab-types";
+import type {
+  DisplayNamePreference,
+  MarkItem,
+  MarkPriority,
+  TeamMember,
+  WorkspaceLabel,
+  WorkspaceProject,
+  WorkspaceWorkflowStatus,
+} from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateMarkMutation,
   useDeleteMarkMutation,
+  useAssignMarkMutation,
+  useSetMarkWorkflowStatusMutation,
   useToggleMarkStatusMutation,
   useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { dashboardHref, markHref } from "@/lib/workspace/routes";
 
 import { BulkActionBar } from "./bulk-action-bar";
+import { DashboardViewsBar } from "./dashboard-views-bar";
 import { MarkDetailView } from "./mark-detail-view";
 import { MarkFilters } from "./mark-filters";
 import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { MarkTable } from "./mark-table";
+import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
 import {
   firstVisibleMark,
@@ -74,20 +89,22 @@ export function TriageView({
   const { mutateAsync: toggleMarkStatus } = useToggleMarkStatusMutation();
   const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutateAsync: deleteMark } = useDeleteMarkMutation();
+  const { mutate: setMarkWorkflowStatus } = useSetMarkWorkflowStatusMutation();
+  const { mutate: assignMark } = useAssignMarkMutation();
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
   const resolvedBackHref = backHref ?? dashboardHref(searchParams);
   const isDesktop = useIsDesktop();
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(() => searchParams.get("new") === "1");
   const [showListHelp, setShowListHelp] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const selectedProject = useMemo(() => {
+    if (filters.projectId === "all") return null;
     return (
       workspace.projects.find((project) => project.id === filters.projectId) ??
-      workspace.projects[0] ??
       null
     );
   }, [filters.projectId, workspace.projects]);
@@ -96,8 +113,9 @@ export function TriageView({
   const isMyMarksPage = filters.assignee === "me";
   const attentionScopeMarks = useMemo(
     () => {
-      if (!activeProjectId) return [];
-      const projectMarks = workspace.marks.filter((mark) => mark.projectId === activeProjectId);
+      const projectMarks = activeProjectId
+        ? workspace.marks.filter((mark) => mark.projectId === activeProjectId)
+        : workspace.marks;
       if (!isMyMarksPage) return projectMarks;
       return userId ? projectMarks.filter((mark) => mark.assigneeId === userId) : [];
     },
@@ -129,6 +147,7 @@ export function TriageView({
   const allSelectedClosed = selectedMarks.length > 0 && selectedMarks.every((p) => p.status === "closed");
 
   const filtersActive =
+    filters.projectId !== "all" ||
     filters.status !== "all" ||
     filters.workflowStatus !== "all" ||
     filters.priority !== "all" ||
@@ -136,11 +155,14 @@ export function TriageView({
     filters.label !== "all" ||
     (!isMyMarksPage && filters.assignee !== "all") ||
     filters.sort !== "recent" ||
+    filters.groupBy !== "none" ||
+    filters.density !== "comfortable" ||
     filters.q.trim().length > 0;
 
   function clearFilters() {
     update(
       {
+        projectId: "all",
         status: "all",
         workflowStatus: "all",
         priority: "all",
@@ -148,6 +170,8 @@ export function TriageView({
         label: "all",
         assignee: isMyMarksPage ? "me" : "all",
         sort: "recent",
+        groupBy: "none",
+        density: "comfortable",
         q: null,
       },
       { resetPage: true },
@@ -163,6 +187,8 @@ export function TriageView({
       label: "all",
       assignee: isMyMarksPage ? "me" : "all",
       q: null,
+      groupBy: "none",
+      density: "comfortable",
     };
     if (queue === "critical") base.priority = "critical";
     if (queue === "mine") base.assignee = "me";
@@ -194,6 +220,34 @@ export function TriageView({
     void toggleMarkStatus(mark.id);
   }
 
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    const next = new URLSearchParams(searchParamString);
+    next.delete("new");
+    router.replace(next.size ? `/dashboard?${next.toString()}` : "/dashboard");
+  }, [router, searchParamString, searchParams]);
+
+  useEffect(() => {
+    function openNewMark() {
+      setShowNew(true);
+    }
+    window.addEventListener("youin:new-mark", openNewMark);
+    return () => window.removeEventListener("youin:new-mark", openNewMark);
+  }, []);
+
+  useEffect(() => {
+    function handler(event: KeyboardEvent) {
+      if (isEditableEventTarget(event.target)) return;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        setShowNew(true);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const totalPages = Math.max(1, Math.ceil(visibleMarks.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, filters.page), totalPages);
   const paginatedMarks = useMemo(
@@ -212,6 +266,31 @@ export function TriageView({
     for (const c of workspace.comments) counts.set(c.markId, (counts.get(c.markId) ?? 0) + 1);
     return counts;
   }, [workspace.comments]);
+  const projectsById = useMemo(
+    () => new Map(workspace.projects.map((project) => [project.id, project])),
+    [workspace.projects],
+  );
+  const groupedMarks = useMemo(
+    () =>
+      filters.groupBy === "none"
+        ? []
+        : groupDashboardMarks({
+            marks: visibleMarks,
+            groupBy: filters.groupBy,
+            membersById,
+            projectsById,
+            workflowStatusesById,
+            displayNamePreference,
+          }),
+    [
+      visibleMarks,
+      filters.groupBy,
+      membersById,
+      projectsById,
+      workflowStatusesById,
+      displayNamePreference,
+    ],
+  );
 
   /** Receives the full new selection set from MarkTable. */
   function handleSelectionChange(ids: Set<string>) {
@@ -315,6 +394,13 @@ export function TriageView({
         >
           <BreadcrumbHeader items={[{ label: pageTitle, current: true }]} />
 
+          <DashboardViewsBar
+            views={workspace.views}
+            filters={filters}
+            viewerId={userId}
+            onApply={update}
+          />
+
           <FadeIn className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/70 pb-2">
             <AttentionStrip
               counts={attentionCounts}
@@ -337,9 +423,9 @@ export function TriageView({
           <FadeIn className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
             <div className="min-w-0 flex-1 px-2">
               <p className="truncate text-ui-xs text-ink-3">
-                Project
+                Scope
                 <span className="ml-1 font-medium text-ink">
-                  {selectedProject?.name ?? "No project"}
+                  {selectedProject?.name ?? "All projects"}
                 </span>
               </p>
             </div>
@@ -403,27 +489,66 @@ export function TriageView({
                   )
                 }
               />
+            ) : filters.groupBy !== "none" ? (
+              <GroupedMarkTables
+                groups={groupedMarks}
+                membersById={membersById}
+                labelsById={labelsById}
+                workflowStatusesById={workflowStatusesById}
+                workflowStatuses={workspace.workflowStatuses}
+                members={workspace.members}
+                commentCountByMarkId={commentCountByMarkId}
+                displayNamePreference={displayNamePreference}
+                activeMarkId={selectedMark?.id}
+                density={showDesktopPane || filters.density === "compact" ? "compact" : "default"}
+                selectedIds={selectedIds}
+                onSelectionChange={handleSelectionChange}
+                onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
+                onToggleMarkStatus={handleRowToggleStatus}
+                onNavigateAdjacent={handleListNavigate}
+                onShowShortcuts={() => setShowListHelp(true)}
+                onSetWorkflowStatus={(mark, workflowStatusId) =>
+                  setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
+                }
+                onSetPriority={(mark, priority) =>
+                  void updateMarkPriority({ markId: mark.id, priority })
+                }
+                onAssignMark={(mark, assigneeId) =>
+                  assignMark({ markId: mark.id, assigneeId })
+                }
+              />
             ) : (
               <MarkTable
                 marks={paginatedMarks}
                 membersById={membersById}
                 labelsById={labelsById}
                 workflowStatusesById={workflowStatusesById}
+                workflowStatuses={workspace.workflowStatuses}
+                members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
                 activeMarkId={selectedMark?.id}
-                density={showDesktopPane ? "compact" : "default"}
+                density={showDesktopPane || filters.density === "compact" ? "compact" : "default"}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
                 onNavigateAdjacent={handleListNavigate}
                 onShowShortcuts={() => setShowListHelp(true)}
+                onSetWorkflowStatus={(mark, workflowStatusId) =>
+                  setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
+                }
+                onSetPriority={(mark, priority) =>
+                  void updateMarkPriority({ markId: mark.id, priority })
+                }
+                onAssignMark={(mark, assigneeId) =>
+                  assignMark({ markId: mark.id, assigneeId })
+                }
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
               />
             )}
           </div>
 
-          {visibleMarks.length > 0 ? (
+          {visibleMarks.length > 0 && filters.groupBy === "none" ? (
             <Pagination
               page={displayPage}
               totalPages={totalPages}
@@ -610,4 +735,182 @@ function MissingMarkPane({ markParam }: { markParam?: string | null }) {
       </div>
     </div>
   );
+}
+
+type GroupedMarkSection = {
+  id: string;
+  title: string;
+  subtitle?: string;
+  icon: ReactNode;
+  marks: MarkItem[];
+};
+
+function GroupedMarkTables({
+  groups,
+  membersById,
+  labelsById,
+  workflowStatusesById,
+  workflowStatuses,
+  members,
+  commentCountByMarkId,
+  displayNamePreference,
+  activeMarkId,
+  density,
+  selectedIds,
+  onSelectionChange,
+  onSelectMark,
+  onToggleMarkStatus,
+  onNavigateAdjacent,
+  onShowShortcuts,
+  onSetWorkflowStatus,
+  onSetPriority,
+  onAssignMark,
+}: {
+  groups: GroupedMarkSection[];
+  membersById: Map<string, TeamMember>;
+  labelsById: Map<string, WorkspaceLabel>;
+  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
+  workflowStatuses: WorkspaceWorkflowStatus[];
+  members: TeamMember[];
+  commentCountByMarkId: Map<string, number>;
+  displayNamePreference: DisplayNamePreference;
+  activeMarkId?: string;
+  density: "default" | "compact";
+  selectedIds: Set<string>;
+  onSelectionChange: (ids: Set<string>) => void;
+  onSelectMark: (mark: MarkItem) => void;
+  onToggleMarkStatus: (mark: MarkItem) => void | Promise<void>;
+  onNavigateAdjacent: (direction: "prev" | "next", fromMark?: MarkItem) => void;
+  onShowShortcuts: () => void;
+  onSetWorkflowStatus: (mark: MarkItem, workflowStatusId: string) => void;
+  onSetPriority: (mark: MarkItem, priority: MarkPriority) => void;
+  onAssignMark: (mark: MarkItem, assigneeId: string | null) => void;
+}) {
+  return (
+    <div className="divide-y divide-rule/60">
+      {groups.map((group) => (
+        <section key={group.id}>
+          <div className="flex min-h-10 items-center gap-2 bg-paper-2/70 px-3 py-2">
+            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
+              {group.icon}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-ui-sm font-semibold text-ink">{group.title}</h2>
+              {group.subtitle ? (
+                <p className="truncate text-ui-xs text-ink-3">{group.subtitle}</p>
+              ) : null}
+            </div>
+            <span className="rounded bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs tabular-nums text-ink-3">
+              {group.marks.length}
+            </span>
+          </div>
+          <MarkTable
+            marks={group.marks}
+            membersById={membersById}
+            labelsById={labelsById}
+            workflowStatusesById={workflowStatusesById}
+            workflowStatuses={workflowStatuses}
+            members={members}
+            commentCountByMarkId={commentCountByMarkId}
+            displayNamePreference={displayNamePreference}
+            activeMarkId={activeMarkId}
+            density={density}
+            onSelectMark={onSelectMark}
+            onToggleMarkStatus={onToggleMarkStatus}
+            onNavigateAdjacent={onNavigateAdjacent}
+            onShowShortcuts={onShowShortcuts}
+            onSetWorkflowStatus={onSetWorkflowStatus}
+            onSetPriority={onSetPriority}
+            onAssignMark={onAssignMark}
+            selectedIds={selectedIds}
+            onSelectionChange={onSelectionChange}
+          />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function groupDashboardMarks({
+  marks,
+  groupBy,
+  membersById,
+  projectsById,
+  workflowStatusesById,
+  displayNamePreference,
+}: {
+  marks: MarkItem[];
+  groupBy: DashboardFilters["groupBy"];
+  membersById: Map<string, TeamMember>;
+  projectsById: Map<string, WorkspaceProject>;
+  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
+  displayNamePreference: DisplayNamePreference;
+}): GroupedMarkSection[] {
+  const groups = new Map<string, GroupedMarkSection>();
+
+  function ensure(group: GroupedMarkSection) {
+    const existing = groups.get(group.id);
+    if (existing) return existing;
+    groups.set(group.id, group);
+    return group;
+  }
+
+  for (const mark of marks) {
+    if (groupBy === "status") {
+      const status = workflowStatusesById.get(mark.workflowStatusId);
+      ensure({
+        id: status?.id ?? mark.status,
+        title: status?.name ?? (mark.status === "open" ? "Open" : "Closed"),
+        subtitle: mark.status === "open" ? "Open lifecycle" : "Closed lifecycle",
+        icon: <CircleDashed className="size-3.5" aria-hidden />,
+        marks: [],
+      }).marks.push(mark);
+      continue;
+    }
+    if (groupBy === "page") {
+      const page = mark.page.trim() ? formatMarkPageLabel(mark.page) : "No page";
+      ensure({
+        id: `page:${page}`,
+        title: page,
+        subtitle: mark.page,
+        icon: <Link2 className="size-3.5" aria-hidden />,
+        marks: [],
+      }).marks.push(mark);
+      continue;
+    }
+    if (groupBy === "assignee") {
+      const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
+      ensure({
+        id: assignee?.id ?? "__unassigned",
+        title: assignee ? memberPickerLabel(assignee, displayNamePreference) : "Unassigned",
+        subtitle: assignee ? "Assigned work" : "Needs an owner",
+        icon: <UserRound className="size-3.5" aria-hidden />,
+        marks: [],
+      }).marks.push(mark);
+      continue;
+    }
+    if (groupBy === "project") {
+      const project = projectsById.get(mark.projectId);
+      ensure({
+        id: project?.id ?? "__missing_project",
+        title: project?.name ?? "Missing project",
+        subtitle: project?.description || "Project scope",
+        icon: <Folder className="size-3.5" aria-hidden />,
+        marks: [],
+      }).marks.push(mark);
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.id === "__unassigned") return -1;
+    if (b.id === "__unassigned") return 1;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+function isEditableEventTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.getAttribute("role") === "textbox";
 }

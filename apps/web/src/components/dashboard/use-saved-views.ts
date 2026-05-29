@@ -6,7 +6,17 @@ import type { DashboardFilters } from "./use-dashboard-filters";
 
 export type SavedViewFilters = Pick<
   DashboardFilters,
-  "projectId" | "status" | "workflowStatus" | "priority" | "pinned" | "label" | "assignee" | "q" | "sort"
+  | "projectId"
+  | "status"
+  | "workflowStatus"
+  | "priority"
+  | "pinned"
+  | "label"
+  | "assignee"
+  | "q"
+  | "sort"
+  | "groupBy"
+  | "density"
 >;
 
 export interface SavedView {
@@ -56,6 +66,17 @@ function parseViews(raw: string | null): SavedView[] {
           assignee: view.filters.assignee,
           q: view.filters.q,
           sort: view.filters.sort,
+          groupBy: (
+            view.filters.groupBy === "status" ||
+            view.filters.groupBy === "page" ||
+            view.filters.groupBy === "assignee" ||
+            view.filters.groupBy === "project"
+              ? view.filters.groupBy
+              : "none"
+          ) as SavedViewFilters["groupBy"],
+          density: (view.filters.density === "compact"
+            ? "compact"
+            : "comfortable") as SavedViewFilters["density"],
         },
       }));
     return valid.length === 0 ? EMPTY_VIEWS : valid;
@@ -85,6 +106,8 @@ export function snapshotFilters(filters: DashboardFilters): SavedViewFilters {
     assignee: filters.assignee,
     q: filters.q,
     sort: filters.sort,
+    groupBy: filters.groupBy,
+    density: filters.density,
   };
 }
 
@@ -98,7 +121,9 @@ export function isDefaultFilters(snapshot: SavedViewFilters): boolean {
     snapshot.label === "all" &&
     snapshot.assignee === "all" &&
     snapshot.q.trim() === "" &&
-    snapshot.sort === "recent"
+    snapshot.sort === "recent" &&
+    snapshot.groupBy === "none" &&
+    snapshot.density === "comfortable"
   );
 }
 
@@ -113,6 +138,8 @@ export function describeFilters(snapshot: SavedViewFilters): string {
   if (snapshot.assignee === "unassigned") parts.push("unassigned");
   if (snapshot.q.trim()) parts.push(`“${snapshot.q.trim()}”`);
   if (snapshot.sort !== "recent") parts.push(`sort: ${snapshot.sort}`);
+  if (snapshot.groupBy !== "none") parts.push(`group: ${snapshot.groupBy}`);
+  if (snapshot.density === "compact") parts.push("compact");
   return parts.join(" · ");
 }
 

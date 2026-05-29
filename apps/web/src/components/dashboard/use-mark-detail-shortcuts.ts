@@ -9,9 +9,10 @@ export interface MarkDetailShortcutHandlers {
   onToggleStatus: () => void;
   onTogglePinned: () => void;
   onFocusComment: () => void;
+  onOpenStatus: () => void;
   onOpenAssignee: () => void;
   onOpenPriority: () => void;
-  onOpenSpace: () => void;
+  onOpenLabels: () => void;
   onShowHelp: () => void;
   onBack: () => void;
 }
@@ -47,9 +48,10 @@ export function useMarkDetailShortcuts({
   onToggleStatus,
   onTogglePinned,
   onFocusComment,
+  onOpenStatus,
   onOpenAssignee,
   onOpenPriority,
-  onOpenSpace,
+  onOpenLabels,
   onShowHelp,
   onBack,
 }: UseMarkDetailShortcutsOptions) {
@@ -60,10 +62,11 @@ export function useMarkDetailShortcuts({
   useHotkeys("e", onEdit, opts);
   useHotkeys("x", onToggleStatus, opts);
   useHotkeys("b", onTogglePinned, opts);
-  useHotkeys("c", onFocusComment, opts);
+  useHotkeys("m", onFocusComment, opts);
+  useHotkeys("s", onOpenStatus, opts);
   useHotkeys("a", onOpenAssignee, opts);
   useHotkeys("p", onOpenPriority, opts);
-  useHotkeys("s", onOpenSpace, opts);
+  useHotkeys("l", onOpenLabels, opts);
   useHotkeys("Escape", onBack, opts);
   useHotkeys("shift+?", onShowHelp, opts);
 }

@@ -18,8 +18,10 @@ import {
   ArrowDown,
 } from "lucide-react";
 
+import { FilterSelect } from "@/components/filter-select";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
+import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -33,6 +35,7 @@ import {
 import type {
   DisplayNamePreference,
   MarkItem,
+  MarkPriority,
   TeamMember,
   WorkspaceLabel,
   WorkspaceWorkflowStatus,
@@ -51,12 +54,18 @@ export interface MarkTableProps {
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
+  workflowStatuses?: WorkspaceWorkflowStatus[];
+  members?: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   /** Called when a mark title is opened. */
   onSelectMark: (mark: MarkItem) => void;
   /** Optional quiet row action for resolving or reopening without opening detail. */
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+  /** Inline property editing, Linear-style. */
+  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
+  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
+  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
   /** Optional list keyboard navigation handler. */
   onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
   /** Optional shortcut help handler for focused list usage. */
@@ -81,6 +90,7 @@ const PRIORITY_ORDER: Record<string, number> = {
   medium: 2,
   low: 3,
 };
+const UNASSIGNED = "__unassigned";
 
 // ─── Column definitions ─────────────────────────────────────────────────
 
@@ -88,22 +98,32 @@ function buildColumns({
   membersById,
   labelsById,
   workflowStatusesById,
+  workflowStatuses,
+  members,
   commentCountByMarkId,
   displayNamePreference,
   selectable,
   onSelectMark,
   onToggleMarkStatus,
+  onSetWorkflowStatus,
+  onSetPriority,
+  onAssignMark,
   activeMarkId,
   density,
 }: {
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
+  workflowStatuses?: WorkspaceWorkflowStatus[];
+  members?: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
   onSelectMark: (mark: MarkItem) => void;
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
+  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
+  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
   activeMarkId?: string;
   density: "default" | "compact";
 }): ColumnDef<MarkItem>[] {
@@ -147,10 +167,27 @@ function buildColumns({
   cols.push({
     accessorKey: "status",
     header: "Status",
-    size: density === "compact" ? 36 : 44,
+    size: density === "compact" ? 36 : onSetWorkflowStatus ? 142 : 44,
     enableSorting: false,
     cell: ({ row }) => {
       const mark = row.original;
+      const workflowOptions =
+        workflowStatuses?.map((status) => ({
+          value: status.id,
+          label: status.name,
+        })) ?? [];
+      if (density === "default" && onSetWorkflowStatus && workflowOptions.length > 0) {
+        return (
+          <FilterSelect
+            value={mark.workflowStatusId}
+            onValueChange={(workflowStatusId) => onSetWorkflowStatus(mark, workflowStatusId)}
+            options={workflowOptions}
+            ariaLabel={`Change status for ${mark.displayKey}`}
+            variant="inline"
+            triggerClassName="h-7 w-[8.5rem] max-w-full border-transparent px-1.5 text-ui-xs"
+          />
+        );
+      }
       return (
         <StatusInline
           status={mark.status}
@@ -223,9 +260,19 @@ function buildColumns({
       sortingFn: (a, b) =>
         (PRIORITY_ORDER[a.original.priority] ?? 99) -
         (PRIORITY_ORDER[b.original.priority] ?? 99),
-      cell: ({ row }) => (
-        <PriorityBadge priority={row.original.priority} size="sm" />
-      ),
+      cell: ({ row }) =>
+        onSetPriority ? (
+          <FilterSelect<MarkPriority>
+            value={row.original.priority}
+            onValueChange={(priority) => onSetPriority(row.original, priority)}
+            options={PIN_PRIORITY_OPTIONS_TRIAGE}
+            ariaLabel={`Change priority for ${row.original.displayKey}`}
+            variant="inline"
+            triggerClassName="h-7 w-[6.75rem] border-transparent px-1.5 text-ui-xs"
+          />
+        ) : (
+          <PriorityBadge priority={row.original.priority} size="sm" />
+        ),
     });
   }
 
@@ -262,13 +309,33 @@ function buildColumns({
   // ── Assignee ──────────────
   cols.push({
     id: "assignee",
-    header: "",
-    size: 36,
+    header: density === "default" && onAssignMark ? "Assignee" : "",
+    size: density === "default" && onAssignMark ? 126 : 36,
     enableSorting: false,
     cell: ({ row }) => {
       const assignee = row.original.assigneeId
         ? membersById.get(row.original.assigneeId)
         : undefined;
+      if (density === "default" && onAssignMark && members) {
+        return (
+          <FilterSelect
+            value={row.original.assigneeId ?? UNASSIGNED}
+            onValueChange={(value) =>
+              onAssignMark(row.original, value === UNASSIGNED ? null : value)
+            }
+            options={[
+              { value: UNASSIGNED, label: "Unassigned" },
+              ...members.map((member) => ({
+                value: member.id,
+                label: memberPickerLabel(member, displayNamePreference),
+              })),
+            ]}
+            ariaLabel={`Change assignee for ${row.original.displayKey}`}
+            variant="inline"
+            triggerClassName="h-7 w-[7.75rem] border-transparent px-1.5 text-ui-xs"
+          />
+        );
+      }
       if (!assignee) return null;
       return (
         <span
@@ -364,10 +431,15 @@ export function MarkTable({
   membersById,
   labelsById,
   workflowStatusesById,
+  workflowStatuses,
+  members,
   commentCountByMarkId,
   displayNamePreference,
   onSelectMark,
   onToggleMarkStatus,
+  onSetWorkflowStatus,
+  onSetPriority,
+  onAssignMark,
   onNavigateAdjacent,
   onShowShortcuts,
   activeMarkId,
@@ -384,15 +456,36 @@ export function MarkTable({
         membersById,
         labelsById,
         workflowStatusesById,
+        workflowStatuses,
+        members,
         commentCountByMarkId,
         displayNamePreference,
         selectable,
         onSelectMark,
         onToggleMarkStatus,
+        onSetWorkflowStatus,
+        onSetPriority,
+        onAssignMark,
         activeMarkId,
         density,
       }),
-    [membersById, labelsById, workflowStatusesById, commentCountByMarkId, displayNamePreference, selectable, onSelectMark, onToggleMarkStatus, activeMarkId, density],
+    [
+      membersById,
+      labelsById,
+      workflowStatusesById,
+      workflowStatuses,
+      members,
+      commentCountByMarkId,
+      displayNamePreference,
+      selectable,
+      onSelectMark,
+      onToggleMarkStatus,
+      onSetWorkflowStatus,
+      onSetPriority,
+      onAssignMark,
+      activeMarkId,
+      density,
+    ],
   );
 
   // Map Set<string> → TanStack RowSelectionState keyed by mark.id
@@ -451,6 +544,8 @@ export function MarkTable({
           membersById={membersById}
           labelsById={labelsById}
           workflowStatusesById={workflowStatusesById}
+          workflowStatuses={workflowStatuses}
+          members={members}
           commentCountByMarkId={commentCountByMarkId}
           displayNamePreference={displayNamePreference}
           selectable={selectable}
@@ -459,6 +554,9 @@ export function MarkTable({
           onSelectionChange={onSelectionChange}
           onSelectMark={onSelectMark}
           onToggleMarkStatus={onToggleMarkStatus}
+          onSetWorkflowStatus={onSetWorkflowStatus}
+          onSetPriority={onSetPriority}
+          onAssignMark={onAssignMark}
         />
       </div>
 
@@ -570,6 +668,8 @@ function MobileMarkList({
   membersById,
   labelsById,
   workflowStatusesById,
+  workflowStatuses,
+  members,
   commentCountByMarkId,
   displayNamePreference,
   selectable,
@@ -578,11 +678,16 @@ function MobileMarkList({
   onSelectionChange,
   onSelectMark,
   onToggleMarkStatus,
+  onSetWorkflowStatus,
+  onSetPriority,
+  onAssignMark,
 }: {
   marks: MarkItem[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
+  workflowStatuses?: WorkspaceWorkflowStatus[];
+  members?: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   selectable: boolean;
@@ -591,6 +696,9 @@ function MobileMarkList({
   onSelectionChange?: (ids: Set<string>) => void;
   onSelectMark: (mark: MarkItem) => void;
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
+  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
+  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
+  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
 }) {
   function toggleSelection(markId: string, checked: boolean) {
     if (!onSelectionChange || !selectedIds) return;
@@ -714,6 +822,51 @@ function MobileMarkList({
                         </span>
                       );
                     })}
+                  </div>
+                ) : null}
+                {onSetWorkflowStatus || onSetPriority || onAssignMark ? (
+                  <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
+                    {onSetWorkflowStatus && workflowStatuses ? (
+                      <FilterSelect
+                        value={mark.workflowStatusId}
+                        onValueChange={(workflowStatusId) => onSetWorkflowStatus(mark, workflowStatusId)}
+                        options={workflowStatuses.map((status) => ({
+                          value: status.id,
+                          label: status.name,
+                        }))}
+                        ariaLabel={`Change status for ${mark.displayKey}`}
+                        variant="boxed"
+                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
+                      />
+                    ) : null}
+                    {onSetPriority ? (
+                      <FilterSelect<MarkPriority>
+                        value={mark.priority}
+                        onValueChange={(priority) => onSetPriority(mark, priority)}
+                        options={PIN_PRIORITY_OPTIONS_TRIAGE}
+                        ariaLabel={`Change priority for ${mark.displayKey}`}
+                        variant="boxed"
+                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
+                      />
+                    ) : null}
+                    {onAssignMark && members ? (
+                      <FilterSelect
+                        value={mark.assigneeId ?? UNASSIGNED}
+                        onValueChange={(value) =>
+                          onAssignMark(mark, value === UNASSIGNED ? null : value)
+                        }
+                        options={[
+                          { value: UNASSIGNED, label: "Unassigned" },
+                          ...members.map((member) => ({
+                            value: member.id,
+                            label: memberPickerLabel(member, displayNamePreference),
+                          })),
+                        ]}
+                        ariaLabel={`Change assignee for ${mark.displayKey}`}
+                        variant="boxed"
+                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
+                      />
+                    ) : null}
                   </div>
                 ) : null}
               </div>

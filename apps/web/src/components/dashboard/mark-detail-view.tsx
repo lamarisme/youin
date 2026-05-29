@@ -212,9 +212,13 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     onToggleStatus: () => toggleMarkStatus(mark.id),
     onTogglePinned: () => toggleMarkPinned(mark.id),
     onFocusComment: () => focusElementById("comment-composer"),
+    onOpenStatus: () =>
+      clickByAria("Mark workflow status") ||
+      clickByAria("Close mark") ||
+      clickByAria("Reopen mark"),
     onOpenAssignee: () => clickByAria("Mark assignee"),
     onOpenPriority: () => clickByAria("Mark priority"),
-    onOpenSpace: () => clickByAria("Mark project"),
+    onOpenLabels: () => clickByAria("Labels"),
     onShowHelp: () => setShowHelp(true),
     onBack: () => router.push(backHref),
   });

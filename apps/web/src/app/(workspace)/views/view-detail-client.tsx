@@ -87,7 +87,7 @@ function ViewDetail({
     useDeleteWorkspaceViewMutation();
   const [name, setName] = useState(view.name);
   const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
-  const [config] = useState<WorkspaceViewConfig>(view.config);
+  const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
   const [page, setPage] = useState(1);
 
   const visibleMarks = useMemo(
@@ -113,6 +113,18 @@ function ViewDetail({
     setPage(1);
   }
 
+  function updateDashboardViewOptions(
+    patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
+  ) {
+    const filterPatch = dashboardPatchToViewPatch(patch);
+    if (Object.keys(filterPatch).length > 0) updateFilters(filterPatch);
+    const configPatch = dashboardPatchToConfigPatch(patch);
+    if (Object.keys(configPatch).length > 0) {
+      setConfig((current) => ({ ...current, ...configPatch }));
+      setPage(1);
+    }
+  }
+
   async function saveChanges() {
     if (!dirty || isSaving) return;
     await updateView({
@@ -130,7 +142,7 @@ function ViewDetail({
     router.push("/views");
   }
 
-  const dashboardFilters = toDashboardFilters(filters, page);
+  const dashboardFilters = toDashboardFilters(filters, page, config);
 
   return (
     <PageContainer>
@@ -190,7 +202,7 @@ function ViewDetail({
         filters={dashboardFilters}
         visibleCount={visibleMarks.length}
         labels={workspace.labels}
-        onChange={(patch) => updateFilters(dashboardPatchToViewPatch(patch))}
+        onChange={updateDashboardViewOptions}
       />
 
       {view.layout === "board" ? (
@@ -422,7 +434,11 @@ function ViewEmptyState() {
   );
 }
 
-function toDashboardFilters(filters: WorkspaceViewFilters, page: number): DashboardFilters {
+function toDashboardFilters(
+  filters: WorkspaceViewFilters,
+  page: number,
+  config?: WorkspaceViewConfig,
+): DashboardFilters {
   return {
     projectId: filters.projectId,
     markId: null,
@@ -434,6 +450,8 @@ function toDashboardFilters(filters: WorkspaceViewFilters, page: number): Dashbo
     assignee: filters.assignee,
     q: filters.q,
     sort: filters.sort,
+    groupBy: config?.dashboardGroupBy ?? "none",
+    density: config?.dashboardDensity ?? "comfortable",
     page,
   };
 }
@@ -451,6 +469,19 @@ function dashboardPatchToViewPatch(
   if (typeof patch.assignee === "string") out.assignee = patch.assignee as WorkspaceViewFilters["assignee"];
   if (patch.q !== undefined) out.q = typeof patch.q === "string" ? patch.q : "";
   if (typeof patch.sort === "string") out.sort = patch.sort as WorkspaceViewFilters["sort"];
+  return out;
+}
+
+function dashboardPatchToConfigPatch(
+  patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
+): Partial<WorkspaceViewConfig> {
+  const out: Partial<WorkspaceViewConfig> = {};
+  if (typeof patch.groupBy === "string") {
+    out.dashboardGroupBy = patch.groupBy as WorkspaceViewConfig["dashboardGroupBy"];
+  }
+  if (typeof patch.density === "string") {
+    out.dashboardDensity = patch.density as WorkspaceViewConfig["dashboardDensity"];
+  }
   return out;
 }
 

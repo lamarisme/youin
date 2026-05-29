@@ -100,10 +100,22 @@
     "footerRun": "run",
     "footerToggle": "toggle",
     "groups": {
+      "actions": "Actions",
       "navigate": "Navigate",
+      "marks": "Marks",
       "views": "Views",
       "projects": "Projects",
       "theme": "Theme"
+    },
+    "actions": {
+      "newMark": "Create new mark",
+      "newMarkSub": "Open the spatial task composer",
+      "triage": "Open triage inbox",
+      "triageSub": "Unassigned open marks grouped by page",
+      "critical": "Open critical marks",
+      "criticalSub": "Highest-priority unresolved work",
+      "unassigned": "Open unassigned marks",
+      "unassignedSub": "Work that needs an owner"
     },
     "nav": {
       "triage": "Triage",

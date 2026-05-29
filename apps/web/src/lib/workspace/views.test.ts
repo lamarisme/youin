@@ -101,6 +101,8 @@ test("normalizes view layout, filters, and config", () => {
 
   assert.deepEqual(normalizeWorkspaceViewConfig("list", { analyticsTimeframe: "90d" }), {
     boardGroupBy: "status",
+    dashboardGroupBy: "none",
+    dashboardDensity: "comfortable",
   });
 });
 

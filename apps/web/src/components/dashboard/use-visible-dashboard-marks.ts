@@ -9,21 +9,18 @@ import { useDashboardFilters } from "./use-dashboard-filters";
 
 /** Marks visible under the current dashboard URL filters (project, status, priority, pinned, label, assignee). */
 export function useVisibleDashboardMarks() {
-  const { marks, projects, userId } = useWorkspaceData((s) => ({
+  const { marks, userId } = useWorkspaceData((s) => ({
     marks: s.workspace.marks,
-    projects: s.workspace.projects,
     userId: s.userId,
   }));
   const { filters } = useDashboardFilters();
 
   return useMemo(
     () => {
-      const activeProjectId =
-        filters.projectId === "all" ? projects[0]?.id : filters.projectId;
       return filterMarksByDashboardFilters(
         marks,
         {
-          projectId: activeProjectId ?? "all",
+          projectId: filters.projectId,
           status: filters.status,
           workflowStatus: filters.workflowStatus,
           priority: filters.priority,
@@ -38,7 +35,6 @@ export function useVisibleDashboardMarks() {
     },
     [
       marks,
-      projects,
       userId,
       filters.projectId,
       filters.status,
