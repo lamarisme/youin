@@ -2,7 +2,6 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertCircle,
   CircleDashed,
   Folder,
   Flame,
@@ -46,18 +45,16 @@ import {
 } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
-import { dashboardHref, markHref } from "@/lib/workspace/routes";
+import { markHref } from "@/lib/workspace/routes";
 
 import { BulkActionBar } from "./bulk-action-bar";
 import { DashboardViewsBar } from "./dashboard-views-bar";
-import { MarkDetailView } from "./mark-detail-view";
 import { MarkFilters } from "./mark-filters";
 import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { MarkTable } from "./mark-table";
 import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
 import {
-  firstVisibleMark,
   getTriageAttentionCounts,
   type TriageAttentionCounts,
 } from "./triage-cockpit";
@@ -66,19 +63,9 @@ import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 const PAGE_SIZE = 8;
 
-interface TriageViewProps {
-  selectedMark?: MarkItem | null;
-  selectedMarkParam?: string | null;
-  backHref?: string;
-}
-
 type AttentionQueue = "open" | "critical" | "mine" | "unassigned";
 
-export function TriageView({
-  selectedMark = null,
-  selectedMarkParam = null,
-  backHref,
-}: TriageViewProps) {
+export function TriageView() {
   const { workspace, userId, displayNamePreference } =
     useWorkspaceData((s) => ({
       workspace: s.workspace,
@@ -95,8 +82,6 @@ export function TriageView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
-  const resolvedBackHref = backHref ?? dashboardHref(searchParams);
-  const isDesktop = useIsDesktop();
   const [showNew, setShowNew] = useState(() => searchParams.get("new") === "1");
   const [showListHelp, setShowListHelp] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -123,22 +108,11 @@ export function TriageView({
   );
 
   const visibleMarks = useVisibleDashboardMarks();
-  const firstMark = firstVisibleMark(visibleMarks);
-  const firstMarkKey = firstMark?.displayKey ?? null;
-  const selectedMarkVisible = selectedMark
-    ? visibleMarks.some((mark) => mark.id === selectedMark.id)
-    : false;
-  const showDesktopPane = Boolean(selectedMark || selectedMarkParam);
   const attentionCounts = useMemo(
     () => getTriageAttentionCounts(attentionScopeMarks, userId),
     [attentionScopeMarks, userId],
   );
   const pageTitle = isMyMarksPage ? "My marks" : "Marks";
-
-  useEffect(() => {
-    if (!isDesktop || selectedMark || selectedMarkParam || !firstMarkKey) return;
-    router.replace(markHref(firstMarkKey, new URLSearchParams(searchParamString)));
-  }, [firstMarkKey, isDesktop, router, searchParamString, selectedMark, selectedMarkParam]);
 
   const selectedMarks = useMemo(
     () => visibleMarks.filter((p) => selectedIds.has(p.id)),
@@ -201,7 +175,7 @@ export function TriageView({
     fromMark?: MarkItem,
   ) {
     if (visibleMarks.length === 0) return;
-    const sourceId = fromMark?.id ?? selectedMark?.id;
+    const sourceId = fromMark?.id;
     const sourceIndex = sourceId
       ? visibleMarks.findIndex((mark) => mark.id === sourceId)
       : -1;
@@ -379,18 +353,10 @@ export function TriageView({
   return (
     <>
       <div
-        className={cn(
-          "space-y-3",
-          showDesktopPane &&
-            "lg:grid lg:h-[calc(100vh-2rem)] lg:grid-cols-[minmax(22rem,0.9fr)_minmax(0,1.1fr)] lg:items-start lg:gap-3 lg:space-y-0",
-        )}
+        className="space-y-3"
       >
         <section
-          className={cn(
-            "space-y-3",
-            selectedMark && "max-lg:hidden",
-            showDesktopPane && "lg:max-h-[calc(100vh-2rem)] lg:min-h-0 lg:overflow-y-auto lg:pr-1",
-          )}
+          className="space-y-3"
         >
           <BreadcrumbHeader items={[{ label: pageTitle, current: true }]} />
 
@@ -499,8 +465,7 @@ export function TriageView({
                 members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
-                activeMarkId={selectedMark?.id}
-                density={showDesktopPane || filters.density === "compact" ? "compact" : "default"}
+                density={filters.density === "compact" ? "compact" : "default"}
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
@@ -527,8 +492,7 @@ export function TriageView({
                 members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
-                activeMarkId={selectedMark?.id}
-                density={showDesktopPane || filters.density === "compact" ? "compact" : "default"}
+                density={filters.density === "compact" ? "compact" : "default"}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
                 onNavigateAdjacent={handleListNavigate}
@@ -558,37 +522,6 @@ export function TriageView({
           ) : null}
         </section>
 
-        {selectedMark && !isDesktop ? (
-          <div className="lg:hidden">
-            <MarkDetailView mark={selectedMark} backHref={resolvedBackHref} variant="page" />
-          </div>
-        ) : null}
-
-        {showDesktopPane && isDesktop ? (
-          <aside className="hidden max-h-[calc(100vh-2rem)] min-h-0 overflow-y-auto rounded-lg bg-paper-elevated p-3 ring-1 ring-rule/60 lg:block">
-            {selectedMark ? (
-              <>
-                {!selectedMarkVisible ? (
-                  <div className="mb-3 flex items-start gap-2 rounded-md bg-paper-2 px-3 py-2 text-ui-sm text-ink-2">
-                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-ink">Outside current filters</p>
-                      <p className="mt-0.5 text-ui-xs text-ink-3">
-                        This mark is open in the pane, but it is hidden from the list.
-                      </p>
-                    </div>
-                    <Button type="button" size="sm" variant="ghost" className="h-8" onClick={clearFilters}>
-                      Clear
-                    </Button>
-                  </div>
-                ) : null}
-                <MarkDetailView mark={selectedMark} backHref={resolvedBackHref} variant="pane" />
-              </>
-            ) : (
-              <MissingMarkPane markParam={selectedMarkParam} />
-            )}
-          </aside>
-        ) : null}
       </div>
 
       {selectedMarks.length > 0 ? (
@@ -605,20 +538,6 @@ export function TriageView({
       <MarkShortcutsHelp open={showListHelp} onOpenChange={setShowListHelp} />
     </>
   );
-}
-
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
-    const sync = () => setIsDesktop(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-
-  return isDesktop;
 }
 
 function AttentionStrip({
@@ -718,22 +637,6 @@ function AttentionButton({
         {count}
       </span>
     </button>
-  );
-}
-
-function MissingMarkPane({ markParam }: { markParam?: string | null }) {
-  return (
-    <div className="flex min-h-[28rem] items-center justify-center">
-      <div className="max-w-sm text-center">
-        <CircleDashed className="mx-auto size-8 text-ink-3" aria-hidden />
-        <h2 className="mt-3 text-title-sm font-semibold text-ink">Mark not found.</h2>
-        <p className="mt-1 text-ui-sm text-ink-3">
-          {markParam
-            ? `${markParam} may have been deleted, moved, or hidden from this workspace.`
-            : "Choose a mark from the list to start triage."}
-        </p>
-      </div>
-    </div>
   );
 }
 

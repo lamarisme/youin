@@ -39,6 +39,7 @@ interface MarkDetailActionsProps {
   workflowStatuses: WorkspaceWorkflowStatus[];
   projects: WorkspaceProject[];
   displayNamePreference: DisplayNamePreference;
+  showPinnedAction?: boolean;
   onConfirmDelete: () => void;
 }
 
@@ -48,6 +49,7 @@ export function MarkDetailActions({
   workflowStatuses,
   projects,
   displayNamePreference,
+  showPinnedAction = true,
   onConfirmDelete,
 }: MarkDetailActionsProps) {
   const { mutate: toggleMarkStatus } = useToggleMarkStatusMutation();
@@ -154,25 +156,27 @@ export function MarkDetailActions({
         />
       </PropertyGroup>
 
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={() => toggleMarkPinned(mark.id)}
-        aria-pressed={mark.pinned}
-        aria-keyshortcuts="B"
-        className={cn(
-          "h-10 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
-          mark.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
-        )}
-      >
-        <Bookmark
+      {showPinnedAction ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => toggleMarkPinned(mark.id)}
+          aria-pressed={mark.pinned}
+          aria-keyshortcuts="B"
           className={cn(
-            "size-3 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            mark.pinned && "-rotate-6 scale-110",
+            "h-10 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
+            mark.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",
           )}
-        />
-        {mark.pinned ? "Pinned" : "Pin"}
-      </Button>
+        >
+          <Bookmark
+            className={cn(
+              "size-3 transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+              mark.pinned && "-rotate-6 scale-110",
+            )}
+          />
+          {mark.pinned ? "Pinned" : "Pin"}
+        </Button>
+      ) : null}
 
       <Button
         size="sm"

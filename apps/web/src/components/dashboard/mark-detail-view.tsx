@@ -228,6 +228,9 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
       {!isPane ? (
         <MarkDetailNav
           markLabel={mark.displayKey}
+          markTitle={mark.title}
+          page={mark.page}
+          pinned={mark.pinned}
           positionLabel={positionLabel}
           projectName={project?.name}
           canPrev={canPrev}
@@ -235,6 +238,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
           onBack={() => router.push(backHref)}
           onPrev={() => goAdjacent("prev")}
           onNext={() => goAdjacent("next")}
+          onTogglePinned={() => toggleMarkPinned(mark.id)}
           onShowHelp={() => setShowHelp(true)}
         />
       ) : null}
@@ -293,6 +297,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               workflowStatuses={workspace.workflowStatuses}
               projects={workspace.projects}
               displayNamePreference={namePref}
+              showPinnedAction={isPane}
               onConfirmDelete={() => setConfirmDelete(true)}
             />
           </div>
