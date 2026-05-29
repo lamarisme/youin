@@ -258,7 +258,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               </span>
             </div>
             {editingField === "title" ? (
-              <div className="mt-1 flex items-start gap-1.5">
+              <div className="mt-1 flex items-start gap-1">
                 <Input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
@@ -267,7 +267,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   maxLength={180}
                   autoFocus
                   aria-invalid={titleInvalid || undefined}
-                  className="h-10 rounded-md border-transparent bg-transparent px-1 py-0 text-title-md font-semibold leading-[1.15] shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
+                  className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 text-title-md font-semibold leading-[1.15] shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
                 />
                 <InlineEditActions
                   field="title"
@@ -314,7 +314,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <Link2 className="size-3.5" aria-hidden />
               </span>
               {editingField === "page" ? (
-                <div className="flex min-w-0 items-start gap-1.5">
+                <div className="flex min-w-0 items-start gap-1">
                   <Input
                     value={editPage}
                     onChange={(e) => setEditPage(e.target.value)}
@@ -327,7 +327,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     maxLength={300}
                     autoFocus
                     aria-invalid={pageInvalid || undefined}
-                    className="h-10 rounded-md border-transparent bg-transparent px-1 py-0 font-mono text-ui-sm shadow-none focus-visible:border-mark/30 focus-visible:bg-paper-2 focus-visible:ring-0 sm:h-8"
+                    className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 font-mono text-ui-sm shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
                   />
                   <InlineEditActions
                     field="page"
@@ -388,7 +388,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   placeholder="Describe what should change…"
                   disabled={isSavingEdit}
                   autoFocus
-                  className="border-transparent bg-transparent shadow-none"
+                  className="rounded-sm border-rule/45 bg-transparent shadow-none hover:border-rule/70 hover:bg-transparent focus-within:border-rule-strong/70 focus-within:bg-transparent focus-within:ring-0"
                 />
               </div>
             </div>
@@ -530,27 +530,25 @@ function InlineEditActions({
   onSave: (field: EditingField) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center gap-1">
+    <div className="flex shrink-0 items-center gap-0.5 pt-0.5">
       <button
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="inline-flex size-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 disabled:pointer-events-none disabled:opacity-50 sm:size-8"
+        className="inline-flex size-8 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50 sm:size-7"
         aria-label={`Cancel ${field} edit`}
       >
-        <X className="size-3.5" aria-hidden />
+        <X className="size-3.5 sm:size-3" aria-hidden />
       </button>
-      <Button
+      <button
         type="button"
-        variant="mark"
-        size="icon"
         onClick={() => onSave(field)}
         disabled={saving || disabled}
-        className="size-10 sm:size-8"
+        className="inline-flex size-8 items-center justify-center rounded-sm text-mark transition-colors hover:bg-mark-soft hover:text-mark focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45 sm:size-7"
         aria-label={`Save ${field}`}
       >
-        <Check className="size-3.5" aria-hidden />
-      </Button>
+        <Check className="size-3.5 sm:size-3" aria-hidden />
+      </button>
     </div>
   );
 }
