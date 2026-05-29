@@ -149,11 +149,11 @@ export function ViewsClient() {
   return (
     <PageContainer>
       <BreadcrumbHeader
-        items={[{ label: "Views", current: true }]}
+        items={[{ label: "Saved views", current: true }]}
         actions={
-          <Button type="button" size="sm" className="h-9 gap-1.5" onClick={() => openCreate()}>
+          <Button type="button" size="sm" className="h-7 gap-1.5 rounded-md px-2" onClick={() => openCreate()}>
             <Plus className="size-3.5" aria-hidden />
-            Create view
+            New view
           </Button>
         }
       />
@@ -195,7 +195,7 @@ export function ViewsClient() {
       <section className="overflow-hidden rounded-md bg-paper-elevated">
         <div className="border-b border-rule/70 px-3 py-2">
           <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
-            Templates
+            View templates
           </p>
         </div>
         <div className="divide-y divide-rule/70">
@@ -279,12 +279,12 @@ function EmptyViews({ onCreate }: { onCreate: () => void }) {
       variant="plain"
       className="rounded-none border-0 px-6 py-16"
       icon={CircleDashed}
-      title="No workspace views yet."
-      description="Create one lens for the work your team checks often: a list or board view."
+      title="No saved views yet."
+      description="Create a reusable lens for the work your team checks often."
       action={
         <Button type="button" variant="mark" size="sm" className="h-9" onClick={onCreate}>
           <Plus className="size-3.5" aria-hidden />
-          Create view
+          New view
         </Button>
       }
     />
@@ -350,7 +350,7 @@ function CreateViewDialog({
     >
       <DialogContent className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Create view</DialogTitle>
+          <DialogTitle>Create a saved view</DialogTitle>
           <DialogDescription>
             Choose how this workspace lens should display marks.
           </DialogDescription>

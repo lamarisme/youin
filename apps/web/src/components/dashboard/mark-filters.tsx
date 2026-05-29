@@ -61,7 +61,9 @@ interface MarkFiltersProps {
   filters: DashboardFilters;
   visibleCount: number;
   labels: WorkspaceLabel[];
+  leadingControls?: ReactNode;
   lockedAssignee?: AssigneeFilter;
+  scopeLabel?: string;
   onChange: (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => void;
 }
 
@@ -69,7 +71,9 @@ export function MarkFilters({
   filters,
   visibleCount,
   labels,
+  leadingControls,
   lockedAssignee,
+  scopeLabel,
   onChange,
 }: MarkFiltersProps) {
   const { viewerId, workflowStatuses } = useWorkspaceData((s) => ({
@@ -267,8 +271,13 @@ export function MarkFilters({
   const assigneeActiveClass = "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated";
 
   return (
-    <FadeIn className="w-full space-y-2">
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
+    <FadeIn className="w-full space-y-1.5">
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-b border-rule/70 pb-2">
+        {leadingControls ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {leadingControls}
+          </div>
+        ) : null}
         <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
           <Input
@@ -285,7 +294,7 @@ export function MarkFilters({
             }}
             placeholder="Search marks"
             aria-label="Search marks by title, description, or page"
-            className="h-10 rounded-md bg-paper-elevated pl-8 pr-8 text-ui-md shadow-none sm:h-8 sm:text-ui-sm"
+            className="h-9 rounded-md bg-paper-elevated pl-8 pr-8 text-ui-sm shadow-none sm:h-8"
           />
           {queryDraft ? (
             <button
@@ -313,7 +322,7 @@ export function MarkFilters({
                   ? `Open dashboard filters (${hiddenControlCount} active)`
                   : "Open dashboard filters"
               }
-              className="h-10 gap-1.5 px-3 text-ui-md font-normal sm:h-8 sm:px-2.5 sm:text-ui-sm"
+              className="h-9 gap-1.5 px-2.5 text-ui-sm font-normal sm:h-8"
             >
               <ListFilter className="size-3.5 opacity-75 sm:size-3" aria-hidden />
               <span className="tabular-nums">
@@ -507,6 +516,14 @@ export function MarkFilters({
             </div>
           </DialogContent>
         </Dialog>
+        {scopeLabel ? (
+          <span className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-md px-2 text-ui-xs text-ink-3">
+            <span>Scope</span>
+            <span className="max-w-[12rem] truncate font-medium text-ink">
+              {scopeLabel}
+            </span>
+          </span>
+        ) : null}
         <span className="ml-auto text-ui-xs tabular-nums text-ink-3">
           {visibleCount} mark{visibleCount === 1 ? "" : "s"}
         </span>
@@ -524,7 +541,7 @@ export function MarkFilters({
               <button
                 type="button"
                 onClick={f.reset}
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-md py-0.5 max-sm:px-0.5 sm:min-h-8 sm:py-1"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md py-0.5 max-sm:px-0.5 sm:py-1"
                 aria-label={`Clear ${f.label} filter (${f.value})`}
               >
                 <span className="max-w-[10rem] truncate text-ink-3 sm:max-w-none">{f.label}</span>

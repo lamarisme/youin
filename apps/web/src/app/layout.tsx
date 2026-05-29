@@ -24,7 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale("en");
   const t = await getTranslations({ locale: "en", namespace: "metadata" });
   return {
-    title: t("title"),
+    title: {
+      default: t("title"),
+      template: "%s | youin",
+    },
     description: t("description"),
   };
 }

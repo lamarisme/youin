@@ -5,7 +5,7 @@ import { AccountClient } from "./account-client";
 import { accountHref, isAccountSection } from "@/lib/workspace/routes";
 
 export const metadata: Metadata = {
-  title: "Account",
+  title: "Account settings",
 };
 
 export default async function AccountPage({

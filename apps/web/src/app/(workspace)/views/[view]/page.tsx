@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ViewDetailClient } from "../view-detail-client";
 
 export const metadata: Metadata = {
-  title: "View",
+  title: "Workspace view",
 };
 
 export default async function ViewPage({

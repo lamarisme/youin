@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 
 export const metadata: Metadata = {
-  title: "Mark",
+  title: "Mark detail",
 };
 
 export default async function DashboardMarkPage({

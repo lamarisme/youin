@@ -5,7 +5,7 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Privacy",
+  title: "Privacy policy",
   description: "How youin handles the data captured by marks, comments, and integrations.",
 };
 

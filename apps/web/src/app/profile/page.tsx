@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Profile",
+  title: "Profile settings",
 };
 
 export default function ProfilePage() {

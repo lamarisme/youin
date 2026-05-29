@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Check,
   CircleDashed,
   Inbox,
   LayoutList,
@@ -171,12 +170,11 @@ export function DashboardViewsBar({
   }
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
-      <span className="inline-flex h-8 shrink-0 items-center gap-1.5 px-1.5 text-ui-xs font-medium uppercase tracking-[0.06em] text-ink-3">
-        <View className="size-3.5" aria-hidden />
-        Views
-      </span>
-
+    <div
+      role="toolbar"
+      aria-label="Dashboard views"
+      className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-rule/70 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
       {builtIns.map((view) => (
         <ViewChip
           key={view.id}
@@ -202,9 +200,9 @@ export function DashboardViewsBar({
         />
       ))}
 
-      <div className="ml-auto flex min-w-0 items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1">
         {saving ? (
-          <span className="inline-flex h-8 min-w-0 items-center gap-1 rounded-md bg-paper-elevated px-1.5 ring-1 ring-rule/65">
+          <span className="inline-flex h-7 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65">
             <input
               ref={inputRef}
               value={draftName}
@@ -223,13 +221,13 @@ export function DashboardViewsBar({
               placeholder="View name"
               aria-label="View name"
               maxLength={80}
-              className="h-7 w-28 min-w-0 bg-transparent px-1 text-ui-xs text-ink outline-none placeholder:text-ink-3 sm:w-36"
+              className="h-6 w-28 min-w-0 bg-transparent px-1 text-ui-xs text-ink outline-none placeholder:text-ink-3 sm:w-36"
             />
             <Button
               type="button"
               size="sm"
               variant="ghost"
-              className="h-7 px-2 text-ui-xs"
+              className="h-6 px-2 text-ui-xs"
               disabled={!draftName.trim() || isPending}
               onClick={() => void commitSave()}
             >
@@ -241,14 +239,14 @@ export function DashboardViewsBar({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-8 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-elevated hover:text-ink"
+            className="h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink"
             onClick={() => setSaving(true)}
           >
             <Save className="size-3" aria-hidden />
             Save
           </Button>
         ) : null}
-        <Button asChild type="button" size="sm" variant="ghost" className="h-8 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-elevated hover:text-ink">
+        <Button asChild type="button" size="sm" variant="ghost" className="h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink">
           <Link href="/views">
             <Plus className="size-3" aria-hidden />
             Manage
@@ -282,13 +280,13 @@ function ViewChip({
       title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-2 text-ui-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45",
+        "inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2 text-ui-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45",
         active
-          ? "bg-mark-soft text-ink ring-1 ring-mark/15"
-          : "text-ink-2 hover:bg-paper-elevated hover:text-ink",
+          ? "bg-paper-2 text-ink ring-1 ring-rule/70"
+          : "text-ink-3 hover:bg-paper-2 hover:text-ink",
       )}
     >
-      {active ? <Check className="size-3 shrink-0 text-mark" aria-hidden /> : <Icon className="size-3 shrink-0 text-ink-3" aria-hidden />}
+      <Icon className={cn("size-3 shrink-0", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
       <span className="max-w-[8rem] truncate">{label}</span>
     </button>
   );

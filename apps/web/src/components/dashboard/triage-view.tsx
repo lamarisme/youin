@@ -112,7 +112,7 @@ export function TriageView() {
     () => getTriageAttentionCounts(attentionScopeMarks, userId),
     [attentionScopeMarks, userId],
   );
-  const pageTitle = isMyMarksPage ? "My marks" : "Marks";
+  const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
   const selectedMarks = useMemo(
     () => visibleMarks.filter((p) => selectedIds.has(p.id)),
@@ -358,7 +358,20 @@ export function TriageView() {
         <section
           className="space-y-3"
         >
-          <BreadcrumbHeader items={[{ label: pageTitle, current: true }]} />
+          <BreadcrumbHeader
+            items={[{ label: pageTitle, current: true }]}
+            actions={
+              <Button
+                size="sm"
+                variant="mark"
+                onClick={() => setShowNew(true)}
+                className="h-7 gap-1.5 rounded-md px-2 text-ui-sm"
+              >
+                <Plus className="size-3.5 shrink-0 opacity-90" />
+                New mark
+              </Button>
+            }
+          />
 
           <DashboardViewsBar
             views={workspace.views}
@@ -367,41 +380,21 @@ export function TriageView() {
             onApply={update}
           />
 
-          <FadeIn className="flex flex-wrap items-center justify-between gap-2 border-b border-rule/70 pb-2">
-            <AttentionStrip
-              counts={attentionCounts}
-              filters={filters}
-              hasViewer={Boolean(userId)}
-              compact={isMyMarksPage}
-              onApplyQueue={applyQueue}
-            />
-            <Button
-              size="sm"
-              variant="mark"
-              onClick={() => setShowNew(true)}
-              className="h-10 gap-1.5 px-3 text-ui-md sm:h-8 sm:text-ui-sm"
-            >
-              <Plus className="size-3.5 shrink-0 opacity-90" />
-              New mark
-            </Button>
-          </FadeIn>
-
-          <FadeIn className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2/70 p-1.5 ring-1 ring-rule/55">
-            <div className="min-w-0 flex-1 px-2">
-              <p className="truncate text-ui-xs text-ink-3">
-                Scope
-                <span className="ml-1 font-medium text-ink">
-                  {selectedProject?.name ?? "All projects"}
-                </span>
-              </p>
-            </div>
-          </FadeIn>
-
           <MarkFilters
             filters={filters}
             visibleCount={visibleMarks.length}
             labels={workspace.labels}
+            leadingControls={
+              <AttentionStrip
+                counts={attentionCounts}
+                filters={filters}
+                hasViewer={Boolean(userId)}
+                compact={isMyMarksPage}
+                onApplyQueue={applyQueue}
+              />
+            }
             lockedAssignee={isMyMarksPage ? "me" : undefined}
+            scopeLabel={selectedProject?.name ?? "All projects"}
             onChange={update}
           />
 
@@ -627,8 +620,8 @@ function AttentionButton({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        "inline-flex h-10 min-w-0 items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-3 text-left text-ui-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-50 sm:h-8 sm:text-ui-sm",
-        active ? "border-mark/20 bg-mark-soft text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
+        "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-rule/70 bg-paper-elevated px-2.5 text-left text-ui-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-50",
+        active ? "border-rule bg-paper-2 text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
       )}
     >
       <span className={cn("text-ink-3", active && "text-mark")}>{icon}</span>

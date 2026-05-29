@@ -23,13 +23,13 @@ export function BreadcrumbHeader({ items, actions, className }: BreadcrumbHeader
   return (
     <div
       className={cn(
-        "flex min-h-[3rem] flex-wrap items-start justify-between gap-2 pb-2",
+        "-mx-3 -mt-3 flex min-h-9 items-center justify-between gap-2 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5",
         className,
       )}
     >
-      <Breadcrumbs items={items} />
+      <Breadcrumbs items={items} className="min-w-0 flex-1" />
       {actions ? (
-        <div className="flex min-h-8 shrink-0 items-center gap-1.5">{actions}</div>
+        <div className="flex h-8 shrink-0 items-center gap-1">{actions}</div>
       ) : null}
     </div>
   );
@@ -38,11 +38,11 @@ export function BreadcrumbHeader({ items, actions, className }: BreadcrumbHeader
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className={cn("min-w-0", className)}>
-      <ol className="flex min-w-0 items-center gap-1 text-ui-sm text-ink-3">
+      <ol className="flex min-w-0 items-center gap-0.5 text-ui-sm text-ink-3">
         {items.map((item, index) => (
-          <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-1">
+          <li key={`${item.label}-${index}`} className="flex min-w-0 items-center gap-0.5">
             {index > 0 ? (
-              <ChevronRight className="size-3.5 shrink-0 text-ink-3/70" aria-hidden />
+              <ChevronRight className="size-3 shrink-0 text-ink-3/70" aria-hidden />
             ) : null}
             <BreadcrumbContent item={item} />
           </li>
@@ -54,7 +54,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
 
 function BreadcrumbContent({ item }: { item: BreadcrumbItem }) {
   const className = cn(
-    "max-w-[14rem] truncate rounded-md px-1.5 py-1 transition-colors",
+    "max-w-[16rem] truncate rounded-md px-1.5 py-0.5 transition-colors",
     item.current
       ? "font-medium text-ink"
       : "text-ink-3 hover:bg-paper-2 hover:text-ink",

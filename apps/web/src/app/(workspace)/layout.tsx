@@ -9,7 +9,7 @@ import { getWorkspaceBootstrap } from "@/lib/workspace/actions";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Workspace",
+  title: "Workspace dashboard",
 };
 
 const DEFAULT_AFTER_SIGN_IN = "/dashboard";

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ViewsClient } from "./views-client";
 
 export const metadata: Metadata = {
-  title: "Views",
+  title: "Saved views",
 };
 
 export default function ViewsPage() {

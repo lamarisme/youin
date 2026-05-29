@@ -5,7 +5,7 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Contact",
+  title: "Contact support",
   description: "Talk to a human about youin. We respond within one working day.",
 };
 

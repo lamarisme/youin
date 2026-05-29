@@ -148,13 +148,13 @@ function ViewDetail({
     <PageContainer>
       <BreadcrumbHeader
         items={[
-          { label: "Views", href: "/views" },
+          { label: "Saved views", href: "/views" },
           { label: view.name, current: true },
         ]}
         actions={
           <>
             {dirty ? (
-              <Button type="button" size="sm" className="h-9" onClick={saveChanges} disabled={isSaving || !name.trim()}>
+              <Button type="button" size="sm" className="h-7 rounded-md px-2" onClick={saveChanges} disabled={isSaving || !name.trim()}>
                 {isSaving ? "Saving..." : "Save changes"}
               </Button>
             ) : null}
@@ -162,7 +162,7 @@ function ViewDetail({
               type="button"
               size="icon-sm"
               variant="ghost"
-              className="text-ink-3 hover:text-mark"
+              className="size-7 text-ink-3 hover:text-mark"
               onClick={removeView}
               disabled={isDeleting}
               aria-label="Delete view"
@@ -396,7 +396,7 @@ function BoardColumn({
 function ViewNotFound() {
   return (
     <PageContainer>
-      <BreadcrumbHeader items={[{ label: "Views", href: "/views" }, { label: "Missing view", current: true }]} />
+      <BreadcrumbHeader items={[{ label: "Saved views", href: "/views" }, { label: "Missing view", current: true }]} />
       <EmptyState
         icon={CircleDashed}
         title="View not found."
@@ -405,7 +405,7 @@ function ViewNotFound() {
           <Button asChild variant="outline" size="sm" className="h-9">
             <Link href="/views">
               <ArrowLeft className="size-3.5" aria-hidden />
-              Back to views
+              Back to saved views
             </Link>
           </Button>
         }
@@ -420,7 +420,7 @@ function ViewEmptyState() {
       variant="plain"
       className="rounded-none border-0 px-6 py-16"
       icon={CircleDashed}
-      title="No marks match this view."
+      title="No marks match this saved view."
       description="Broaden the filters or capture a new mark in the matching project."
       action={
         <Button asChild variant="outline" size="sm" className="h-9">

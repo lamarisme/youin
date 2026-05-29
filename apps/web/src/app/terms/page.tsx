@@ -5,7 +5,7 @@ import { BrandLockup } from "@/components/brand-lockup";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Terms",
+  title: "Terms of service",
   description: "The terms that govern your use of youin. Contact us for the current version.",
 };
 

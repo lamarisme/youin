@@ -55,7 +55,7 @@ export function InboxView() {
                 size="sm"
                 onClick={inbox.markAllRead}
                 disabled={inbox.unreadCount === 0 || inbox.isMarkingAllRead}
-                className="h-10 gap-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink sm:h-8"
+                className="h-7 gap-1.5 rounded-md px-2 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink"
               >
                 <CheckCheck className="size-3.5" aria-hidden />
                 {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}

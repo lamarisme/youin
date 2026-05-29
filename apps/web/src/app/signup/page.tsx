@@ -21,17 +21,17 @@ import { cn } from "@/lib/utils";
 const STEPS = [
   {
     eyebrow: "Access",
-    title: "Start with your email",
+    title: "Create your account",
     subtitle: "Use the address your team will recognize. Google works too, after you accept the beta terms.",
   },
   {
     eyebrow: "Profile",
-    title: "Set your profile",
+    title: "Set your display identity",
     subtitle: "This is what teammates and reviewers see beside your marks and comments.",
   },
   {
     eyebrow: "Workspace",
-    title: "Name the workspace",
+    title: "Create your workspace",
     subtitle: "Create the place where your first review tasks will land.",
   },
 ] as const;
