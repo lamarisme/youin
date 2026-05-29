@@ -1,37 +1,10 @@
 "use client";
 
-import { type KeyboardEvent, useMemo } from "react";
-import {
-  flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
-  type RowSelectionState,
-} from "@tanstack/react-table";
-import {
-  Bookmark,
-  CheckCircle2,
-  CircleDashed,
-  MessageCircle,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
+import { type KeyboardEvent } from "react";
+import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-react";
 
-import { FilterSelect } from "@/components/filter-select";
-import { Pill } from "@/components/pill";
-import { PriorityBadge } from "@/components/priority-badge";
-import { PIN_PRIORITY_OPTIONS_TRIAGE } from "@/components/select-options";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type {
   DisplayNamePreference,
   MarkItem,
@@ -45,9 +18,6 @@ import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 import { MarkPageOpenButton } from "./mark-page-open";
-import { formatMarkPageLabel } from "./mark-page-label";
-
-// ─── Props ──────────────────────────────────────────────────────────────
 
 export interface MarkTableProps {
   marks: MarkItem[];
@@ -58,288 +28,364 @@ export interface MarkTableProps {
   members?: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
-  /** Called when a mark title is opened. */
   onSelectMark: (mark: MarkItem) => void;
-  /** Optional quiet row action for resolving or reopening without opening detail. */
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
-  /** Inline property editing, Linear-style. */
   onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
   onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
   onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
-  /** Optional list keyboard navigation handler. */
   onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
-  /** Optional shortcut help handler for focused list usage. */
   onShowShortcuts?: () => void;
-  /** Current mark shown in the detail pane. Independent from bulk selection. */
   activeMarkId?: string;
-  /** If provided, enables row checkboxes. */
   selectedIds?: Set<string>;
-  /** Fires with the full next selection set (replaces per-id toggle). */
   onSelectionChange?: (ids: Set<string>) => void;
-  /** Enable / disable sorting. Defaults to true. */
   sortable?: boolean;
-  /** Compact density removes secondary columns for cockpit panes. */
   density?: "default" | "compact";
+  sectionTitle?: string;
+  showSectionHeader?: boolean;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────
+export function MarkTable(props: MarkTableProps) {
+  const {
+    marks,
+    membersById,
+    labelsById,
+    workflowStatusesById,
+    commentCountByMarkId,
+    displayNamePreference,
+    onSelectMark,
+    onToggleMarkStatus,
+    onNavigateAdjacent,
+    onShowShortcuts,
+    activeMarkId,
+    selectedIds,
+    onSelectionChange,
+    density = "default",
+    sectionTitle = "Marks",
+    showSectionHeader = true,
+  } = props;
+  const selectable = Boolean(selectedIds && onSelectionChange);
+  const selectedCount = selectedIds
+    ? marks.reduce((count, mark) => count + (selectedIds.has(mark.id) ? 1 : 0), 0)
+    : 0;
+  const allVisibleSelected = selectable && marks.length > 0 && selectedCount === marks.length;
+  const someVisibleSelected = selectable && selectedCount > 0 && selectedCount < marks.length;
 
-const PRIORITY_ORDER: Record<string, number> = {
-  critical: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-};
-const UNASSIGNED = "__unassigned";
+  function toggleAllVisible(checked: boolean) {
+    if (!selectedIds || !onSelectionChange) return;
+    const next = new Set(selectedIds);
+    for (const mark of marks) {
+      if (checked) next.add(mark.id);
+      else next.delete(mark.id);
+    }
+    onSelectionChange(next);
+  }
 
-// ─── Column definitions ─────────────────────────────────────────────────
+  function toggleSelection(markId: string, checked: boolean) {
+    if (!selectedIds || !onSelectionChange) return;
+    const next = new Set(selectedIds);
+    if (checked) next.add(markId);
+    else next.delete(markId);
+    onSelectionChange(next);
+  }
 
-function buildColumns({
-  membersById,
+  return (
+    <div
+      className="outline-none"
+      tabIndex={0}
+      aria-label="Marks list"
+      onKeyDown={(event) =>
+        handleListKeyDown(event, {
+          marks,
+          activeMarkId,
+          onNavigateAdjacent,
+          onToggleMarkStatus,
+          onShowShortcuts,
+        })
+      }
+    >
+      {showSectionHeader ? (
+        <div
+          className={cn(
+            "grid min-h-10 items-center gap-2 bg-paper-2/65 px-3 text-ui-sm text-ink",
+            markListGridClass(selectable),
+          )}
+        >
+          {selectable ? (
+            <Checkbox
+              checked={allVisibleSelected || (someVisibleSelected && "indeterminate")}
+              onCheckedChange={(value) => toggleAllVisible(value === true)}
+              aria-label={
+                allVisibleSelected
+                  ? "Deselect all visible marks"
+                  : "Select all visible marks"
+              }
+              className="size-4"
+            />
+          ) : null}
+          <span className="inline-flex size-6 items-center justify-center text-ink-3">
+            <CircleDashed className="size-4" aria-hidden />
+          </span>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h2 className="truncate font-semibold">{sectionTitle}</h2>
+            <span className="shrink-0 font-mono text-ui-sm tabular-nums text-ink-3">{marks.length}</span>
+          </div>
+          {selectedCount > 0 ? (
+            <span className="justify-self-end rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
+              {selectedCount} selected
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <ul role="list" className="divide-y divide-rule/40">
+        {marks.map((mark) => {
+          const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
+          const commentCount = commentCountByMarkId.get(mark.id) ?? 0;
+          const selected = selectedIds?.has(mark.id) ?? false;
+          const active = activeMarkId === mark.id;
+          return (
+            <MarkRow
+              key={mark.id}
+              mark={mark}
+              assignee={assignee}
+              labelsById={labelsById}
+              workflowStatusesById={workflowStatusesById}
+              commentCount={commentCount}
+              selected={selected}
+              active={active}
+              selectable={selectable}
+              hasSelection={selectedCount > 0}
+              density={density}
+              displayNamePreference={displayNamePreference}
+              onSelect={() => onSelectMark(mark)}
+              onToggleStatus={onToggleMarkStatus}
+              onToggleSelected={(checked) => toggleSelection(mark.id, checked)}
+            />
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function MarkRow({
+  mark,
+  assignee,
   labelsById,
   workflowStatusesById,
-  workflowStatuses,
-  members,
-  commentCountByMarkId,
-  displayNamePreference,
+  commentCount,
+  selected,
+  active,
   selectable,
-  onSelectMark,
-  onToggleMarkStatus,
-  onSetWorkflowStatus,
-  onSetPriority,
-  onAssignMark,
-  activeMarkId,
+  hasSelection,
   density,
+  displayNamePreference,
+  onSelect,
+  onToggleStatus,
+  onToggleSelected,
 }: {
-  membersById: Map<string, TeamMember>;
+  mark: MarkItem;
+  assignee?: TeamMember;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
-  workflowStatuses?: WorkspaceWorkflowStatus[];
-  members?: TeamMember[];
-  commentCountByMarkId: Map<string, number>;
-  displayNamePreference: DisplayNamePreference;
+  commentCount: number;
+  selected: boolean;
+  active: boolean;
   selectable: boolean;
-  onSelectMark: (mark: MarkItem) => void;
-  onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
-  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
-  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
-  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
-  activeMarkId?: string;
+  hasSelection: boolean;
   density: "default" | "compact";
-}): ColumnDef<MarkItem>[] {
-  const cols: ColumnDef<MarkItem>[] = [];
+  displayNamePreference: DisplayNamePreference;
+  onSelect: () => void;
+  onToggleStatus?: (mark: MarkItem) => void | Promise<void>;
+  onToggleSelected: (checked: boolean) => void;
+}) {
+  const workflowLabel = mark.workflowStatusId
+    ? workflowStatusesById.get(mark.workflowStatusId)?.name
+    : undefined;
+  const rowHeight = density === "compact" ? "min-h-9 py-1" : "min-h-11 py-1.5";
 
-  // ── Checkbox column ───────
-  if (selectable) {
-    cols.push({
-      id: "select",
-      size: 32,
-      enableSorting: false,
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
-          aria-label="Select all"
-          className="size-5 sm:size-4"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label={
-            row.getIsSelected()
-              ? `Deselect ${row.original.title}`
-              : `Select ${row.original.title}`
-          }
-          className="size-5 sm:size-4"
-        />
-      ),
-    });
-  }
-
-  // ── Workflow status column ─────────
-  cols.push({
-    accessorKey: "status",
-    header: "Status",
-    size: density === "compact" ? 36 : onSetWorkflowStatus ? 142 : 44,
-    enableSorting: false,
-    cell: ({ row }) => {
-      const mark = row.original;
-      const workflowOptions =
-        workflowStatuses?.map((status) => ({
-          value: status.id,
-          label: status.name,
-        })) ?? [];
-      if (density === "default" && onSetWorkflowStatus && workflowOptions.length > 0) {
-        return (
-          <FilterSelect
-            value={mark.workflowStatusId}
-            onValueChange={(workflowStatusId) => onSetWorkflowStatus(mark, workflowStatusId)}
-            options={workflowOptions}
-            ariaLabel={`Change status for ${mark.displayKey}`}
-            variant="inline"
-            triggerClassName="h-7 w-[8.5rem] max-w-full border-transparent px-1.5 text-ui-xs"
-          />
-        );
-      }
-      return (
-        <StatusInline
-          status={mark.status}
-          compact={true}
-          label={
-            mark.workflowStatusId
-              ? workflowStatusesById.get(mark.workflowStatusId)?.name
-              : undefined
-          }
-        />
-      );
-    },
-  });
-
-  // ── Title + page ──────────
-  cols.push({
-    accessorKey: "title",
-    header: "Title",
-    size: 999, // flexible
-    cell: ({ row }) => {
-      const mark = row.original;
-      const active = activeMarkId === mark.id;
-      return (
-        <div className="-mx-1 flex min-w-0 items-start gap-1 rounded-md px-1 py-0.5">
-          <button
-            type="button"
-            data-mark-id={mark.id}
-            aria-current={active ? "true" : undefined}
-            onClick={() => onSelectMark(mark)}
+  return (
+    <li
+      data-mark-id={mark.id}
+      data-state={selected ? "selected" : undefined}
+      aria-current={active ? "true" : undefined}
+      className={cn(
+        "group/mark-row transition-colors hover:bg-paper-2/80",
+        active && "bg-paper-2",
+        selected && "bg-mark-soft/35 hover:bg-mark-soft/45",
+      )}
+    >
+      <div
+        className={cn(
+          "grid items-center gap-2 px-3",
+          markListGridClass(selectable),
+          rowHeight,
+        )}
+      >
+        {selectable ? (
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(value) => onToggleSelected(value === true)}
+            aria-label={selected ? `Deselect ${mark.title}` : `Select ${mark.title}`}
             className={cn(
-              "block min-w-0 flex-1 rounded-md text-left outline-none transition-colors hover:text-mark focus-visible:ring-2 focus-visible:ring-mark/35",
-              active && "text-mark",
+              "size-4 transition-opacity",
+              selected || hasSelection
+                ? "opacity-100"
+                : "opacity-0 group-hover/mark-row:opacity-100 group-focus-within/mark-row:opacity-100",
             )}
-          >
-            <p className="flex min-w-0 items-center gap-2 truncate text-ui-sm text-ink">
-              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
-              <span className="truncate font-semibold">{mark.title}</span>
-              {density === "compact" && mark.pinned ? (
-                <Bookmark className="size-3 shrink-0 text-mark" aria-label="Pinned" />
-              ) : null}
-            </p>
-            {density === "compact" ? (
-              <p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-ui-xs text-ink-3">
-                {mark.page.trim() ? (
-                  <>
-                    <span className="truncate" title={mark.page}>
-                      {formatMarkPageLabel(mark.page)}
-                    </span>
-                  </>
-                ) : null}
-              </p>
-            ) : mark.page.trim() ? (
-              <p className="mt-0.5 truncate text-ui-xs text-ink-3" title={mark.page}>
-                {formatMarkPageLabel(mark.page)}
-              </p>
-            ) : null}
-          </button>
-          <RowStatusAction mark={mark} onToggle={onToggleMarkStatus} />
-        </div>
-      );
-    },
-  });
-
-  // ── Priority ──────────────
-  if (density === "default") {
-    cols.push({
-      accessorKey: "priority",
-      header: "Priority",
-      size: 90,
-      sortingFn: (a, b) =>
-        (PRIORITY_ORDER[a.original.priority] ?? 99) -
-        (PRIORITY_ORDER[b.original.priority] ?? 99),
-      cell: ({ row }) =>
-        onSetPriority ? (
-          <FilterSelect<MarkPriority>
-            value={row.original.priority}
-            onValueChange={(priority) => onSetPriority(row.original, priority)}
-            options={PIN_PRIORITY_OPTIONS_TRIAGE}
-            ariaLabel={`Change priority for ${row.original.displayKey}`}
-            variant="inline"
-            triggerClassName="h-7 w-[6.75rem] border-transparent px-1.5 text-ui-xs"
           />
-        ) : (
-          <PriorityBadge priority={row.original.priority} size="sm" />
-        ),
-    });
+        ) : null}
+
+        <RowStatusToggle mark={mark} label={workflowLabel} onToggle={onToggleStatus} />
+
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-label={`Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`}
+          className="min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30"
+        >
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
+            <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
+              {mark.title}
+            </span>
+            <RowLabels mark={mark} labelsById={labelsById} density={density} />
+          </span>
+        </button>
+
+        <RowMeta
+          mark={mark}
+          assignee={assignee}
+          commentCount={commentCount}
+          density={density}
+          displayNamePreference={displayNamePreference}
+        />
+      </div>
+    </li>
+  );
+}
+
+function markListGridClass(selectable: boolean) {
+  return selectable
+    ? "grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto]"
+    : "grid-cols-[1.5rem_minmax(0,1fr)_auto]";
+}
+
+function RowStatusToggle({
+  mark,
+  label,
+  onToggle,
+}: {
+  mark: MarkItem;
+  label?: string;
+  onToggle?: (mark: MarkItem) => void | Promise<void>;
+}) {
+  const open = mark.status === "open";
+  const title = label ?? (open ? "Open" : "Closed");
+  const icon = open ? (
+    <CircleDashed className="size-3.5" aria-hidden />
+  ) : (
+    <CheckCircle2 className="size-3.5" aria-hidden />
+  );
+
+  if (!onToggle) {
+    return (
+      <span
+        className={cn("inline-flex size-6 items-center justify-center", open ? "text-ink-3" : "text-ok")}
+        title={title}
+        role="img"
+        aria-label={title}
+      >
+        {icon}
+      </span>
+    );
   }
 
-  // ── Labels ────────────────
-  if (density === "default") {
-    cols.push({
-      id: "labels",
-      header: "Labels",
-      size: 140,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const mark = row.original;
-        if (mark.labelIds.length === 0) return null;
-        return (
-          <div className="flex flex-wrap gap-1">
-            {mark.labelIds.map((lid) => {
-              const label = labelsById.get(lid);
-              if (!label) return null;
-              return (
-                <span
-                  key={lid}
-                  className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
-                >
-                  {label.name}
-                </span>
-              );
-            })}
-          </div>
-        );
-      },
-    });
-  }
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        void onToggle(mark);
+      }}
+      aria-label={open ? `Close ${mark.title}` : `Reopen ${mark.title}`}
+      title={open ? `Close: ${title}` : `Reopen: ${title}`}
+      className={cn(
+        "inline-flex size-6 items-center justify-center rounded-sm text-ink-3 outline-none transition-colors hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25",
+        open ? "hover:text-ok focus-visible:text-ok" : "text-ok hover:text-mark focus-visible:text-mark",
+      )}
+    >
+      {icon}
+    </button>
+  );
+}
 
-  // ── Assignee ──────────────
-  cols.push({
-    id: "assignee",
-    header: density === "default" && onAssignMark ? "Assignee" : "",
-    size: density === "default" && onAssignMark ? 126 : 36,
-    enableSorting: false,
-    cell: ({ row }) => {
-      const assignee = row.original.assigneeId
-        ? membersById.get(row.original.assigneeId)
-        : undefined;
-      if (density === "default" && onAssignMark && members) {
-        return (
-          <FilterSelect
-            value={row.original.assigneeId ?? UNASSIGNED}
-            onValueChange={(value) =>
-              onAssignMark(row.original, value === UNASSIGNED ? null : value)
-            }
-            options={[
-              { value: UNASSIGNED, label: "Unassigned" },
-              ...members.map((member) => ({
-                value: member.id,
-                label: memberPickerLabel(member, displayNamePreference),
-              })),
-            ]}
-            ariaLabel={`Change assignee for ${row.original.displayKey}`}
-            variant="inline"
-            triggerClassName="h-7 w-[7.75rem] border-transparent px-1.5 text-ui-xs"
-          />
-        );
-      }
-      if (!assignee) return null;
-      return (
+function RowLabels({
+  mark,
+  labelsById,
+  density,
+}: {
+  mark: MarkItem;
+  labelsById: Map<string, WorkspaceLabel>;
+  density: "default" | "compact";
+}) {
+  if (density === "compact" || mark.labelIds.length === 0) return null;
+  const labels = mark.labelIds
+    .map((id) => labelsById.get(id))
+    .filter((label): label is WorkspaceLabel => Boolean(label));
+  if (labels.length === 0) return null;
+  const visible = labels.slice(0, 2);
+  const remaining = labels.length - visible.length;
+
+  return (
+    <span className="hidden min-w-0 shrink-0 items-center gap-1 lg:inline-flex">
+      {visible.map((label) => (
+        <span
+          key={label.id}
+          className="max-w-24 truncate rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3"
+        >
+          {label.name}
+        </span>
+      ))}
+      {remaining > 0 ? (
+        <span className="text-ui-2xs text-ink-3">+{remaining}</span>
+      ) : null}
+    </span>
+  );
+}
+
+function RowMeta({
+  mark,
+  assignee,
+  commentCount,
+  density,
+  displayNamePreference,
+}: {
+  mark: MarkItem;
+  assignee?: TeamMember;
+  commentCount: number;
+  density: "default" | "compact";
+  displayNamePreference: DisplayNamePreference;
+}) {
+  return (
+    <div className="ml-2 flex min-w-0 shrink-0 items-center justify-end gap-2 text-ink-3">
+      {mark.pinned ? (
+        <Bookmark className="size-3.5 shrink-0 text-mark" aria-label="Pinned" />
+      ) : null}
+      <PrioritySignal priority={mark.priority} />
+      {commentCount > 0 ? (
+        <span
+          className="inline-flex items-center gap-1 text-ui-2xs"
+          aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
+        >
+          <MessageCircle className="size-3" aria-hidden />
+          <span aria-hidden>{commentCount}</span>
+        </span>
+      ) : null}
+      {assignee ? (
         <span
           title={memberPickerLabel(assignee, displayNamePreference)}
+          role="img"
           aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
         >
           <Avatar className="size-5" aria-hidden>
@@ -348,570 +394,42 @@ function buildColumns({
             </AvatarFallback>
           </Avatar>
         </span>
-      );
-    },
-  });
-
-  // ── Pinned ────────────────
-  if (density === "default") {
-    cols.push({
-      id: "pinned",
-      header: "",
-      size: 28,
-      enableSorting: false,
-      cell: ({ row }) =>
-        row.original.pinned ? (
-          <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
-            Pinned
-          </Pill>
-        ) : null,
-    });
-  }
-
-  // ── Comments ──────────────
-  cols.push({
-    id: "comments",
-    header: "",
-    size: 36,
-    enableSorting: false,
-    cell: ({ row }) => {
-      const count = commentCountByMarkId.get(row.original.id) ?? 0;
-      if (count === 0) return null;
-      return (
-        <span
-          className="flex items-center gap-1 text-ui-2xs text-ink-3"
-          aria-label={`${count} comment${count === 1 ? "" : "s"}`}
-        >
-          <MessageCircle className="size-3" aria-hidden />
-          <span aria-hidden>{count}</span>
-        </span>
-      );
-    },
-  });
-
-  // ── Created date ──────────
-  cols.push({
-    accessorKey: "createdAt",
-    header: "Created",
-    size: 72,
-    cell: ({ row }) => (
+      ) : null}
       <span
-        className="shrink-0 whitespace-nowrap text-ui-sm tabular-nums text-ink-3"
-        title={row.original.createdAt}
+        className={cn(
+          "w-16 shrink-0 text-right text-ui-sm tabular-nums",
+          density === "compact" && "text-ui-xs",
+        )}
+        title={mark.createdAt}
       >
-        {formatDateShort(row.original.createdAt)}
+        {formatDateShort(mark.createdAt)}
       </span>
-    ),
-  });
-
-  // ── Page open ─────────────
-  cols.push({
-    id: "pageOpen",
-    header: "",
-    size: 32,
-    enableSorting: false,
-    cell: ({ row }) =>
-      row.original.page.trim() ? (
+      {mark.page.trim() ? (
         <MarkPageOpenButton
-          page={row.original.page}
+          page={mark.page}
           appearance="icon"
           stopPropagation
-          className="border-transparent bg-transparent shadow-none hover:bg-paper-3 md:opacity-0 md:group-hover/row:opacity-100 md:focus-visible:opacity-100"
+          className="size-7 border-transparent bg-transparent opacity-0 shadow-none transition-opacity hover:bg-paper-3 group-hover/mark-row:opacity-100 group-focus-within/mark-row:opacity-100"
         />
-      ) : null,
-  });
-
-  return cols;
-}
-
-// ─── Component ──────────────────────────────────────────────────────────
-
-export function MarkTable({
-  marks,
-  membersById,
-  labelsById,
-  workflowStatusesById,
-  workflowStatuses,
-  members,
-  commentCountByMarkId,
-  displayNamePreference,
-  onSelectMark,
-  onToggleMarkStatus,
-  onSetWorkflowStatus,
-  onSetPriority,
-  onAssignMark,
-  onNavigateAdjacent,
-  onShowShortcuts,
-  activeMarkId,
-  selectedIds,
-  onSelectionChange,
-  sortable = true,
-  density = "default",
-}: MarkTableProps) {
-  const selectable = !!selectedIds && !!onSelectionChange;
-
-  const columns = useMemo(
-    () =>
-      buildColumns({
-        membersById,
-        labelsById,
-        workflowStatusesById,
-        workflowStatuses,
-        members,
-        commentCountByMarkId,
-        displayNamePreference,
-        selectable,
-        onSelectMark,
-        onToggleMarkStatus,
-        onSetWorkflowStatus,
-        onSetPriority,
-        onAssignMark,
-        activeMarkId,
-        density,
-      }),
-    [
-      membersById,
-      labelsById,
-      workflowStatusesById,
-      workflowStatuses,
-      members,
-      commentCountByMarkId,
-      displayNamePreference,
-      selectable,
-      onSelectMark,
-      onToggleMarkStatus,
-      onSetWorkflowStatus,
-      onSetPriority,
-      onAssignMark,
-      activeMarkId,
-      density,
-    ],
-  );
-
-  // Map Set<string> → TanStack RowSelectionState keyed by mark.id
-  const rowSelection: RowSelectionState = useMemo(() => {
-    if (!selectedIds) return {};
-    const state: RowSelectionState = {};
-    for (const mark of marks) {
-      if (selectedIds.has(mark.id)) state[mark.id] = true;
-    }
-    return state;
-  }, [selectedIds, marks]);
-
-  // TanStack Table intentionally returns imperative helpers that React Compiler skips.
-  // eslint-disable-next-line react-hooks/incompatible-library
-  const table = useReactTable({
-    data: marks,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    ...(sortable ? { getSortedRowModel: getSortedRowModel() } : {}),
-    enableRowSelection: selectable,
-    onRowSelectionChange: (updaterOrValue) => {
-      if (!onSelectionChange) return;
-      const next =
-        typeof updaterOrValue === "function"
-          ? updaterOrValue(rowSelection)
-          : updaterOrValue;
-      // Keys in `next` are mark IDs (from getRowId)
-      const nextIds = new Set<string>();
-      for (const [id, selected] of Object.entries(next)) {
-        if (selected) nextIds.add(id);
-      }
-      onSelectionChange(nextIds);
-    },
-    state: {
-      rowSelection,
-    },
-    getRowId: (row) => row.id,
-  });
-
-  return (
-    <>
-      <div
-        className="md:hidden"
-        onKeyDown={(event) =>
-          handleListKeyDown(event, {
-            marks,
-            activeMarkId,
-            onNavigateAdjacent,
-            onToggleMarkStatus,
-            onShowShortcuts,
-          })
-        }
-      >
-        <MobileMarkList
-          marks={marks}
-          membersById={membersById}
-          labelsById={labelsById}
-          workflowStatusesById={workflowStatusesById}
-          workflowStatuses={workflowStatuses}
-          members={members}
-          commentCountByMarkId={commentCountByMarkId}
-          displayNamePreference={displayNamePreference}
-          selectable={selectable}
-          selectedIds={selectedIds}
-          activeMarkId={activeMarkId}
-          onSelectionChange={onSelectionChange}
-          onSelectMark={onSelectMark}
-          onToggleMarkStatus={onToggleMarkStatus}
-          onSetWorkflowStatus={onSetWorkflowStatus}
-          onSetPriority={onSetPriority}
-          onAssignMark={onAssignMark}
-        />
-      </div>
-
-      <div
-        className="hidden md:block outline-none"
-        tabIndex={0}
-        aria-label="Marks list"
-        onKeyDown={(event) =>
-          handleListKeyDown(event, {
-            marks,
-            activeMarkId,
-            onNavigateAdjacent,
-            onToggleMarkStatus,
-            onShowShortcuts,
-          })
-        }
-      >
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow
-                key={headerGroup.id}
-                className="hover:bg-transparent"
-              >
-                {headerGroup.headers.map((header) => {
-                  const sorted = header.column.getIsSorted();
-                  const headerContent = header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      );
-                  return (
-                    <TableHead
-                      key={header.id}
-                      style={{ width: header.getSize() === 999 ? undefined : header.getSize() }}
-                      aria-sort={
-                        sorted === "asc"
-                          ? "ascending"
-                          : sorted === "desc"
-                            ? "descending"
-                            : undefined
-                      }
-                      className="h-7 border-b border-rule/60 bg-paper-2/70 px-3 text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3"
-                    >
-                      {header.column.getCanSort() ? (
-                        <button
-                          type="button"
-                          className="-mx-1 flex items-center gap-1 rounded px-1 py-1 text-left uppercase outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {headerContent}
-                          {{
-                            asc: <ArrowUp className="size-3" />,
-                            desc: <ArrowDown className="size-3" />,
-                          }[sorted as string] ?? null}
-                        </button>
-                      ) : (
-                        <span className="flex items-center gap-1">{headerContent}</span>
-                      )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => {
-              const active = activeMarkId === row.original.id;
-              const selected = row.getIsSelected();
-              return (
-                <TableRow
-                  key={row.id}
-                  data-mark-id={row.original.id}
-                  data-state={selected ? "selected" : undefined}
-                  aria-current={active ? "true" : undefined}
-                  className={cn(
-                    "group/row border-b border-rule/45 transition-colors last:border-b-0",
-                    active && "[&>td]:bg-paper-2 hover:[&>td]:bg-paper-3/60",
-                    selected && "[&>td]:bg-mark-soft/35 hover:[&>td]:bg-mark-soft/45",
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      style={{ width: cell.column.getSize() === 999 ? undefined : cell.column.getSize() }}
-                      className={density === "compact" ? "py-1.5" : "py-2"}
-                      onClick={
-                        cell.column.id === "select"
-                          ? (e) => e.stopPropagation()
-                          : undefined
-                      }
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    </>
-  );
-}
-
-function MobileMarkList({
-  marks,
-  membersById,
-  labelsById,
-  workflowStatusesById,
-  workflowStatuses,
-  members,
-  commentCountByMarkId,
-  displayNamePreference,
-  selectable,
-  selectedIds,
-  activeMarkId,
-  onSelectionChange,
-  onSelectMark,
-  onToggleMarkStatus,
-  onSetWorkflowStatus,
-  onSetPriority,
-  onAssignMark,
-}: {
-  marks: MarkItem[];
-  membersById: Map<string, TeamMember>;
-  labelsById: Map<string, WorkspaceLabel>;
-  workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
-  workflowStatuses?: WorkspaceWorkflowStatus[];
-  members?: TeamMember[];
-  commentCountByMarkId: Map<string, number>;
-  displayNamePreference: DisplayNamePreference;
-  selectable: boolean;
-  selectedIds?: Set<string>;
-  activeMarkId?: string;
-  onSelectionChange?: (ids: Set<string>) => void;
-  onSelectMark: (mark: MarkItem) => void;
-  onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
-  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
-  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
-  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
-}) {
-  function toggleSelection(markId: string, checked: boolean) {
-    if (!onSelectionChange || !selectedIds) return;
-    const next = new Set(selectedIds);
-    if (checked) next.add(markId);
-    else next.delete(markId);
-    onSelectionChange(next);
-  }
-
-  return (
-    <ul>
-      {marks.map((mark) => {
-        const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
-        const commentCount = commentCountByMarkId.get(mark.id) ?? 0;
-        const selected = selectedIds?.has(mark.id) ?? false;
-        const active = activeMarkId === mark.id;
-        const pageLabel = mark.page.trim() ? formatMarkPageLabel(mark.page) : null;
-        return (
-          <li
-            key={mark.id}
-            data-state={selected ? "selected" : undefined}
-            aria-current={active ? "true" : undefined}
-            className={cn(
-              "border-b border-rule/50 px-3 py-2.5 transition-colors last:border-b-0 hover:bg-paper-2",
-              active && "bg-paper-2",
-              selected && "bg-mark-soft/40 hover:bg-mark-soft/45",
-            )}
-          >
-            <div className="flex items-start gap-3">
-              {selectable ? (
-                <Checkbox
-                  checked={selected}
-                  onCheckedChange={(value) => toggleSelection(mark.id, !!value)}
-                  aria-label={selected ? `Deselect ${mark.title}` : `Select ${mark.title}`}
-                  className="mt-1 size-5"
-                />
-              ) : null}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onSelectMark(mark)}
-                    aria-current={active ? "true" : undefined}
-                    className="min-h-10 min-w-0 flex-1 rounded-md py-0.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/35"
-                  >
-                    <span className="flex min-w-0 items-center gap-2 break-words text-ui-md font-semibold leading-snug text-ink">
-                      <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
-                        {mark.displayKey}
-                      </span>
-                      <span className="min-w-0 flex-1">{mark.title}</span>
-                    </span>
-                    {pageLabel ? (
-                      <span className="mt-1 block truncate text-ui-xs text-ink-3" title={mark.page}>
-                        {pageLabel}
-                      </span>
-                    ) : null}
-                  </button>
-                  {mark.page.trim() ? (
-                    <MarkPageOpenButton
-                      page={mark.page}
-                      appearance="icon"
-                      stopPropagation
-                      className="mt-0.5"
-                    />
-                  ) : null}
-                  <RowStatusAction mark={mark} onToggle={onToggleMarkStatus} className="mt-0.5" />
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <StatusInline
-                    status={mark.status}
-                    label={
-                      mark.workflowStatusId
-                        ? workflowStatusesById.get(mark.workflowStatusId)?.name
-                        : undefined
-                    }
-                  />
-                  <PriorityBadge priority={mark.priority} size="sm" />
-                  {mark.pinned ? (
-                    <Pill size="sm" icon={<Bookmark className="size-2.5" />}>
-                      Pinned
-                    </Pill>
-                  ) : null}
-                  {commentCount > 0 ? (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-2 py-1 text-ui-xs text-ink-3"
-                      aria-label={`${commentCount} comment${commentCount === 1 ? "" : "s"}`}
-                    >
-                      <MessageCircle className="size-3" aria-hidden />
-                      <span aria-hidden>{commentCount}</span>
-                    </span>
-                  ) : null}
-                  {assignee ? (
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full bg-paper-2 px-1.5 py-0.5 text-ui-xs text-ink-3"
-                      aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
-                    >
-                      <Avatar className="size-5" aria-hidden>
-                        <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
-                          {assignee.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    </span>
-                  ) : null}
-                  <span className="text-ui-xs tabular-nums text-ink-3">
-                    {formatDateShort(mark.createdAt)}
-                  </span>
-                </div>
-
-                {mark.labelIds.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {mark.labelIds.map((lid) => {
-                      const label = labelsById.get(lid);
-                      if (!label) return null;
-                      return (
-                        <span
-                          key={lid}
-                          className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-xs font-medium text-ink-2"
-                        >
-                          {label.name}
-                        </span>
-                      );
-                    })}
-                  </div>
-                ) : null}
-                {onSetWorkflowStatus || onSetPriority || onAssignMark ? (
-                  <div className="mt-2 grid gap-1.5 sm:grid-cols-3">
-                    {onSetWorkflowStatus && workflowStatuses ? (
-                      <FilterSelect
-                        value={mark.workflowStatusId}
-                        onValueChange={(workflowStatusId) => onSetWorkflowStatus(mark, workflowStatusId)}
-                        options={workflowStatuses.map((status) => ({
-                          value: status.id,
-                          label: status.name,
-                        }))}
-                        ariaLabel={`Change status for ${mark.displayKey}`}
-                        variant="boxed"
-                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
-                      />
-                    ) : null}
-                    {onSetPriority ? (
-                      <FilterSelect<MarkPriority>
-                        value={mark.priority}
-                        onValueChange={(priority) => onSetPriority(mark, priority)}
-                        options={PIN_PRIORITY_OPTIONS_TRIAGE}
-                        ariaLabel={`Change priority for ${mark.displayKey}`}
-                        variant="boxed"
-                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
-                      />
-                    ) : null}
-                    {onAssignMark && members ? (
-                      <FilterSelect
-                        value={mark.assigneeId ?? UNASSIGNED}
-                        onValueChange={(value) =>
-                          onAssignMark(mark, value === UNASSIGNED ? null : value)
-                        }
-                        options={[
-                          { value: UNASSIGNED, label: "Unassigned" },
-                          ...members.map((member) => ({
-                            value: member.id,
-                            label: memberPickerLabel(member, displayNamePreference),
-                          })),
-                        ]}
-                        ariaLabel={`Change assignee for ${mark.displayKey}`}
-                        variant="boxed"
-                        triggerClassName="h-9 w-full bg-paper-2 text-ui-xs sm:h-8"
-                      />
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function RowStatusAction({
-  mark,
-  onToggle,
-  className,
-}: {
-  mark: MarkItem;
-  onToggle?: (mark: MarkItem) => void | Promise<void>;
-  className?: string;
-}) {
-  if (!onToggle) return null;
-  const open = mark.status === "open";
-  return (
-    <button
-      type="button"
-      data-mark-id={mark.id}
-      onClick={(event) => {
-        event.stopPropagation();
-        void onToggle(mark);
-      }}
-      aria-label={open ? `Close ${mark.title}` : `Reopen ${mark.title}`}
-      title={open ? "Close" : "Reopen"}
-      className={cn(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-md text-ink-3 outline-none transition-colors hover:bg-paper-3 hover:text-ink focus-visible:bg-paper-3 focus-visible:text-ink focus-visible:ring-2 focus-visible:ring-mark/25 md:size-7 md:opacity-0 md:group-focus-within/row:opacity-100 md:group-hover/row:opacity-100",
-        open && "hover:text-ok focus-visible:text-ok",
-        !open && "hover:text-mark focus-visible:text-mark",
-        className,
-      )}
-    >
-      {open ? (
-        <CheckCircle2 className="size-3.5" aria-hidden />
       ) : (
-        <CircleDashed className="size-3.5" aria-hidden />
+        <span className="size-7" aria-hidden />
       )}
-    </button>
+    </div>
+  );
+}
+
+function PrioritySignal({ priority }: { priority: MarkPriority }) {
+  if (priority !== "critical" && priority !== "high") return null;
+  return (
+    <span
+      className={cn(
+        "size-1.5 shrink-0 rounded-full",
+        priority === "critical" ? "bg-destructive-token" : "bg-warn",
+      )}
+      title={`${priority[0].toUpperCase()}${priority.slice(1)} priority`}
+      role="img"
+      aria-label={`${priority} priority`}
+    />
   );
 }
 
@@ -984,47 +502,5 @@ function isEditableTarget(target: EventTarget) {
     tagName === "textarea" ||
     tagName === "select" ||
     target.getAttribute("role") === "textbox"
-  );
-}
-
-function StatusInline({
-  status,
-  label,
-  compact = false,
-}: {
-  status: MarkItem["status"];
-  label?: string;
-  compact?: boolean;
-}) {
-  if (compact) {
-    const open = status === "open";
-    return (
-      <span
-        className={cn(
-          "inline-flex size-5 items-center justify-center rounded-full bg-paper-2",
-          open ? "text-mark" : "text-ok",
-        )}
-        title={label ?? (open ? "Open" : "Closed")}
-        aria-label={label ?? (open ? "Open" : "Closed")}
-      >
-        {open ? (
-          <CircleDashed className="size-3" aria-hidden />
-        ) : (
-          <CheckCircle2 className="size-3" aria-hidden />
-        )}
-      </span>
-    );
-  }
-
-  return status === "open" ? (
-    <span className="inline-flex items-center gap-1 rounded-full border border-rule/55 bg-paper-2 px-2 py-1 text-ui-xs font-medium text-mark">
-      <CircleDashed className="size-3" aria-hidden />
-      {label ?? "Open"}
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 rounded-full border border-rule/55 bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ok">
-      <CheckCircle2 className="size-3" aria-hidden />
-      {label ?? "Closed"}
-    </span>
   );
 }

@@ -485,6 +485,11 @@ export function TriageView() {
                 members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
+                sectionTitle={listSectionTitle({
+                  filters,
+                  selectedProjectName: selectedProject?.name,
+                  isMyMarksPage,
+                })}
                 density={filters.density === "compact" ? "compact" : "default"}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
@@ -687,7 +692,7 @@ function GroupedMarkTables({
       {groups.map((group) => (
         <section key={group.id}>
           <div className="flex min-h-10 items-center gap-2 bg-paper-2/70 px-3 py-2">
-            <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
+            <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-ink-3">
               {group.icon}
             </span>
             <div className="min-w-0 flex-1">
@@ -709,6 +714,7 @@ function GroupedMarkTables({
             members={members}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
+            showSectionHeader={false}
             activeMarkId={activeMarkId}
             density={density}
             onSelectMark={onSelectMark}
@@ -802,6 +808,25 @@ function groupDashboardMarks({
     if (b.id === "__unassigned") return 1;
     return a.title.localeCompare(b.title);
   });
+}
+
+function listSectionTitle({
+  filters,
+  selectedProjectName,
+  isMyMarksPage,
+}: {
+  filters: DashboardFilters;
+  selectedProjectName?: string;
+  isMyMarksPage: boolean;
+}): string {
+  if (isMyMarksPage) return "Mine";
+  if (selectedProjectName) return selectedProjectName;
+  if (filters.priority === "critical") return "Critical";
+  if (filters.status === "open") return "Open";
+  if (filters.status === "closed") return "Closed";
+  if (filters.assignee === "unassigned") return "Unassigned";
+  if (filters.assignee === "me") return "Mine";
+  return "All marks";
 }
 
 function isEditableEventTarget(target: EventTarget | null): boolean {

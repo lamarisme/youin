@@ -226,7 +226,7 @@ export function AppSidebar() {
             )}
           >
             <Search className="size-[1rem] shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-ui-sm">{tSide("searchOrJump")}</span>
+            <span className="min-w-0 flex-1 truncate text-ui-sm lg:text-ui-xs">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
               <kbd className="rounded-[4px] bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
                 ⌘
@@ -362,7 +362,7 @@ function SidebarNavLink({
       aria-current={active ? "page" : undefined}
       className={cn(
         "group relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-md transition-colors",
-        "lg:flex lg:h-8 lg:w-full lg:min-h-0 lg:gap-2 lg:px-2.5 lg:py-0 lg:text-ui-sm",
+        "lg:flex lg:h-8 lg:w-full lg:min-h-0 lg:gap-2 lg:px-2.5 lg:py-0 lg:text-ui-xs",
         SIDEBAR_FOCUS,
         active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
       )}
@@ -491,7 +491,7 @@ function SidebarViewsSection({
               <Link
                 href="/views"
                 className={cn(
-                  "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-sm text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                  "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-xs text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
                   SIDEBAR_FOCUS,
                 )}
               >
@@ -547,7 +547,7 @@ function SidebarViewLink({
       aria-current={active ? "page" : undefined}
       title={view.name}
       className={cn(
-        "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-sm transition-colors",
+        "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-xs transition-colors",
         active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
         SIDEBAR_FOCUS,
       )}
@@ -663,10 +663,10 @@ function ProjectSwitcher({
               )}
             />
             <span className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-              <span className="block truncate text-ui-sm font-medium leading-tight text-ink">
+              <span className="block truncate text-ui-sm font-medium leading-tight text-ink lg:text-ui-xs">
                 {switcherLabel}
               </span>
-              <span className="block truncate text-ui-xs leading-tight text-ink-3">
+              <span className="block truncate text-ui-xs leading-tight text-ink-3 lg:text-ui-2xs">
                 {switcherMeta}
               </span>
             </span>
@@ -920,8 +920,8 @@ function DesktopAccountMenu({
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-ui-sm font-medium leading-tight text-ink">{displayName}</p>
-              <p className="truncate text-ui-xs leading-tight text-ink-3">{workspaceLabel}</p>
+              <p className="truncate text-ui-xs font-medium leading-tight text-ink">{displayName}</p>
+              <p className="truncate text-ui-2xs leading-tight text-ink-3">{workspaceLabel}</p>
             </div>
             <ChevronsUpDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />
           </button>
