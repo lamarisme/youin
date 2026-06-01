@@ -43,40 +43,6 @@ async function workspaceIdForUser(userId: string): Promise<string | null> {
   return data.workspace_id as string
 }
 
-async function ensureDefaultProjectId(
-  workspaceId: string
-): Promise<{ projectId?: string; error?: string }> {
-  const supabase = getSupabase()
-  const { data: existing, error: readErr } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle()
-  if (readErr) return { error: readErr.message }
-  if (existing?.id) return { projectId: existing.id as string }
-
-  const { data: created, error: createErr } = await supabase
-    .from("projects")
-    .insert({ workspace_id: workspaceId, name: "General", description: "" })
-    .select("id")
-    .single()
-  if (created?.id) return { projectId: created.id as string }
-  if (createErr) {
-    const { data: retry, error: retryErr } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    if (retry?.id) return { projectId: retry.id as string }
-    return { error: retryErr?.message ?? createErr.message }
-  }
-  return { error: "Failed to create project." }
-}
-
 export interface SyncWorkspaceResult {
   ok: boolean
   error?: string
@@ -101,16 +67,6 @@ export async function syncWorkspaceFromRemote(
       spaceCount: 0
     }
   }
-  const ensuredProject = await ensureDefaultProjectId(workspaceId)
-  if (!ensuredProject.projectId) {
-    return {
-      ok: false,
-      error: ensuredProject.error,
-      projectCount: 0,
-      spaceCount: 0
-    }
-  }
-
   const supabase = getSupabase()
   const prevProjects = await getProjects()
   const { data: projectRows, error: projectErr } = await supabase
@@ -136,14 +92,6 @@ export async function syncWorkspaceFromRemote(
       : Date.now()
   }))
   await setProjects(nextProjects)
-
-  const projectIds = new Set(nextProjects.map((project) => project.id))
-  const projectByNameLc = new Map(
-    nextProjects.map((project) => [project.name.trim().toLowerCase(), project.id])
-  )
-  const fallbackProjectId =
-    ensuredProject.projectId ?? nextProjects[0]?.id ?? prevProjects[0]?.id ?? ""
-
   await setSpaces(
     nextProjects.map((project) => ({
       id: project.id,
@@ -152,6 +100,22 @@ export async function syncWorkspaceFromRemote(
       createdAt: project.createdAt
     }))
   )
+
+  if (!nextProjects.length) {
+    await setActiveProjectId("")
+    await setActiveSpaceId("")
+    return {
+      ok: true,
+      projectCount: 0,
+      spaceCount: 0
+    }
+  }
+
+  const projectIds = new Set(nextProjects.map((project) => project.id))
+  const projectByNameLc = new Map(
+    nextProjects.map((project) => [project.name.trim().toLowerCase(), project.id])
+  )
+  const fallbackProjectId = nextProjects[0]?.id ?? prevProjects[0]?.id ?? ""
 
   function remapProjectId(projectId: string): string {
     if (projectIds.has(projectId)) return projectId
@@ -180,8 +144,8 @@ export async function syncWorkspaceFromRemote(
     await setActiveProjectId(nextActive)
     await setActiveSpaceId(nextActive)
   } else if (!nextProjects.some((project) => project.id === active)) {
-    await setActiveProjectId(nextProjects[0]?.id ?? ensuredProject.projectId)
-    await setActiveSpaceId(nextProjects[0]?.id ?? ensuredProject.projectId ?? "")
+    await setActiveProjectId(nextProjects[0]?.id ?? "")
+    await setActiveSpaceId(nextProjects[0]?.id ?? "")
   }
 
   return {
@@ -761,59 +725,4 @@ export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksRes
     failed,
     error: firstError
   }
-}
-
-export interface CreateSpaceResult {
-  ok: boolean
-  spaceId?: string
-  projectId?: string
-  error?: string
-}
-
-export interface CreateProjectResult {
-  ok: boolean
-  projectId?: string
-  error?: string
-}
-
-export async function createRemoteWorkspaceProject(
-  userId: string,
-  nameTrimmed: string,
-  descriptionTrimmed = ""
-): Promise<CreateProjectResult> {
-  const name = nameTrimmed.trim().slice(0, 120)
-  const description = descriptionTrimmed.trim().slice(0, 240)
-  if (!name) return { ok: false, error: "Name is required." }
-
-  const workspaceId = await workspaceIdForUser(userId)
-  if (!workspaceId) {
-    return { ok: false, error: "No workspace for this account." }
-  }
-
-  const supabase = getSupabase()
-  const { data: project, error } = await supabase
-    .from("projects")
-    .insert({ workspace_id: workspaceId, name, description })
-    .select("id")
-    .single()
-
-  if (error || !project?.id) {
-    return {
-      ok: false,
-      error: error?.message ?? "Could not create project."
-    }
-  }
-
-  return { ok: true, projectId: project.id as string }
-}
-
-/** Backward-compatible alias: the old "new space" control now creates projects. */
-export async function createRemoteWorkspaceSpace(
-  userId: string,
-  _projectId: string,
-  nameTrimmed: string
-): Promise<CreateSpaceResult> {
-  const created = await createRemoteWorkspaceProject(userId, nameTrimmed)
-  if (!created.ok || !created.projectId) return created
-  return { ok: true, projectId: created.projectId, spaceId: created.projectId }
 }

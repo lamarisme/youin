@@ -529,7 +529,7 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function setProjects(projects: Project[]): Promise<boolean> {
-  return write(KEY_PROJECTS, projects.length ? projects : DEFAULT_PROJECTS)
+  return write(KEY_PROJECTS, projects)
 }
 
 export async function addProject(project: Project): Promise<boolean> {

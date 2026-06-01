@@ -23,7 +23,6 @@ import {
   type ReviewScriptRequirement
 } from "./lib/review-scripts"
 import {
-  addSpace,
   getActiveProjectId,
   getActiveSpaceId,
   getMarks,
@@ -40,14 +39,11 @@ import {
   setActiveProjectId,
   setActiveSpaceId,
   setWidgetSettings,
-  STORAGE_LIMITS,
   type Project,
-  type Space,
   type WidgetCorner
 } from "./lib/storage"
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
 import {
-  createRemoteWorkspaceSpace,
   syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
@@ -228,9 +224,6 @@ function IndexPopup() {
   const [openCount, setOpenCount] = useState(0)
   const [resolvedCount, setResolvedCount] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [creatingSpace, setCreatingSpace] = useState(false)
-  const [newSpaceName, setNewSpaceName] = useState("")
-  const [spaceErr, setSpaceErr] = useState<string | null>(null)
   const [showAuth, setShowAuth] = useState(false)
   const [floatingControl, setFloatingControl] = useState(true)
   const [widgetCorner, setWidgetCorner] = useState<WidgetCorner>("bottom-right")
@@ -539,57 +532,6 @@ function IndexPopup() {
     void setActiveSpaceId(id)
   }
 
-  const submitNewSpace = () => {
-    const name = newSpaceName.trim().slice(0, STORAGE_LIMITS.spaceName)
-    if (!name) {
-      setCreatingSpace(false)
-      setSpaceErr(null)
-      return
-    }
-    void (async () => {
-      const sess = await getSession()
-      if (sess?.user?.id) {
-        const created = await createRemoteWorkspaceSpace(
-          sess.user.id,
-          projectId,
-          name
-        )
-        const createdId = created.projectId ?? created.spaceId
-        if (!created.ok || !createdId) {
-          setSpaceErr(created.error ?? t("extension.popup.couldNotCreateSpace"))
-          return
-        }
-        await syncWorkspaceFromRemote(sess.user.id)
-        await refreshSpaces()
-        await setActiveProjectId(createdId)
-        await setActiveSpaceId(createdId)
-        setNewSpaceName("")
-        setCreatingSpace(false)
-        setSpaceErr(null)
-        return
-      }
-
-      const slug =
-        name
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "") || "space"
-      const id = `${slug}-${Date.now().toString(36)}`
-      const next: Space = { id, projectId: id, name, createdAt: Date.now() }
-      const added = await addSpace(next)
-      if (!added) {
-        setSpaceErr(t("extension.popup.couldNotSaveSpace"))
-        return
-      }
-      await setActiveProjectId(id)
-      await setActiveSpaceId(id)
-      await refreshSpaces()
-      setNewSpaceName("")
-      setCreatingSpace(false)
-      setSpaceErr(null)
-    })()
-  }
-
   if (view === "checking") {
     return (
       <main
@@ -847,10 +789,6 @@ function IndexPopup() {
             <p className="mt-0.5 truncate text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
               {workspaceLabel}
             </p>
-            <p className="mt-0.5 truncate text-[11px] text-[color:var(--yi-ext-text-muted)]">
-              {projects.find((project) => project.id === projectId)?.name ??
-                t("extension.popup.noSpaceLabel")}
-            </p>
           </div>
           <a
             href={`${WEB_APP_URL}/dashboard${projectId ? `?project=${encodeURIComponent(projectId)}` : ""}`}
@@ -866,70 +804,23 @@ function IndexPopup() {
         </div>
 
         <div className="mt-3 rounded-md bg-[color:var(--yi-paper-elevated)] p-2 ring-1 ring-[color:var(--yi-ext-border-hairline)]">
-          <div className="grid grid-cols-[4.25rem_minmax(0,1fr)_2.25rem] items-center gap-2">
-            <label
-              htmlFor="youin-popup-project"
-              className="text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              {t("extension.popup.projectLabel")}
-            </label>
-            <select
-              id="youin-popup-project"
-              className={SELECT_CONTROL}
-              value={projectId}
-              disabled={!projects.length}
-              onChange={(e) => selectProject(e.target.value)}>
-              {projects.length ? (
-                projects.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))
-              ) : (
-                <option value="">{t("extension.popup.noProjectLabel")}</option>
-              )}
-            </select>
-            <button
-              type="button"
-              title={t("extension.popup.newReviewSpace")}
-              aria-label={t("extension.popup.newReviewSpaceAria")}
-              className={cx(
-                "flex min-h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-paper-3)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45",
-                FOCUS_OUTLINE,
-                PRESS_FEEDBACK
-              )}
-              onClick={() => {
-                setCreatingSpace((c) => !c)
-                setSpaceErr(null)
-              }}>
-              <PlusIcon />
-            </button>
-          </div>
-          {creatingSpace ? (
-            <div className="mt-2 flex flex-col gap-1.5 pt-2">
-              {spaceErr ? (
-                <p role="alert" className={INLINE_ALERT}>
-                  {spaceErr}
-                </p>
-              ) : null}
-              <input
-                value={newSpaceName}
-                maxLength={STORAGE_LIMITS.spaceName}
-                aria-label={t("extension.popup.newSpaceNameAria")}
-                onChange={(e) => setNewSpaceName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submitNewSpace()
-                }}
-                placeholder={t("extension.popup.spaceNamePlaceholder")}
-                className="youin-input min-h-8 rounded-md px-2 py-1 text-[12px] text-[color:var(--yi-ext-text)]"
-              />
-              <button
-                type="button"
-                className={cx(PRIMARY_ACTION, FOCUS_OUTLINE, PRESS_FEEDBACK)}
-                onClick={() => submitNewSpace()}>
-                {t("extension.popup.createSpace")}
-              </button>
-            </div>
-          ) : null}
+          <select
+            id="youin-popup-project"
+            aria-label={t("extension.popup.projectLabel")}
+            className={SELECT_CONTROL}
+            value={projectId}
+            disabled={!projects.length}
+            onChange={(e) => selectProject(e.target.value)}>
+            {projects.length ? (
+              projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))
+            ) : (
+              <option value="">{t("extension.popup.noProjectLabel")}</option>
+            )}
+          </select>
         </div>
       </section>
 
@@ -1485,21 +1376,6 @@ function SettingsIcon() {
       aria-hidden="true">
       <path d="M8.9 3.1h2.2l.42 1.72a5.9 5.9 0 0 1 1.15.48l1.52-.92 1.55 1.55-.92 1.52c.2.36.36.75.48 1.15l1.72.42v2.2l-1.72.42a5.9 5.9 0 0 1-.48 1.15l.92 1.52-1.55 1.55-1.52-.92c-.36.2-.75.36-1.15.48l-.42 1.72H8.9l-.42-1.72a5.9 5.9 0 0 1-1.15-.48l-1.52.92-1.55-1.55.92-1.52a5.9 5.9 0 0 1-.48-1.15l-1.72-.42v-2.2L4.7 8.6c.12-.4.28-.79.48-1.15l-.92-1.52 1.55-1.55 1.52.92c.36-.2.75-.36 1.15-.48l.42-1.72Z" />
       <path d="M7.7 10.1a2.3 2.3 0 1 0 4.6 0 2.3 2.3 0 0 0-4.6 0Z" />
-    </svg>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className="size-4"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeWidth="1.8"
-      aria-hidden="true">
-      <path d="M10 4.5v11M4.5 10h11" />
     </svg>
   )
 }

@@ -26,7 +26,7 @@ export interface MigrationResult {
   error?: string
 }
 
-async function ensureDefaultProjectId(
+async function firstWorkspaceProjectId(
   workspaceId: string
 ): Promise<{ projectId?: string; error?: string }> {
   const supabase = getSupabase()
@@ -38,26 +38,7 @@ async function ensureDefaultProjectId(
     .limit(1)
     .maybeSingle()
   if (readErr) return { error: readErr.message }
-  if (existing?.id) return { projectId: existing.id as string }
-
-  const { data: created, error: createErr } = await supabase
-    .from("projects")
-    .insert({ workspace_id: workspaceId, name: "General", description: "" })
-    .select("id")
-    .single()
-  if (created?.id) return { projectId: created.id as string }
-  if (createErr) {
-    const { data: retry, error: retryErr } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle()
-    if (retry?.id) return { projectId: retry.id as string }
-    return { error: retryErr?.message ?? createErr.message }
-  }
-  return { error: "Failed to create project." }
+  return { projectId: existing?.id as string | undefined }
 }
 
 export async function isMigrationDoneForUser(userId: string): Promise<boolean> {
@@ -76,9 +57,10 @@ async function markMigrationDone(userId: string): Promise<void> {
 /**
  * Migrate local projects+marks into the signed-in user's workspace.
  *
- * Projects are matched by exact name (case-insensitive); missing ones are
- * created. Marks import under the resolved project. Thread messages
- * become mark_comments authored by the signed-in user.
+ * Projects are matched by exact name (case-insensitive). Missing projects must
+ * be created from the dashboard before retrying. Marks import under the
+ * resolved project. Thread messages become mark_comments authored by the
+ * signed-in user.
  *
  * Re-running for the same user is a no-op once the flag is set.
  */
@@ -125,18 +107,6 @@ export async function migrateLocalDataToWorkspace(
     }
   }
   const workspaceId = membership.workspace_id as string
-  const project = await ensureDefaultProjectId(workspaceId)
-  if (!project.projectId) {
-    return {
-      ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
-      marksImported: 0,
-      commentsImported: 0,
-      error: project.error ?? "Failed to resolve project."
-    }
-  }
-
   const [localProjects, localMarks] = await Promise.all([getSpaces(), getMarks()])
   if (!localMarks.length) {
     await markMigrationDone(userId)
@@ -146,6 +116,19 @@ export async function migrateLocalDataToWorkspace(
       spacesMatched: 0,
       marksImported: 0,
       commentsImported: 0
+    }
+  }
+  const project = await firstWorkspaceProjectId(workspaceId)
+  if (!project.projectId) {
+    return {
+      ok: false,
+      spacesCreated: 0,
+      spacesMatched: 0,
+      marksImported: 0,
+      commentsImported: 0,
+      error:
+        project.error ??
+        "Create a project from the dashboard before importing local feedback."
     }
   }
 
@@ -220,7 +203,7 @@ export async function migrateLocalDataToWorkspace(
   )
 
   const localToRemoteProjectId = new Map<string, string>()
-  let spacesCreated = 0
+  const spacesCreated = 0
   let spacesMatched = 0
 
   for (const localId of usedLocalProjectIds) {
@@ -237,28 +220,14 @@ export async function migrateLocalDataToWorkspace(
       spacesMatched++
       continue
     }
-    const { data: created, error: createErr } = await supabase
-      .from("projects")
-      .insert({
-        workspace_id: workspaceId,
-        name,
-        description: ""
-      })
-      .select("id")
-      .single()
-    if (createErr || !created) {
-      return {
-        ok: false,
-        spacesCreated,
-        spacesMatched,
-        marksImported: 0,
-        commentsImported: 0,
-        error: createErr?.message ?? "Failed to create project."
-      }
+    return {
+      ok: false,
+      spacesCreated,
+      spacesMatched,
+      marksImported: 0,
+      commentsImported: 0,
+      error: `Create a "${name}" project from the dashboard, then try importing again.`
     }
-    localToRemoteProjectId.set(localId, created.id as string)
-    remoteByName.set(name.toLowerCase(), created.id as string)
-    spacesCreated++
   }
 
   let marksImported = 0

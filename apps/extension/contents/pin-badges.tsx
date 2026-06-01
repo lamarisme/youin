@@ -53,6 +53,32 @@ type BadgeItem = {
   healthLabel: string
 }
 
+type PageSize = {
+  width: number
+  height: number
+}
+
+function pageSize(): PageSize {
+  const doc = document.documentElement
+  const body = document.body
+  return {
+    width: Math.max(
+      window.innerWidth,
+      doc.clientWidth,
+      doc.scrollWidth,
+      body?.clientWidth ?? 0,
+      body?.scrollWidth ?? 0
+    ),
+    height: Math.max(
+      window.innerHeight,
+      doc.clientHeight,
+      doc.scrollHeight,
+      body?.clientHeight ?? 0,
+      body?.scrollHeight ?? 0
+    )
+  }
+}
+
 function sortMarksForDisplay(marks: Mark[]): Mark[] {
   return marks.slice().sort((a, b) => a.createdAt - b.createdAt)
 }
@@ -86,8 +112,8 @@ function computeLayout(
       out.push({
         mark,
         stackOrder,
-        left: Math.round(r.right - HIT),
-        top: Math.round(Math.max(4, r.top - 8)),
+        left: Math.round(Math.max(0, r.right + window.scrollX - HIT)),
+        top: Math.round(Math.max(4, r.top + window.scrollY - 8)),
         attached: health.attached,
         health: health.health,
         healthLabel: health.label
@@ -101,10 +127,12 @@ function computeLayout(
 
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
+  const [size, setSize] = useState<PageSize>({ width: 0, height: 0 })
   const [disabled, setDisabled] = useState(false)
   const rafRef = useRef<number | null>(null)
 
   const refresh = useCallback(async () => {
+    setSize(pageSize())
     const settings = await getWidgetSettings()
     const hostDisabled = isHostDisabled(location.href, settings)
     setDisabled(hostDisabled)
@@ -167,8 +195,8 @@ const PinBadges = () => {
   return (
     <div
       data-youin-extension-ui=""
-      className="pointer-events-none fixed inset-0"
-      style={{ zIndex: Z_BADGES }}>
+      className="pointer-events-none absolute left-0 top-0"
+      style={{ zIndex: Z_BADGES, width: size.width, height: size.height }}>
       {items.map(
         ({ mark, stackOrder, left, top, attached, health, healthLabel }) => (
           <button
