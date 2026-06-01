@@ -8,7 +8,7 @@ import {
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
-  EVENT_REVIEW_TOGGLE_DRAWER,
+  EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
   type ReviewMode,
   type ReviewStateDetail
 } from "../lib/events"
@@ -225,7 +225,7 @@ function Widget() {
   }
 
   const toggleDrawer = () => {
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
   }
 
   const modeButtons = (

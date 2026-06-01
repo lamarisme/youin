@@ -12,7 +12,7 @@ import {
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
-  EVENT_REVIEW_TOGGLE_DRAWER,
+  EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
   MESSAGE_FORWARD_CAPTURE,
   MESSAGE_REVIEW_PING_CONTENT,
   type ReviewCaptureDetail,
@@ -349,7 +349,7 @@ function ensureHost() {
   toolbar.querySelector("button.drawer")?.addEventListener("click", (e) => {
     e.preventDefault()
     e.stopPropagation()
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
   })
   shadow.append(toolbar)
 
@@ -996,11 +996,6 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
   }
   if (t === "youin:start-screenshot") {
     activateRegion()
-    sendResponse({ ok: true })
-    return true
-  }
-  if (t === "youin:toggle-drawer") {
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_DRAWER))
     sendResponse({ ok: true })
     return true
   }

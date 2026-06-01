@@ -17,11 +17,12 @@ import {
   type MigrationResult
 } from "./lib/migrate"
 import {
-  ANNOTATION_DRAWER_SCRIPT,
+  CAPTURE_PANEL_SCRIPT,
   ensureReviewContentScripts,
   REVIEW_MODE_SCRIPT,
   type ReviewScriptRequirement
 } from "./lib/review-scripts"
+import { MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
 import {
   getActiveProjectId,
   getActiveSpaceId,
@@ -55,7 +56,7 @@ type AuthView = "checking" | "signedOut" | "signedIn"
 type ReviewCommandType =
   | "youin:start-inspect"
   | "youin:start-screenshot"
-  | "youin:toggle-drawer"
+  | typeof MESSAGE_TOGGLE_FEEDBACK_LIST
 type ReviewCommandMessage = { type: ReviewCommandType }
 
 type ReviewCommandScripts = {
@@ -71,8 +72,9 @@ const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
     "youin:start-screenshot": {
       required: [REVIEW_MODE_SCRIPT]
     },
-    "youin:toggle-drawer": {
-      required: [REVIEW_MODE_SCRIPT, ANNOTATION_DRAWER_SCRIPT]
+    [MESSAGE_TOGGLE_FEEDBACK_LIST]: {
+      required: [CAPTURE_PANEL_SCRIPT],
+      requireReady: true
     }
   }
 
@@ -168,7 +170,7 @@ async function openDrawerOnActiveTab(): Promise<{
   error?: string
 }> {
   return sendReviewCommandToActiveTab(
-    { type: "youin:toggle-drawer" },
+    { type: MESSAGE_TOGGLE_FEEDBACK_LIST },
     t("extension.popup.openWebsite"),
     t("extension.popup.openDrawerFailed")
   )

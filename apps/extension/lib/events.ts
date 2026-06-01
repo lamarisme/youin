@@ -7,16 +7,16 @@ export const EVENT_REVIEW_RESUME = "youin:review:resume"
 export const EVENT_REVIEW_PAUSE = "youin:review:pause"
 export const EVENT_REVIEW_OPEN_MARK = "youin:review:open-mark"
 export const EVENT_REVIEW_OPEN_PIN_LEGACY = "youin:review:open-pin"
-export const EVENT_REVIEW_TOGGLE_DRAWER = "youin:review:toggle-drawer"
+export const EVENT_REVIEW_TOGGLE_FEEDBACK_LIST =
+  "youin:review:toggle-feedback-list"
 export const EVENT_LOCATION_CHANGE = "youin:location-change"
 export const MESSAGE_REVIEW_PING_CONTENT = "youin:ping-content"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL = "youin:ping-capture-panel"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY =
   "youin:capture-panel-ready"
 export const MESSAGE_OPEN_CAPTURE_PANEL = "youin:open-capture-panel"
+export const MESSAGE_TOGGLE_FEEDBACK_LIST = "youin:toggle-feedback-list"
 export const MESSAGE_FORWARD_CAPTURE = "youin:forward-capture"
-export const MESSAGE_REVIEW_PING_ANNOTATION_DRAWER =
-  "youin:ping-annotation-drawer"
 
 export type ReviewMode = "inspect" | "screenshot"
 

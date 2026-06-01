@@ -15,14 +15,18 @@ import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_OPEN_PIN_LEGACY,
+  EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
+  EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
   MESSAGE_OPEN_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY,
+  MESSAGE_TOGGLE_FEEDBACK_LIST,
+  type OpenMarkDetail,
   type ReviewCaptureDetail
 } from "../lib/events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computeMarkHealth } from "../lib/mark-health"
+import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
 import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
   addMarkWithFallback,
@@ -33,11 +37,14 @@ import {
   getMarks,
   getMarksForPage,
   getProjects,
+  getWidgetSettings,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
+  KEY_WIDGET_SETTINGS,
+  isHostDisabled,
   makeMarkId,
   markSyncFailure,
   patchMark,
@@ -108,12 +115,17 @@ if (!window.__youinCapturePanelMessageListener) {
         sendResponse({ ok: true })
         return true
       }
+      if (t === MESSAGE_TOGGLE_FEEDBACK_LIST) {
+        window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
+        sendResponse({ ok: true })
+        return true
+      }
       return false
     }
   )
 }
 
-type PanelMode = "create" | "thread"
+type PanelMode = "create" | "list" | "thread"
 
 type UndoAction =
   | { kind: "created"; mark: Mark; message: string }
@@ -143,6 +155,26 @@ function formatShortDate(ts: number): string {
   } catch {
     return new Date(ts).toLocaleDateString()
   }
+}
+
+function timeAgo(ts: number): string {
+  const diff = Math.max(0, Date.now() - ts)
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "now"
+  if (mins < 60) return `${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h`
+  return `${Math.floor(hours / 24)}d`
+}
+
+function markPreview(mark: Mark): string {
+  return mark.thread[0]?.body || mark.title || "Untitled feedback"
+}
+
+function markSyncLabel(mark: Mark): string {
+  if (mark.syncState === "failed") return "Sync failed"
+  if (mark.syncState === "pending") return "Pending"
+  return "Synced"
 }
 
 function makeThreadMessageId(): string {
@@ -251,6 +283,127 @@ function threadHealthBadgeClass(label: string): string {
   if (label === "Stale")
     return "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
   return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
+}
+
+function PageFeedbackRow({
+  mark,
+  disabled,
+  pendingDeleteMarkId,
+  onOpen,
+  onStatus,
+  onDelete,
+  onConfirmDelete,
+  onCancelDelete
+}: {
+  mark: Mark
+  disabled?: boolean
+  pendingDeleteMarkId: string | null
+  onOpen: (mark: Mark) => void
+  onStatus: (mark: Mark, status: MarkStatus) => void
+  onDelete: (mark: Mark) => void
+  onConfirmDelete: (mark: Mark) => void
+  onCancelDelete: () => void
+}) {
+  const health = computeMarkHealth(mark)
+  const image = mark.screenshotUrl ?? mark.screenshotDataUrl
+  const closed = mark.status === "closed"
+  const syncFailed = mark.syncState === "failed"
+  const isConfirmingDelete = pendingDeleteMarkId === mark.id
+
+  return (
+    <li className="overflow-hidden rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-low)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+      <button
+        type="button"
+        className="grid w-full grid-cols-[minmax(0,1fr)_3.25rem] gap-3 border-0 bg-transparent p-3 text-left outline-none transition-colors duration-150 hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+        onClick={() => onOpen(mark)}>
+        <span className="min-w-0">
+          <span className="block truncate text-[12.5px] font-semibold leading-snug text-[color:var(--yi-ext-text-title)]">
+            {mark.title}
+          </span>
+          <span className="mt-1 line-clamp-2 block text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+            {markPreview(mark)}
+          </span>
+          <span className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span
+              className={`${threadBadge} ${
+                closed
+                  ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
+                  : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
+              }`}>
+              {closed ? "Closed" : "Open"}
+            </span>
+            <span
+              className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
+              {health.label}
+            </span>
+            <span
+              className={`${threadBadge} ${
+                syncFailed
+                  ? "bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]"
+                  : "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
+              }`}>
+              {markSyncLabel(mark)}
+            </span>
+            <span className="text-[10px] leading-5 text-[color:var(--yi-ext-text-placeholder)]">
+              {timeAgo(mark.updatedAt)}
+            </span>
+          </span>
+        </span>
+        <span className="flex h-[3.25rem] min-h-[3.25rem] w-[3.25rem] min-w-[3.25rem] overflow-hidden rounded-md bg-[color:var(--yi-ext-surface-shade)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+          {image ? (
+            <img
+              src={image}
+              alt=""
+              className="h-full w-full object-cover object-top"
+            />
+          ) : (
+            <span className="m-auto size-2 rounded-full bg-[color:var(--yi-ext-text-placeholder)]" />
+          )}
+        </span>
+      </button>
+      <div className="flex min-h-10 items-center justify-end gap-1 border-t border-[color:var(--yi-ext-border-hairline)] px-2 py-1.5">
+        {isConfirmingDelete ? (
+          <div className="flex w-full flex-wrap items-center justify-end gap-1">
+            <span className="me-auto text-[10px] text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.drawer.confirmDeleteTitle")}
+            </span>
+            <button
+              type="button"
+              className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+              onClick={onCancelDelete}>
+              {t("extension.drawer.cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-danger-text)] outline-none hover:bg-[color:var(--yi-ext-danger-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+              onClick={() => onConfirmDelete(mark)}>
+              {t("extension.drawer.confirmDelete")}
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={disabled}
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+              onClick={() => onStatus(mark, closed ? "open" : "closed")}>
+              {closed
+                ? t("extension.drawer.reopen")
+                : t("extension.drawer.resolve")}
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-danger-text)] outline-none hover:bg-[color:var(--yi-ext-danger-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+              onClick={() => onDelete(mark)}>
+              {t("extension.drawer.delete")}
+            </button>
+          </>
+        )}
+      </div>
+    </li>
+  )
 }
 
 function confidenceForStrategy(strategy: DomStrategy): {
@@ -759,6 +912,10 @@ const CapturePanel = () => {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveWarning, setSaveWarning] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [returnToList, setReturnToList] = useState(false)
+  const [pendingListDeleteMarkId, setPendingListDeleteMarkId] = useState<
+    string | null
+  >(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [fullImage, setFullImage] = useState<{
     src: string
@@ -808,6 +965,16 @@ const CapturePanel = () => {
     },
     []
   )
+
+  const refreshFeedbackList = useCallback(async () => {
+    const settings = await getWidgetSettings()
+    if (isHostDisabled(location.href, settings)) {
+      setPageMarks([])
+      return false
+    }
+    await reloadPageMarks(location.href)
+    return true
+  }, [reloadPageMarks])
 
   const scheduleReloadPageMarks = useCallback(
     (pageUrl: string, sidOpt?: string) => {
@@ -866,11 +1033,39 @@ const CapturePanel = () => {
     setSaveError(null)
     setSaveWarning(null)
     setConfirmDelete(false)
+    setReturnToList(false)
+    setPendingListDeleteMarkId(null)
     setFullImage(null)
     setPageMarks([])
     previousFocusRef.current?.focus?.()
     window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
   }, [])
+
+  const openFeedbackList = useCallback(async () => {
+    if (open && mode === "list") {
+      setPendingListDeleteMarkId(null)
+      resume()
+      return
+    }
+
+    const canOpen = await refreshFeedbackList()
+    if (!canOpen) return
+
+    await loadSpaces()
+    setMode("list")
+    setCapture(null)
+    setViewingMark(null)
+    setBody("")
+    setReplyDraft("")
+    setEditing(false)
+    setSaveError(null)
+    setSaveWarning(null)
+    setConfirmDelete(false)
+    setReturnToList(false)
+    setPendingListDeleteMarkId(null)
+    previousFocusRef.current = document.activeElement as HTMLElement
+    setOpen(true)
+  }, [loadSpaces, mode, open, refreshFeedbackList, resume])
 
   useEffect(() => {
     const onCap = (detail: ReviewCaptureDetail) => {
@@ -881,6 +1076,8 @@ const CapturePanel = () => {
       setPriority("medium")
       setSaveError(null)
       setSaveWarning(null)
+      setReturnToList(false)
+      setPendingListDeleteMarkId(null)
       void loadSpaces()
       previousFocusRef.current = document.activeElement as HTMLElement
       setOpen(true)
@@ -898,9 +1095,20 @@ const CapturePanel = () => {
   }, [])
 
   useEffect(() => {
+    window.addEventListener(
+      EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
+      openFeedbackList
+    )
+    return () =>
+      window.removeEventListener(
+        EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
+        openFeedbackList
+      )
+  }, [openFeedbackList])
+
+  useEffect(() => {
     const onOpen = (e: Event) => {
-      const detail = (e as CustomEvent<{ markId?: string; pinId?: string }>)
-        .detail
+      const detail = (e as CustomEvent<Partial<OpenMarkDetail>>).detail
       const markId = detail?.markId ?? detail?.pinId
       if (!markId) return
       void (async () => {
@@ -917,6 +1125,8 @@ const CapturePanel = () => {
         setSaveError(null)
         setSaveWarning(null)
         setConfirmDelete(false)
+        setReturnToList(false)
+        setPendingListDeleteMarkId(null)
         previousFocusRef.current = document.activeElement as HTMLElement
         setOpen(true)
         void reloadPageMarks(mark.url, mark.spaceId)
@@ -954,6 +1164,33 @@ const CapturePanel = () => {
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
   }, [open, viewingMark, loadSpaces, reloadMark, scheduleReloadPageMarks])
+
+  useEffect(() => {
+    if (!open || mode !== "list") return
+    const onStorage: Parameters<
+      typeof chrome.storage.onChanged.addListener
+    >[0] = (changes, area) => {
+      if (area !== "local") return
+      if (
+        changes[KEY_PROJECTS] ||
+        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_ACTIVE_SPACE]
+      ) {
+        void loadSpaces()
+      }
+      if (
+        changes[KEY_MARKS] ||
+        changes[KEY_ACTIVE_SPACE] ||
+        changes[KEY_SPACES] ||
+        changes[KEY_WIDGET_SETTINGS]
+      ) {
+        void refreshFeedbackList()
+      }
+    }
+    chrome.storage.onChanged.addListener(onStorage)
+    return () => chrome.storage.onChanged.removeListener(onStorage)
+  }, [open, mode, loadSpaces, refreshFeedbackList])
 
   useEffect(() => {
     if (!open || !capture || mode !== "create") return
@@ -995,9 +1232,14 @@ const CapturePanel = () => {
 
   useEffect(() => {
     if (!open) return
-    const id = mode === "create" ? "capture-body" : "thread-reply"
+    const selector =
+      mode === "create"
+        ? "#capture-body"
+        : mode === "thread"
+          ? "#thread-reply"
+          : "[data-feedback-list-primary]"
     const raf = requestAnimationFrame(() => {
-      panelRef.current?.querySelector<HTMLElement>(`#${id}`)?.focus()
+      panelRef.current?.querySelector<HTMLElement>(selector)?.focus()
     })
     return () => cancelAnimationFrame(raf)
   }, [open, mode])
@@ -1024,7 +1266,16 @@ const CapturePanel = () => {
     }
     root.addEventListener("keydown", onTab)
     return () => root.removeEventListener("keydown", onTab)
-  }, [open, mode, editing, confirmDelete, saveError, saveWarning])
+  }, [
+    open,
+    mode,
+    editing,
+    confirmDelete,
+    pendingListDeleteMarkId,
+    saveError,
+    saveWarning,
+    undoAction
+  ])
 
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
@@ -1146,30 +1397,66 @@ const CapturePanel = () => {
     }
   }
 
-  const setMarkStatus = async (status: MarkStatus) => {
-    if (!viewingMark || saving) return
+  const updateMarkStatus = async (mark: Mark, status: MarkStatus) => {
+    if (saving) return
     setSaving(true)
     setSaveError(null)
     try {
-      await patchMark(viewingMark.id, { status, updatedAt: Date.now() })
-      const op = viewingMark.remoteMarkId
-        ? await enqueueMarkSyncOp(viewingMark.id, { type: "status", status })
+      await patchMark(mark.id, { status, updatedAt: Date.now() })
+      const op = mark.remoteMarkId
+        ? await enqueueMarkSyncOp(mark.id, { type: "status", status })
         : undefined
-      const synced = await pushMarkStatusToWorkspace(viewingMark, status)
+      const synced = await pushMarkStatusToWorkspace(mark, status)
       if ((synced.ok || synced.skipped) && op) {
-        await removeMarkSyncOp(viewingMark.id, op.id)
+        await removeMarkSyncOp(mark.id, op.id)
       }
       if (!synced.skipped && !synced.ok && synced.error) {
-        if (op) await markSyncFailure(viewingMark.id, synced.error, op.id)
+        if (op) await markSyncFailure(mark.id, synced.error, op.id)
         setSaveError(
           `Status updated locally. ${synced.error} Open the extension popup to retry sync.`
         )
       }
-      await reloadMark(viewingMark.id)
-      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
+      if (viewingMark?.id === mark.id) await reloadMark(mark.id)
+      await reloadPageMarks(mark.url, mark.spaceId)
     } finally {
       setSaving(false)
     }
+  }
+
+  const setMarkStatus = async (status: MarkStatus) => {
+    if (!viewingMark) return
+    await updateMarkStatus(viewingMark, status)
+  }
+
+  const confirmListDelete = async (mark: Mark) => {
+    if (saving) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const removed = await removeMark(mark.id)
+      if (!removed) {
+        setSaveError(t("extension.panel.couldNotDelete"))
+        return
+      }
+      setUndoAction({
+        kind: "deleted",
+        mark: removed,
+        message: t("extension.drawer.deleted")
+      })
+      setPendingListDeleteMarkId(null)
+      await reloadPageMarks(mark.url, mark.spaceId)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const restoreUndoAction = async () => {
+    if (!undoAction) return
+    const mark = undoAction.mark
+    if (undoAction.kind === "created") await removeMark(mark.id)
+    else await restoreMark(mark)
+    setUndoAction(null)
+    if (mode === "list") await refreshFeedbackList()
   }
 
   const saveEdit = async () => {
@@ -1231,10 +1518,11 @@ const CapturePanel = () => {
       setConfirmDelete(true)
       return
     }
+    const mark = viewingMark
     setSaving(true)
     setSaveError(null)
     try {
-      const removed = await removeMark(viewingMark.id)
+      const removed = await removeMark(mark.id)
       if (!removed) {
         setSaveError(t("extension.panel.couldNotDelete"))
         return
@@ -1245,9 +1533,15 @@ const CapturePanel = () => {
         message: t("extension.panel.feedbackDeleted")
       })
       setViewingMark(null)
-      setOpen(false)
       setConfirmDelete(false)
-      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
+      if (returnToList) {
+        setMode("list")
+        setReturnToList(false)
+        await reloadPageMarks(mark.url, mark.spaceId)
+        return
+      }
+      setOpen(false)
+      scheduleReloadPageMarks(mark.url, mark.spaceId)
       window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
     } finally {
       setSaving(false)
@@ -1265,12 +1559,7 @@ const CapturePanel = () => {
         <button
           type="button"
           className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
-          onClick={() => {
-            void (undoAction.kind === "created"
-              ? removeMark(undoAction.mark.id)
-              : restoreMark(undoAction.mark))
-            setUndoAction(null)
-          }}>
+          onClick={() => void restoreUndoAction()}>
           Undo
         </button>
       </div>
@@ -1284,8 +1573,175 @@ const CapturePanel = () => {
     void setActiveSpaceId(id)
   }
 
+  const openMarkFromList = (mark: Mark) => {
+    scrollMarkIntoView(mark)
+    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
+    setViewingMark(mark)
+    setEditTitle(mark.title)
+    setEditBody(mark.thread[0]?.body ?? "")
+    setMode("thread")
+    setCapture(null)
+    setReplyDraft("")
+    setEditing(false)
+    setSaveError(null)
+    setSaveWarning(null)
+    setConfirmDelete(false)
+    setReturnToList(true)
+    setPendingListDeleteMarkId(null)
+    void reloadPageMarks(mark.url, mark.spaceId)
+  }
+
+  const backToFeedbackList = () => {
+    setViewingMark(null)
+    setReplyDraft("")
+    setEditing(false)
+    setSaveError(null)
+    setSaveWarning(null)
+    setConfirmDelete(false)
+    setReturnToList(false)
+    setMode("list")
+    void refreshFeedbackList()
+  }
+
   const panelSurface =
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
+
+  if (mode === "list") {
+    const openMarks = pageMarks.filter((mark) => mark.status !== "closed")
+    const resolvedMarks = pageMarks.filter((mark) => mark.status === "closed")
+
+    return (
+      <div
+        data-youin-extension-ui=""
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feedback-list-title"
+        style={{ zIndex: Z_PANEL }}
+        className={panelSurface}>
+        <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-3 pt-5">
+          <div className="min-w-0">
+            <h2
+              id="feedback-list-title"
+              className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
+              {t("extension.drawer.pageFeedback")}
+            </h2>
+            <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+              {t("extension.drawer.openResolved", {
+                open: openMarks.length,
+                resolved: resolvedMarks.length
+              })}
+            </p>
+          </div>
+          <button
+            type="button"
+            data-feedback-list-primary=""
+            className={headerCloseBtn}
+            aria-label={t("extension.drawer.close")}
+            onClick={resume}>
+            ✕
+          </button>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
+          {pageMarks.length === 0 ? (
+            <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-8 text-center ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+              <p className="text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
+                {t("extension.drawer.empty")}
+              </p>
+              <p className="mt-1 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+                {t("extension.drawer.emptyHint")}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <section>
+                <h3 className="mb-2 px-1 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+                  {t("extension.drawer.openSection")}
+                </h3>
+                {openMarks.length === 0 ? (
+                  <p className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-4 text-center text-[11px] text-[color:var(--yi-ext-text-muted)] ring-1 ring-[color:var(--yi-ext-border-hairline)]">
+                    {t("extension.drawer.noOpenFeedback")}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {openMarks.map((mark) => (
+                      <PageFeedbackRow
+                        key={mark.id}
+                        mark={mark}
+                        disabled={saving}
+                        pendingDeleteMarkId={pendingListDeleteMarkId}
+                        onOpen={openMarkFromList}
+                        onStatus={(nextMark, status) =>
+                          void updateMarkStatus(nextMark, status)
+                        }
+                        onDelete={(nextMark) =>
+                          setPendingListDeleteMarkId(nextMark.id)
+                        }
+                        onConfirmDelete={(nextMark) =>
+                          void confirmListDelete(nextMark)
+                        }
+                        onCancelDelete={() => setPendingListDeleteMarkId(null)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              {resolvedMarks.length ? (
+                <section>
+                  <h3 className="mb-2 px-1 text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
+                    {t("extension.drawer.resolvedSection")}
+                  </h3>
+                  <ul className="space-y-2">
+                    {resolvedMarks.map((mark) => (
+                      <PageFeedbackRow
+                        key={mark.id}
+                        mark={mark}
+                        disabled={saving}
+                        pendingDeleteMarkId={pendingListDeleteMarkId}
+                        onOpen={openMarkFromList}
+                        onStatus={(nextMark, status) =>
+                          void updateMarkStatus(nextMark, status)
+                        }
+                        onDelete={(nextMark) =>
+                          setPendingListDeleteMarkId(nextMark.id)
+                        }
+                        onConfirmDelete={(nextMark) =>
+                          void confirmListDelete(nextMark)
+                        }
+                        onCancelDelete={() => setPendingListDeleteMarkId(null)}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
+              {saveError ? (
+                <p
+                  role="alert"
+                  className="rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2 text-[12px] leading-snug text-[color:var(--yi-ext-danger-text)]">
+                  {saveError}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {undoAction ? (
+          <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
+            {undoAction.message}
+            <button
+              type="button"
+              className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
+              onClick={() => void restoreUndoAction()}>
+              {t("extension.drawer.undo")}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   if (mode === "create" && capture) {
     const isRegionCapture = capture.captureKind === "region"
@@ -1568,6 +2024,14 @@ const CapturePanel = () => {
           className={panelSurface}>
           <header className="flex shrink-0 items-start justify-between gap-3 px-4 pb-3 pt-5">
             <div className="min-w-0 flex-1">
+              {returnToList ? (
+                <button
+                  type="button"
+                  className="mb-2 inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  onClick={backToFeedbackList}>
+                  {t("extension.drawer.backToList")}
+                </button>
+              ) : null}
               <div className="flex min-w-0 items-center">
                 <h2
                   id="thread-panel-title"

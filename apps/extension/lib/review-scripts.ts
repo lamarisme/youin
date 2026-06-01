@@ -1,5 +1,4 @@
 import {
-  MESSAGE_REVIEW_PING_ANNOTATION_DRAWER,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY,
   MESSAGE_REVIEW_PING_CONTENT
@@ -16,7 +15,6 @@ export type ReviewPingType =
   | typeof MESSAGE_REVIEW_PING_CONTENT
   | typeof MESSAGE_REVIEW_PING_CAPTURE_PANEL
   | typeof MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY
-  | typeof MESSAGE_REVIEW_PING_ANNOTATION_DRAWER
 
 export type ReviewPingMessage = { type: ReviewPingType }
 
@@ -38,15 +36,9 @@ export const CAPTURE_PANEL_SCRIPT: ReviewScriptRequirement = {
   readyPing: MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY
 }
 
-export const ANNOTATION_DRAWER_SCRIPT: ReviewScriptRequirement = {
-  fileMarker: "annotation-drawer",
-  ping: MESSAGE_REVIEW_PING_ANNOTATION_DRAWER
-}
-
 const SCRIPT_BY_MARKER: Record<string, ReviewScriptRequirement> = {
   [REVIEW_MODE_SCRIPT.fileMarker]: REVIEW_MODE_SCRIPT,
-  [CAPTURE_PANEL_SCRIPT.fileMarker]: CAPTURE_PANEL_SCRIPT,
-  [ANNOTATION_DRAWER_SCRIPT.fileMarker]: ANNOTATION_DRAWER_SCRIPT
+  [CAPTURE_PANEL_SCRIPT.fileMarker]: CAPTURE_PANEL_SCRIPT
 }
 
 export interface EnsureReviewScriptsMessage {

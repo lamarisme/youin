@@ -63,8 +63,7 @@ Run `build` before opening a PR that changes extension runtime code. Run `packag
 | `background/index.ts` | Background service worker and OAuth bridge receiver. |
 | `contents/review-mode.ts` | Content-script review mode orchestration. |
 | `contents/widget.tsx` | Floating review widget. |
-| `contents/annotation-drawer.tsx` | In-page feedback drawer. |
-| `contents/capture-panel.tsx` | Capture and comment UI. |
+| `contents/capture-panel.tsx` | Docked capture, feedback list, and thread UI. |
 | `contents/pin-badges.tsx` | Feedback badge rendering. |
 | `lib/auth.ts` | Extension auth helpers and cross-context session detection. |
 | `lib/supabase.ts` | Supabase client using Chrome storage. |
