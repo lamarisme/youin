@@ -16,6 +16,26 @@ const PRIORITY_RANK: Record<string, number> = {
   low: 3,
 };
 
+const searchTextCache = new WeakMap<MarkItem, string>();
+const createdAtMsCache = new WeakMap<MarkItem, number>();
+
+function searchableText(mark: MarkItem): string {
+  const cached = searchTextCache.get(mark);
+  if (cached !== undefined) return cached;
+  const value =
+    `${mark.title} ${markDescriptionPlainText(mark.description)} ${mark.page} ${mark.displayKey} ${mark.legacyDisplayKey ?? ""} ${mark.id}`.toLowerCase();
+  searchTextCache.set(mark, value);
+  return value;
+}
+
+function createdAtMs(mark: MarkItem): number {
+  const cached = createdAtMsCache.get(mark);
+  if (cached !== undefined) return cached;
+  const value = new Date(mark.createdAt).getTime();
+  createdAtMsCache.set(mark, value);
+  return value;
+}
+
 export function filterMarksByDashboardFilters(
   marks: readonly MarkItem[],
   filters: MarkDashboardFilterSlice,
@@ -38,9 +58,7 @@ export function filterMarksByDashboardFilters(
       if (mark.assigneeId) return false;
     }
     if (query) {
-      const haystack =
-        `${mark.title} ${markDescriptionPlainText(mark.description)} ${mark.page} ${mark.displayKey} ${mark.legacyDisplayKey ?? ""} ${mark.id}`.toLowerCase();
-      if (!haystack.includes(query)) return false;
+      if (!searchableText(mark).includes(query)) return false;
     }
     return true;
   });
@@ -52,22 +70,22 @@ function sortMarks(marks: MarkItem[], mode: SortMode): MarkItem[] {
   const sorted = [...marks];
   switch (mode) {
     case "oldest":
-      return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      return sorted.sort((a, b) => createdAtMs(a) - createdAtMs(b));
     case "priority":
       return sorted.sort((a, b) => {
         const r = (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
         if (r !== 0) return r;
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return createdAtMs(b) - createdAtMs(a);
       });
     case "status":
       return sorted.sort((a, b) => {
         if (a.status === b.status) {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return createdAtMs(b) - createdAtMs(a);
         }
         return a.status === "open" ? -1 : 1;
       });
     case "recent":
     default:
-      return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return sorted.sort((a, b) => createdAtMs(b) - createdAtMs(a));
   }
 }

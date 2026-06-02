@@ -443,6 +443,45 @@ type MarkRouteTarget = {
   projectId: string;
 };
 
+const markListSelect = {
+  id: marks.id,
+  projectId: marks.projectId,
+  title: marks.title,
+  page: marks.page,
+  description: marks.description,
+  status: marks.status,
+  workflowStatusId: marks.workflowStatusId,
+  priority: marks.priority,
+  pinned: marks.pinned,
+  assigneeUserId: marks.assigneeUserId,
+  seq: marks.seq,
+  legacyDisplayKey: marks.legacyDisplayKey,
+  createdAt: marks.createdAt,
+};
+
+const markCaptureSelect = {
+  id: marks.id,
+  selector: marks.selector,
+  viewport: marks.viewport,
+  browser: marks.browser,
+  os: marks.os,
+  domSnapshot: marks.domSnapshot,
+  screenshotUrl: marks.screenshotUrl,
+  capturedAt: marks.capturedAt,
+};
+
+type MarkCaptureRow = Pick<
+  typeof marks.$inferSelect,
+  | "id"
+  | "selector"
+  | "viewport"
+  | "browser"
+  | "os"
+  | "domSnapshot"
+  | "screenshotUrl"
+  | "capturedAt"
+>;
+
 async function loadMarkRouteTarget(
   workspaceId: string,
   markParam: string | null | undefined,
@@ -494,7 +533,7 @@ async function loadMarks(
     ? and(eq(marks.workspaceId, workspaceId), eq(marks.projectId, options.projectId))
     : eq(marks.workspaceId, workspaceId);
   const markRows = await db
-    .select()
+    .select(markListSelect)
     .from(marks)
     .where(whereClause)
     .orderBy(desc(marks.createdAt));
@@ -507,6 +546,7 @@ async function loadMarks(
   let commentCountRows: { markId: string; commentCount: number }[] = [];
   let commentRows: (typeof markComments.$inferSelect)[] = [];
   let eventRows: (typeof markEvents.$inferSelect)[] = [];
+  let detailCaptureRow: MarkCaptureRow | null = null;
 
   if (markIds.length) {
     const commentScope = detailMarkId
@@ -520,6 +560,7 @@ async function loadMarks(
       Promise<{ markId: string; commentCount: number }[]>,
       Promise<(typeof markComments.$inferSelect)[]>,
       Promise<(typeof markEvents.$inferSelect)[]>,
+      Promise<MarkCaptureRow | null>,
     ] = [
       db
         .select({
@@ -527,7 +568,8 @@ async function loadMarks(
           labelId: marksToLabels.labelId,
         })
         .from(marksToLabels)
-        .where(inArray(marksToLabels.markId, markIds)),
+        .innerJoin(marks, eq(marksToLabels.markId, marks.id))
+        .where(whereClause),
       options.includeCommentCounts
         ? db
             .select({
@@ -535,7 +577,8 @@ async function loadMarks(
               commentCount: sql<number>`count(*)::int`,
             })
             .from(markComments)
-            .where(inArray(markComments.markId, markIds))
+            .innerJoin(marks, eq(markComments.markId, marks.id))
+            .where(whereClause)
             .groupBy(markComments.markId)
         : Promise.resolve([]),
       options.includeComments
@@ -557,8 +600,16 @@ async function loadMarks(
             )
             .orderBy(desc(markEvents.createdAt))
         : Promise.resolve([]),
+      detailMarkId
+        ? db
+            .select(markCaptureSelect)
+            .from(marks)
+            .where(and(eq(marks.workspaceId, workspaceId), eq(marks.id, detailMarkId)))
+            .limit(1)
+            .then((rows) => rows[0] ?? null)
+        : Promise.resolve(null),
     ];
-    [labelLinkRows, commentCountRows, commentRows, eventRows] =
+    [labelLinkRows, commentCountRows, commentRows, eventRows, detailCaptureRow] =
       await Promise.all(jobs);
   }
 
@@ -582,44 +633,44 @@ async function loadMarks(
     }
   }
 
-  const markScreenshotPaths = options.resolveImages
-    ? markRows
-        .filter((mark) => !detailMarkId || mark.id === detailMarkId)
-        .map((mark) => mark.screenshotUrl)
-        .filter(isStoragePath)
-    : [];
+  const markScreenshotPaths =
+    options.resolveImages && detailCaptureRow
+      ? [detailCaptureRow.screenshotUrl].filter(isStoragePath)
+      : [];
   const signedMarkScreenshotByPath = await resolveImageUrls(
     options.supabase,
     markScreenshotPaths,
   );
 
   const marksOut: MarkItem[] = markRows.map((mark) => {
-    const rawScreenshotUrl = mark.screenshotUrl;
+    const captureRow = mark.id === detailCaptureRow?.id ? detailCaptureRow : null;
+    const rawScreenshotUrl = captureRow?.screenshotUrl ?? null;
     const screenshotUrl =
       options.resolveImages && isStoragePath(rawScreenshotUrl)
         ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
         : rawScreenshotUrl;
     const domSnapshot =
-      mark.domSnapshot &&
-      typeof mark.domSnapshot === "object" &&
-      !Array.isArray(mark.domSnapshot)
-        ? (mark.domSnapshot as Record<string, unknown>)
+      captureRow?.domSnapshot &&
+      typeof captureRow.domSnapshot === "object" &&
+      !Array.isArray(captureRow.domSnapshot)
+        ? (captureRow.domSnapshot as Record<string, unknown>)
         : undefined;
     const capture =
-      mark.selector ||
-      mark.viewport ||
-      mark.browser ||
-      mark.os ||
+      captureRow &&
+      (captureRow.selector ||
+      captureRow.viewport ||
+      captureRow.browser ||
+      captureRow.os ||
       domSnapshot ||
-      screenshotUrl
+      screenshotUrl)
         ? {
-            selector: mark.selector ?? undefined,
-            viewport: mark.viewport ?? undefined,
-            browser: mark.browser ?? undefined,
-            os: mark.os ?? undefined,
+            selector: captureRow.selector ?? undefined,
+            viewport: captureRow.viewport ?? undefined,
+            browser: captureRow.browser ?? undefined,
+            os: captureRow.os ?? undefined,
             domSnapshot,
             screenshotUrl: screenshotUrl ?? undefined,
-            capturedAt: mark.capturedAt ? toIso(mark.capturedAt) : undefined,
+            capturedAt: captureRow.capturedAt ? toIso(captureRow.capturedAt) : undefined,
           }
         : undefined;
     const seq = Number(mark.seq ?? 0);
