@@ -4,8 +4,6 @@ import { useEffect, useMemo, useReducer, useState } from "react";
 
 import { Field } from "@/components/field";
 import { FilterSelect } from "@/components/filter-select";
-import { Pill } from "@/components/pill";
-import { PriorityBadge } from "@/components/priority-badge";
 import { NEW_MARK_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Surface } from "@/components/surface";
 import { LabelPicker } from "@/components/label-picker";
@@ -24,7 +22,7 @@ import {
 } from "@/lib/workspace/mark-page-url";
 import { useCreateLabelMutation } from "@/lib/queries/use-workspace-mutations";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
 
 const UNASSIGNED = "__unassigned";
 
@@ -92,8 +90,6 @@ interface NewMarkFormProps {
   open?: boolean;
   /** `surface`: legacy inline card. `plain`: body only for dialog content. */
   variant?: "surface" | "plain";
-  /** Name of the project the mark will land in, shown in the live preview row. */
-  targetProjectLabel?: string;
 }
 
 export function NewMarkForm({
@@ -104,7 +100,6 @@ export function NewMarkForm({
   onCancel,
   open,
   variant = "surface",
-  targetProjectLabel,
 }: NewMarkFormProps) {
   const { mutateAsync: createLabel } = useCreateLabelMutation();
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
@@ -123,16 +118,6 @@ export function NewMarkForm({
   );
   const pageOk = isValidMarkPageUrl(normalizedPage);
   const canSubmit = Boolean(state.title.trim() && pageOk);
-
-  const labelsById = useMemo(() => new Map(labels.map((l) => [l.id, l])), [labels]);
-  const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
-  const selectedPreviewLabels = state.labelIds
-    .map((id) => labelsById.get(id))
-    .filter((l): l is WorkspaceLabel => Boolean(l));
-  const previewAssignee = state.assigneeId !== UNASSIGNED ? membersById.get(state.assigneeId) : undefined;
-  const previewAssigneeParts = previewAssignee
-    ? memberDisplayParts(previewAssignee, namePref)
-    : null;
 
   const assigneeOptions = useMemo(
     () => [
@@ -256,29 +241,6 @@ export function NewMarkForm({
           size="sm"
           triggerClassName="h-10 sm:h-8"
         />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 rounded-md bg-paper-2 px-3 py-2 ring-1 ring-rule/45 sm:col-span-2">
-        <span className="font-mono text-ui-2xs uppercase tracking-[0.14em] text-ink-3">
-          Preview
-        </span>
-        <PriorityBadge priority={state.priority} size="sm" />
-        {selectedPreviewLabels.map((label) => (
-          <Pill key={label.id} size="sm">{label.name}</Pill>
-        ))}
-        {previewAssignee && previewAssigneeParts ? (
-          <span className="inline-flex items-center gap-1 text-ui-xs text-ink-2">
-            <span className="inline-flex size-4 items-center justify-center rounded-full bg-paper-3 text-ui-2xs font-medium text-ink-2">
-              {previewAssignee.initials}
-            </span>
-            <span className="text-ink-2">{previewAssigneeParts.primary}</span>
-          </span>
-        ) : null}
-        {targetProjectLabel ? (
-          <span className="ml-auto truncate text-ui-xs text-ink-3">
-            in <span className="font-medium text-ink">{targetProjectLabel}</span>
-          </span>
-        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-2">

@@ -207,7 +207,6 @@ function ViewDetail({
 
       <MarkFilters
         filters={dashboardFilters}
-        visibleCount={visibleMarks.length}
         labels={workspace.labels}
         onChange={updateDashboardViewOptions}
       />

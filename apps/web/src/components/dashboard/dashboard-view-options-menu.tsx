@@ -1,12 +1,14 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Save, Settings2, SlidersHorizontal } from "lucide-react";
 
 import { MARK_SORT_OPTIONS } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -36,6 +38,8 @@ const DASHBOARD_DENSITY_OPTIONS: ReadonlyArray<{ value: DashboardDensity; label:
 
 interface DashboardViewOptionsMenuProps {
   filters: DashboardFilters;
+  canSaveView?: boolean;
+  onSaveView?: () => void;
   onApply: (
     patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
     options?: { resetPage?: boolean },
@@ -44,6 +48,8 @@ interface DashboardViewOptionsMenuProps {
 
 export function DashboardViewOptionsMenu({
   filters,
+  canSaveView = false,
+  onSaveView,
   onApply,
 }: DashboardViewOptionsMenuProps) {
   const activeCount =
@@ -118,6 +124,24 @@ export function DashboardViewOptionsMenu({
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!canSaveView}
+          onSelect={(event) => {
+            event.preventDefault();
+            if (canSaveView) onSaveView?.();
+          }}
+        >
+          <Save className="size-3.5" aria-hidden />
+          Save view
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/views">
+            <Settings2 className="size-3.5" aria-hidden />
+            Manage views
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

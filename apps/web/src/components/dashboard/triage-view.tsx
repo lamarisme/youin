@@ -119,6 +119,7 @@ export function TriageView() {
     filters.label !== "all" ||
     (!isMyMarksPage && filters.assignee !== "all") ||
     filters.q.trim().length > 0;
+  const showDashboardControls = scopeMarks.length > 0 || filtersActive;
 
   function clearFilters() {
     update(
@@ -302,33 +303,39 @@ export function TriageView() {
           <BreadcrumbHeader
             items={[{ label: pageTitle, current: true }]}
             actions={
-              <Button
-                size="sm"
-                variant="mark"
-                onClick={() => setShowNew(true)}
-                className="h-7 gap-1.5 rounded-md px-2 text-ui-sm"
-              >
-                <Plus className="size-3.5 shrink-0 opacity-90" />
-                New mark
-              </Button>
+              showDashboardControls ? (
+                <Button
+                  size="sm"
+                  variant="mark"
+                  onClick={() => setShowNew(true)}
+                  className="h-7 gap-1.5 rounded-md px-2 text-ui-sm"
+                >
+                  <Plus className="size-3.5 shrink-0 opacity-90" />
+                  New mark
+                </Button>
+              ) : null
             }
           />
 
-          <DashboardViewsBar
-            views={workspace.views}
-            filters={filters}
-            viewerId={userId}
-            counts={scopeCounts}
-            onApply={update}
-          />
+          {showDashboardControls ? (
+            <>
+              <DashboardViewsBar
+                views={workspace.views}
+                filters={filters}
+                viewerId={userId}
+                counts={scopeCounts}
+                onApply={update}
+              />
 
-          <MarkFilters
-            filters={filters}
-            visibleCount={visibleMarks.length}
-            labels={workspace.labels}
-            lockedAssignee={isMyMarksPage ? "me" : undefined}
-            onChange={update}
-          />
+              <MarkFilters
+                filters={filters}
+                labels={workspace.labels}
+                lockedAssignee={isMyMarksPage ? "me" : undefined}
+                showAppliedFilters={visibleMarks.length > 0}
+                onChange={update}
+              />
+            </>
+          ) : null}
 
           <Dialog open={showNew} onOpenChange={setShowNew}>
             <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -347,7 +354,6 @@ export function TriageView() {
                   defaultAssigneeId={userId ?? undefined}
                   open={showNew}
                   variant="plain"
-                  targetProjectLabel={selectedProject?.name}
                   onSubmit={handleCreateMark}
                   onCancel={() => setShowNew(false)}
                 />

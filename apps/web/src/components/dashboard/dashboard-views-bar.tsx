@@ -1,13 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import {
   CircleDashed,
   Flame,
   Inbox,
   LayoutList,
-  Plus,
-  Save,
   UserCheck,
   View,
   type LucideIcon,
@@ -140,6 +137,16 @@ export function DashboardViewsBar({
     workspaceSnapshot.filters,
     DEFAULT_WORKSPACE_VIEW_FILTERS,
   ) || !workspaceConfigEqual(workspaceSnapshot.config, DEFAULT_WORKSPACE_VIEW_CONFIG);
+  const canSaveView = hasSavableState && !activeWorkspaceViewId;
+  const visibleBuiltIns = useMemo(
+    () =>
+      builtIns.filter((view) => {
+        if (view.id === "triage" || view.id === "all") return true;
+        if (builtInMatches(view, filters)) return true;
+        return typeof view.count === "number" && view.count > 0;
+      }),
+    [builtIns, filters],
+  );
 
   async function commitSave() {
     const name = draftName.trim();
@@ -198,7 +205,7 @@ export function DashboardViewsBar({
       aria-label="Dashboard views"
       className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-rule/70 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      {builtIns.map((view) => (
+      {visibleBuiltIns.map((view) => (
         <ViewChip
           key={view.id}
           label={view.name}
@@ -225,7 +232,6 @@ export function DashboardViewsBar({
       ))}
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
-        <DashboardViewOptionsMenu filters={filters} onApply={onApply} />
         {saving ? (
           <span className="inline-flex h-7 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65">
             <input
@@ -259,24 +265,13 @@ export function DashboardViewsBar({
               Save
             </Button>
           </span>
-        ) : hasSavableState && !activeWorkspaceViewId ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink"
-            onClick={() => setSaving(true)}
-          >
-            <Save className="size-3" aria-hidden />
-            Save
-          </Button>
         ) : null}
-        <Button asChild type="button" size="sm" variant="ghost" className="h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink">
-          <Link href="/views">
-            <Plus className="size-3" aria-hidden />
-            Manage
-          </Link>
-        </Button>
+        <DashboardViewOptionsMenu
+          filters={filters}
+          canSaveView={canSaveView}
+          onSaveView={() => setSaving(true)}
+          onApply={onApply}
+        />
       </div>
     </div>
   );

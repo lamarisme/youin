@@ -42,17 +42,17 @@ import type {
 
 interface MarkFiltersProps {
   filters: DashboardFilters;
-  visibleCount: number;
   labels: WorkspaceLabel[];
   lockedAssignee?: AssigneeFilter;
+  showAppliedFilters?: boolean;
   onChange: (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => void;
 }
 
 export function MarkFilters({
   filters,
-  visibleCount,
   labels,
   lockedAssignee,
+  showAppliedFilters = true,
   onChange,
 }: MarkFiltersProps) {
   const { viewerId, workflowStatuses } = useWorkspaceData((s) => ({
@@ -426,12 +426,9 @@ export function MarkFilters({
             </div>
           </DialogContent>
         </Dialog>
-        <span className="ml-auto text-ui-xs tabular-nums text-ink-3">
-          {visibleCount} mark{visibleCount === 1 ? "" : "s"}
-        </span>
       </div>
 
-      {activeFilters.length > 0 ? (
+      {showAppliedFilters && activeFilters.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {activeFilters.map((f) => (
             <Badge
