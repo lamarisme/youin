@@ -1,6 +1,5 @@
 "use client";
 
-import { type KeyboardEvent } from "react";
 import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -33,8 +32,6 @@ export interface MarkTableProps {
   onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
   onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
   onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
-  onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
-  onShowShortcuts?: () => void;
   activeMarkId?: string;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
@@ -54,8 +51,6 @@ export function MarkTable(props: MarkTableProps) {
     displayNamePreference,
     onSelectMark,
     onToggleMarkStatus,
-    onNavigateAdjacent,
-    onShowShortcuts,
     activeMarkId,
     selectedIds,
     onSelectionChange,
@@ -89,20 +84,7 @@ export function MarkTable(props: MarkTableProps) {
   }
 
   return (
-    <div
-      className="outline-none"
-      tabIndex={0}
-      aria-label="Marks list"
-      onKeyDown={(event) =>
-        handleListKeyDown(event, {
-          marks,
-          activeMarkId,
-          onNavigateAdjacent,
-          onToggleMarkStatus,
-          onShowShortcuts,
-        })
-      }
-    >
+    <div className="outline-none" aria-label="Marks list">
       {showSectionHeader ? (
         <div
           className={cn(
@@ -430,77 +412,5 @@ function PrioritySignal({ priority }: { priority: MarkPriority }) {
       role="img"
       aria-label={`${priority} priority`}
     />
-  );
-}
-
-function handleListKeyDown(
-  event: KeyboardEvent<HTMLElement>,
-  {
-    marks,
-    activeMarkId,
-    onNavigateAdjacent,
-    onToggleMarkStatus,
-    onShowShortcuts,
-  }: {
-    marks: MarkItem[];
-    activeMarkId?: string;
-    onNavigateAdjacent?: (direction: "prev" | "next", fromMark?: MarkItem) => void;
-    onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
-    onShowShortcuts?: () => void;
-  },
-) {
-  if (isEditableTarget(event.target)) return;
-
-  const key = event.key;
-  if ((key === "j" || key === "ArrowDown") && onNavigateAdjacent) {
-    event.preventDefault();
-    event.stopPropagation();
-    onNavigateAdjacent("next", currentKeyboardMark(event.target, marks, activeMarkId));
-    return;
-  }
-  if ((key === "k" || key === "ArrowUp") && onNavigateAdjacent) {
-    event.preventDefault();
-    event.stopPropagation();
-    onNavigateAdjacent("prev", currentKeyboardMark(event.target, marks, activeMarkId));
-    return;
-  }
-  if (key === "x" && onToggleMarkStatus) {
-    const mark = currentKeyboardMark(event.target, marks, activeMarkId);
-    if (!mark) return;
-    event.preventDefault();
-    event.stopPropagation();
-    void onToggleMarkStatus(mark);
-    return;
-  }
-  if ((key === "?" || (key === "/" && event.shiftKey)) && onShowShortcuts) {
-    event.preventDefault();
-    event.stopPropagation();
-    onShowShortcuts();
-  }
-}
-
-function currentKeyboardMark(
-  target: EventTarget,
-  marks: MarkItem[],
-  activeMarkId?: string,
-) {
-  const targetElement = target instanceof HTMLElement ? target : null;
-  const focusedMarkId = targetElement?.closest<HTMLElement>("[data-mark-id]")?.dataset.markId;
-  return (
-    marks.find((mark) => mark.id === focusedMarkId) ??
-    marks.find((mark) => mark.id === activeMarkId) ??
-    marks[0]
-  );
-}
-
-function isEditableTarget(target: EventTarget) {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tagName = target.tagName.toLowerCase();
-  return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
-    target.getAttribute("role") === "textbox"
   );
 }

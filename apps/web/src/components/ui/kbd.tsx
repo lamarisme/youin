@@ -20,21 +20,4 @@ function Kbd({
   );
 }
 
-function KeyboardHint({
-  keys,
-  action,
-}: {
-  keys: string[];
-  action: string;
-}) {
-  return (
-    <p className="hidden items-center gap-1.5 text-ui-xs text-ink-3 sm:flex">
-      {keys.map((key, i) => (
-        <Kbd key={i}>{key}</Kbd>
-      ))}
-      <span>{action}</span>
-    </p>
-  );
-}
-
-export { Kbd, KeyboardHint };
+export { Kbd };

@@ -46,7 +46,6 @@ import { markHref } from "@/lib/workspace/routes";
 import { BulkActionBar } from "./bulk-action-bar";
 import { DashboardViewsBar } from "./dashboard-views-bar";
 import { MarkFilters } from "./mark-filters";
-import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { MarkTable } from "./mark-table";
 import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
@@ -75,7 +74,6 @@ export function TriageView() {
   const routeProjectId = searchParams.get("project");
   const searchParamString = searchParams.toString();
   const [showNew, setShowNew] = useState(() => searchParams.get("new") === "1");
-  const [showListHelp, setShowListHelp] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const selectedProject = useMemo(() => {
@@ -137,26 +135,6 @@ export function TriageView() {
     );
   }
 
-  function handleListNavigate(
-    direction: "prev" | "next",
-    fromMark?: MarkItem,
-  ) {
-    if (visibleMarks.length === 0) return;
-    const sourceId = fromMark?.id;
-    const sourceIndex = sourceId
-      ? visibleMarks.findIndex((mark) => mark.id === sourceId)
-      : -1;
-    const fallbackIndex = direction === "next" ? -1 : visibleMarks.length;
-    const currentIndex = sourceIndex >= 0 ? sourceIndex : fallbackIndex;
-    const nextIndex =
-      direction === "next"
-        ? Math.min(currentIndex + 1, visibleMarks.length - 1)
-        : Math.max(currentIndex - 1, 0);
-    const nextMark = visibleMarks[nextIndex];
-    if (!nextMark || nextMark.id === sourceId) return;
-    router.push(markHref(nextMark.displayKey, searchParams));
-  }
-
   function handleRowToggleStatus(mark: MarkItem) {
     void toggleMarkStatus(mark.id);
   }
@@ -174,19 +152,6 @@ export function TriageView() {
     }
     window.addEventListener("youin:new-mark", openNewMark);
     return () => window.removeEventListener("youin:new-mark", openNewMark);
-  }, []);
-
-  useEffect(() => {
-    function handler(event: KeyboardEvent) {
-      if (isEditableEventTarget(event.target)) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.key.toLowerCase() === "c") {
-        event.preventDefault();
-        setShowNew(true);
-      }
-    }
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(visibleMarks.length / PAGE_SIZE));
@@ -421,8 +386,6 @@ export function TriageView() {
                 onSelectionChange={handleSelectionChange}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
-                onNavigateAdjacent={handleListNavigate}
-                onShowShortcuts={() => setShowListHelp(true)}
                 onSetWorkflowStatus={(mark, workflowStatusId) =>
                   setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
                 }
@@ -451,8 +414,6 @@ export function TriageView() {
                 density={filters.density === "compact" ? "compact" : "default"}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
-                onNavigateAdjacent={handleListNavigate}
-                onShowShortcuts={() => setShowListHelp(true)}
                 onSetWorkflowStatus={(mark, workflowStatusId) =>
                   setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
                 }
@@ -491,7 +452,6 @@ export function TriageView() {
         />
       ) : null}
 
-      <MarkShortcutsHelp open={showListHelp} onOpenChange={setShowListHelp} />
     </>
   );
 }
@@ -519,8 +479,6 @@ function GroupedMarkTables({
   onSelectionChange,
   onSelectMark,
   onToggleMarkStatus,
-  onNavigateAdjacent,
-  onShowShortcuts,
   onSetWorkflowStatus,
   onSetPriority,
   onAssignMark,
@@ -539,8 +497,6 @@ function GroupedMarkTables({
   onSelectionChange: (ids: Set<string>) => void;
   onSelectMark: (mark: MarkItem) => void;
   onToggleMarkStatus: (mark: MarkItem) => void | Promise<void>;
-  onNavigateAdjacent: (direction: "prev" | "next", fromMark?: MarkItem) => void;
-  onShowShortcuts: () => void;
   onSetWorkflowStatus: (mark: MarkItem, workflowStatusId: string) => void;
   onSetPriority: (mark: MarkItem, priority: MarkPriority) => void;
   onAssignMark: (mark: MarkItem, assigneeId: string | null) => void;
@@ -577,8 +533,6 @@ function GroupedMarkTables({
             density={density}
             onSelectMark={onSelectMark}
             onToggleMarkStatus={onToggleMarkStatus}
-            onNavigateAdjacent={onNavigateAdjacent}
-            onShowShortcuts={onShowShortcuts}
             onSetWorkflowStatus={onSetWorkflowStatus}
             onSetPriority={onSetPriority}
             onAssignMark={onAssignMark}
@@ -685,11 +639,4 @@ function listSectionTitle({
   if (filters.assignee === "unassigned") return "Unassigned";
   if (filters.assignee === "me") return "Mine";
   return "All marks";
-}
-
-function isEditableEventTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tagName = target.tagName.toLowerCase();
-  return tagName === "input" || tagName === "textarea" || tagName === "select" || target.getAttribute("role") === "textbox";
 }

@@ -94,7 +94,6 @@ export function MarkDetailActions({
             size="sm"
             variant="ghost"
             onClick={() => toggleMarkStatus(mark.id)}
-            aria-keyshortcuts="X"
             aria-label={mark.status === "open" ? "Close mark" : "Reopen mark"}
             className={cn(
               "h-10 px-1.5 text-ui-sm hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
@@ -162,7 +161,6 @@ export function MarkDetailActions({
           variant="ghost"
           onClick={() => toggleMarkPinned(mark.id)}
           aria-pressed={mark.pinned}
-          aria-keyshortcuts="B"
           className={cn(
             "h-10 px-1.5 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 sm:h-8",
             mark.pinned && "bg-mark-soft text-mark hover:bg-mark-soft hover:text-mark",

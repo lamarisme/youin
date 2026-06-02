@@ -2,13 +2,11 @@
 
 import type { ReactNode } from "react";
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Copy,
   ExternalLink,
   Link2,
-  MoreHorizontal,
   Star,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -36,7 +34,6 @@ interface MarkDetailNavProps {
   onPrev: () => void;
   onNext: () => void;
   onTogglePinned: () => void;
-  onShowHelp: () => void;
 }
 
 export function MarkDetailNav({
@@ -52,7 +49,6 @@ export function MarkDetailNav({
   onPrev,
   onNext,
   onTogglePinned,
-  onShowHelp,
 }: MarkDetailNavProps) {
   const pageHref = resolveMarkPageHref(page);
 
@@ -116,9 +112,6 @@ export function MarkDetailNav({
                   aria-hidden
                 />
               </HeaderIconButton>
-              <HeaderIconButton label="Show keyboard shortcuts" onClick={onShowHelp}>
-                <MoreHorizontal className="size-4" aria-hidden />
-              </HeaderIconButton>
             </li>
           </ol>
         </nav>
@@ -162,7 +155,6 @@ export function MarkDetailNav({
               onClick={onPrev}
               disabled={!canPrev}
               aria-label="Go to previous mark"
-              aria-keyshortcuts="K"
               className="inline-flex size-7 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45"
             >
               <ChevronLeft className="size-3.5" aria-hidden />
@@ -173,20 +165,10 @@ export function MarkDetailNav({
               onClick={onNext}
               disabled={!canNext}
               aria-label="Go to next mark"
-              aria-keyshortcuts="J"
               title={positionLabel}
               className="inline-flex size-7 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45"
             >
               <ChevronRight className="size-3.5" aria-hidden />
-            </button>
-            <span className="h-4 w-px bg-rule" aria-hidden />
-            <button
-              type="button"
-              onClick={onShowHelp}
-              aria-label="More mark actions"
-              className="hidden size-7 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink sm:inline-flex"
-            >
-              <ChevronDown className="size-3.5" aria-hidden />
             </button>
           </div>
         </div>

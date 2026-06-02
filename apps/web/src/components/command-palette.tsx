@@ -191,7 +191,6 @@ function CommandPaletteDialog({
         title: t("actions.newMark"),
         subtitle: t("actions.newMarkSub"),
         group: "actions",
-        shortcut: "C",
         icon: Plus,
         run: openNewMark,
       },

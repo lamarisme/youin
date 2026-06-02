@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
-import { KeyboardHint } from "@/components/ui/kbd";
 import { toast } from "sonner";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
@@ -173,13 +172,6 @@ export function NewMarkForm({
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
-      void handleSubmit();
-    }
-  }
-
   async function handleCreateLabel(name: string): Promise<WorkspaceLabel | undefined> {
     try {
       const created = await createLabel(name);
@@ -194,7 +186,7 @@ export function NewMarkForm({
   }
 
   const grid = (
-    <div className="grid gap-3 sm:grid-cols-2" onKeyDown={handleKeyDown}>
+    <div className="grid gap-3 sm:grid-cols-2">
       <Field id="new-mark-title" label="Title">
         <Input
           id="new-mark-title"
@@ -290,7 +282,6 @@ export function NewMarkForm({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-2">
-        <KeyboardHint keys={["⌘", "Enter"]} action="to create" />
         <div className="flex items-center gap-2">
           {onCancel ? (
             <Button variant="ghost" onClick={onCancel} className="h-10 sm:h-8">

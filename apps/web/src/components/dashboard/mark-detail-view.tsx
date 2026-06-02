@@ -23,7 +23,6 @@ import {
   useDeleteMarkMutation,
   useSetMarkLabelsMutation,
   useToggleMarkPinnedMutation,
-  useToggleMarkStatusMutation,
   useUpdateMarkMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
@@ -42,14 +41,8 @@ import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
-import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markHref } from "@/lib/workspace/routes";
-import {
-  clickByAria,
-  focusElementById,
-  useMarkDetailShortcuts,
-} from "./use-mark-detail-shortcuts";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 interface MarkDetailViewProps {
@@ -64,7 +57,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const workspace = useWorkspaceData((s) => s.workspace);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { mutate: toggleMarkStatus } = useToggleMarkStatusMutation();
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
   const { mutate: setMarkLabels } = useSetMarkLabelsMutation();
   const { mutateAsync: createLabel } = useCreateLabelMutation();
@@ -102,8 +94,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const [editDescription, setEditDescription] = useState(mark.description);
   const [editPage, setEditPage] = useState(mark.page);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const isEditing = editingField !== null;
   const isPane = variant === "pane";
 
   function startEdit(field: EditingField = "title") {
@@ -204,25 +194,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     if (next) router.push(markHref(next.displayKey, searchParams));
   }
 
-  useMarkDetailShortcuts({
-    enabled: !isEditing && !confirmDelete && !showHelp,
-    onNext: () => goAdjacent("next"),
-    onPrev: () => goAdjacent("prev"),
-    onEdit: () => startEdit(),
-    onToggleStatus: () => toggleMarkStatus(mark.id),
-    onTogglePinned: () => toggleMarkPinned(mark.id),
-    onFocusComment: () => focusElementById("comment-composer"),
-    onOpenStatus: () =>
-      clickByAria("Mark workflow status") ||
-      clickByAria("Close mark") ||
-      clickByAria("Reopen mark"),
-    onOpenAssignee: () => clickByAria("Mark assignee"),
-    onOpenPriority: () => clickByAria("Mark priority"),
-    onOpenLabels: () => clickByAria("Labels"),
-    onShowHelp: () => setShowHelp(true),
-    onBack: () => router.push(backHref),
-  });
-
   return (
     <>
       {!isPane ? (
@@ -239,7 +210,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
           onPrev={() => goAdjacent("prev")}
           onNext={() => goAdjacent("next")}
           onTogglePinned={() => toggleMarkPinned(mark.id)}
-          onShowHelp={() => setShowHelp(true)}
         />
       ) : null}
 
@@ -511,7 +481,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
         </DialogContent>
       </Dialog>
 
-      <MarkShortcutsHelp open={showHelp} onOpenChange={setShowHelp} />
     </>
   );
 }
