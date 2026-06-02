@@ -604,7 +604,12 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
 
   let res: Response
   try {
-    res = await fetch(`${WEB_APP_URL}/api/extension/marks`, {
+    const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
+    const activeProjectId = await getActiveProjectId()
+    if (isUuidLike(activeProjectId)) {
+      url.searchParams.set("projectId", activeProjectId)
+    }
+    res = await fetch(url.toString(), {
       headers: {
         authorization: `Bearer ${session.access_token}`
       }

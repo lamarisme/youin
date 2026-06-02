@@ -4,10 +4,15 @@ export function projectMarkCountsFromMarks(
   projects: readonly WorkspaceProject[],
   marks: readonly MarkItem[],
 ): Map<string, number> {
-  const hasHydratedMarks = marks.length > 0;
+  const hasAuthoritativeProjectCounts = projects.every(
+    (project) => typeof project.markCount === "number",
+  );
   const counts = new Map<string, number>();
   for (const project of projects) {
-    counts.set(project.id, hasHydratedMarks ? 0 : (project.markCount ?? 0));
+    counts.set(project.id, project.markCount ?? 0);
+  }
+  if (hasAuthoritativeProjectCounts) {
+    return counts;
   }
   for (const mark of marks) {
     counts.set(mark.projectId, (counts.get(mark.projectId) ?? 0) + 1);

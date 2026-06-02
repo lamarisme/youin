@@ -4,8 +4,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   CircleDashed,
   Folder,
-  Flame,
-  Inbox,
   Link2,
   Plus,
   UserRound,
@@ -15,7 +13,6 @@ import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
-import { FadeIn } from "@/components/motion";
 import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +40,6 @@ import {
   useToggleMarkStatusMutation,
   useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
-import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { markHref } from "@/lib/workspace/routes";
 
@@ -54,16 +50,11 @@ import { MarkShortcutsHelp } from "./mark-shortcuts-help";
 import { MarkTable } from "./mark-table";
 import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
-import {
-  getTriageAttentionCounts,
-  type TriageAttentionCounts,
-} from "./triage-cockpit";
+import { getTriageAttentionCounts } from "./triage-cockpit";
 import { useDashboardFilters, type DashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 const PAGE_SIZE = 8;
-
-type AttentionQueue = "open" | "critical" | "mine" | "unassigned";
 
 export function TriageView() {
   const { workspace, userId, displayNamePreference } =
@@ -81,36 +72,38 @@ export function TriageView() {
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const routeProjectId = searchParams.get("project");
   const searchParamString = searchParams.toString();
   const [showNew, setShowNew] = useState(() => searchParams.get("new") === "1");
   const [showListHelp, setShowListHelp] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const selectedProject = useMemo(() => {
-    if (filters.projectId === "all") return null;
     return (
-      workspace.projects.find((project) => project.id === filters.projectId) ??
+      workspace.projects.find((project) => project.id === routeProjectId) ??
+      workspace.projects[0] ??
       null
     );
-  }, [filters.projectId, workspace.projects]);
+  }, [routeProjectId, workspace.projects]);
 
   const activeProjectId = selectedProject?.id ?? null;
   const isMyMarksPage = filters.assignee === "me";
-  const attentionScopeMarks = useMemo(
-    () => {
-      const projectMarks = activeProjectId
+  const scopeMarks = useMemo(
+    () =>
+      activeProjectId
         ? workspace.marks.filter((mark) => mark.projectId === activeProjectId)
-        : workspace.marks;
-      if (!isMyMarksPage) return projectMarks;
-      return userId ? projectMarks.filter((mark) => mark.assigneeId === userId) : [];
-    },
-    [activeProjectId, isMyMarksPage, userId, workspace.marks],
+        : workspace.marks,
+    [activeProjectId, workspace.marks],
   );
 
   const visibleMarks = useVisibleDashboardMarks();
   const attentionCounts = useMemo(
-    () => getTriageAttentionCounts(attentionScopeMarks, userId),
-    [attentionScopeMarks, userId],
+    () => getTriageAttentionCounts(scopeMarks, userId),
+    [scopeMarks, userId],
+  );
+  const scopeCounts = useMemo(
+    () => ({ ...attentionCounts, total: scopeMarks.length }),
+    [attentionCounts, scopeMarks.length],
   );
   const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
@@ -121,53 +114,27 @@ export function TriageView() {
   const allSelectedClosed = selectedMarks.length > 0 && selectedMarks.every((p) => p.status === "closed");
 
   const filtersActive =
-    filters.projectId !== "all" ||
     filters.status !== "all" ||
     filters.workflowStatus !== "all" ||
     filters.priority !== "all" ||
     filters.pinned !== "all" ||
     filters.label !== "all" ||
     (!isMyMarksPage && filters.assignee !== "all") ||
-    filters.sort !== "recent" ||
-    filters.groupBy !== "none" ||
-    filters.density !== "comfortable" ||
     filters.q.trim().length > 0;
 
   function clearFilters() {
     update(
       {
-        projectId: "all",
         status: "all",
         workflowStatus: "all",
         priority: "all",
         pinned: "all",
         label: "all",
         assignee: isMyMarksPage ? "me" : "all",
-        sort: "recent",
-        groupBy: "none",
-        density: "comfortable",
         q: null,
       },
       { resetPage: true },
     );
-  }
-
-  function applyQueue(queue: AttentionQueue) {
-    const base: Partial<Record<keyof DashboardFilters, string | number | null>> = {
-      status: "open",
-      workflowStatus: "all",
-      priority: "all",
-      pinned: "all",
-      label: "all",
-      assignee: isMyMarksPage ? "me" : "all",
-      q: null,
-      groupBy: "none",
-      density: "comfortable",
-    };
-    if (queue === "critical") base.priority = "critical";
-    if (queue === "mine") base.assignee = "me";
-    if (queue === "unassigned") base.assignee = "unassigned";
-    update(base, { resetPage: true });
   }
 
   function handleListNavigate(
@@ -377,6 +344,7 @@ export function TriageView() {
             views={workspace.views}
             filters={filters}
             viewerId={userId}
+            counts={scopeCounts}
             onApply={update}
           />
 
@@ -384,17 +352,7 @@ export function TriageView() {
             filters={filters}
             visibleCount={visibleMarks.length}
             labels={workspace.labels}
-            leadingControls={
-              <AttentionStrip
-                counts={attentionCounts}
-                filters={filters}
-                hasViewer={Boolean(userId)}
-                compact={isMyMarksPage}
-                onApplyQueue={applyQueue}
-              />
-            }
             lockedAssignee={isMyMarksPage ? "me" : undefined}
-            scopeLabel={selectedProject?.name ?? "All projects"}
             onChange={update}
           />
 
@@ -535,106 +493,6 @@ export function TriageView() {
 
       <MarkShortcutsHelp open={showListHelp} onOpenChange={setShowListHelp} />
     </>
-  );
-}
-
-function AttentionStrip({
-  counts,
-  filters,
-  hasViewer,
-  compact,
-  onApplyQueue,
-}: {
-  counts: TriageAttentionCounts;
-  filters: DashboardFilters;
-  hasViewer: boolean;
-  compact?: boolean;
-  onApplyQueue: (queue: AttentionQueue) => void;
-}) {
-  const activeQueue =
-    filters.status === "open" && filters.priority === "critical"
-      ? "critical"
-      : filters.status === "open" && compact
-        ? "open"
-      : filters.status === "open" && filters.assignee === "me"
-        ? "mine"
-        : filters.status === "open" && filters.assignee === "unassigned"
-          ? "unassigned"
-          : filters.status === "open"
-            ? "open"
-            : null;
-
-  return (
-    <FadeIn className="flex min-w-0 flex-wrap items-center gap-1.5">
-      <AttentionButton
-        label="Open"
-        count={counts.open}
-        active={activeQueue === "open"}
-        icon={<Inbox className="size-3.5" aria-hidden />}
-        onClick={() => onApplyQueue("open")}
-      />
-      <AttentionButton
-        label="Critical"
-        count={counts.critical}
-        active={activeQueue === "critical"}
-        icon={<Flame className="size-3.5" aria-hidden />}
-        onClick={() => onApplyQueue("critical")}
-      />
-      {compact ? null : (
-        <>
-          <AttentionButton
-            label="Mine"
-            count={counts.mine}
-            active={activeQueue === "mine"}
-            disabled={!hasViewer}
-            icon={<UserRound className="size-3.5" aria-hidden />}
-            onClick={() => onApplyQueue("mine")}
-          />
-          <AttentionButton
-            label="Unassigned"
-            count={counts.unassigned}
-            active={activeQueue === "unassigned"}
-            icon={<CircleDashed className="size-3.5" aria-hidden />}
-            onClick={() => onApplyQueue("unassigned")}
-          />
-        </>
-      )}
-    </FadeIn>
-  );
-}
-
-function AttentionButton({
-  label,
-  count,
-  active,
-  disabled,
-  icon,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  disabled?: boolean;
-  icon: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={active}
-      className={cn(
-        "inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md border border-rule/70 bg-paper-elevated px-2.5 text-left text-ui-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-50",
-        active ? "border-rule bg-paper-2 text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink",
-      )}
-    >
-      <span className={cn("text-ink-3", active && "text-mark")}>{icon}</span>
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className={cn("font-mono text-ui-xs tabular-nums text-ink-3", active && "text-mark")}>
-        {count}
-      </span>
-    </button>
   );
 }
 

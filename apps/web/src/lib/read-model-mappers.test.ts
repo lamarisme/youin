@@ -27,7 +27,7 @@ function mark(id: string, patch: Partial<MarkItem> = {}): MarkItem {
   };
 }
 
-test("projectMarkCountsFromMarks uses shell counts until marks are hydrated", () => {
+test("projectMarkCountsFromMarks keeps shell counts when marks are project-scoped", () => {
   const projects: WorkspaceProject[] = [
     {
       id: "project-a",
@@ -49,6 +49,36 @@ test("projectMarkCountsFromMarks uses shell counts until marks are hydrated", ()
     ["project-a", 4],
     ["project-b", 2],
   ]);
+
+  assert.deepEqual(
+    Array.from(
+      projectMarkCountsFromMarks(projects, [
+        mark("one", { projectId: "project-a" }),
+        mark("two", { projectId: "project-a" }),
+      ]),
+    ),
+    [
+      ["project-a", 4],
+      ["project-b", 2],
+    ],
+  );
+});
+
+test("projectMarkCountsFromMarks falls back to hydrated marks without shell counts", () => {
+  const projects: WorkspaceProject[] = [
+    {
+      id: "project-a",
+      name: "A",
+      description: "",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      id: "project-b",
+      name: "B",
+      description: "",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  ];
 
   assert.deepEqual(
     Array.from(

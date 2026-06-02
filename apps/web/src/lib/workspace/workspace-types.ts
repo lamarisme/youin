@@ -42,7 +42,13 @@ export type WorkspaceShellBootstrap = {
 
 export interface DashboardReadModel {
   workspace: Workspace;
+  selectedProjectId: string | null;
   loadedAt: string;
+}
+
+export interface DashboardReadModelRequest {
+  projectId?: string | null;
+  markParam?: string | null;
 }
 
 export interface AccountReadModel {

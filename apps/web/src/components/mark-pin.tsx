@@ -39,7 +39,7 @@ export function MarkPin({
       )}
       {...rest}
     >
-      {label}
+      <span className="pin-dot__label">{label}</span>
     </span>
   );
 }

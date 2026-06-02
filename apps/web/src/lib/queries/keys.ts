@@ -2,7 +2,10 @@ export const workspaceKeys = {
   all: ["workspace"] as const,
   shell: () => [...workspaceKeys.all, "shell"] as const,
   bootstrap: () => [...workspaceKeys.all, "bootstrap"] as const,
-  dashboard: () => [...workspaceKeys.all, "dashboard"] as const,
+  dashboard: (projectId?: string | null) =>
+    projectId
+      ? ([...workspaceKeys.all, "dashboard", projectId] as const)
+      : ([...workspaceKeys.all, "dashboard"] as const),
   account: () => [...workspaceKeys.all, "account"] as const,
   viewsIndex: () => [...workspaceKeys.all, "views-index"] as const,
   viewDetail: (viewId: string) =>

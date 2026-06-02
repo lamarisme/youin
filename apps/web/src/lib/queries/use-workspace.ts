@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { getWorkspaceShellBootstrap } from "@/lib/workspace/actions";
 import {
@@ -31,6 +32,7 @@ export function useWorkspaceQuery(
     initialData,
     enabled: false,
     staleTime: Number.POSITIVE_INFINITY,
+    gcTime: QUERY_CACHE.gcMs,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
@@ -45,9 +47,12 @@ export function useWorkspaceShellQuery(initialData?: WorkspaceShellBootstrap) {
       return shell;
     },
     initialData,
-    staleTime: 30_000,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    initialDataUpdatedAt: updatedAtFromIso(initialData?.loadedAt),
+    staleTime: QUERY_CACHE.workspaceShellStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
 }
 

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import {
   CircleDashed,
+  Flame,
   Inbox,
   LayoutList,
-  Link2,
   Plus,
   Save,
   UserCheck,
@@ -24,22 +24,33 @@ import {
   describeWorkspaceViewFilters,
 } from "@/lib/workspace/views";
 
+import { DashboardViewOptionsMenu } from "./dashboard-view-options-menu";
 import type { DashboardFilters } from "./use-dashboard-filters";
 
 interface DashboardViewsBarProps {
   views: WorkspaceView[];
   filters: DashboardFilters;
   viewerId: string | null;
+  counts?: DashboardScopeCounts;
   onApply: (
     patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
     options?: { resetPage?: boolean },
   ) => void;
 }
 
+type DashboardScopeCounts = {
+  open: number;
+  critical: number;
+  mine: number;
+  unassigned: number;
+  total: number;
+};
+
 type BuiltInView = {
   id: string;
   name: string;
   icon: LucideIcon;
+  count?: number;
   disabled?: boolean;
   filters: Partial<WorkspaceViewFilters>;
   config?: Partial<WorkspaceViewConfig>;
@@ -49,6 +60,7 @@ export function DashboardViewsBar({
   views,
   filters,
   viewerId,
+  counts,
   onApply,
 }: DashboardViewsBarProps) {
   const { mutateAsync: createView, isPending } = useCreateWorkspaceViewMutation();
@@ -66,40 +78,52 @@ export function DashboardViewsBar({
         id: "triage",
         name: "Triage",
         icon: Inbox,
+        count: counts?.open,
+        filters: { status: "open", assignee: "all", sort: "recent" },
+        config: { dashboardGroupBy: "page", dashboardDensity: "compact" },
+      },
+      {
+        id: "critical",
+        name: "Critical",
+        icon: Flame,
+        count: counts?.critical,
+        filters: { status: "open", priority: "critical", assignee: "all", sort: "priority" },
+        config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
+      },
+      {
+        id: "mine",
+        name: "Mine",
+        icon: UserCheck,
+        count: counts?.mine,
+        disabled: !viewerId,
+        filters: { status: "open", assignee: "me", sort: "recent" },
+        config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
+      },
+      {
+        id: "unassigned",
+        name: "Unassigned",
+        icon: CircleDashed,
+        count: counts?.unassigned,
         filters: { status: "open", assignee: "unassigned", sort: "recent" },
         config: { dashboardGroupBy: "page", dashboardDensity: "compact" },
       },
       {
-        id: "mine",
-        name: "My marks",
-        icon: UserCheck,
-        disabled: !viewerId,
-        filters: { status: "open", assignee: "me", sort: "recent" },
-        config: { dashboardGroupBy: "none" },
-      },
-      {
-        id: "unresolved",
-        name: "Unresolved",
-        icon: CircleDashed,
-        filters: { status: "open", assignee: "all", sort: "priority" },
-        config: { dashboardGroupBy: "status", dashboardDensity: "comfortable" },
-      },
-      {
-        id: "pages",
-        name: "By page",
-        icon: Link2,
-        filters: { status: "all", assignee: "all", sort: "recent" },
-        config: { dashboardGroupBy: "page", dashboardDensity: "compact" },
-      },
-      {
-        id: "recent",
-        name: "Recent",
+        id: "all",
+        name: "All",
         icon: LayoutList,
+        count: counts?.total,
         filters: { status: "all", assignee: "all", sort: "recent" },
         config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
       },
     ],
-    [viewerId],
+    [
+      counts?.critical,
+      counts?.mine,
+      counts?.open,
+      counts?.total,
+      counts?.unassigned,
+      viewerId,
+    ],
   );
 
   const workspaceSnapshot = useMemo(() => toWorkspaceSnapshot(filters), [filters]);
@@ -153,7 +177,6 @@ export function DashboardViewsBar({
   function applyWorkspaceView(view: WorkspaceView) {
     onApply(
       {
-        projectId: view.filters.projectId,
         status: view.filters.status,
         workflowStatus: view.filters.workflowStatus,
         priority: view.filters.priority,
@@ -179,6 +202,7 @@ export function DashboardViewsBar({
         <ViewChip
           key={view.id}
           label={view.name}
+          count={view.count}
           title={view.disabled ? "Sign in to filter by your marks." : undefined}
           icon={view.icon}
           active={builtInMatches(view, filters)}
@@ -201,6 +225,7 @@ export function DashboardViewsBar({
       ))}
 
       <div className="ml-auto flex shrink-0 items-center gap-1">
+        <DashboardViewOptionsMenu filters={filters} onApply={onApply} />
         {saving ? (
           <span className="inline-flex h-7 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65">
             <input
@@ -259,6 +284,7 @@ export function DashboardViewsBar({
 
 function ViewChip({
   label,
+  count,
   icon: Icon,
   active,
   disabled,
@@ -266,6 +292,7 @@ function ViewChip({
   onClick,
 }: {
   label: string;
+  count?: number;
   icon: LucideIcon;
   active?: boolean;
   disabled?: boolean;
@@ -288,8 +315,23 @@ function ViewChip({
     >
       <Icon className={cn("size-3 shrink-0", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
       <span className="max-w-[8rem] truncate">{label}</span>
+      {typeof count === "number" ? (
+        <span
+          className={cn(
+            "font-mono text-ui-2xs tabular-nums",
+            active ? "text-mark" : "text-ink-3",
+          )}
+        >
+          {formatScopeCount(count)}
+        </span>
+      ) : null}
     </button>
   );
+}
+
+function formatScopeCount(count: number): string {
+  if (count > 99) return "99+";
+  return String(count);
 }
 
 function toWorkspaceSnapshot(filters: DashboardFilters): {
@@ -298,7 +340,7 @@ function toWorkspaceSnapshot(filters: DashboardFilters): {
 } {
   return {
     filters: {
-      projectId: filters.projectId,
+      projectId: "all",
       status: filters.status,
       workflowStatus: filters.workflowStatus,
       priority: filters.priority,

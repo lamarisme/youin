@@ -14,6 +14,7 @@ import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { MarkFilters } from "@/components/dashboard/mark-filters";
 import { MarkTable } from "@/components/dashboard/mark-table";
+import { DashboardViewOptionsMenu } from "@/components/dashboard/dashboard-view-options-menu";
 import { Pagination } from "@/components/pagination";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -191,11 +192,17 @@ function ViewDetail({
             {viewLayoutLabel(view.layout)}
           </span>
         </div>
-        <ViewScopeFields
-          workspace={workspace}
-          filters={filters}
-          onChange={updateFilters}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <ViewScopeFields
+            workspace={workspace}
+            filters={filters}
+            onChange={updateFilters}
+          />
+          <DashboardViewOptionsMenu
+            filters={dashboardFilters}
+            onApply={updateDashboardViewOptions}
+          />
+        </div>
       </section>
 
       <MarkFilters

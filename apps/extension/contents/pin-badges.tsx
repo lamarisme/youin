@@ -223,7 +223,7 @@ const PinBadges = () => {
               )
             }}>
             <span
-              className={`relative flex h-6 w-6 select-none items-center justify-center rounded-full shadow-[0_8px_18px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_88%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${
+              className={`relative flex h-6 w-6 -rotate-45 select-none items-center justify-center rounded-[999px_999px_999px_6px] shadow-[0_8px_18px_-14px_oklch(18%_0.012_264_/_0.48),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_90%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-105 motion-reduce:transition-none ${
                 health === "attached"
                   ? "bg-[color:var(--yi-mark)]"
                   : health === "approximate"
@@ -233,8 +233,7 @@ const PinBadges = () => {
                       : "bg-[color:var(--yi-info)]"
               }`}
               aria-hidden>
-              <span className="h-2 w-2 rounded-full bg-[color:var(--yi-paper)]" />
-              <span className="absolute inset-[-4px] rounded-full border border-current opacity-40" />
+              <span className="h-1.5 w-1.5 rotate-45 rounded-full bg-[color:var(--yi-paper)]" />
             </span>
           </button>
         )

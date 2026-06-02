@@ -84,6 +84,25 @@ function workflowStatusById(
   return statuses.find((status) => status.id === id);
 }
 
+function adjustProjectMarkCount(
+  projects: readonly WorkspaceProject[],
+  projectId: string | undefined,
+  delta: number,
+): WorkspaceProject[] {
+  if (!projectId) return [...projects];
+  const hasAuthoritativeProjectCounts = projects.every(
+    (project) => typeof project.markCount === "number",
+  );
+  if (!hasAuthoritativeProjectCounts) return [...projects];
+  return projects.map((project) => {
+    if (project.id !== projectId) return project;
+    return {
+      ...project,
+      markCount: Math.max(0, (project.markCount ?? 0) + delta),
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Views
 // ---------------------------------------------------------------------------
@@ -190,7 +209,7 @@ export function useCreateProjectMutation() {
     onSuccess: (project: WorkspaceProject) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        projects: [...workspace.projects, project],
+        projects: [...workspace.projects, { ...project, markCount: project.markCount ?? 0 }],
       }));
       toast.success(`Created “${project.name}”.`);
     },
@@ -239,6 +258,7 @@ export function useCreateMarkMutation() {
     onSuccess: (mark) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
+        projects: adjustProjectMarkCount(workspace.projects, mark.projectId, 1),
         marks: [...workspace.marks, mark],
       }));
       toast.success(`Created ${mark.displayKey}.`);
@@ -340,12 +360,18 @@ export function useDeleteMarkMutation() {
     onMutate: async (markId) => {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        marks: workspace.marks.filter((mark) => mark.id !== markId),
-        comments: workspace.comments.filter((comment) => comment.markId !== markId),
-        markEvents: workspace.markEvents.filter((event) => event.markId !== markId),
-      }));
+      updateWorkspace(queryClient, (workspace) => {
+        const deleted = workspace.marks.find((mark) => mark.id === markId);
+        return {
+          ...workspace,
+          projects: deleted
+            ? adjustProjectMarkCount(workspace.projects, deleted.projectId, -1)
+            : workspace.projects,
+          marks: workspace.marks.filter((mark) => mark.id !== markId),
+          comments: workspace.comments.filter((comment) => comment.markId !== markId),
+          markEvents: workspace.markEvents.filter((event) => event.markId !== markId),
+        };
+      });
       return context;
     },
     onSuccess: () => toast.success("Mark deleted."),
@@ -376,8 +402,19 @@ export function useUpdateMarkMutation() {
       await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => {
+        const existing = workspace.marks.find((mark) => mark.id === markId);
+        const nextProjectId = updates.projectId;
+        const projects =
+          existing && nextProjectId && nextProjectId !== existing.projectId
+            ? adjustProjectMarkCount(
+                adjustProjectMarkCount(workspace.projects, existing.projectId, -1),
+                nextProjectId,
+                1,
+              )
+            : workspace.projects;
         return {
           ...workspace,
+          projects,
           marks: workspace.marks.map((mark) =>
             mark.id === markId
               ? {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
   composeWorkspaceBootstrap,
@@ -44,6 +45,10 @@ function completeWorkspace(
   };
 }
 
+function readModelUpdatedAt(loadedAt: string): number | undefined {
+  return updatedAtFromIso(loadedAt);
+}
+
 function useSeedReadModelWorkspace(
   workspace: Workspace | undefined,
   loadedAt: string | undefined,
@@ -66,17 +71,25 @@ function useSeedReadModelWorkspace(
 
 export function DashboardReadModelProvider({
   initialData,
+  projectId,
   children,
 }: {
   initialData: DashboardReadModel;
+  projectId?: string | null;
   children: React.ReactNode;
 }) {
+  const selectedProjectId = projectId ?? initialData.selectedProjectId;
   const query = useQuery({
-    queryKey: workspaceKeys.dashboard(),
-    queryFn: getDashboardReadModelAction,
+    queryKey: workspaceKeys.dashboard(selectedProjectId),
+    queryFn: () => getDashboardReadModelAction({ projectId: selectedProjectId }),
     initialData,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    placeholderData: keepPreviousData,
+    staleTime: QUERY_CACHE.readModelStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
   const snapshot = useSeedReadModelWorkspace(
     query.data?.workspace,
@@ -101,8 +114,13 @@ export function AccountReadModelProvider({
     queryKey: workspaceKeys.account(),
     queryFn: getAccountReadModelAction,
     initialData,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    placeholderData: keepPreviousData,
+    staleTime: QUERY_CACHE.readModelStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
   const snapshot = useSeedReadModelWorkspace(
     query.data?.workspace,
@@ -127,8 +145,13 @@ export function ViewsIndexReadModelProvider({
     queryKey: workspaceKeys.viewsIndex(),
     queryFn: getViewsIndexReadModelAction,
     initialData,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    placeholderData: keepPreviousData,
+    staleTime: QUERY_CACHE.readModelStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
   const workspace = useMemo(
     () => (query.data ? completeWorkspace(query.data.workspace) : undefined),
@@ -156,8 +179,13 @@ export function ViewDetailReadModelProvider({
     queryKey: workspaceKeys.viewDetail(viewId),
     queryFn: getViewDetailReadModelAction,
     initialData,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
+    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    placeholderData: keepPreviousData,
+    staleTime: QUERY_CACHE.readModelStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
   const snapshot = useSeedReadModelWorkspace(
     query.data?.workspace,

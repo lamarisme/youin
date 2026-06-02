@@ -33,6 +33,7 @@ import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
+import { QUERY_CACHE } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
@@ -108,7 +109,9 @@ function CommandPaletteDialog({
     queryKey: workspaceKeys.commandPaletteIndex(),
     queryFn: getCommandPaletteIndexReadModelAction,
     enabled: open,
-    staleTime: 30_000,
+    staleTime: QUERY_CACHE.commandPaletteStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnWindowFocus: false,
   });
   const marks = useMemo(
     () => paletteIndex.data?.marks ?? [],

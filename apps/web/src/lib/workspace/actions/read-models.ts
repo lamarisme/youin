@@ -11,15 +11,18 @@ import type {
   AccountReadModel,
   CommandPaletteIndexReadModel,
   DashboardReadModel,
+  DashboardReadModelRequest,
   ViewDetailReadModel,
   ViewsIndexReadModel,
 } from "@/lib/workspace/workspace-types";
 
 import { requireWorkspaceContext } from "./session";
 
-export async function getDashboardReadModelAction(): Promise<DashboardReadModel> {
+export async function getDashboardReadModelAction(
+  request: DashboardReadModelRequest = {},
+): Promise<DashboardReadModel> {
   const { workspaceId, supabase } = await requireWorkspaceContext();
-  return loadDashboardReadModel(workspaceId, supabase);
+  return loadDashboardReadModel(workspaceId, request, supabase);
 }
 
 export async function getAccountReadModelAction(): Promise<AccountReadModel> {

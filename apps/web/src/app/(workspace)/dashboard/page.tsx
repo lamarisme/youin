@@ -30,10 +30,27 @@ export default async function DashboardPage({
     redirect(markHref(mark, params));
   }
 
-  const readModel = await getDashboardReadModelAction();
+  const requestedProjectId = params.get("project");
+  const readModel = await getDashboardReadModelAction({
+    projectId: requestedProjectId,
+  });
+
+  if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
+    params.set("project", readModel.selectedProjectId);
+    redirect(`/dashboard?${params.toString()}`);
+  }
+
+  if (!readModel.selectedProjectId && requestedProjectId) {
+    params.delete("project");
+    const query = params.toString();
+    redirect(query ? `/dashboard?${query}` : "/dashboard");
+  }
 
   return (
-    <DashboardReadModelProvider initialData={readModel}>
+    <DashboardReadModelProvider
+      initialData={readModel}
+      projectId={readModel.selectedProjectId}
+    >
       <WorkspaceDashboard />
     </DashboardReadModelProvider>
   );

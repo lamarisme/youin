@@ -7,12 +7,14 @@ import {
 } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
+import { QUERY_CACHE } from "@/lib/queries/cache-policy";
+
 function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 30 * 1000,
-        gcTime: 5 * 60 * 1000,
+        staleTime: QUERY_CACHE.defaultStaleMs,
+        gcTime: QUERY_CACHE.gcMs,
         refetchOnWindowFocus: false,
         retry: 1,
       },

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { QUERY_CACHE } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
   getInboxAction,
@@ -51,9 +52,11 @@ export function useInbox(workspaceId: string, userId: string): InboxData {
     queryKey,
     queryFn: getInboxAction,
     enabled,
-    placeholderData: () => emptyInboxSnapshot(),
-    staleTime: 30_000,
+    staleTime: QUERY_CACHE.inboxStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
   const snapshot = query.data ?? emptyInboxSnapshot();
   const mutation = useMutation({
@@ -83,7 +86,7 @@ export function useInbox(workspaceId: string, userId: string): InboxData {
     dataUpdatedAt: query.dataUpdatedAt || 0,
     isError: query.isError,
     isMarkingAllRead: mutation.isPending,
-    isPending: enabled && query.isPending && !query.data,
+    isPending: enabled && query.isPending,
     markAllRead: () => {
       if (!enabled || snapshot.unreadCount === 0 || mutation.isPending) return;
       mutation.mutate(undefined);

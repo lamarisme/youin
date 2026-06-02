@@ -6,6 +6,37 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = process.env.PLASMO_PUBLIC_SUPABASE_URL
 const SUPABASE_KEY = process.env.PLASMO_PUBLIC_SUPABASE_KEY
+const DEFAULT_WEB_APP_URL = "http://localhost:3000"
+
+function webAppUrlProtocol(value: string): "http" | "https" {
+  const host = value.split(/[/?#]/, 1)[0] ?? ""
+  if (
+    host === "localhost" ||
+    host.startsWith("localhost:") ||
+    host.startsWith("127.") ||
+    host.startsWith("[::1]") ||
+    host.startsWith("::1")
+  ) {
+    return "http"
+  }
+  return "https"
+}
+
+function normalizeWebAppUrl(value: string | undefined): string {
+  const trimmed = value?.trim() || DEFAULT_WEB_APP_URL
+  const withProtocol = /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `${webAppUrlProtocol(trimmed)}://${trimmed}`
+
+  try {
+    const url = new URL(withProtocol)
+    url.hash = ""
+    url.search = ""
+    return url.toString().replace(/\/$/, "")
+  } catch {
+    return DEFAULT_WEB_APP_URL
+  }
+}
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   // Surface the misconfiguration loudly in dev — the extension cannot do anything
@@ -50,5 +81,6 @@ export function getSupabase(): SupabaseClient {
 }
 
 export const SUPABASE_AUTH_STORAGE_KEY = "youin:supabase-auth"
-export const WEB_APP_URL =
-  process.env.PLASMO_PUBLIC_WEB_APP_URL ?? "http://localhost:3000"
+export const WEB_APP_URL = normalizeWebAppUrl(
+  process.env.PLASMO_PUBLIC_WEB_APP_URL
+)

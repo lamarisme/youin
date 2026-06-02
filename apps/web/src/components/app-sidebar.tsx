@@ -613,9 +613,7 @@ function ProjectSwitcher({
     params.delete("mark");
     params.delete("page");
 
-    const base = pathname.startsWith("/dashboard")
-      ? pathname
-      : "/dashboard";
+    const base = pathname === "/dashboard" ? pathname : "/dashboard";
     const query = params.toString();
     return query ? `${base}?${query}` : base;
   }

@@ -300,13 +300,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const auth = await createAuthorizedClient(request);
   if ("error" in auth) return auth.error;
   const { supabase, workspaceId } = auth;
+  const projectId =
+    request.nextUrl.searchParams.get("projectId") ??
+    request.nextUrl.searchParams.get("project");
 
-  const { data: marks, error: markError } = await supabase
+  if (projectId) {
+    const { data: project, error: projectError } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("id", projectId)
+      .maybeSingle();
+    if (projectError) return jsonError(projectError.message, 400);
+    if (!project) return jsonError("Project was not found in this workspace.", 404);
+  }
+
+  let marksQuery = supabase
     .from("marks")
     .select(
       "id,project_id,title,page,status,priority,selector,viewport,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
     )
-    .eq("workspace_id", workspaceId)
+    .eq("workspace_id", workspaceId);
+  if (projectId) {
+    marksQuery = marksQuery.eq("project_id", projectId);
+  }
+
+  const { data: marks, error: markError } = await marksQuery
     .order("updated_at", { ascending: false })
     .limit(500);
 

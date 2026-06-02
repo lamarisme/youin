@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -37,7 +37,11 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
+import {
+  formatMarkDisplayKey,
+  parseMarkRouteParam,
+  WORKSPACE_MARK_PREFIX,
+} from "@/lib/workspace/mark-display-id";
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import {
@@ -49,6 +53,7 @@ import { normalizeWorkflowStatusColor } from "@/lib/workspace/workflow-statuses"
 import type {
   AccountReadModel,
   CommandPaletteIndexReadModel,
+  DashboardReadModelRequest,
   DashboardReadModel,
   ViewDetailReadModel,
   ViewsIndexReadModel,
@@ -427,18 +432,66 @@ type MarkLoadOptions = {
   includeComments: boolean;
   includeEvents: boolean;
   resolveImages: boolean;
+  projectId?: string | null;
   supabase?: SupabaseClient;
 };
+
+async function loadProjectIdForMarkRouteParam(
+  workspaceId: string,
+  markParam: string | null | undefined,
+): Promise<string | null> {
+  const parsed = parseMarkRouteParam(markParam ?? null);
+  if (!parsed) return null;
+
+  const db = getDb();
+  const markPredicate =
+    parsed.kind === "uuid"
+      ? eq(marks.id, parsed.id)
+      : parsed.key.startsWith(`${WORKSPACE_MARK_PREFIX}-`)
+        ? or(eq(marks.seq, parsed.seq), eq(marks.legacyDisplayKey, parsed.key))
+        : eq(marks.legacyDisplayKey, parsed.key);
+
+  const [row] = await db
+    .select({ projectId: marks.projectId })
+    .from(marks)
+    .where(and(eq(marks.workspaceId, workspaceId), markPredicate))
+    .limit(1);
+
+  return row?.projectId ?? null;
+}
+
+async function resolveDashboardProjectId(
+  workspaceId: string,
+  projectsOut: readonly WorkspaceShellProject[],
+  request: DashboardReadModelRequest,
+): Promise<string | null> {
+  const projectIds = new Set(projectsOut.map((project) => project.id));
+  const markProjectId = await loadProjectIdForMarkRouteParam(
+    workspaceId,
+    request.markParam,
+  );
+  if (markProjectId && projectIds.has(markProjectId)) return markProjectId;
+
+  const requestedProjectId = request.projectId?.trim();
+  if (requestedProjectId && projectIds.has(requestedProjectId)) {
+    return requestedProjectId;
+  }
+
+  return projectsOut[0]?.id ?? null;
+}
 
 async function loadMarks(
   workspaceId: string,
   options: MarkLoadOptions,
 ): Promise<Pick<Workspace, "marks" | "comments" | "markEvents">> {
   const db = getDb();
+  const whereClause = options.projectId
+    ? and(eq(marks.workspaceId, workspaceId), eq(marks.projectId, options.projectId))
+    : eq(marks.workspaceId, workspaceId);
   const markRows = await db
     .select()
     .from(marks)
-    .where(eq(marks.workspaceId, workspaceId))
+    .where(whereClause)
     .orderBy(desc(marks.createdAt));
   const markIds = markRows.map((mark) => mark.id);
   let labelLinkRows: { markId: string; labelId: string }[] = [];
@@ -611,19 +664,31 @@ async function loadWorkspaceCore(workspaceId: string) {
 
 export async function loadDashboardReadModel(
   workspaceId: string,
+  request: DashboardReadModelRequest = {},
   supabase?: SupabaseClient,
 ): Promise<DashboardReadModel> {
-  const [core, markData] = await Promise.all([
-    loadWorkspaceCore(workspaceId),
-    loadMarks(workspaceId, {
-      includeComments: true,
-      includeEvents: true,
-      resolveImages: true,
-      supabase,
-    }),
-  ]);
+  const core = await loadWorkspaceCore(workspaceId);
+  const selectedProjectId = await resolveDashboardProjectId(
+    workspaceId,
+    core.projects,
+    request,
+  );
+  const markData = selectedProjectId
+    ? await loadMarks(workspaceId, {
+        includeComments: true,
+        includeEvents: true,
+        resolveImages: true,
+        projectId: selectedProjectId,
+        supabase,
+      })
+    : {
+        marks: [],
+        comments: [],
+        markEvents: [],
+      };
   return {
     loadedAt: new Date().toISOString(),
+    selectedProjectId,
     workspace: {
       ...emptyWorkspace(core.identity.id, core.identity.name),
       projects: core.projects,
