@@ -12,16 +12,23 @@ import { formatMarkEvent } from "./format-mark-event";
 interface MarkHistoryProps {
   events: MarkEvent[];
   membersById: Map<string, TeamMember>;
+  showHeading?: boolean;
 }
 
-export function MarkHistory({ events, membersById }: MarkHistoryProps) {
+export function MarkHistory({
+  events,
+  membersById,
+  showHeading = true,
+}: MarkHistoryProps) {
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   return (
     <div>
-      <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
-        <History className="size-3.5" aria-hidden />
-        Mark history{events.length > 0 ? ` (${events.length})` : ""}
-      </h2>
+      {showHeading ? (
+        <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
+          <History className="size-3.5" aria-hidden />
+          Mark history{events.length > 0 ? ` (${events.length})` : ""}
+        </h2>
+      ) : null}
       <div className="relative space-y-0">
         {events.length === 0 ? (
           <p className="text-ui-sm text-ink-3">No history yet.</p>

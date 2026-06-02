@@ -1,8 +1,28 @@
 "use client";
 
-import { type KeyboardEvent, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Check, FileText, Link2, Pencil, Tags, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  FileText,
+  History,
+  Link2,
+  MessageCircle,
+  PanelRightClose,
+  PanelRightOpen,
+  Pencil,
+  Tags,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { LabelPicker } from "@/components/label-picker";
@@ -53,6 +73,34 @@ interface MarkDetailViewProps {
 
 type EditingField = "title" | "page" | "description";
 
+const DETAIL_SIDEBAR_WIDTH_KEY = "youin:mark-detail-sidebar-width";
+const DETAIL_SIDEBAR_COLLAPSED_KEY = "youin:mark-detail-sidebar-collapsed";
+const DETAIL_SIDEBAR_DEFAULT_WIDTH = 360;
+const DETAIL_SIDEBAR_MIN_WIDTH = 300;
+const DETAIL_SIDEBAR_MAX_WIDTH = 520;
+const DETAIL_MAIN_MIN_WIDTH = 360;
+
+function clampDetailSidebarWidth(
+  width: number,
+  min = DETAIL_SIDEBAR_MIN_WIDTH,
+  max = DETAIL_SIDEBAR_MAX_WIDTH,
+) {
+  return Math.min(Math.max(width, min), max);
+}
+
+function initialDetailSidebarWidth() {
+  if (typeof window === "undefined") return DETAIL_SIDEBAR_DEFAULT_WIDTH;
+  const storedWidth = Number(window.localStorage.getItem(DETAIL_SIDEBAR_WIDTH_KEY));
+  return Number.isFinite(storedWidth)
+    ? clampDetailSidebarWidth(storedWidth)
+    : DETAIL_SIDEBAR_DEFAULT_WIDTH;
+}
+
+function initialDetailSidebarCollapsed() {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(DETAIL_SIDEBAR_COLLAPSED_KEY) === "true";
+}
+
 export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
   const workspace = useWorkspaceData((s) => s.workspace);
   const router = useRouter();
@@ -94,7 +142,25 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const [editDescription, setEditDescription] = useState(mark.description);
   const [editPage, setEditPage] = useState(mark.page);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(initialDetailSidebarWidth);
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(
+    initialDetailSidebarCollapsed,
+  );
   const isPane = variant === "pane";
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      DETAIL_SIDEBAR_WIDTH_KEY,
+      String(Math.round(rightSidebarWidth)),
+    );
+  }, [rightSidebarWidth]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      DETAIL_SIDEBAR_COLLAPSED_KEY,
+      String(rightSidebarCollapsed),
+    );
+  }, [rightSidebarCollapsed]);
 
   function startEdit(field: EditingField = "title") {
     setEditTitle(mark.title);
@@ -194,6 +260,62 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     if (next) router.push(markHref(next.displayKey, searchParams));
   }
 
+  function toggleRightSidebar() {
+    setRightSidebarCollapsed((collapsed) => !collapsed);
+  }
+
+  function handleRightSidebarResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (isPane) return;
+    event.preventDefault();
+    setRightSidebarCollapsed(false);
+
+    const layout = event.currentTarget.closest("[data-mark-detail-layout]") as HTMLElement | null;
+    const rect = layout?.getBoundingClientRect();
+    if (!rect) return;
+
+    const maxWidth = Math.max(
+      DETAIL_SIDEBAR_MIN_WIDTH,
+      Math.min(DETAIL_SIDEBAR_MAX_WIDTH, rect.width - DETAIL_MAIN_MIN_WIDTH),
+    );
+
+    const updateWidth = (clientX: number) => {
+      setRightSidebarWidth(
+        clampDetailSidebarWidth(rect.right - clientX, DETAIL_SIDEBAR_MIN_WIDTH, maxWidth),
+      );
+    };
+
+    const handleMove = (moveEvent: PointerEvent) => {
+      updateWidth(moveEvent.clientX);
+    };
+    const handleUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    updateWidth(event.clientX);
+  }
+
+  function handleRightSidebarResizeKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    setRightSidebarCollapsed(false);
+    setRightSidebarWidth((width) =>
+      clampDetailSidebarWidth(width + (event.key === "ArrowLeft" ? 24 : -24)),
+    );
+  }
+
+  const detailLayoutStyle = {
+    "--mark-detail-sidebar-width": rightSidebarCollapsed
+      ? "2.75rem"
+      : `${rightSidebarWidth}px`,
+  } as CSSProperties;
+
   return (
     <>
       {!isPane ? (
@@ -216,8 +338,12 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
       <FadeIn
         key={mark.id}
         delay={0.08}
+        data-mark-detail-layout={!isPane || undefined}
+        style={!isPane ? detailLayoutStyle : undefined}
         className={cn(
-          isPane ? "space-y-4" : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]",
+          isPane
+            ? "space-y-4"
+            : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_var(--mark-detail-sidebar-width)]",
         )}
       >
         <div className="min-w-0">
@@ -395,9 +521,9 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
             </button>
           )}
 
-          <div className="mt-3 grid gap-1.5 sm:grid-cols-[2rem_minmax(0,1fr)] sm:items-start">
+          <div className="mt-3 grid min-h-8 gap-2 sm:grid-cols-[2rem_minmax(0,1fr)] sm:items-center">
             <span
-              className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
+              className="inline-flex size-8 items-center justify-center rounded-md text-ink-3"
               aria-label="Labels"
               title="Labels"
             >
@@ -425,26 +551,53 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
           </div>
         </div>
 
-        <div className="min-w-0">
-          <div className={cn("space-y-4", !isPane && "lg:sticky lg:top-4")}>
-            <CommentThread mark={mark} comments={comments} membersById={membersById} />
-            {isPane ? (
-              <details className="group overflow-hidden rounded-md bg-paper-2">
-                <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-ui-xs font-medium text-ink-2 outline-none transition-colors hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 [&::-webkit-details-marker]:hidden">
-                  <span>History</span>
-                  <span className="font-mono text-ui-2xs tabular-nums text-ink-3">
-                    {events.length}
-                  </span>
-                </summary>
-                <div className="border-t border-rule/70 p-3">
-                  <MarkHistory events={events} membersById={membersById} />
-                </div>
-              </details>
-            ) : (
-              <MarkHistory events={events} membersById={membersById} />
-            )}
+        <DetailSidebar
+          isPane={isPane}
+          collapsed={rightSidebarCollapsed}
+          onToggleCollapsed={toggleRightSidebar}
+          onResizeStart={handleRightSidebarResizeStart}
+          onResizeKeyDown={handleRightSidebarResizeKeyDown}
+        >
+          <DetailSectionHeader
+            title="Discussion"
+            count={comments.length}
+            icon={<MessageCircle className="size-3.5" aria-hidden />}
+            action={
+              !isPane ? (
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  onClick={toggleRightSidebar}
+                  aria-label="Collapse details sidebar"
+                  title="Collapse details sidebar"
+                  className="hidden text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 lg:inline-flex"
+                >
+                  <PanelRightClose className="size-3.5" aria-hidden />
+                </Button>
+              ) : null
+            }
+          />
+          <div className="px-1 pb-3 pt-2">
+            <CommentThread
+              mark={mark}
+              comments={comments}
+              membersById={membersById}
+              showHeading={false}
+            />
           </div>
-        </div>
+          <DetailDisclosure
+            title="History"
+            count={events.length}
+            icon={<History className="size-3.5" aria-hidden />}
+          >
+            <MarkHistory
+              events={events}
+              membersById={membersById}
+              showHeading={false}
+            />
+          </DetailDisclosure>
+        </DetailSidebar>
       </FadeIn>
 
       <Dialog
@@ -519,5 +672,122 @@ function InlineEditActions({
         <Check className="size-3.5 sm:size-3" aria-hidden />
       </button>
     </div>
+  );
+}
+
+function DetailSidebar({
+  isPane,
+  collapsed,
+  onToggleCollapsed,
+  onResizeStart,
+  onResizeKeyDown,
+  children,
+}: {
+  isPane: boolean;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+  onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onResizeKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  children: ReactNode;
+}) {
+  const content = <div className="space-y-1">{children}</div>;
+
+  return (
+    <aside className="relative min-w-0">
+      {!isPane ? (
+        <button
+          type="button"
+          onPointerDown={onResizeStart}
+          onKeyDown={onResizeKeyDown}
+          aria-label="Resize details sidebar"
+          title="Drag to resize"
+          className={cn(
+            "absolute -left-3 top-0 z-10 hidden h-full w-3 cursor-col-resize rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 lg:block",
+            collapsed && "cursor-default",
+          )}
+        >
+          <span className="sr-only">Resize details sidebar</span>
+        </button>
+      ) : null}
+
+      <div
+        className={cn(
+          "min-w-0",
+          !isPane && "lg:sticky lg:top-4",
+          !isPane && collapsed && "lg:flex lg:justify-end",
+        )}
+      >
+        {collapsed && !isPane ? (
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={onToggleCollapsed}
+              aria-label="Expand details sidebar"
+              title="Expand details sidebar"
+              className="hidden size-9 text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 lg:inline-flex"
+            >
+              <PanelRightOpen className="size-4" aria-hidden />
+            </Button>
+            <div className="lg:hidden">{content}</div>
+          </>
+        ) : (
+          content
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function DetailSectionHeader({
+  title,
+  count,
+  icon,
+  action,
+}: {
+  title: string;
+  count: number;
+  icon: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex min-h-10 items-center gap-2 rounded-md px-2 py-1.5 text-ui-sm font-medium text-ink-2">
+      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 truncate">{title}</span>
+      <span className="font-mono text-ui-2xs tabular-nums text-ink-3">{count}</span>
+      {action}
+    </div>
+  );
+}
+
+function DetailDisclosure({
+  title,
+  count,
+  icon,
+  children,
+}: {
+  title: string;
+  count: number;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group rounded-md border-b border-rule/65 last:border-b-0">
+      <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 text-ui-sm font-medium text-ink-2 outline-none transition-colors hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 [&::-webkit-details-marker]:hidden">
+        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
+          {icon}
+        </span>
+        <span className="min-w-0 flex-1 truncate">{title}</span>
+        <span className="font-mono text-ui-2xs tabular-nums text-ink-3">{count}</span>
+        <ChevronDown
+          className="size-3.5 shrink-0 text-ink-3 transition-transform duration-150 group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="px-1 pb-3 pt-2">{children}</div>
+    </details>
   );
 }

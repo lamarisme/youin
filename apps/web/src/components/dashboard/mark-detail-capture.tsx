@@ -32,6 +32,28 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
   const isHero = variant === "hero";
 
+  if (!cap) {
+    return (
+      <div
+        className={cn(
+          "flex min-h-10 flex-wrap items-center gap-2 rounded-md bg-paper-2/60 px-3 py-2 text-ui-sm text-ink-3 ring-1 ring-rule/35",
+          isHero ? "mt-4" : "mt-5",
+        )}
+      >
+        <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
+        <span className="font-medium text-ink-2">Capture</span>
+        <span className="min-w-0 flex-1 truncate">No snapshot saved.</span>
+        {mark.page.trim() ? (
+          <MarkPageOpenButton
+            page={mark.page}
+            appearance="labeled"
+            className="h-7 px-2 text-ui-xs"
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <>
       <div className={cn("overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45", isHero ? "mt-4" : "mt-5")}>

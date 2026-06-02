@@ -6,8 +6,10 @@ export function formatMarkEvent(
   toValue?: string,
   metadata?: string,
 ): string {
+  const summary = metadataSummary(metadata);
+
   if (type === "created") {
-    return metadata ?? "Created this mark.";
+    return summary ?? "Created this mark.";
   }
   if (type === "status_changed") {
     return `Changed status from ${fromValue ?? "unknown"} to ${toValue ?? "unknown"}.`;
@@ -24,9 +26,23 @@ export function formatMarkEvent(
     return "Reassigned this mark.";
   }
   if (type === "label_changed") {
-    return metadata ?? "Updated the mark's labels.";
+    return summary ?? "Updated the mark's labels.";
   }
-  return metadata ?? "Added a comment.";
+  return summary ?? "Added a comment.";
+}
+
+function metadataSummary(metadata?: string): string | undefined {
+  if (!metadata) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(metadata);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const summary = (parsed as { summary?: unknown }).summary;
+      if (typeof summary === "string" && summary.trim()) return summary;
+    }
+  } catch {
+    // Older events can store plain text metadata.
+  }
+  return metadata;
 }
 
 export function shortMarkLabel(displayKeyOrUuid: string): string {

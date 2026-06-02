@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, MessageCircle, Pencil, Trash2, X } from "lucide-react";
+import { Check, ImagePlus, MessageCircle, Pencil, Trash2, X } from "lucide-react";
 import { useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -76,12 +76,14 @@ interface CommentThreadProps {
   mark: MarkItem;
   comments: MarkComment[];
   membersById: Map<string, TeamMember>;
+  showHeading?: boolean;
 }
 
 export function CommentThread({
   mark,
   comments,
   membersById,
+  showHeading = true,
 }: CommentThreadProps) {
   const userId = useWorkspaceData((s) => s.userId);
   const { mutateAsync: addComments } = useAddCommentsMutation();
@@ -182,10 +184,12 @@ export function CommentThread({
 
   return (
     <div>
-      <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
-        <MessageCircle className="size-3.5" aria-hidden />
-        Discussion{comments.length > 0 ? ` (${comments.length})` : ""}
-      </h2>
+      {showHeading ? (
+        <h2 className="mb-2.5 flex items-center gap-1.5 text-eyebrow">
+          <MessageCircle className="size-3.5" aria-hidden />
+          Discussion{comments.length > 0 ? ` (${comments.length})` : ""}
+        </h2>
+      ) : null}
       <div className="space-y-2">
         {comments.length === 0 ? (
           <p className="text-ui-sm text-ink-3">
@@ -202,7 +206,7 @@ export function CommentThread({
         ))}
       </div>
 
-      <div className="mt-3 rounded-md bg-paper-2 p-2 ring-1 ring-rule/45">
+      <div className="mt-3 rounded-md bg-paper-2/70 p-2 ring-1 ring-rule/35">
         <label htmlFor="comment-composer" className="sr-only">
           Add a comment
         </label>
@@ -211,60 +215,76 @@ export function CommentThread({
             id="comment-composer"
             value={text}
             onChange={(value) => dispatch({ type: "set_text", value })}
-            placeholder="Leave a comment… Type / for formatting"
+            placeholder="Comment…"
             maxLength={MARK_COMMENT_MAX_LENGTH}
             disabled={submitting}
-            minHeightClassName="min-h-[88px] sm:min-h-[56px]"
+            minHeightClassName="min-h-[76px] sm:min-h-[52px]"
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
-          <Input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            aria-label="Attach image to comment"
-            aria-describedby={composerError ? "comment-composer-error" : undefined}
-            disabled={submitting}
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              setImageFile(file);
-              if (
-                file &&
-                (!file.type.startsWith("image/") || file.size > MAX_COMMENT_IMAGE_BYTES)
-              ) {
-                e.currentTarget.value = "";
-              }
-            }}
-            className="h-10 max-w-[190px] text-ui-sm sm:h-8 sm:max-w-[160px] sm:text-ui-xs"
-          />
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              aria-label="Attach image to comment"
+              aria-describedby={composerError ? "comment-composer-error" : undefined}
+              disabled={submitting}
+              tabIndex={-1}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setImageFile(file);
+                if (
+                  file &&
+                  (!file.type.startsWith("image/") || file.size > MAX_COMMENT_IMAGE_BYTES)
+                ) {
+                  e.currentTarget.value = "";
+                }
+              }}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={submitting}
+              aria-label={image ? "Change attached image" : "Attach image to comment"}
+              title={image ? "Change image" : "Attach image"}
+              className="text-ink-3 hover:bg-paper-3 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20"
+            >
+              <ImagePlus className="size-3.5" aria-hidden />
+            </Button>
+            {image ? (
+              <span className="inline-flex min-w-0 max-w-[12rem] items-center gap-1 rounded-md bg-paper-3 px-1.5 py-1 text-ui-xs text-ink-2">
+                <span className="min-w-0 truncate" title={image.name}>
+                  {image.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  disabled={submitting}
+                  className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/30 disabled:pointer-events-none disabled:opacity-50"
+                  aria-label="Remove attached image"
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              </span>
+            ) : null}
+          </div>
           <SubmitButton
             size="sm"
+            variant={hasText || image ? "mark" : "secondary"}
             onClick={handleSubmit}
             loading={submitting}
             disabled={!hasText && !image}
             loadingText="Sending..."
-            className="h-10 px-3 text-ui-md sm:h-8 sm:px-2.5 sm:text-ui-sm"
+            className="h-8 px-2.5 text-ui-sm"
           >
             <MessageCircle className="size-3.5" />
             Send
           </SubmitButton>
         </div>
-        {image ? (
-          <div className="mt-2 flex min-w-0 items-center justify-between gap-2 rounded-md bg-paper-3 px-2 py-1.5 text-ui-xs text-ink-2">
-            <span className="min-w-0 truncate" title={image.name}>
-              {image.name}
-            </span>
-            <button
-              type="button"
-              onClick={clearImage}
-              disabled={submitting}
-              className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/30 disabled:pointer-events-none disabled:opacity-50"
-              aria-label="Remove attached image"
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
-          </div>
-        ) : null}
         {composerError ? (
           <Notice id="comment-composer-error" tone="danger" className="mt-2">
             {composerError}
