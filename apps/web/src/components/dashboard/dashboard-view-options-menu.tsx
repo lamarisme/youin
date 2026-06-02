@@ -128,8 +128,7 @@ export function DashboardViewOptionsMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={!canSaveView}
-          onSelect={(event) => {
-            event.preventDefault();
+          onSelect={() => {
             if (canSaveView) onSaveView?.();
           }}
         >

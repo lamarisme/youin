@@ -151,14 +151,18 @@ export function DashboardViewsBar({
   async function commitSave() {
     const name = draftName.trim();
     if (!name || isPending) return;
-    await createView({
-      name,
-      layout: "list",
-      filters: workspaceSnapshot.filters,
-      config: workspaceSnapshot.config,
-    });
-    setDraftName("");
-    setSaving(false);
+    try {
+      await createView({
+        name,
+        layout: "list",
+        filters: workspaceSnapshot.filters,
+        config: workspaceSnapshot.config,
+      });
+      setDraftName("");
+      setSaving(false);
+    } catch {
+      // Mutation toast handles the failure and the draft stays available.
+    }
   }
 
   function applyBuiltIn(view: BuiltInView) {
@@ -258,11 +262,12 @@ export function DashboardViewsBar({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-6 px-2 text-ui-xs"
+              aria-busy={isPending || undefined}
+              className="h-6 min-w-14 px-2 text-ui-xs"
               disabled={!draftName.trim() || isPending}
               onClick={() => void commitSave()}
             >
-              Save
+              {isPending ? "Saving..." : "Save"}
             </Button>
           </span>
         ) : null}
