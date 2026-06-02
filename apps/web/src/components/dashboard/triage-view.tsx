@@ -168,10 +168,19 @@ export function TriageView() {
     [workspace.workflowStatuses],
   );
   const commentCountByMarkId = useMemo(() => {
+    const hydratedCounts = new Map<string, number>();
+    for (const c of workspace.comments) {
+      hydratedCounts.set(c.markId, (hydratedCounts.get(c.markId) ?? 0) + 1);
+    }
     const counts = new Map<string, number>();
-    for (const c of workspace.comments) counts.set(c.markId, (counts.get(c.markId) ?? 0) + 1);
+    for (const mark of workspace.marks) {
+      counts.set(
+        mark.id,
+        Math.max(mark.commentCount ?? 0, hydratedCounts.get(mark.id) ?? 0),
+      );
+    }
     return counts;
-  }, [workspace.comments]);
+  }, [workspace.comments, workspace.marks]);
   const projectsById = useMemo(
     () => new Map(workspace.projects.map((project) => [project.id, project])),
     [workspace.projects],

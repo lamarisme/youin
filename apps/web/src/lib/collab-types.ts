@@ -106,6 +106,8 @@ export interface MarkItem {
   priority: MarkPriority;
   pinned: boolean;
   labelIds: string[];
+  /** Present in lightweight mark-list read models so comment badges do not require full comment hydration. */
+  commentCount?: number;
   assigneeId?: string;
   capture?: MarkCapture;
   createdAt: string;

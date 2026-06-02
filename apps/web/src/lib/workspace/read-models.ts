@@ -430,16 +430,23 @@ async function loadReviewLinks(
 
 type MarkLoadOptions = {
   includeComments: boolean;
+  includeCommentCounts?: boolean;
   includeEvents: boolean;
   resolveImages: boolean;
+  detailMarkId?: string | null;
   projectId?: string | null;
   supabase?: SupabaseClient;
 };
 
-async function loadProjectIdForMarkRouteParam(
+type MarkRouteTarget = {
+  id: string;
+  projectId: string;
+};
+
+async function loadMarkRouteTarget(
   workspaceId: string,
   markParam: string | null | undefined,
-): Promise<string | null> {
+): Promise<MarkRouteTarget | null> {
   const parsed = parseMarkRouteParam(markParam ?? null);
   if (!parsed) return null;
 
@@ -452,25 +459,23 @@ async function loadProjectIdForMarkRouteParam(
         : eq(marks.legacyDisplayKey, parsed.key);
 
   const [row] = await db
-    .select({ projectId: marks.projectId })
+    .select({ id: marks.id, projectId: marks.projectId })
     .from(marks)
     .where(and(eq(marks.workspaceId, workspaceId), markPredicate))
     .limit(1);
 
-  return row?.projectId ?? null;
+  return row ?? null;
 }
 
-async function resolveDashboardProjectId(
-  workspaceId: string,
+function resolveDashboardProjectId(
   projectsOut: readonly WorkspaceShellProject[],
   request: DashboardReadModelRequest,
-): Promise<string | null> {
+  markTarget: MarkRouteTarget | null,
+): string | null {
   const projectIds = new Set(projectsOut.map((project) => project.id));
-  const markProjectId = await loadProjectIdForMarkRouteParam(
-    workspaceId,
-    request.markParam,
-  );
-  if (markProjectId && projectIds.has(markProjectId)) return markProjectId;
+  if (markTarget?.projectId && projectIds.has(markTarget.projectId)) {
+    return markTarget.projectId;
+  }
 
   const requestedProjectId = request.projectId?.trim();
   if (requestedProjectId && projectIds.has(requestedProjectId)) {
@@ -494,13 +499,25 @@ async function loadMarks(
     .where(whereClause)
     .orderBy(desc(marks.createdAt));
   const markIds = markRows.map((mark) => mark.id);
+  const detailMarkId =
+    options.detailMarkId && markIds.includes(options.detailMarkId)
+      ? options.detailMarkId
+      : null;
   let labelLinkRows: { markId: string; labelId: string }[] = [];
+  let commentCountRows: { markId: string; commentCount: number }[] = [];
   let commentRows: (typeof markComments.$inferSelect)[] = [];
   let eventRows: (typeof markEvents.$inferSelect)[] = [];
 
   if (markIds.length) {
+    const commentScope = detailMarkId
+      ? eq(markComments.markId, detailMarkId)
+      : inArray(markComments.markId, markIds);
+    const eventScope = detailMarkId
+      ? eq(markEvents.markId, detailMarkId)
+      : inArray(markEvents.markId, markIds);
     const jobs: [
       Promise<{ markId: string; labelId: string }[]>,
+      Promise<{ markId: string; commentCount: number }[]>,
       Promise<(typeof markComments.$inferSelect)[]>,
       Promise<(typeof markEvents.$inferSelect)[]>,
     ] = [
@@ -511,11 +528,21 @@ async function loadMarks(
         })
         .from(marksToLabels)
         .where(inArray(marksToLabels.markId, markIds)),
+      options.includeCommentCounts
+        ? db
+            .select({
+              markId: markComments.markId,
+              commentCount: sql<number>`count(*)::int`,
+            })
+            .from(markComments)
+            .where(inArray(markComments.markId, markIds))
+            .groupBy(markComments.markId)
+        : Promise.resolve([]),
       options.includeComments
         ? db
             .select()
             .from(markComments)
-            .where(inArray(markComments.markId, markIds))
+            .where(commentScope)
             .orderBy(asc(markComments.createdAt))
         : Promise.resolve([]),
       options.includeEvents
@@ -525,13 +552,14 @@ async function loadMarks(
             .where(
               and(
                 eq(markEvents.workspaceId, workspaceId),
-                inArray(markEvents.markId, markIds),
+                eventScope,
               ),
             )
             .orderBy(desc(markEvents.createdAt))
         : Promise.resolve([]),
     ];
-    [labelLinkRows, commentRows, eventRows] = await Promise.all(jobs);
+    [labelLinkRows, commentCountRows, commentRows, eventRows] =
+      await Promise.all(jobs);
   }
 
   const labelsByMark = new Map<string, string[]>();
@@ -541,8 +569,22 @@ async function loadMarks(
     labelsByMark.set(row.markId, labels);
   }
 
+  const commentCountByMarkId = new Map<string, number>();
+  for (const row of commentCountRows) {
+    commentCountByMarkId.set(row.markId, Number(row.commentCount ?? 0));
+  }
+  if (!commentCountRows.length) {
+    for (const row of commentRows) {
+      commentCountByMarkId.set(
+        row.markId,
+        (commentCountByMarkId.get(row.markId) ?? 0) + 1,
+      );
+    }
+  }
+
   const markScreenshotPaths = options.resolveImages
     ? markRows
+        .filter((mark) => !detailMarkId || mark.id === detailMarkId)
         .map((mark) => mark.screenshotUrl)
         .filter(isStoragePath)
     : [];
@@ -595,6 +637,7 @@ async function loadMarks(
       priority: normalizeMarkPriority(mark.priority),
       pinned: Boolean(mark.pinned),
       labelIds: labelsByMark.get(mark.id) ?? [],
+      commentCount: commentCountByMarkId.get(mark.id) ?? 0,
       assigneeId: mark.assigneeUserId ?? undefined,
       capture,
       createdAt: toIso(mark.createdAt),
@@ -668,16 +711,21 @@ export async function loadDashboardReadModel(
   supabase?: SupabaseClient,
 ): Promise<DashboardReadModel> {
   const core = await loadWorkspaceCore(workspaceId);
-  const selectedProjectId = await resolveDashboardProjectId(
-    workspaceId,
+  const markTarget = await loadMarkRouteTarget(workspaceId, request.markParam);
+  const selectedProjectId = resolveDashboardProjectId(
     core.projects,
     request,
+    markTarget,
   );
+  const detailMarkId =
+    markTarget?.projectId === selectedProjectId ? markTarget.id : null;
   const markData = selectedProjectId
     ? await loadMarks(workspaceId, {
-        includeComments: true,
-        includeEvents: true,
-        resolveImages: true,
+        includeComments: Boolean(detailMarkId),
+        includeCommentCounts: true,
+        includeEvents: Boolean(detailMarkId),
+        resolveImages: Boolean(detailMarkId),
+        detailMarkId,
         projectId: selectedProjectId,
         supabase,
       })

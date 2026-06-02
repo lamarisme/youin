@@ -251,6 +251,7 @@ export function useCreateMarkMutation() {
         priority: input.priority ?? "medium",
         pinned: false,
         labelIds: [...input.labelIds],
+        commentCount: 0,
         assigneeId: input.assigneeId ?? undefined,
         createdAt: created.createdAt,
       };
@@ -565,6 +566,14 @@ export function useAddCommentsMutation() {
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
+        marks: workspace.marks.map((mark) =>
+          mark.id === comments[0]?.markId
+            ? {
+                ...mark,
+                commentCount: (mark.commentCount ?? 0) + comments.length,
+              }
+            : mark,
+        ),
         comments: [...workspace.comments, ...comments],
       }));
       return context;
@@ -610,6 +619,16 @@ export function useDeleteCommentMutation() {
       const context = snapshot(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
+        marks: workspace.marks.map((mark) =>
+          workspace.comments.some(
+            (comment) => comment.id === commentId && comment.markId === mark.id,
+          )
+            ? {
+                ...mark,
+                commentCount: Math.max(0, (mark.commentCount ?? 0) - 1),
+              }
+            : mark,
+        ),
         comments: workspace.comments.filter((comment) => comment.id !== commentId),
       }));
       return context;

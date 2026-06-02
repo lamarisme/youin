@@ -48,6 +48,7 @@ export default async function DashboardMarkPage({
     <DashboardReadModelProvider
       initialData={readModel}
       projectId={readModel.selectedProjectId}
+      markParam={mark}
     >
       <WorkspaceDashboard markParam={mark} />
     </DashboardReadModelProvider>

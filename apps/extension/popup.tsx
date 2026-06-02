@@ -26,8 +26,8 @@ import { MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
 import {
   getActiveProjectId,
   getActiveSpaceId,
-  getMarks,
-  getMarksForPage,
+  getMarkStatusCountsForPage,
+  getMarkSyncSummary,
   getProjects,
   getWidgetSettings,
   hostForUrl,
@@ -45,6 +45,8 @@ import {
 } from "./lib/storage"
 import { getSupabase, WEB_APP_URL } from "./lib/supabase"
 import {
+  isWorkspaceRemoteSyncFresh,
+  markWorkspaceRemoteSyncComplete,
   syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
@@ -52,7 +54,7 @@ import {
 
 const SYNC_NOW = "youin:sync-now"
 
-type AuthView = "checking" | "signedOut" | "signedIn"
+type AuthView = "signedOut" | "signedIn"
 type ReviewCommandType =
   | "youin:start-inspect"
   | "youin:start-screenshot"
@@ -215,7 +217,7 @@ const INLINE_ALERT =
   "rounded-md border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-danger-text)]"
 
 function IndexPopup() {
-  const [view, setView] = useState<AuthView>("checking")
+  const [view, setView] = useState<AuthView>("signedOut")
   const [session, setSession] = useState<Session | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [projects, setProjects] = useState<Project[]>([])
@@ -269,9 +271,9 @@ function IndexPopup() {
       setCurrentHost("")
     }
     const sid = await getActiveSpaceId()
-    const marks = await getMarksForPage(sid, url)
-    setOpenCount(marks.filter((p) => p.status !== "closed").length)
-    setResolvedCount(marks.filter((p) => p.status === "closed").length)
+    const counts = await getMarkStatusCountsForPage(sid, url)
+    setOpenCount(counts.open)
+    setResolvedCount(counts.closed)
   }, [])
 
   const refreshSpaces = useCallback(async () => {
@@ -303,18 +305,9 @@ function IndexPopup() {
   }, [])
 
   const refreshSyncSummary = useCallback(async () => {
-    const marks = await getMarks()
-    setPendingSyncCount(
-      marks.filter(
-        (mark) =>
-          mark.syncState === "pending" ||
-          Boolean(mark.screenshotDataUrl) ||
-          Boolean(mark.pendingSyncOps?.length)
-      ).length
-    )
-    setFailedSyncCount(
-      marks.filter((mark) => mark.syncState === "failed").length
-    )
+    const summary = await getMarkSyncSummary()
+    setPendingSyncCount(summary.pending)
+    setFailedSyncCount(summary.failed)
   }, [])
 
   useEffect(() => {
@@ -491,9 +484,12 @@ function IndexPopup() {
       } catch {
         const sessionNow = await getSession()
         if (sessionNow?.user?.id) {
-          await syncWorkspaceFromRemote(sessionNow.user.id)
-          await syncPendingMarksToWorkspace()
-          await syncWorkspaceMarksFromRemote()
+          const workspace = await syncWorkspaceFromRemote(sessionNow.user.id)
+          const push = await syncPendingMarksToWorkspace()
+          const pull = await syncWorkspaceMarksFromRemote()
+          if (workspace.ok && push.ok && pull.ok) {
+            await markWorkspaceRemoteSyncComplete()
+          }
           setSyncMsg(t("extension.popup.syncComplete"))
         }
       } finally {
@@ -532,19 +528,6 @@ function IndexPopup() {
     setProjectId(id)
     void setActiveProjectId(id)
     void setActiveSpaceId(id)
-  }
-
-  if (view === "checking") {
-    return (
-      <main
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
-        className="youin-popup flex min-w-0 w-full max-w-[344px] flex-col items-center justify-center gap-2 bg-[var(--yi-paper)] px-4 py-10 font-sans text-[12px] text-[color:var(--yi-ext-text-dim)] antialiased">
-        <YouInMark />
-        <span>{t("extension.popup.preparingReview")}</span>
-      </main>
-    )
   }
 
   return (
@@ -1234,13 +1217,20 @@ function SignedInBlock({
     if (!userId) return
     let cancelled = false
     void (async () => {
-      setSyncingDb(true)
-      try {
-        await syncWorkspaceFromRemote(userId)
-        await syncPendingMarksToWorkspace()
-        await syncWorkspaceMarksFromRemote()
-      } finally {
-        if (!cancelled) setSyncingDb(false)
+      const shouldSync = !(await isWorkspaceRemoteSyncFresh())
+      if (cancelled) return
+      if (shouldSync) {
+        setSyncingDb(true)
+        try {
+          const workspace = await syncWorkspaceFromRemote(userId)
+          if (workspace.ok) {
+            const push = await syncPendingMarksToWorkspace()
+            const pull = await syncWorkspaceMarksFromRemote()
+            if (push.ok && pull.ok) await markWorkspaceRemoteSyncComplete()
+          }
+        } finally {
+          if (!cancelled) setSyncingDb(false)
+        }
       }
       const done = await isMigrationDoneForUser(userId)
       if (cancelled || done) return

@@ -977,6 +977,61 @@ export async function getMarksForPage(
   return out.sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
+export interface PageMarkStatusCounts {
+  open: number
+  closed: number
+  total: number
+}
+
+export interface MarkSyncSummary {
+  pending: number
+  failed: number
+}
+
+export async function getMarkStatusCountsForPage(
+  projectId: string,
+  url: string
+): Promise<PageMarkStatusCounts> {
+  const n = normalizePageUrlForMatch(url)
+  const stored = await read<unknown[]>(KEY_MARKS, [])
+  let open = 0
+  let closed = 0
+  for (const row of stored) {
+    if (!row || typeof row !== "object") continue
+    const p = row as Record<string, unknown>
+    const urlRaw = typeof p.url === "string" ? p.url : ""
+    if (normalizePageUrlForMatch(urlRaw) !== n) continue
+    if (String(p.projectId ?? p.spaceId ?? "") !== projectId) continue
+    if (typeof p.localHiddenAt === "number") continue
+    const rawStatus = typeof p.status === "string" ? p.status : undefined
+    if (normalizeMarkStatus(rawStatus) === "closed") closed += 1
+    else open += 1
+  }
+  return { open, closed, total: open + closed }
+}
+
+export async function getMarkSyncSummary(): Promise<MarkSyncSummary> {
+  const stored = await read<unknown[]>(KEY_MARKS, [])
+  let pending = 0
+  let failed = 0
+  for (const row of stored) {
+    if (!row || typeof row !== "object") continue
+    const p = row as Record<string, unknown>
+    const pendingOps = Array.isArray(p.pendingSyncOps)
+      ? p.pendingSyncOps.length
+      : 0
+    if (p.syncState === "failed") failed += 1
+    if (
+      p.syncState === "pending" ||
+      typeof p.screenshotDataUrl === "string" ||
+      pendingOps > 0
+    ) {
+      pending += 1
+    }
+  }
+  return { pending, failed }
+}
+
 /** Counts marks per space for the current page without migrating the full mark list. */
 export async function getMarkCountsByPage(
   url: string

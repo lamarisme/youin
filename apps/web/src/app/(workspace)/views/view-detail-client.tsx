@@ -255,12 +255,22 @@ function ViewList({
     [workspace.workflowStatuses],
   );
   const commentCountByMarkId = useMemo(() => {
-    const counts = new Map<string, number>();
+    const hydratedCounts = new Map<string, number>();
     for (const comment of workspace.comments) {
-      counts.set(comment.markId, (counts.get(comment.markId) ?? 0) + 1);
+      hydratedCounts.set(
+        comment.markId,
+        (hydratedCounts.get(comment.markId) ?? 0) + 1,
+      );
+    }
+    const counts = new Map<string, number>();
+    for (const mark of workspace.marks) {
+      counts.set(
+        mark.id,
+        Math.max(mark.commentCount ?? 0, hydratedCounts.get(mark.id) ?? 0),
+      );
     }
     return counts;
-  }, [workspace.comments]);
+  }, [workspace.comments, workspace.marks]);
   const totalPages = Math.max(1, Math.ceil(marks.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, page), totalPages);
   const paginatedMarks = marks.slice((displayPage - 1) * PAGE_SIZE, displayPage * PAGE_SIZE);

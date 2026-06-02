@@ -26,9 +26,24 @@ import { getSupabase, WEB_APP_URL } from "./supabase"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const KEY_REMOTE_SYNCED_AT = "youin:remote-sync-completed-at"
+
+export const REMOTE_SYNC_STALE_MS = 5 * 60 * 1000
 
 function isUuidLike(s: string): boolean {
   return UUID_RE.test(s)
+}
+
+export async function isWorkspaceRemoteSyncFresh(
+  maxAgeMs = REMOTE_SYNC_STALE_MS
+): Promise<boolean> {
+  const result = await chrome.storage.local.get(KEY_REMOTE_SYNCED_AT)
+  const syncedAt = Number(result[KEY_REMOTE_SYNCED_AT] ?? 0)
+  return Number.isFinite(syncedAt) && Date.now() - syncedAt < maxAgeMs
+}
+
+export async function markWorkspaceRemoteSyncComplete(): Promise<void> {
+  await chrome.storage.local.set({ [KEY_REMOTE_SYNCED_AT]: Date.now() })
 }
 
 async function workspaceIdForUser(userId: string): Promise<string | null> {

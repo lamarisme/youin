@@ -4,6 +4,60 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { profiles, workspaceMembers } from "@/db/schema";
 
+type BootstrapWorkspaceArgs = {
+  workspaceName: string;
+  projectName: string;
+  projectDescription: string;
+  inviteEmails: string[];
+  username: string | null;
+};
+
+function isMissingBootstrapSignatureError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: unknown; message?: unknown };
+  return (
+    maybeError.code === "PGRST202" &&
+    typeof maybeError.message === "string" &&
+    maybeError.message.includes("bootstrap_workspace")
+  );
+}
+
+async function bootstrapWorkspace(
+  supabase: SupabaseClient,
+  args: BootstrapWorkspaceArgs,
+): Promise<string> {
+  const current = await supabase.rpc("bootstrap_workspace", {
+    p_workspace_name: args.workspaceName,
+    p_project_name: args.projectName,
+    p_project_description: args.projectDescription,
+    p_invite_emails: args.inviteEmails,
+    p_username: args.username,
+  });
+
+  if (!current.error) {
+    if (current.data) return current.data as string;
+    throw new Error("Failed to bootstrap workspace.");
+  }
+
+  if (!isMissingBootstrapSignatureError(current.error)) {
+    throw current.error;
+  }
+
+  const legacy = await supabase.rpc("bootstrap_workspace", {
+    p_workspace_name: args.workspaceName,
+    p_space_name: args.projectName,
+    p_space_notes: args.projectDescription,
+    p_invite_emails: args.inviteEmails,
+    p_username: args.username,
+  });
+
+  if (legacy.error || !legacy.data) {
+    throw legacy.error ?? new Error("Failed to bootstrap workspace.");
+  }
+
+  return legacy.data as string;
+}
+
 /**
  * Upsert profile row for authenticated user so RLS and member lists have email / display name.
  */
@@ -76,14 +130,11 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
 
   const fallbackName = `${user.email?.split("@")[0] ?? "Your"} workspace`;
 
-  const { data: wid, error: bsErr } = await supabase.rpc("bootstrap_workspace", {
-    p_workspace_name: wsNameRaw || fallbackName,
-    p_project_name: projectNameRaw || "General",
-    p_project_description: goalRaw,
-    p_invite_emails: teammateInvites,
-    p_username: usernameRaw && usernameRaw.length >= 2 ? usernameRaw : null,
+  return bootstrapWorkspace(supabase, {
+    workspaceName: wsNameRaw || fallbackName,
+    projectName: projectNameRaw || "General",
+    projectDescription: goalRaw,
+    inviteEmails: teammateInvites,
+    username: usernameRaw && usernameRaw.length >= 2 ? usernameRaw : null,
   });
-  if (bsErr || !wid) throw bsErr ?? new Error("Failed to bootstrap workspace.");
-
-  return wid as string;
 }

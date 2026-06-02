@@ -20,6 +20,7 @@
 
 DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[]);
 DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[], text);
+DROP FUNCTION IF EXISTS public.bootstrap_workspace(text[], text, text, text, text);
 DROP FUNCTION IF EXISTS public.attach_user_via_invite();
 DROP FUNCTION IF EXISTS public.attach_user_via_invite(text);
 

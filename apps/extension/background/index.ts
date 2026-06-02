@@ -12,6 +12,7 @@ import {
 import { MESSAGE_FORWARD_CAPTURE, MESSAGE_OPEN_CAPTURE_PANEL } from "../lib/events"
 import type { ReviewCaptureDetail } from "../lib/events"
 import {
+  markWorkspaceRemoteSyncComplete,
   syncPendingMarksToWorkspace,
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
@@ -83,6 +84,9 @@ async function runBackgroundSync(): Promise<SyncNowResponse> {
   if (!workspace.ok) return { ok: false, error: workspace.error }
   const push = await syncPendingMarksToWorkspace()
   const pull = await syncWorkspaceMarksFromRemote()
+  if (push.ok && pull.ok) {
+    await markWorkspaceRemoteSyncComplete()
+  }
   return {
     ok: push.ok && pull.ok,
     error: push.error ?? pull.error

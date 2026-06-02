@@ -72,16 +72,22 @@ function useSeedReadModelWorkspace(
 export function DashboardReadModelProvider({
   initialData,
   projectId,
+  markParam,
   children,
 }: {
   initialData: DashboardReadModel;
   projectId?: string | null;
+  markParam?: string | null;
   children: React.ReactNode;
 }) {
   const selectedProjectId = projectId ?? initialData.selectedProjectId;
   const query = useQuery({
-    queryKey: workspaceKeys.dashboard(selectedProjectId),
-    queryFn: () => getDashboardReadModelAction({ projectId: selectedProjectId }),
+    queryKey: workspaceKeys.dashboard(selectedProjectId, markParam),
+    queryFn: () =>
+      getDashboardReadModelAction({
+        projectId: selectedProjectId,
+        markParam,
+      }),
     initialData,
     initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
     placeholderData: keepPreviousData,
