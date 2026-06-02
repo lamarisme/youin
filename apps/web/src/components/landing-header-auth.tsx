@@ -14,9 +14,8 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { LandingPrimaryButton } from "@/components/landing-buttons";
-import { cn } from "@/lib/utils";
 
-type LandingAuthStatus = "loading" | "authenticated" | "unauthenticated";
+type LandingAuthStatus = "authenticated" | "unauthenticated";
 
 type LandingAuthContextValue = {
   status: LandingAuthStatus;
@@ -33,7 +32,7 @@ function useLandingAuth() {
 }
 
 export function LandingAuthProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<LandingAuthStatus>("loading");
+  const [status, setStatus] = useState<LandingAuthStatus>("unauthenticated");
 
   useEffect(() => {
     const supabase = createClient();
@@ -66,38 +65,9 @@ export function LandingAuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function AuthActionsSkeleton({ compact }: { compact?: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3",
-        compact ? "shrink-0" : "justify-end",
-      )}
-      aria-hidden
-    >
-      <span
-        className={cn(
-          "rounded-md bg-paper-3 motion-safe:animate-pulse",
-          compact ? "hidden h-9 w-16 sm:inline-block" : "h-9 w-24",
-        )}
-      />
-      <span
-        className={cn(
-          "rounded-md bg-paper-3 motion-safe:animate-pulse",
-          compact ? "h-9 w-28" : "h-11 w-32",
-        )}
-      />
-    </div>
-  );
-}
-
 export function LandingHeaderAuth() {
   const t = useTranslations("landingHeader");
   const { status } = useLandingAuth();
-
-  if (status === "loading") {
-    return <AuthActionsSkeleton />;
-  }
 
   if (status === "authenticated") {
     return (
@@ -128,15 +98,6 @@ export function LandingHeaderAuth() {
 export function LandingMobileSignIn() {
   const t = useTranslations("landingHeader");
   const { status } = useLandingAuth();
-
-  if (status === "loading") {
-    return (
-      <span
-        className="inline-flex h-11 w-16 shrink-0 rounded-md bg-paper-3 motion-safe:animate-pulse"
-        aria-hidden
-      />
-    );
-  }
 
   if (status === "authenticated") {
     return (

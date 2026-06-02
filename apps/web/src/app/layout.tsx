@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Bricolage_Grotesque } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
@@ -19,6 +19,11 @@ const fontDisplay = Bricolage_Grotesque({
 });
 
 const fontMono = GeistMono;
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   setRequestLocale("en");

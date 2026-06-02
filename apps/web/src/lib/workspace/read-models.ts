@@ -482,7 +482,7 @@ function resolveDashboardProjectId(
     return requestedProjectId;
   }
 
-  return projectsOut[0]?.id ?? null;
+  return null;
 }
 
 async function loadMarks(
@@ -718,22 +718,18 @@ export async function loadDashboardReadModel(
     markTarget,
   );
   const detailMarkId =
-    markTarget?.projectId === selectedProjectId ? markTarget.id : null;
-  const markData = selectedProjectId
-    ? await loadMarks(workspaceId, {
-        includeComments: Boolean(detailMarkId),
-        includeCommentCounts: true,
-        includeEvents: Boolean(detailMarkId),
-        resolveImages: Boolean(detailMarkId),
-        detailMarkId,
-        projectId: selectedProjectId,
-        supabase,
-      })
-    : {
-        marks: [],
-        comments: [],
-        markEvents: [],
-      };
+    markTarget && (!selectedProjectId || markTarget.projectId === selectedProjectId)
+      ? markTarget.id
+      : null;
+  const markData = await loadMarks(workspaceId, {
+    includeComments: Boolean(detailMarkId),
+    includeCommentCounts: true,
+    includeEvents: Boolean(detailMarkId),
+    resolveImages: Boolean(detailMarkId),
+    detailMarkId,
+    projectId: selectedProjectId,
+    supabase,
+  });
   return {
     loadedAt: new Date().toISOString(),
     selectedProjectId,

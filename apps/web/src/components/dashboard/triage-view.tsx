@@ -77,14 +77,12 @@ export function TriageView() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
   const selectedProject = useMemo(() => {
-    return (
-      workspace.projects.find((project) => project.id === routeProjectId) ??
-      workspace.projects[0] ??
-      null
-    );
+    if (!routeProjectId) return null;
+    return workspace.projects.find((project) => project.id === routeProjectId) ?? null;
   }, [routeProjectId, workspace.projects]);
 
   const activeProjectId = selectedProject?.id ?? null;
+  const newMarkProject = selectedProject ?? workspace.projects[0] ?? null;
   const isMyMarksPage = filters.assignee === "me";
   const scopeMarks = useMemo(
     () =>
@@ -268,8 +266,7 @@ export function TriageView() {
     priority: MarkPriority;
     assigneeId: string | null;
   }) {
-    const targetProject = selectedProject ?? workspace.projects[0];
-    if (!targetProject) {
+    if (!newMarkProject) {
       toast.error("Create a project before adding marks.");
       return;
     }
@@ -278,13 +275,13 @@ export function TriageView() {
         title: input.title,
         description: input.description,
         page: input.page,
-        projectId: targetProject.id,
+        projectId: newMarkProject.id,
         labelIds: input.labelIds,
         assigneeId: input.assigneeId ?? undefined,
         priority: input.priority,
       });
       const params = new URLSearchParams(searchParamString);
-      params.set("project", targetProject.id);
+      params.set("project", newMarkProject.id);
       router.push(markHref(created.displayKey, params));
       setShowNew(false);
     } catch {
@@ -342,8 +339,8 @@ export function TriageView() {
               <DialogHeader className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
                 <DialogTitle>New mark</DialogTitle>
                 <DialogDescription>
-                  {selectedProject
-                    ? `Will be added to ${selectedProject.name}.`
+                  {newMarkProject
+                    ? `Will be added to ${newMarkProject.name}.`
                     : "Create a project first to add marks."}
                 </DialogDescription>
               </DialogHeader>

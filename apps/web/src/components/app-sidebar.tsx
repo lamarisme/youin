@@ -598,14 +598,19 @@ function ProjectSwitcher({
   }, [marks, projects]);
 
   const urlProjectId = searchParams.get("project");
-  const selectedFromProject = projects.find((project) => project.id === urlProjectId);
-  const selectedProject = selectedFromProject ?? projects[0] ?? null;
+  const selectedProject = projects.find((project) => project.id === urlProjectId) ?? null;
   const selectedProjectId = selectedProject?.id ?? null;
   const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
-  const switcherLabel = selectedProject?.name ?? "No project";
+  const totalMarks = projects.reduce(
+    (sum, project) => sum + (projectStats.get(project.id)?.marks ?? 0),
+    0,
+  );
+  const switcherLabel = selectedProject?.name ?? (projects.length ? "All projects" : "No project");
   const switcherMeta = selectedProject
     ? `${selectedStats?.marks ?? 0} mark${(selectedStats?.marks ?? 0) === 1 ? "" : "s"}`
-    : "Create a project to start";
+    : projects.length
+      ? `${totalMarks} mark${totalMarks === 1 ? "" : "s"}`
+      : "Create a project to start";
 
   function hrefForProject(projectId: string): string {
     const params = new URLSearchParams(searchParams.toString());
@@ -618,8 +623,23 @@ function ProjectSwitcher({
     return query ? `${base}?${query}` : base;
   }
 
+  function hrefForAllProjects(): string {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("project");
+    params.delete("mark");
+    params.delete("page");
+
+    const base = pathname === "/dashboard" ? pathname : "/dashboard";
+    const query = params.toString();
+    return query ? `${base}?${query}` : base;
+  }
+
   function selectProject(projectId: string) {
     onNavigate(hrefForProject(projectId));
+  }
+
+  function selectAllProjects() {
+    onNavigate(hrefForAllProjects());
   }
 
   async function handleCreateProject() {
@@ -684,6 +704,22 @@ function ProjectSwitcher({
           <DropdownMenuLabel className="truncate">
             {workspaceName || "Workspace"}
           </DropdownMenuLabel>
+          {projects.length ? (
+            <DropdownMenuItem onClick={selectAllProjects}>
+              <Check
+                className={cn(
+                  "size-4",
+                  selectedProjectId === null ? "opacity-100" : "opacity-0",
+                )}
+              />
+              <div className="min-w-0">
+                <p className="truncate">All projects</p>
+                <p className="text-ui-xs text-muted-foreground">
+                  {totalMarks} mark{totalMarks === 1 ? "" : "s"}
+                </p>
+              </div>
+            </DropdownMenuItem>
+          ) : null}
           {projects.map((project) => {
             const stats = projectStats.get(project.id);
             return (

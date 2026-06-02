@@ -18,6 +18,7 @@ type LandingNavItem = { href: string; label: string };
 type LoopStep = { title: string; body: string };
 type IntegrationOption = { name: string; status: string; body: string };
 type Persona = { role: string; detail: string; body: string };
+type LandingHero = { proof: string[] };
 
 const LOOP_SCENE_VARIANTS = ["capture", "anchor", "sync"] as const;
 
@@ -26,18 +27,20 @@ export default async function Home() {
   const messages = (await import("@youin/i18n/messages/en.json")).default;
   const landing = messages.landing as {
     nav: LandingNavItem[];
+    hero: LandingHero;
     loop: { steps: LoopStep[] };
     integrations: { options: IntegrationOption[] };
     who: { personas: Persona[] };
   };
 
   const navItems = landing.nav;
+  const heroProof = landing.hero.proof;
   const loopSteps = landing.loop.steps;
   const integrationOptions = landing.integrations.options;
   const personas = landing.who.personas;
 
   return (
-    <div className="min-h-screen bg-paper bg-paper-grain text-ink">
+    <div className="landing-theme min-h-screen bg-paper bg-paper-grain text-ink">
       <a
         href="#main"
         className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-3 focus-visible:top-3 focus-visible:z-50 focus-visible:rounded-md focus-visible:bg-mark focus-visible:px-3 focus-visible:py-2 focus-visible:text-ui-sm focus-visible:font-medium focus-visible:text-paper"
@@ -106,6 +109,11 @@ export default async function Home() {
                     <LandingPrimaryButton href="/signup">{t("hero.chromeCta")}</LandingPrimaryButton>
                     <SecondaryCtaButton href="#loop">{t("hero.secondaryCta")}</SecondaryCtaButton>
                   </div>
+                  <ul className="landing-hero-proof" aria-label={t("hero.proofLabel")}>
+                    {heroProof.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
               <div className="landing-hero-stage">
