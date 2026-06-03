@@ -2,19 +2,21 @@
 
 import { useMemo } from "react";
 
-import { useWorkspaceData } from "@/lib/queries/use-workspace";
+import type { MarkItem } from "@/lib/collab-types";
 
 import { filterMarksByDashboardFilters } from "./mark-filter-utils";
-import { useDashboardFilters } from "./use-dashboard-filters";
+import type { DashboardFilters } from "./use-dashboard-filters";
 
-/** Marks visible under the current dashboard URL filters (project, status, priority, pinned, label, assignee). */
-export function useVisibleDashboardMarks() {
-  const { marks, userId } = useWorkspaceData((s) => ({
-    marks: s.workspace.marks,
-    userId: s.userId,
-  }));
-  const { filters } = useDashboardFilters();
-
+/** Marks visible under the supplied dashboard URL filters. */
+export function useVisibleDashboardMarks({
+  marks,
+  filters,
+  viewerId,
+}: {
+  marks: readonly MarkItem[];
+  filters: DashboardFilters;
+  viewerId: string | null;
+}) {
   return useMemo(
     () => {
       return filterMarksByDashboardFilters(
@@ -30,12 +32,12 @@ export function useVisibleDashboardMarks() {
           q: filters.q,
           sort: filters.sort,
         },
-        { viewerId: userId },
+        { viewerId },
       );
     },
     [
       marks,
-      userId,
+      viewerId,
       filters.projectId,
       filters.status,
       filters.workflowStatus,

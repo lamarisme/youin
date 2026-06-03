@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import {
   parseAsInteger,
   parseAsString,
   parseAsStringLiteral,
-  useQueryState,
+  useQueryStates,
 } from "nuqs";
 
 import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
@@ -34,6 +34,10 @@ export interface DashboardFilters {
   page: number;
 }
 
+export type DashboardFilterPatch = Partial<{
+  [Key in keyof DashboardFilters]: DashboardFilters[Key] | null;
+}>;
+
 const statusParser = parseAsStringLiteral(["all", "open", "closed"] as const).withDefault("all").withOptions({ clearOnDefault: true });
 const priorityParser = parseAsStringLiteral(["all", "low", "medium", "high", "critical"] as const).withDefault("all").withOptions({ clearOnDefault: true });
 const pinnedParser = parseAsStringLiteral(["all", "pinned", "unpinned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
@@ -49,91 +53,42 @@ const labelParser = parseAsString.withDefault("all").withOptions({ clearOnDefaul
 const queryParser = parseAsString.withDefault("").withOptions({ clearOnDefault: true });
 const pageParser = parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true });
 
-export function useDashboardFilters() {
-  const [project, setProject] = useQueryState("project", projectParser);
-  const [mark, setMark] = useQueryState("mark", markParser);
-  const [status, setStatus] = useQueryState("status", statusParser);
-  const [workflowStatus, setWorkflowStatus] = useQueryState("workflowStatus", workflowStatusParser);
-  const [priority, setPriority] = useQueryState("priority", priorityParser);
-  const [pinned, setPinned] = useQueryState("pinned", pinnedParser);
-  const [label, setLabel] = useQueryState("label", labelParser);
-  const [assignee, setAssignee] = useQueryState("assignee", assigneeParser);
-  const [q, setQ] = useQueryState("q", queryParser);
-  const [sort, setSort] = useQueryState("sort", sortParser);
-  const [groupBy, setGroupBy] = useQueryState("group", groupByParser);
-  const [density, setDensity] = useQueryState("density", densityParser);
-  const [page, setPage] = useQueryState("page", pageParser);
+const dashboardFilterParsers = {
+  projectId: projectParser,
+  markId: markParser,
+  status: statusParser,
+  workflowStatus: workflowStatusParser,
+  priority: priorityParser,
+  pinned: pinnedParser,
+  label: labelParser,
+  assignee: assigneeParser,
+  q: queryParser,
+  sort: sortParser,
+  groupBy: groupByParser,
+  density: densityParser,
+  page: pageParser,
+};
 
-  const filters: DashboardFilters = useMemo(
-    () => ({
-      projectId: project,
-      markId: mark ?? null,
-      status,
-      workflowStatus,
-      priority,
-      pinned,
-      label,
-      assignee,
-      q,
-      sort,
-      groupBy,
-      density,
-      page,
-    }),
-    [project, mark, status, workflowStatus, priority, pinned, label, assignee, q, sort, groupBy, density, page],
-  );
+export function useDashboardFilters() {
+  const [filters, setFilters] = useQueryStates(dashboardFilterParsers, {
+    urlKeys: {
+      projectId: "project",
+      markId: "mark",
+      groupBy: "group",
+    },
+  });
 
   const update = useCallback(
     (
-      patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
+      patch: DashboardFilterPatch,
       options?: { resetPage?: boolean },
     ) => {
-      if (patch.projectId !== undefined) {
-        const v = patch.projectId;
-        void setProject(typeof v === "string" && v !== "all" ? v : "all");
-      }
-      if (patch.markId !== undefined) {
-        void setMark(typeof patch.markId === "string" ? patch.markId : null);
-      }
-      if (patch.status !== undefined) {
-        void setStatus(patch.status as StatusFilter);
-      }
-      if (patch.workflowStatus !== undefined) {
-        const v = patch.workflowStatus;
-        void setWorkflowStatus(typeof v === "string" && v !== "all" ? v : "all");
-      }
-      if (patch.priority !== undefined) {
-        void setPriority(patch.priority as PriorityFilter);
-      }
-      if (patch.pinned !== undefined) {
-        void setPinned(patch.pinned as PinnedFilter);
-      }
-      if (patch.label !== undefined) {
-        void setLabel(typeof patch.label === "string" && patch.label !== "all" ? patch.label : "all");
-      }
-      if (patch.assignee !== undefined) {
-        void setAssignee(patch.assignee as AssigneeFilter);
-      }
-      if (patch.q !== undefined) {
-        void setQ((patch.q as string) ?? "");
-      }
-      if (patch.sort !== undefined) {
-        void setSort(patch.sort as SortMode);
-      }
-      if (patch.groupBy !== undefined) {
-        void setGroupBy(patch.groupBy as DashboardGroupBy);
-      }
-      if (patch.density !== undefined) {
-        void setDensity(patch.density as DashboardDensity);
-      }
-      if (patch.page !== undefined) {
-        void setPage((patch.page as number) ?? 1);
-      }
-      if (options?.resetPage) {
-        void setPage(1);
-      }
+      void setFilters({
+        ...patch,
+        ...(options?.resetPage ? { page: 1 } : {}),
+      });
     },
-    [setProject, setMark, setStatus, setWorkflowStatus, setPriority, setPinned, setLabel, setAssignee, setQ, setSort, setGroupBy, setDensity, setPage],
+    [setFilters],
   );
 
   return { filters, update };

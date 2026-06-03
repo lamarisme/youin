@@ -18,9 +18,19 @@ Set these variables in `apps/web/.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 DATABASE_URL=
+DATABASE_APPLICATION_NAME=youin-web
+DATABASE_POOL_MAX=1
+DATABASE_IDLE_TIMEOUT_SECONDS=60
+DATABASE_MAX_LIFETIME_SECONDS=1800
+DATABASE_CONNECT_TIMEOUT_SECONDS=10
 ```
 
-Use development credentials only. Do not commit local environment files or database passwords.
+Use the Supabase session pooler connection string for `DATABASE_URL`
+(`postgresql://postgres.<project-ref>:...@aws-...pooler.supabase.com:5432/postgres`).
+The pool settings are optional, but the defaults keep each app process to one
+tagged postgres.js connection and avoid holding excessive idle pooler clients.
+Use development credentials only. Do not commit local environment files or database
+passwords.
 
 ## Run
 

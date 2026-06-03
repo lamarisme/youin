@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/empty-state";
 import { MarkFilters } from "@/components/dashboard/mark-filters";
 import { MarkTable } from "@/components/dashboard/mark-table";
 import { DashboardViewOptionsMenu } from "@/components/dashboard/dashboard-view-options-menu";
+import { useMarkTableModel } from "@/components/dashboard/use-mark-table-model";
 import { Pagination } from "@/components/pagination";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -43,7 +44,10 @@ import {
 import { ViewScopeFields } from "./view-filter-fields";
 import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
 
-import type { DashboardFilters } from "@/components/dashboard/use-dashboard-filters";
+import type {
+  DashboardFilterPatch,
+  DashboardFilters,
+} from "@/components/dashboard/use-dashboard-filters";
 
 const PAGE_SIZE = 8;
 
@@ -114,9 +118,7 @@ function ViewDetail({
     setPage(1);
   }
 
-  function updateDashboardViewOptions(
-    patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
-  ) {
+  function updateDashboardViewOptions(patch: DashboardFilterPatch) {
     const filterPatch = dashboardPatchToViewPatch(patch);
     if (Object.keys(filterPatch).length > 0) updateFilters(filterPatch);
     const configPatch = dashboardPatchToConfigPatch(patch);
@@ -247,29 +249,12 @@ function ViewList({
   onPageChange: (page: number) => void;
   onSelectMark: (mark: MarkItem) => void;
 }) {
-  const membersById = useMemo(() => new Map(workspace.members.map((member) => [member.id, member])), [workspace.members]);
-  const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
-  const workflowStatusesById = useMemo(
-    () => new Map(workspace.workflowStatuses.map((status) => [status.id, status])),
-    [workspace.workflowStatuses],
-  );
-  const commentCountByMarkId = useMemo(() => {
-    const hydratedCounts = new Map<string, number>();
-    for (const comment of workspace.comments) {
-      hydratedCounts.set(
-        comment.markId,
-        (hydratedCounts.get(comment.markId) ?? 0) + 1,
-      );
-    }
-    const counts = new Map<string, number>();
-    for (const mark of workspace.marks) {
-      counts.set(
-        mark.id,
-        Math.max(mark.commentCount ?? 0, hydratedCounts.get(mark.id) ?? 0),
-      );
-    }
-    return counts;
-  }, [workspace.comments, workspace.marks]);
+  const {
+    membersById,
+    labelsById,
+    workflowStatusesById,
+    commentCountByMarkId,
+  } = useMarkTableModel(workspace);
   const totalPages = Math.max(1, Math.ceil(marks.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, page), totalPages);
   const paginatedMarks = marks.slice((displayPage - 1) * PAGE_SIZE, displayPage * PAGE_SIZE);
@@ -472,9 +457,7 @@ function toDashboardFilters(
   };
 }
 
-function dashboardPatchToViewPatch(
-  patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
-): Partial<WorkspaceViewFilters> {
+function dashboardPatchToViewPatch(patch: DashboardFilterPatch): Partial<WorkspaceViewFilters> {
   const out: Partial<WorkspaceViewFilters> = {};
   if (typeof patch.projectId === "string") out.projectId = patch.projectId;
   if (typeof patch.status === "string") out.status = patch.status as WorkspaceViewFilters["status"];
@@ -488,9 +471,7 @@ function dashboardPatchToViewPatch(
   return out;
 }
 
-function dashboardPatchToConfigPatch(
-  patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
-): Partial<WorkspaceViewConfig> {
+function dashboardPatchToConfigPatch(patch: DashboardFilterPatch): Partial<WorkspaceViewConfig> {
   const out: Partial<WorkspaceViewConfig> = {};
   if (typeof patch.groupBy === "string") {
     out.dashboardGroupBy = patch.groupBy as WorkspaceViewConfig["dashboardGroupBy"];

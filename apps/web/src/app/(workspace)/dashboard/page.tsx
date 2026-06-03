@@ -3,6 +3,10 @@ import { redirect } from "next/navigation";
 
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
+import {
+  pageSearchParamsToUrlSearchParams,
+  type PageSearchParams,
+} from "@/lib/page-search-params";
 import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import { markHref } from "@/lib/workspace/routes";
 import { DashboardUrlNormalizer } from "./dashboard-url-normalizer";
@@ -14,18 +18,9 @@ export const metadata: Metadata = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<PageSearchParams>;
 }) {
-  const params = new URLSearchParams();
-  const rawSearchParams = await searchParams;
-  for (const [key, value] of Object.entries(rawSearchParams)) {
-    if (Array.isArray(value)) {
-      for (const item of value) params.append(key, item);
-    } else if (typeof value === "string") {
-      params.set(key, value);
-    }
-  }
-
+  const params = pageSearchParamsToUrlSearchParams(await searchParams);
   const mark = params.get("mark");
   if (mark) {
     redirect(markHref(mark, params));

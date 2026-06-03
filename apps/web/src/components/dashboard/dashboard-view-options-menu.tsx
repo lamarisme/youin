@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import type {
+  DashboardFilterPatch,
   DashboardDensity,
   DashboardFilters,
   DashboardGroupBy,
@@ -40,10 +41,7 @@ interface DashboardViewOptionsMenuProps {
   filters: DashboardFilters;
   canSaveView?: boolean;
   onSaveView?: () => void;
-  onApply: (
-    patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
-    options?: { resetPage?: boolean },
-  ) => void;
+  onApply: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
 export function DashboardViewOptionsMenu({

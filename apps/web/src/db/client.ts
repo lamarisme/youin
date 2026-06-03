@@ -11,6 +11,12 @@ const globalForDb = globalThis as unknown as {
   drizzleDb?: PostgresJsDatabase<typeof schema>;
 };
 
+const DEFAULT_POOL_MAX = 1;
+const DEFAULT_IDLE_TIMEOUT_SECONDS = 60;
+const DEFAULT_MAX_LIFETIME_SECONDS = 60 * 30;
+const DEFAULT_CONNECT_TIMEOUT_SECONDS = 10;
+const DEFAULT_APPLICATION_NAME = "youin-web";
+
 function getConnectionString(): string {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -21,22 +27,52 @@ function getConnectionString(): string {
   return connectionString;
 }
 
+function getPositiveIntegerEnv(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (!value) return fallback;
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+
+  return parsed;
+}
+
+function getStringEnv(name: string, fallback: string): string {
+  const value = process.env[name]?.trim();
+  return value || fallback;
+}
+
 export function getPostgresClient(): postgres.Sql {
   if (globalForDb.postgresClient) return globalForDb.postgresClient;
   const client = postgres(getConnectionString(), {
+    connection: {
+      application_name: getStringEnv(
+        "DATABASE_APPLICATION_NAME",
+        DEFAULT_APPLICATION_NAME,
+      ),
+    },
+    connect_timeout: getPositiveIntegerEnv(
+      "DATABASE_CONNECT_TIMEOUT_SECONDS",
+      DEFAULT_CONNECT_TIMEOUT_SECONDS,
+    ),
+    idle_timeout: getPositiveIntegerEnv(
+      "DATABASE_IDLE_TIMEOUT_SECONDS",
+      DEFAULT_IDLE_TIMEOUT_SECONDS,
+    ),
+    max: getPositiveIntegerEnv("DATABASE_POOL_MAX", DEFAULT_POOL_MAX),
+    max_lifetime: getPositiveIntegerEnv(
+      "DATABASE_MAX_LIFETIME_SECONDS",
+      DEFAULT_MAX_LIFETIME_SECONDS,
+    ),
     prepare: false,
   });
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.postgresClient = client;
-  }
+  globalForDb.postgresClient = client;
   return client;
 }
 
 export function getDb(): PostgresJsDatabase<typeof schema> {
   if (globalForDb.drizzleDb) return globalForDb.drizzleDb;
   const db = drizzle(getPostgresClient(), { schema });
-  if (process.env.NODE_ENV !== "production") {
-    globalForDb.drizzleDb = db;
-  }
+  globalForDb.drizzleDb = db;
   return db;
 }

@@ -3,6 +3,10 @@ import { redirect } from "next/navigation";
 
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
+import {
+  pageSearchParamsToUrlSearchParams,
+  type PageSearchParams,
+} from "@/lib/page-search-params";
 import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import { markHref } from "@/lib/workspace/routes";
 
@@ -15,19 +19,10 @@ export default async function DashboardMarkPage({
   searchParams,
 }: {
   params: Promise<{ mark: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<PageSearchParams>;
 }) {
   const { mark } = await params;
-  const rawSearchParams = await searchParams;
-  const urlParams = new URLSearchParams();
-  for (const [key, value] of Object.entries(rawSearchParams)) {
-    if (Array.isArray(value)) {
-      for (const item of value) urlParams.append(key, item);
-    } else if (typeof value === "string") {
-      urlParams.set(key, value);
-    }
-  }
-
+  const urlParams = pageSearchParamsToUrlSearchParams(await searchParams);
   const requestedProjectId = urlParams.get("project");
   const readModel = await getDashboardReadModelAction({
     projectId: requestedProjectId,

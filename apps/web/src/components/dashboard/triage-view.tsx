@@ -8,7 +8,7 @@ import {
   Plus,
   UserRound,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
@@ -35,8 +35,6 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateMarkMutation,
   useDeleteMarkMutation,
-  useAssignMarkMutation,
-  useSetMarkWorkflowStatusMutation,
   useToggleMarkStatusMutation,
   useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
@@ -51,6 +49,7 @@ import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
 import { getTriageAttentionCounts } from "./triage-cockpit";
 import { useDashboardFilters, type DashboardFilters } from "./use-dashboard-filters";
+import { useMarkTableModel } from "./use-mark-table-model";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 const PAGE_SIZE = 8;
@@ -66,15 +65,15 @@ export function TriageView() {
   const { mutateAsync: toggleMarkStatus } = useToggleMarkStatusMutation();
   const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutateAsync: deleteMark } = useDeleteMarkMutation();
-  const { mutate: setMarkWorkflowStatus } = useSetMarkWorkflowStatusMutation();
-  const { mutate: assignMark } = useAssignMarkMutation();
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeProjectId = searchParams.get("project");
+  const hasNewMarkParam = searchParams.get("new") === "1";
   const searchParamString = searchParams.toString();
-  const [showNew, setShowNew] = useState(() => searchParams.get("new") === "1");
+  const [showNew, setShowNew] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const newMarkDialogOpen = showNew || hasNewMarkParam;
 
   const selectedProject = useMemo(() => {
     if (!routeProjectId) return null;
@@ -92,7 +91,11 @@ export function TriageView() {
     [activeProjectId, workspace.marks],
   );
 
-  const visibleMarks = useVisibleDashboardMarks();
+  const visibleMarks = useVisibleDashboardMarks({
+    marks: workspace.marks,
+    filters,
+    viewerId: userId,
+  });
   const attentionCounts = useMemo(
     () => getTriageAttentionCounts(scopeMarks, userId),
     [scopeMarks, userId],
@@ -138,20 +141,22 @@ export function TriageView() {
     void toggleMarkStatus(mark.id);
   }
 
-  useEffect(() => {
-    if (searchParams.get("new") !== "1") return;
+  const setNewMarkDialogOpen = useCallback((open: boolean) => {
+    setShowNew(open);
+    if (open || !hasNewMarkParam) return;
+
     const next = new URLSearchParams(searchParamString);
     next.delete("new");
     router.replace(next.size ? `/dashboard?${next.toString()}` : "/dashboard");
-  }, [router, searchParamString, searchParams]);
+  }, [hasNewMarkParam, router, searchParamString]);
 
   useEffect(() => {
     function openNewMark() {
-      setShowNew(true);
+      setNewMarkDialogOpen(true);
     }
     window.addEventListener("youin:new-mark", openNewMark);
     return () => window.removeEventListener("youin:new-mark", openNewMark);
-  }, []);
+  }, [setNewMarkDialogOpen]);
 
   const totalPages = Math.max(1, Math.ceil(visibleMarks.length / PAGE_SIZE));
   const displayPage = Math.min(Math.max(1, filters.page), totalPages);
@@ -159,31 +164,13 @@ export function TriageView() {
     () => visibleMarks.slice((displayPage - 1) * PAGE_SIZE, (displayPage - 1) * PAGE_SIZE + PAGE_SIZE),
     [visibleMarks, displayPage],
   );
-
-  const membersById = useMemo(() => new Map(workspace.members.map((m) => [m.id, m])), [workspace.members]);
-  const labelsById = useMemo(() => new Map(workspace.labels.map((l) => [l.id, l])), [workspace.labels]);
-  const workflowStatusesById = useMemo(
-    () => new Map(workspace.workflowStatuses.map((status) => [status.id, status])),
-    [workspace.workflowStatuses],
-  );
-  const commentCountByMarkId = useMemo(() => {
-    const hydratedCounts = new Map<string, number>();
-    for (const c of workspace.comments) {
-      hydratedCounts.set(c.markId, (hydratedCounts.get(c.markId) ?? 0) + 1);
-    }
-    const counts = new Map<string, number>();
-    for (const mark of workspace.marks) {
-      counts.set(
-        mark.id,
-        Math.max(mark.commentCount ?? 0, hydratedCounts.get(mark.id) ?? 0),
-      );
-    }
-    return counts;
-  }, [workspace.comments, workspace.marks]);
-  const projectsById = useMemo(
-    () => new Map(workspace.projects.map((project) => [project.id, project])),
-    [workspace.projects],
-  );
+  const {
+    membersById,
+    labelsById,
+    workflowStatusesById,
+    projectsById,
+    commentCountByMarkId,
+  } = useMarkTableModel(workspace);
   const groupedMarks = useMemo(
     () =>
       filters.groupBy === "none"
@@ -282,6 +269,7 @@ export function TriageView() {
       });
       const params = new URLSearchParams(searchParamString);
       params.set("project", newMarkProject.id);
+      params.delete("new");
       router.push(markHref(created.displayKey, params));
       setShowNew(false);
     } catch {
@@ -304,7 +292,7 @@ export function TriageView() {
                 <Button
                   size="sm"
                   variant="mark"
-                  onClick={() => setShowNew(true)}
+                  onClick={() => setNewMarkDialogOpen(true)}
                   className="h-7 gap-1.5 rounded-md px-2 text-ui-sm"
                 >
                   <Plus className="size-3.5 shrink-0 opacity-90" />
@@ -334,7 +322,7 @@ export function TriageView() {
             </>
           ) : null}
 
-          <Dialog open={showNew} onOpenChange={setShowNew}>
+          <Dialog open={newMarkDialogOpen} onOpenChange={setNewMarkDialogOpen}>
             <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
               <DialogHeader className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
                 <DialogTitle>New mark</DialogTitle>
@@ -349,10 +337,10 @@ export function TriageView() {
                   labels={workspace.labels}
                   members={workspace.members}
                   defaultAssigneeId={userId ?? undefined}
-                  open={showNew}
+                  open={newMarkDialogOpen}
                   variant="plain"
                   onSubmit={handleCreateMark}
-                  onCancel={() => setShowNew(false)}
+                  onCancel={() => setNewMarkDialogOpen(false)}
                 />
               </div>
             </DialogContent>
@@ -376,7 +364,7 @@ export function TriageView() {
                       Clear filters
                     </Button>
                   ) : (
-                    <Button type="button" variant="mark" size="sm" className="h-9" onClick={() => setShowNew(true)}>
+                    <Button type="button" variant="mark" size="sm" className="h-9" onClick={() => setNewMarkDialogOpen(true)}>
                       <Plus className="size-3.5" aria-hidden />
                       New mark
                     </Button>
@@ -389,8 +377,6 @@ export function TriageView() {
                 membersById={membersById}
                 labelsById={labelsById}
                 workflowStatusesById={workflowStatusesById}
-                workflowStatuses={workspace.workflowStatuses}
-                members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
                 density={filters.density === "compact" ? "compact" : "default"}
@@ -398,15 +384,6 @@ export function TriageView() {
                 onSelectionChange={handleSelectionChange}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
-                onSetWorkflowStatus={(mark, workflowStatusId) =>
-                  setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
-                }
-                onSetPriority={(mark, priority) =>
-                  void updateMarkPriority({ markId: mark.id, priority })
-                }
-                onAssignMark={(mark, assigneeId) =>
-                  assignMark({ markId: mark.id, assigneeId })
-                }
               />
             ) : (
               <MarkTable
@@ -414,8 +391,6 @@ export function TriageView() {
                 membersById={membersById}
                 labelsById={labelsById}
                 workflowStatusesById={workflowStatusesById}
-                workflowStatuses={workspace.workflowStatuses}
-                members={workspace.members}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
                 sectionTitle={listSectionTitle({
@@ -426,15 +401,6 @@ export function TriageView() {
                 density={filters.density === "compact" ? "compact" : "default"}
                 onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
                 onToggleMarkStatus={handleRowToggleStatus}
-                onSetWorkflowStatus={(mark, workflowStatusId) =>
-                  setMarkWorkflowStatus({ markId: mark.id, workflowStatusId })
-                }
-                onSetPriority={(mark, priority) =>
-                  void updateMarkPriority({ markId: mark.id, priority })
-                }
-                onAssignMark={(mark, assigneeId) =>
-                  assignMark({ markId: mark.id, assigneeId })
-                }
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
               />
@@ -481,8 +447,6 @@ function GroupedMarkTables({
   membersById,
   labelsById,
   workflowStatusesById,
-  workflowStatuses,
-  members,
   commentCountByMarkId,
   displayNamePreference,
   activeMarkId,
@@ -491,16 +455,11 @@ function GroupedMarkTables({
   onSelectionChange,
   onSelectMark,
   onToggleMarkStatus,
-  onSetWorkflowStatus,
-  onSetPriority,
-  onAssignMark,
 }: {
   groups: GroupedMarkSection[];
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
-  workflowStatuses: WorkspaceWorkflowStatus[];
-  members: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   activeMarkId?: string;
@@ -509,9 +468,6 @@ function GroupedMarkTables({
   onSelectionChange: (ids: Set<string>) => void;
   onSelectMark: (mark: MarkItem) => void;
   onToggleMarkStatus: (mark: MarkItem) => void | Promise<void>;
-  onSetWorkflowStatus: (mark: MarkItem, workflowStatusId: string) => void;
-  onSetPriority: (mark: MarkItem, priority: MarkPriority) => void;
-  onAssignMark: (mark: MarkItem, assigneeId: string | null) => void;
 }) {
   return (
     <div className="divide-y divide-rule/60">
@@ -536,8 +492,6 @@ function GroupedMarkTables({
             membersById={membersById}
             labelsById={labelsById}
             workflowStatusesById={workflowStatusesById}
-            workflowStatuses={workflowStatuses}
-            members={members}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
             showSectionHeader={false}
@@ -545,9 +499,6 @@ function GroupedMarkTables({
             density={density}
             onSelectMark={onSelectMark}
             onToggleMarkStatus={onToggleMarkStatus}
-            onSetWorkflowStatus={onSetWorkflowStatus}
-            onSetPriority={onSetPriority}
-            onAssignMark={onAssignMark}
             selectedIds={selectedIds}
             onSelectionChange={onSelectionChange}
           />

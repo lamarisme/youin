@@ -63,6 +63,7 @@ import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markHref } from "@/lib/workspace/routes";
+import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 interface MarkDetailViewProps {
@@ -102,7 +103,11 @@ function initialDetailSidebarCollapsed() {
 }
 
 export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
-  const workspace = useWorkspaceData((s) => s.workspace);
+  const { workspace, userId, displayNamePreference } = useWorkspaceData((s) => ({
+    workspace: s.workspace,
+    userId: s.userId,
+    displayNamePreference: s.profile.displayNamePreference,
+  }));
   const router = useRouter();
   const searchParams = useSearchParams();
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
@@ -110,7 +115,12 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const { mutateAsync: createLabel } = useCreateLabelMutation();
   const { mutateAsync: deleteMark, isPending: isDeleting } = useDeleteMarkMutation();
   const { mutateAsync: updateMark, isPending: isSavingEdit } = useUpdateMarkMutation();
-  const visibleMarks = useVisibleDashboardMarks();
+  const { filters } = useDashboardFilters();
+  const visibleMarks = useVisibleDashboardMarks({
+    marks: workspace.marks,
+    filters,
+    viewerId: userId,
+  });
   const project = workspace.projects.find((item) => item.id === mark.projectId) ?? null;
 
   const selectedIndex = visibleMarks.findIndex((p) => p.id === mark.id);
@@ -135,8 +145,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     () => new Map(workspace.members.map((m) => [m.id, m])),
     [workspace.members],
   );
-  const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
-
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editTitle, setEditTitle] = useState(mark.title);
   const [editDescription, setEditDescription] = useState(mark.description);
@@ -392,7 +400,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               members={workspace.members}
               workflowStatuses={workspace.workflowStatuses}
               projects={workspace.projects}
-              displayNamePreference={namePref}
+              displayNamePreference={displayNamePreference}
               showPinnedAction={isPane}
               onConfirmDelete={() => setConfirmDelete(true)}
             />

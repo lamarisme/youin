@@ -35,6 +35,7 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
 import type {
   AssigneeFilter,
+  DashboardFilterPatch,
   DashboardFilters,
   PinnedFilter,
   PriorityFilter,
@@ -45,7 +46,7 @@ interface MarkFiltersProps {
   labels: WorkspaceLabel[];
   lockedAssignee?: AssigneeFilter;
   showAppliedFilters?: boolean;
-  onChange: (patch: Partial<Record<keyof DashboardFilters, string | number | null>>, options?: { resetPage?: boolean }) => void;
+  onChange: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
 export function MarkFilters({

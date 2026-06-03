@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "title": "youin | Spatial backlog for web apps",
-    "description": "Click any part of your web app to create a project-scoped mark with screenshot, selector, browser context, and discussion attached."
+    "title": "youin | Product backlog pinned to your UI",
+    "description": "Create tasks on the exact UI element that needs work, with selector, screenshot, viewport, browser context, and discussion attached."
   },
   "brand": {
     "name": "youin",
@@ -163,14 +163,14 @@
     "hero": {
       "eyebrow": "Spatial backlog",
       "title": "Your product backlog, pinned to your actual UI.",
-      "subtitle": "Skip the screenshot ritual. Mark the live interface, and YouIn turns that exact spot into a task with selector, screenshot, browser context, and discussion already attached.",
+      "subtitle": "Stop dragging UI work through screenshots and Slack. Click the live interface, and YouIn creates a task with the selector, screenshot, browser context, and discussion already attached.",
       "chromeCta": "Join free beta",
       "secondaryCta": "See the loop",
       "proofLabel": "Beta details",
       "proof": ["Free during beta", "Chrome extension", "No card required"]
     },
     "productStage": {
-      "ariaLabel": "Demo of YouIn triage dashboard with spatial marks on a live pricing page",
+      "ariaLabel": "YouIn demo showing a mark pinned to a pricing CTA and carried into triage",
       "urlBar": "app.client.com/pricing",
       "overlayLabel": "youin overlay",
       "liveSiteName": "Client portal",
@@ -180,7 +180,7 @@
       "liveNavDocs": "Docs",
       "livePageEyebrow": "SaaS billing",
       "livePageTitle": "Pick a plan that fits.",
-      "livePageSubtitle": "A reviewer spots a contrast issue on the Pro CTA. The mark stays attached to the exact button.",
+      "livePageSubtitle": "A reviewer spots a contrast issue on the Pro CTA. The task stays attached to the exact button.",
       "livePageCta": "Upgrade to Pro",
       "planStarter": "Starter",
       "planPro": "Pro",
@@ -220,14 +220,14 @@
       ],
       "statsOpen": "Open",
       "statsResolved": "Resolved",
-      "statsSynced": "Marked",
+      "statsSynced": "Pinned",
       "statsOpenValue": "18",
       "statsResolvedValue": "42",
       "statsSyncedValue": "31",
       "commentPreview": "Low contrast on primary CTA",
       "detailId": "YIN-114",
       "detailTitle": "Pricing card CTA has low contrast",
-      "detailBody": "Captured selector, viewport, screenshot, and browser metadata.",
+      "detailBody": "Selector, viewport, screenshot, and browser metadata are already captured.",
       "detailComments": "3 comments",
       "taskStatus": "Open mark",
       "selectorLabel": "Selector",
@@ -267,39 +267,39 @@
     },
     "problem": {
       "title": "The work is spatial. The tools are flat.",
-      "p1": "UI work gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the task attached to the exact interface moment that created it.",
+      "p1": "Review starts on the page, then gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the work attached to the exact interface moment that created it.",
       "oldLoopLabel": "The old loop",
       "oldLoopBody": "Screenshot, annotate, paste in chat, explain the page, answer follow-up questions, repeat after the next deploy.",
       "withLabel": "With YouIn",
-      "withBody": "Click the UI, create the task, keep the context alive where the work actually happens."
+      "withBody": "Point once at the live UI. The task keeps its selector, capture, discussion, and status together."
     },
     "loop": {
       "eyebrow": "Spatial backlog",
-      "title": "Project-scoped work, mapped onto the product.",
+      "title": "A backlog that remembers where the work is.",
       "steps": [
         {
-          "title": "Turn any element into a task",
-          "body": "Click a button, card, modal, table row, or empty state. YouIn captures the URL, selector, viewport, browser, and screenshot automatically."
+          "title": "Pin work to the live element",
+          "body": "Click the exact button, card, modal, table row, or empty state. YouIn captures the URL, selector, viewport, browser, and screenshot automatically."
         },
         {
-          "title": "Keep the anchor alive",
-          "body": "Tasks stay tied to the interface with selector, viewport, and screenshot fallbacks, so deployment drift does not turn feedback into guesswork."
+          "title": "Keep context after the page changes",
+          "body": "Tasks stay tied to the interface with selector, viewport, and screenshot fallbacks, so deployment drift does not turn review notes into guesswork."
         },
         {
-          "title": "Sync with your dev workflow",
-          "body": "Open a focused mark detail with the task, visual context, workflow status, and discussion thread without translating from a screenshot."
+          "title": "Move it through the backlog",
+          "body": "Triage, assign, discuss, and resolve the mark with visual context and workflow status in one place. No screenshot translation needed."
         }
       ]
     },
     "integrations": {
       "eyebrow": "Install paths",
-      "title": "Use the extension, or bring YouIn directly into your app.",
-      "subtitle": "The Chrome extension stays the fastest way to mark any page. For teams that do not want browser extensions, YouIn is being shaped around a hosted script and an npm package with the same capture model.",
+      "title": "Start with the extension. Embed the same capture layer later.",
+      "subtitle": "The Chrome extension is the fastest way to mark any page. Teams that need a first-party flow can use the planned hosted script or npm package without changing the capture model.",
       "options": [
         {
           "name": "Chrome extension",
           "status": "Available",
-          "body": "Capture on any web app or staging site without changing the codebase."
+          "body": "Mark any web app or staging site without changing the codebase."
         },
         {
           "name": "Hosted script",
@@ -313,7 +313,7 @@
         }
       ],
       "contractTitle": "One contract underneath",
-      "contractBody": "Allowed domains, current user identity, route and entity metadata, screenshots, selectors, and workspace routing should stay consistent across every install path."
+      "contractBody": "Allowed domains, user identity, route and entity metadata, screenshots, selectors, and workspace routing stay consistent across every install path."
     },
     "who": {
       "eyebrow": "Focused wedge",
@@ -322,31 +322,31 @@
         {
           "role": "Web agencies",
           "detail": "Client review",
-          "body": "Turn client comments into precise UI tasks without asking anyone to write a ticket or describe a screenshot."
+          "body": "Turn client comments into precise UI tasks without asking reviewers to write tickets or describe screenshots."
         },
         {
-          "role": "Product teams",
-          "detail": "3-15 people",
-          "body": "Let PMs, designers, and developers manage UI debt directly on the live product with statuses and views that fit the team."
+          "role": "Small product teams",
+          "detail": "PMs + designers + devs",
+          "body": "Manage UI debt directly on the live product, with statuses and saved views that fit how the team already ships."
         },
         {
           "role": "Solo builders",
           "detail": "Indie + small teams",
-          "body": "Use the npm dev dependency as a spatial to-do list for your own app, with every fix living where the bug lives."
+          "body": "Use YouIn as a spatial to-do list for your own app, with every fix living where the bug lives."
         }
       ]
     },
     "install": {
       "title": "Stop describing the thing you can point at.",
-      "subtitle": "The beta is free while the core workflow is being shaped with early teams. The next time someone spots UI work, turn that exact element into the task.",
+      "subtitle": "The beta is free while the core workflow is shaped with early teams. The next time someone spots UI work, turn that exact element into the task.",
       "chromeCta": "Join free beta",
       "contactCta": "Talk to a human",
       "glanceTitle": "At a glance",
-      "onboardingLabel": "Onboarding",
+      "onboardingLabel": "Setup",
       "onboardingValue": "Under 2 minutes",
-      "tabsLabel": "Organization",
+      "tabsLabel": "Workspace",
       "tabsValue": "Projects + views",
-      "connectorsLabel": "Anchoring",
+      "connectorsLabel": "Context captured",
       "connectorsValue": "Selector + viewport + screenshot"
     },
     "footer": {

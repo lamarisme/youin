@@ -23,15 +23,10 @@ export interface MarkTableProps {
   membersById: Map<string, TeamMember>;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
-  workflowStatuses?: WorkspaceWorkflowStatus[];
-  members?: TeamMember[];
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
   onSelectMark: (mark: MarkItem) => void;
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
-  onSetWorkflowStatus?: (mark: MarkItem, workflowStatusId: string) => void;
-  onSetPriority?: (mark: MarkItem, priority: MarkPriority) => void;
-  onAssignMark?: (mark: MarkItem, assigneeId: string | null) => void;
   activeMarkId?: string;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;

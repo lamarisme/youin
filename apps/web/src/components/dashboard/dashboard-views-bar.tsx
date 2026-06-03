@@ -22,17 +22,14 @@ import {
 } from "@/lib/workspace/views";
 
 import { DashboardViewOptionsMenu } from "./dashboard-view-options-menu";
-import type { DashboardFilters } from "./use-dashboard-filters";
+import type { DashboardFilterPatch, DashboardFilters } from "./use-dashboard-filters";
 
 interface DashboardViewsBarProps {
   views: WorkspaceView[];
   filters: DashboardFilters;
   viewerId: string | null;
   counts?: DashboardScopeCounts;
-  onApply: (
-    patch: Partial<Record<keyof DashboardFilters, string | number | null>>,
-    options?: { resetPage?: boolean },
-  ) => void;
+  onApply: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
 type DashboardScopeCounts = {

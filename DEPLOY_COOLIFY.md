@@ -22,10 +22,20 @@ Add these variables in Coolify before the first deployment:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_PUBLISHABLE_ANON_KEY
-DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:5432/postgres
+DATABASE_APPLICATION_NAME=youin-web
+DATABASE_POOL_MAX=1
+DATABASE_IDLE_TIMEOUT_SECONDS=60
+DATABASE_MAX_LIFETIME_SECONDS=1800
+DATABASE_CONNECT_TIMEOUT_SECONDS=10
 ```
 
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is also supported by the app and can be used instead of `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+Use Supabase's session pooler URL for app runtime traffic in Coolify's persistent
+Node server. The Drizzle client disables prepared statements for pooler
+compatibility and keeps one postgres.js connection per app process by default;
+increase `DATABASE_POOL_MAX` only after checking Supabase pooler client usage.
 
 ## Database migrations
 
