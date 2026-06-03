@@ -5,6 +5,7 @@ import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
 import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import { markHref } from "@/lib/workspace/routes";
+import { DashboardUrlNormalizer } from "./dashboard-url-normalizer";
 
 export const metadata: Metadata = {
   title: "Triage",
@@ -37,13 +38,13 @@ export default async function DashboardPage({
 
   if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
     params.set("project", readModel.selectedProjectId);
-    redirect(`/dashboard?${params.toString()}`);
+    return <DashboardUrlNormalizer href={`/dashboard?${params.toString()}`} />;
   }
 
   if (!readModel.selectedProjectId && requestedProjectId) {
     params.delete("project");
     const query = params.toString();
-    redirect(query ? `/dashboard?${query}` : "/dashboard");
+    return <DashboardUrlNormalizer href={query ? `/dashboard?${query}` : "/dashboard"} />;
   }
 
   return (
