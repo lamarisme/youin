@@ -11,6 +11,7 @@ import {
   signInWithPassword,
   signOut
 } from "./lib/auth"
+import { MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
 import {
   isMigrationDoneForUser,
   migrateLocalDataToWorkspace,
@@ -22,7 +23,6 @@ import {
   REVIEW_MODE_SCRIPT,
   type ReviewScriptRequirement
 } from "./lib/review-scripts"
-import { MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
 import {
   getActiveProjectId,
   getActiveSpaceId,
@@ -207,10 +207,12 @@ const PRESS_FEEDBACK =
   "active:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0"
 const QUIET_ACTION =
   "inline-flex min-h-8 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-paper-3)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45"
+const ICON_ACTION =
+  "inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] text-[color:var(--yi-ext-text-muted)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-paper-3)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:opacity-45"
 const PRIMARY_ACTION =
   "inline-flex min-h-8 items-center justify-center rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-1 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:opacity-50"
-const QUIET_TILE =
-  "flex min-w-0 flex-col justify-between rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-paper-2)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)] disabled:opacity-70"
+const ACTION_TILE =
+  "flex min-h-[60px] min-w-0 items-center gap-2.5 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left text-[color:var(--yi-ext-text-soft)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-paper-2)] hover:text-[color:var(--yi-ink)] disabled:cursor-not-allowed disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)] disabled:opacity-70"
 const SELECT_CONTROL =
   "youin-input min-h-8 w-full cursor-pointer rounded-md px-2 py-1 text-[12px] text-[color:var(--yi-ext-text-soft)] disabled:cursor-not-allowed disabled:opacity-60"
 const INLINE_ALERT =
@@ -549,11 +551,13 @@ function IndexPopup() {
             <button
               type="button"
               className={cx(
-                "min-h-8 rounded-md bg-transparent px-2 text-[11px] font-semibold text-[color:var(--yi-ext-accent)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)]",
+                "flex size-8 items-center justify-center rounded-md bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none transition-colors duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ink)]",
                 FOCUS_OUTLINE
               )}
+              aria-label={t("extension.popup.closeSignIn")}
+              title={t("extension.popup.closeSignIn")}
               onClick={() => setShowAuth(false)}>
-              {t("extension.popup.closeSignIn")}
+              <XIcon />
             </button>
           </header>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -607,11 +611,12 @@ function IndexPopup() {
                     }}
                     type="button"
                     role="menuitem"
-                    className="block w-full cursor-pointer bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
+                    className="flex w-full cursor-pointer items-center gap-2 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                     onClick={() => {
                       setMenuOpen(false)
                       void signOut()
                     }}>
+                    <LogOutIcon />
                     {t("extension.popup.signOut")}
                   </button>
                 </>
@@ -622,11 +627,12 @@ function IndexPopup() {
                   }}
                   type="button"
                   role="menuitem"
-                  className="block w-full cursor-pointer bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
+                  className="flex w-full cursor-pointer items-center gap-2 bg-transparent px-3 py-2 text-start text-[12px] text-[color:var(--yi-ext-text-soft)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:bg-[color:var(--yi-ext-surface-hover)]"
                   onClick={() => {
                     setMenuOpen(false)
                     setShowAuth(true)
                   }}>
+                  <LogInIcon />
                   {t("extension.popup.signInMenu")}
                 </button>
               )}
@@ -704,61 +710,71 @@ function IndexPopup() {
           <button
             type="button"
             disabled={!canReviewPage || domainDisabled || !projectId}
+            aria-label={`${t("extension.popup.inspect")}: ${t(
+              "extension.popup.inspectStartHint"
+            )}`}
+            title={t("extension.popup.inspectStartHint")}
             className={cx(
-              "flex min-h-[54px] min-w-0 flex-col justify-between rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-left text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:border-[color:var(--yi-ext-border)] disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)]",
+              "flex min-h-[60px] min-w-0 items-center gap-2.5 rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-left text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] disabled:cursor-not-allowed disabled:border-[color:var(--yi-ext-border)] disabled:bg-[color:var(--yi-ext-surface-input)] disabled:text-[color:var(--yi-ext-text-muted)]",
               FOCUS_OUTLINE,
               PRESS_FEEDBACK
             )}
             onClick={() => startPageReview("inspect")}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-paper)] text-[color:var(--yi-mark)]">
+              <InspectIcon />
+            </span>
             <span className="block truncate text-[12px] font-semibold">
               {t("extension.popup.inspect")}
-            </span>
-            <span className="mt-1 block text-[10px] font-medium opacity-80">
-              {t("extension.popup.inspectStartHint")}
             </span>
           </button>
           <button
             type="button"
             disabled={!canReviewPage || domainDisabled || !projectId}
-            className={cx(
-              QUIET_TILE,
-              "min-h-[54px]",
-              FOCUS_OUTLINE,
-              PRESS_FEEDBACK
-            )}
+            aria-label={`${t("extension.popup.screenshot")}: ${t(
+              "extension.popup.screenshotStartHint"
+            )}`}
+            title={t("extension.popup.screenshotStartHint")}
+            className={cx(ACTION_TILE, FOCUS_OUTLINE, PRESS_FEEDBACK)}
             onClick={() => startPageReview("screenshot")}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-mark)]">
+              <ScreenshotIcon />
+            </span>
             <span className="block truncate text-[12px] font-semibold">
               {t("extension.popup.screenshot")}
-            </span>
-            <span className="mt-1 block text-[10px] font-medium text-[color:var(--yi-ext-text-muted)]">
-              {t("extension.popup.screenshotStartHint")}
             </span>
           </button>
         </div>
 
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_6.25rem] gap-2">
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_5.75rem] gap-2">
           <button
             type="button"
             disabled={!canReviewPage || domainDisabled}
+            aria-label={t("extension.popup.openPageFeedback")}
+            title={t("extension.popup.openPageFeedback")}
             className={cx(
-              QUIET_TILE,
-              "min-h-[50px]",
+              ACTION_TILE,
+              "min-h-[54px]",
               FOCUS_OUTLINE,
               PRESS_FEEDBACK
             )}
             onClick={openPageFeedback}>
-            <span className="block truncate text-[12px] font-semibold">
-              {t("extension.popup.openPageFeedback")}
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-mark)]">
+              <FeedbackIcon />
             </span>
-            <span className="mt-1 block text-[10px] font-medium text-[color:var(--yi-mark)]">
-              {t("extension.popup.openFeedbackCount", { count: openCount })}
+            <span className="min-w-0">
+              <span className="block truncate text-[12px] font-semibold">
+                {t("extension.popup.feedback")}
+              </span>
+              <span className="mt-0.5 block text-[10px] font-medium text-[color:var(--yi-mark)]">
+                {t("extension.popup.openFeedbackCount", { count: openCount })}
+              </span>
             </span>
           </button>
-          <div className="flex min-h-[54px] flex-col justify-between rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2 text-left ring-1 ring-[color:var(--yi-ext-border-hairline)]">
-            <span className="block text-[10px] font-semibold uppercase text-[color:var(--yi-ext-text-dim)]">
-              {t("extension.popup.resolved")}
-            </span>
-            <span className="mt-1 block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
+          <div
+            className="flex min-h-[54px] items-center justify-center gap-2 rounded-md bg-[color:var(--yi-paper-elevated)] px-2 py-2 text-left ring-1 ring-[color:var(--yi-ext-border-hairline)]"
+            aria-label={`${t("extension.popup.resolved")}: ${resolvedCount}`}>
+            <CheckCircleIcon />
+            <span className="block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
               {resolvedCount}
             </span>
           </div>
@@ -779,11 +795,12 @@ function IndexPopup() {
             href={`${WEB_APP_URL}/dashboard${projectId ? `?project=${encodeURIComponent(projectId)}` : ""}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+            className={cx(ICON_ACTION, "no-underline", FOCUS_OUTLINE)}
             aria-label={t("extension.popup.openWorkspaceDashboardAria", {
               workspace: workspaceLabel
-            })}>
-            <span>{t("extension.popup.dashboard")}</span>
+            })}
+            title={t("extension.popup.dashboard")}>
+            <span className="sr-only">{t("extension.popup.dashboard")}</span>
             <ExternalLinkIcon />
           </a>
         </div>
@@ -864,10 +881,12 @@ function IndexPopup() {
               type="button"
               className={cx(
                 "inline-flex min-h-8 shrink-0 items-center justify-center rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)]",
+                "gap-1.5",
                 FOCUS_OUTLINE,
                 PRESS_FEEDBACK
               )}
               onClick={() => setShowAuth(true)}>
+              <LogInIcon />
               {t("extension.popup.signIn")}
             </button>
           </div>
@@ -881,12 +900,12 @@ function IndexPopup() {
               "flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded-md px-2 text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] [&::-webkit-details-marker]:hidden",
               FOCUS_OUTLINE
             )}>
-            <span>{t("extension.popup.options")}</span>
-            <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:hidden">
-              {t("extension.popup.optionsSummary")}
+            <span className="flex min-w-0 items-center gap-2">
+              <SlidersIcon />
+              <span>{t("extension.popup.options")}</span>
             </span>
-            <span className="hidden text-[10px] font-medium text-[color:var(--yi-ext-text-muted)] group-open:inline">
-              {t("extension.popup.optionsHide")}
+            <span className="text-[color:var(--yi-ext-text-muted)] transition-transform duration-150 [transition-timing-function:var(--yi-ease-out-expo)] group-open:rotate-180">
+              <ChevronDownIcon />
             </span>
           </summary>
 
@@ -914,9 +933,13 @@ function IndexPopup() {
               <button
                 type="button"
                 disabled={syncingNow || view !== "signedIn"}
-                className={cx(QUIET_ACTION, FOCUS_OUTLINE)}
+                className={cx(ICON_ACTION, FOCUS_OUTLINE, PRESS_FEEDBACK)}
+                aria-label={syncButtonLabel}
+                title={syncButtonLabel}
                 onClick={runManualSync}>
-                {syncButtonLabel}
+                <span className={syncingNow ? "animate-spin" : undefined}>
+                  <SyncIcon />
+                </span>
               </button>
             </div>
 
@@ -1351,6 +1374,175 @@ function YouInMark() {
       fill="currentColor"
       aria-hidden="true">
       <path d="M479 218.9c-31 9.9-37.6 51.3-11.1 70.2 22.7 16.3 53.9 5.8 62.6-21 2.5-7.7 1.7-19.7-1.7-27.3-3.1-6.7-10.2-14.7-16.2-18.2-9.6-5.6-23.1-7.1-33.6-3.7zM484.8 323c-11.9 1.5-22.2 9.3-27.6 20.8l-2.7 5.7-.5 90.5c-.5 89.1-.6 90.6-2.7 98.2-9.5 33.7-35.1 59.1-68.9 68.4-9 2.4-28.1 2.9-39.2 1-34.1-5.9-61.9-30.4-73.2-64.4-4.6-14-5-21.3-5-93.9 0-77.2-.1-77.9-7.1-92.3-7.7-15.5-22.3-27-38.8-30.5-4-.8-11.5-1.5-16.7-1.5h-9.5l.4 104.2c.3 89.1.6 105.5 1.9 112.4 5.5 28.5 15.9 52.9 31.6 74 8.7 11.7 24.5 27.2 36.2 35.7 11.1 7.8 31.7 18.3 44.5 22.6 52.1 17.4 108.5 8.5 152.7-24.1 10.7-7.8 27.5-24.8 36-36.3 12.4-16.7 23.6-41.4 28.4-62.4 4.3-19.3 4.7-28.9 4.1-116.6-.4-79.9-.5-82.1-2.5-87.4-5.8-14.9-15.9-22.4-33.2-24.5-1.4-.2-5.1 0-8.2.4zM680 325.7c-32 5-58 16.9-81.5 37.3-28.9 25-47.9 58.7-55.6 98.5-.6 2.7-1.4 20.1-1.9 38.5-1.1 43.2-3.3 58.3-11.7 81-16.8 45.2-53.7 84-93.8 98.5-2.7 1-5.4 2.2-5.9 2.7-1.4 1.2 28.7 1 40.2-.3 52.8-5.7 96.1-32.7 121.5-75.7 6.1-10.2 12.6-25.9 15.7-37.7 4.4-17.2 5.2-24.9 6-61.5.9-38 1.4-42.7 6.6-55.6 10.3-25.9 31.7-45.1 57.9-52 9.8-2.6 33.3-2.6 42.5 0 27.9 7.7 48.5 28.1 57.2 56.7 2.2 7.4 2.2 7.6 2.8 97.9.5 83.5.7 90.8 2.3 95 3 7.6 6.4 12.5 12.4 18 10.5 9.6 21.5 13 43.1 13H851V577.2c0-59.6-.4-106.6-1-112-5-47.2-30.6-90.4-68.5-115.7-17.1-11.4-33.1-18-53.2-22-10.5-2.1-15-2.5-29.1-2.4-9.2.1-17.8.4-19.2.6z" />
+    </svg>
+  )
+}
+
+function InspectIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3" />
+      <circle cx="10" cy="10" r="2.75" />
+    </svg>
+  )
+}
+
+function ScreenshotIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M6.5 3.5h7v7M3.5 6.5v7h7" />
+      <rect x="9.5" y="9.5" width="7" height="7" rx="1" />
+    </svg>
+  )
+}
+
+function FeedbackIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5 5.5h10v6.8H9.4L5.7 15v-2.7H5z" />
+      <path d="M7.8 8.2h4.4M7.8 10h2.8" />
+    </svg>
+  )
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4 shrink-0 text-[color:var(--yi-ok)]"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <circle cx="10" cy="10" r="6.5" />
+      <path d="m7.2 10.2 1.8 1.8 3.8-4" />
+    </svg>
+  )
+}
+
+function SyncIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M15.4 7.3A5.8 5.8 0 0 0 5 5.8L3.8 7.1" />
+      <path d="M3.7 3.9v3.3H7" />
+      <path d="M4.6 12.7A5.8 5.8 0 0 0 15 14.2l1.2-1.3" />
+      <path d="M16.3 16.1v-3.3H13" />
+    </svg>
+  )
+}
+
+function SlidersIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M4 6h4M12 6h4M4 14h7M15 14h1" />
+      <circle cx="10" cy="6" r="2" />
+      <circle cx="13" cy="14" r="2" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="m6 8 4 4 4-4" />
+    </svg>
+  )
+}
+
+function LogInIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M8 5.2H5.5a2 2 0 0 0-2 2v5.6a2 2 0 0 0 2 2H8" />
+      <path d="M9.5 10h6M13 6.7 16.3 10 13 13.3" />
+    </svg>
+  )
+}
+
+function LogOutIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M12 5.2h2.5a2 2 0 0 1 2 2v5.6a2 2 0 0 1-2 2H12" />
+      <path d="M10.5 10h-6M7.8 6.7 4.5 10l3.3 3.3" />
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.8"
+      aria-hidden="true">
+      <path d="m6 6 8 8M14 6l-8 8" />
     </svg>
   )
 }

@@ -118,9 +118,24 @@ function ScreenshotIcon() {
   )
 }
 
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.8"
+      aria-hidden="true">
+      <path d="m6 6 8 8M14 6l-8 8" />
+    </svg>
+  )
+}
+
 function modeButtonClass(): string {
   return [
-    "youin-widget-mode inline-flex min-h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] px-2.5 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-soft)] shadow-[0_12px_26px_-22px_oklch(18%_0.012_264_/_0.32)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
+    "youin-widget-mode inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper-elevated)] text-[color:var(--yi-ext-text-soft)] shadow-[0_12px_26px_-22px_oklch(18%_0.012_264_/_0.32)] outline-none transition-[background-color,border-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:border-[color:var(--yi-ext-border)] hover:bg-[color:var(--yi-paper)] hover:text-[color:var(--yi-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
   ].join(" ")
 }
 
@@ -249,7 +264,6 @@ function Widget() {
         className={modeButtonClass()}
         onClick={() => startReview("inspect")}>
         <InspectIcon />
-        <span>{t("extension.popup.inspect")}</span>
       </button>
       <button
         type="button"
@@ -258,7 +272,6 @@ function Widget() {
         className={modeButtonClass()}
         onClick={() => startReview("screenshot")}>
         <ScreenshotIcon />
-        <span>{t("extension.popup.screenshot")}</span>
       </button>
     </div>
   )
@@ -274,14 +287,12 @@ function Widget() {
             type="button"
             aria-pressed
             aria-label={t("extension.widget.exitReviewAria")}
+            title={t("extension.widget.exitReview")}
             className="youin-widget-active inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_14px_34px_-24px_oklch(18%_0.012_264_/_0.34),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-elevated)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={() => {
               window.dispatchEvent(new CustomEvent(EVENT_REVIEW_EXIT))
             }}>
-            <span
-              className="size-2 rounded-full bg-[color:var(--yi-mark)]"
-              aria-hidden
-            />
+            {activeMode === "screenshot" ? <ScreenshotIcon /> : <InspectIcon />}
             <span className="text-[color:var(--yi-ext-text-muted)]">
               {activeMode === "screenshot"
                 ? t("extension.popup.screenshot")
@@ -291,7 +302,7 @@ function Widget() {
               className="h-3 w-px bg-[color:var(--yi-ext-border)]"
               aria-hidden
             />
-            <span>{t("extension.widget.exitReview")}</span>
+            <XIcon />
             <span className="sr-only">
               {activeMode === "screenshot"
                 ? t("extension.widget.screenshotModeActive")

@@ -38,13 +38,13 @@ import {
   getMarksForPage,
   getProjects,
   getWidgetSettings,
+  isHostDisabled,
   KEY_ACTIVE_PROJECT,
   KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
   KEY_WIDGET_SETTINGS,
-  isHostDisabled,
   makeMarkId,
   markSyncFailure,
   patchMark,
@@ -246,8 +246,7 @@ function buildAiPromptFromMark(mark: Mark): string {
   const selected = mark.domSnapshot?.selectedElement
   const context = mark.domSnapshot?.context
   const outerHTML =
-    selected?.outerHTML?.slice(0, 2200) ||
-    mark.outerHTMLPreview?.slice(0, 2200)
+    selected?.outerHTML?.slice(0, 2200) || mark.outerHTMLPreview?.slice(0, 2200)
   const visibleText = [
     selected?.textContent?.slice(0, 700),
     context?.nearbyText?.slice(0, 900)
@@ -297,7 +296,9 @@ function buildAiPromptFromMark(mark: Mark): string {
     "## Discussion",
     comments,
     visibleText ? `\n## Visible Text\n${visibleText}` : "",
-    outerHTML ? `\n## Selected Element DOM\n\`\`\`html\n${outerHTML}\n\`\`\`` : "",
+    outerHTML
+      ? `\n## Selected Element DOM\n\`\`\`html\n${outerHTML}\n\`\`\``
+      : "",
     "",
     "## Output Expectations",
     "- Explain the relevant files you changed.",
@@ -323,6 +324,12 @@ const selectCls =
 
 const headerCloseBtn =
   "flex min-h-10 min-w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+
+const rowIconBtn =
+  "inline-flex size-8 items-center justify-center rounded-md text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] hover:text-[color:var(--yi-ext-text-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+
+const rowDangerIconBtn =
+  "inline-flex size-8 items-center justify-center rounded-md text-[color:var(--yi-ext-danger-text)] outline-none hover:bg-[color:var(--yi-ext-danger-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
 
 const threadBadge =
   "inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold leading-none whitespace-nowrap"
@@ -350,6 +357,129 @@ function threadHealthBadgeClass(label: string): string {
   if (label === "Stale")
     return "bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
   return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
+}
+
+function CheckCircleIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <circle cx="10" cy="10" r="6.5" />
+      <path d="m7.2 10.2 1.8 1.8 3.8-4" />
+    </svg>
+  )
+}
+
+function CircleDashedIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5.4 5.7A6.5 6.5 0 0 1 8 3.9" />
+      <path d="M12 3.9a6.5 6.5 0 0 1 2.6 1.8" />
+      <path d="M16.3 9a6.5 6.5 0 0 1-.8 3.1" />
+      <path d="M13 15.8a6.5 6.5 0 0 1-3 .7" />
+      <path d="M6.9 15.2a6.5 6.5 0 0 1-1.8-2.5" />
+      <path d="M3.6 9.2a6.5 6.5 0 0 1 .6-2" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M4.5 6h11" />
+      <path d="M8.2 6V4.5h3.6V6" />
+      <path d="M6.4 6.8 7 15.2h6l.6-8.4" />
+      <path d="M8.8 9v4M11.2 9v4" />
+    </svg>
+  )
+}
+
+function MaximizeIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M7.5 4.5h-3v3M4.5 4.5l4.1 4.1" />
+      <path d="M12.5 15.5h3v-3M15.5 15.5l-4.1-4.1" />
+    </svg>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="m12.8 4.7 2.5 2.5" />
+      <path d="M5.2 14.8h2.5l7-7a1.8 1.8 0 0 0-2.5-2.5l-7 7z" />
+    </svg>
+  )
+}
+
+function ArrowLeftIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M12.5 5.5 8 10l4.5 4.5" />
+      <path d="M8.5 10H16" />
+    </svg>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.8"
+      aria-hidden="true">
+      <path d="m6 6 8 8M14 6l-8 8" />
+    </svg>
+  )
 }
 
 function PageFeedbackRow({
@@ -453,18 +583,28 @@ function PageFeedbackRow({
             <button
               type="button"
               disabled={disabled}
-              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+              className={rowIconBtn}
+              aria-label={
+                closed
+                  ? t("extension.drawer.reopen")
+                  : t("extension.drawer.resolve")
+              }
+              title={
+                closed
+                  ? t("extension.drawer.reopen")
+                  : t("extension.drawer.resolve")
+              }
               onClick={() => onStatus(mark, closed ? "open" : "closed")}>
-              {closed
-                ? t("extension.drawer.reopen")
-                : t("extension.drawer.resolve")}
+              {closed ? <CircleDashedIcon /> : <CheckCircleIcon />}
             </button>
             <button
               type="button"
               disabled={disabled}
-              className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-danger-text)] outline-none hover:bg-[color:var(--yi-ext-danger-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+              className={rowDangerIconBtn}
+              aria-label={t("extension.drawer.delete")}
+              title={t("extension.drawer.delete")}
               onClick={() => onDelete(mark)}>
-              {t("extension.drawer.delete")}
+              <TrashIcon />
             </button>
           </>
         )}
@@ -1165,10 +1305,7 @@ const CapturePanel = () => {
   }, [])
 
   useEffect(() => {
-    window.addEventListener(
-      EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
-      openFeedbackList
-    )
+    window.addEventListener(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST, openFeedbackList)
     return () =>
       window.removeEventListener(
         EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
@@ -1729,7 +1866,7 @@ const CapturePanel = () => {
             className={headerCloseBtn}
             aria-label={t("extension.drawer.close")}
             onClick={resume}>
-            ✕
+            <XIcon />
           </button>
         </header>
 
@@ -1883,7 +2020,7 @@ const CapturePanel = () => {
               className={headerCloseBtn}
               aria-label="Close"
               onClick={resume}>
-              ✕
+              <XIcon />
             </button>
           </header>
 
@@ -1923,7 +2060,9 @@ const CapturePanel = () => {
                   <div className="flex justify-end border-t border-[color:var(--yi-ext-border-hairline)] px-2 py-1.5">
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                      className={rowIconBtn}
+                      aria-label={t("extension.panel.viewFull")}
+                      title={t("extension.panel.viewFull")}
                       onClick={() =>
                         setFullImage({
                           src: capture.elementScreenshotDataUrl!,
@@ -1932,7 +2071,7 @@ const CapturePanel = () => {
                             : "Captured element screenshot"
                         })
                       }>
-                      View full
+                      <MaximizeIcon />
                     </button>
                   </div>
                 </div>
@@ -2127,9 +2266,11 @@ const CapturePanel = () => {
               {returnToList ? (
                 <button
                   type="button"
-                  className="mb-2 inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  className="mb-2 inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                  aria-label={t("extension.drawer.backToList")}
                   onClick={backToFeedbackList}>
-                  {t("extension.drawer.backToList")}
+                  <ArrowLeftIcon />
+                  {t("extension.drawer.back")}
                 </button>
               ) : null}
               <div className="flex min-w-0 items-center">
@@ -2173,7 +2314,7 @@ const CapturePanel = () => {
               className={headerCloseBtn}
               aria-label="Close"
               onClick={resume}>
-              ✕
+              <XIcon />
             </button>
           </header>
 
@@ -2258,9 +2399,11 @@ const CapturePanel = () => {
                   {!editing ? (
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 font-semibold text-[color:var(--yi-ext-link)] hover:bg-[color:var(--yi-ext-surface-hover)]"
+                      className={rowIconBtn}
+                      aria-label="Edit"
+                      title="Edit"
                       onClick={() => setEditing(true)}>
-                      Edit
+                      <PencilIcon />
                     </button>
                   ) : null}
                 </div>
@@ -2291,14 +2434,16 @@ const CapturePanel = () => {
                   <div className="flex justify-end border-t border-[color:var(--yi-ext-border-hairline)] px-2 py-1.5">
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                      className={rowIconBtn}
+                      aria-label={t("extension.panel.viewFull")}
+                      title={t("extension.panel.viewFull")}
                       onClick={() =>
                         setFullImage({
                           src: screenshotSrc,
                           alt: "Saved element screenshot"
                         })
                       }>
-                      View full
+                      <MaximizeIcon />
                     </button>
                   </div>
                 </div>
@@ -2488,10 +2633,10 @@ function FullImageOverlay({
       onClick={onClose}>
       <button
         type="button"
-        className="absolute right-3 top-3 min-h-10 min-w-10 rounded-full border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-paper)] text-[18px] font-semibold text-[color:var(--yi-ink)] shadow-[var(--yi-shadow-popover)] outline-none hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-paper)]"
+        className="absolute right-3 top-3 inline-flex min-h-10 min-w-10 items-center justify-center rounded-full border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-paper)] text-[color:var(--yi-ink)] shadow-[var(--yi-shadow-popover)] outline-none hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-paper)]"
         aria-label="Close full image preview"
         onClick={onClose}>
-        ✕
+        <XIcon />
       </button>
       <img
         src={image.src}

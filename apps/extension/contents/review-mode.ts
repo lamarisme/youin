@@ -97,9 +97,14 @@ async function refreshToolbarLabels() {
       getActiveSpaceId(),
       getProjects()
     ])
-    const project = projects.find((p) => p.id === (projectId || activeProjectId))
+    const project = projects.find(
+      (p) => p.id === (projectId || activeProjectId)
+    )
     toolbarNsEl.textContent = project?.name || "—"
-    const marks = await getMarksForPage(projectId || activeProjectId, location.href)
+    const marks = await getMarksForPage(
+      projectId || activeProjectId,
+      location.href
+    )
     const open = marks.filter((p) => p.status !== "closed").length
     toolbarCountEl.textContent = `${open} open`
   } catch {
@@ -282,13 +287,14 @@ function ensureHost() {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      min-width: 32px;
       min-height: 28px;
-      padding: 0 12px;
+      width: 32px;
+      padding: 0;
       border: 0;
       border-radius: 999px;
       background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
       cursor: pointer;
-      font: 700 11px/1 ${fontFamily.sans};
       color: var(--yi-mark);
     }
     .toolbar button.drawer:hover {
@@ -334,9 +340,18 @@ function ensureHost() {
       <span class="muted" data-field="ns"></span>
       <span class="counts" data-field="counts"></span>
     </span>
-    <button type="button" class="drawer" aria-label="Show page feedback">List</button>
+    <button type="button" class="drawer" aria-label="Show page feedback" title="Show page feedback">
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" aria-hidden="true">
+        <path d="M5 5.5h10v6.8H9.4L5.7 15v-2.7H5z"></path>
+        <path d="M7.8 8.2h4.4M7.8 10h2.8"></path>
+      </svg>
+    </button>
     <span class="shortcut" data-field="shortcut">Alt+Shift+Y · Esc to exit</span>
-    <button type="button" class="close" aria-label="Exit inspect mode">✕</button>
+    <button type="button" class="close" aria-label="Exit inspect mode" title="Exit inspect mode">
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" aria-hidden="true">
+        <path d="m6 6 8 8M14 6l-8 8"></path>
+      </svg>
+    </button>
   `
   toolbarNsEl = toolbar.querySelector('[data-field="ns"]')
   toolbarCountEl = toolbar.querySelector('[data-field="counts"]')
