@@ -2,7 +2,9 @@
 
 import type { ReactNode } from "react";
 import {
+  AlertCircle,
   CalendarClock,
+  CheckCircle2,
   Code2,
   Globe2,
   Laptop,
@@ -13,6 +15,7 @@ import {
 import type { MarkItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+import { markImageSrc } from "@/lib/workspace/mark-image-url";
 
 import { MarkPin } from "@/components/mark-pin";
 
@@ -31,6 +34,14 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
   const pageOrigin = formatMarkPageOrigin(mark.page);
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
   const isHero = variant === "hero";
+  const screenshotSrc = markImageSrc(cap?.screenshotUrl);
+  const readiness = [
+    { label: "Page", ready: Boolean(mark.page.trim()) },
+    { label: "Selector", ready: Boolean(cap?.selector?.trim()) },
+    { label: "Screenshot", ready: Boolean(cap?.screenshotUrl?.trim()) },
+    { label: "DOM", ready: Boolean(domContext) },
+    { label: "Viewport", ready: Boolean(cap?.viewport?.trim()) },
+  ];
 
   if (!cap) {
     return (
@@ -71,16 +82,16 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
           ) : null}
         </div>
         <div className="relative px-3 pb-3">
-          {cap?.screenshotUrl ? (
+          {screenshotSrc ? (
             <div className={cn("mx-auto overflow-hidden rounded-md bg-paper-3", isHero ? "max-w-4xl" : "max-w-2xl")}>
               <FullImagePreview
-                src={cap.screenshotUrl}
+                src={screenshotSrc}
                 alt={`Captured element for ${mark.displayKey}`}
               >
                 {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={cap.screenshotUrl}
+                  src={screenshotSrc}
                   alt={`Captured element for ${mark.displayKey}`}
                   loading="lazy"
                   decoding="async"
@@ -151,6 +162,12 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
             ) : null}
           </dl>
 
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-5">
+            {readiness.map((item) => (
+              <ContextSignal key={item.label} label={item.label} ready={item.ready} />
+            ))}
+          </div>
+
           {domContext ? (
             <div className="mt-3 overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45">
               <div className="flex items-center gap-2 px-3 py-2 text-ui-xs font-medium text-ink-2">
@@ -170,6 +187,27 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
         </>
       ) : null}
     </>
+  );
+}
+
+function ContextSignal({ label, ready }: { label: string; ready: boolean }) {
+  return (
+    <div
+      className={cn(
+        "inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-ui-xs ring-1",
+        ready
+          ? "bg-ok-soft text-ok ring-ok/15"
+          : "bg-paper-2 text-ink-3 ring-rule/45",
+      )}
+      title={ready ? `${label} captured` : `${label} missing`}
+    >
+      {ready ? (
+        <CheckCircle2 className="size-3.5" aria-hidden />
+      ) : (
+        <AlertCircle className="size-3.5" aria-hidden />
+      )}
+      <span className="truncate">{label}</span>
+    </div>
   );
 }
 

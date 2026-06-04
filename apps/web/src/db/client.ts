@@ -11,7 +11,7 @@ const globalForDb = globalThis as unknown as {
   drizzleDb?: PostgresJsDatabase<typeof schema>;
 };
 
-const DEFAULT_POOL_MAX = 1;
+const DEFAULT_POOL_MAX = 5;
 const DEFAULT_IDLE_TIMEOUT_SECONDS = 60;
 const DEFAULT_MAX_LIFETIME_SECONDS = 60 * 30;
 const DEFAULT_CONNECT_TIMEOUT_SECONDS = 10;

@@ -258,6 +258,64 @@ export function DashboardMainSkeleton({ id }: { id?: string }) {
   );
 }
 
+export function MarkDetailMainSkeleton({ id }: { id?: string }) {
+  return (
+    <div
+      className="w-full min-w-0 space-y-4 px-3 py-3 sm:px-4 sm:py-4 lg:px-5"
+      role="status"
+      aria-busy="true"
+      aria-label={id ?? "Loading mark"}
+      aria-live="polite"
+    >
+      <div
+        aria-hidden="true"
+        className="-mx-3 -mt-3 flex min-h-9 items-center justify-between gap-2 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <ShimmerBar className="h-4 w-12 rounded-sm" />
+          <ShimmerBar className="h-3 w-3 rounded-sm" />
+          <ShimmerBar className="h-4 w-20 rounded-sm" />
+          <ShimmerBar className="h-4 min-w-0 max-w-64 flex-1 rounded-sm" />
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <ShimmerBar className="size-7 rounded-md" />
+          <ShimmerBar className="size-7 rounded-md" />
+          <ShimmerBar className="h-7 w-16 rounded-full" />
+        </div>
+      </div>
+
+      <div aria-hidden="true" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section className="min-w-0 space-y-3">
+          <ShimmerBar className="h-4 w-20 rounded-sm" />
+          <ShimmerBar className="h-8 max-w-2xl rounded-md" />
+          <div className="flex flex-wrap gap-2">
+            <ShimmerBar className="h-7 w-24 rounded-md" />
+            <ShimmerBar className="h-7 w-28 rounded-md" />
+            <ShimmerBar className="h-7 w-20 rounded-md" />
+          </div>
+          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
+            <ShimmerBar className="h-4 w-16 rounded-sm" />
+            <ShimmerBar className="mt-3 h-5 max-w-xl rounded-sm" />
+          </div>
+          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
+            <ShimmerBar className="h-4 w-28 rounded-sm" />
+            <ShimmerBar className="mt-3 h-20 rounded-md" />
+          </div>
+        </section>
+
+        <aside className="hidden min-w-0 space-y-3 lg:block">
+          <ShimmerBar className="aspect-[4/3] rounded-md" />
+          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
+            <ShimmerBar className="h-4 w-24 rounded-sm" />
+            <ShimmerBar className="mt-3 h-4 w-full rounded-sm" />
+            <ShimmerBar className="mt-2 h-4 w-2/3 rounded-sm" />
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export function InboxMainSkeleton({ id }: { id?: string }) {
   return (
     <div

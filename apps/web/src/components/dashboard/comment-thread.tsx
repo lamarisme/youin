@@ -36,6 +36,7 @@ import {
   memberPickerLabel,
 } from "@/lib/workspace/member-label";
 import { getMarkUploadUrlAction } from "@/lib/workspace/actions";
+import { markImageSrc } from "@/lib/workspace/mark-image-url";
 
 import { MarkDescriptionEditor } from "./mark-description-editor";
 import { MarkDescriptionRead } from "./mark-description-read";
@@ -460,10 +461,10 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded bg-paper-3">
-            <FullImagePreview src={comment.imageUrl} alt="Uploaded screenshot">
+            <FullImagePreview src={markImageSrc(comment.imageUrl)} alt="Uploaded screenshot">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={comment.imageUrl}
+                src={markImageSrc(comment.imageUrl)}
                 alt="Uploaded screenshot"
                 width={640}
                 height={280}

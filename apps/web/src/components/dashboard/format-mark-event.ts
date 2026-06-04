@@ -20,6 +20,9 @@ export function formatMarkEvent(
   if (type === "pinned_changed") {
     return toValue === "true" ? "Pinned this mark." : "Unpinned this mark.";
   }
+  if (type === "prompt_copied") {
+    return summary ?? "Copied an AI prompt.";
+  }
   if (type === "assignee_changed") {
     if (!toValue) return "Unassigned this mark.";
     if (!fromValue) return "Assigned this mark.";

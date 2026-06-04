@@ -1,13 +1,11 @@
+import type { DashboardReadModelRequest } from "@/lib/workspace/workspace-types";
+
 export const workspaceKeys = {
   all: ["workspace"] as const,
   shell: () => [...workspaceKeys.all, "shell"] as const,
   bootstrap: () => [...workspaceKeys.all, "bootstrap"] as const,
-  dashboard: (projectId?: string | null, markParam?: string | null) => {
-    const base = projectId
-      ? ([...workspaceKeys.all, "dashboard", projectId] as const)
-      : ([...workspaceKeys.all, "dashboard"] as const);
-    return markParam ? ([...base, "mark", markParam] as const) : base;
-  },
+  dashboard: (request: DashboardReadModelRequest = {}) =>
+    [...workspaceKeys.all, "dashboard", request] as const,
   account: () => [...workspaceKeys.all, "account"] as const,
   viewsIndex: () => [...workspaceKeys.all, "views-index"] as const,
   viewDetail: (viewId: string) =>

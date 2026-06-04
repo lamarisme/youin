@@ -1,4 +1,12 @@
 import type {
+  DashboardDetailNavigation,
+  DashboardMarkFilterRequest,
+  DashboardPaginationInfo,
+  DashboardPaginationRequest,
+  DashboardScopeCounts,
+} from "@/lib/workspace/dashboard-query";
+
+import type {
   MarkItem,
   TeamMember,
   UserProfile,
@@ -43,12 +51,19 @@ export type WorkspaceShellBootstrap = {
 export interface DashboardReadModel {
   workspace: Workspace;
   selectedProjectId: string | null;
+  filters: DashboardMarkFilterRequest;
+  pagination: DashboardPaginationInfo;
+  scopeCounts: DashboardScopeCounts;
+  detailNavigation: DashboardDetailNavigation | null;
   loadedAt: string;
 }
 
 export interface DashboardReadModelRequest {
   projectId?: string | null;
   markParam?: string | null;
+  filters?: DashboardMarkFilterRequest;
+  pagination?: DashboardPaginationRequest;
+  detailOnly?: boolean;
 }
 
 export interface AccountReadModel {

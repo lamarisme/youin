@@ -36,7 +36,7 @@ export function markHref(
 ): string {
   return withQuery(
     `/dashboard/${encodeURIComponent(displayKey)}`,
-    queryWithout(searchParams, ["mark", "page"]),
+    queryWithout(searchParams, ["mark"]),
   );
 }
 

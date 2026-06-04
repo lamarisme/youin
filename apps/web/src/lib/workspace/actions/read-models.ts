@@ -21,8 +21,8 @@ import { requireWorkspaceContext } from "./session";
 export async function getDashboardReadModelAction(
   request: DashboardReadModelRequest = {},
 ): Promise<DashboardReadModel> {
-  const { workspaceId, supabase } = await requireWorkspaceContext();
-  return loadDashboardReadModel(workspaceId, request, supabase);
+  const { workspaceId, supabase, userId } = await requireWorkspaceContext();
+  return loadDashboardReadModel(workspaceId, request, supabase, userId);
 }
 
 export async function getAccountReadModelAction(): Promise<AccountReadModel> {

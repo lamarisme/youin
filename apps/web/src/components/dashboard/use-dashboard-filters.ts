@@ -8,43 +8,36 @@ import {
   useQueryStates,
 } from "nuqs";
 
-import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
+import {
+  DASHBOARD_ASSIGNEE_FILTERS,
+  DASHBOARD_DENSITIES,
+  DASHBOARD_GROUP_BY,
+  DASHBOARD_PINNED_FILTERS,
+  DASHBOARD_PRIORITY_FILTERS,
+  DASHBOARD_SORT_MODES,
+  DASHBOARD_STATUS_FILTERS,
+  type DashboardFilterPatch,
+} from "@/lib/workspace/dashboard-query";
 
-export type StatusFilter = "all" | MarkStatus;
-export type PriorityFilter = "all" | MarkPriority;
-export type PinnedFilter = "all" | "pinned" | "unpinned";
-export type SortMode = "recent" | "oldest" | "priority" | "status";
-export type AssigneeFilter = "all" | "me" | "unassigned";
-export type DashboardGroupBy = "none" | "status" | "page" | "assignee" | "project";
-export type DashboardDensity = "comfortable" | "compact";
+export type {
+  AssigneeFilter,
+  DashboardDensity,
+  DashboardFilterPatch,
+  DashboardFilters,
+  DashboardGroupBy,
+  PinnedFilter,
+  PriorityFilter,
+  SortMode,
+  StatusFilter,
+} from "@/lib/workspace/dashboard-query";
 
-export interface DashboardFilters {
-  projectId: string;
-  markId: string | null;
-  status: StatusFilter;
-  workflowStatus: string;
-  priority: PriorityFilter;
-  pinned: PinnedFilter;
-  label: string;
-  assignee: AssigneeFilter;
-  q: string;
-  sort: SortMode;
-  groupBy: DashboardGroupBy;
-  density: DashboardDensity;
-  page: number;
-}
-
-export type DashboardFilterPatch = Partial<{
-  [Key in keyof DashboardFilters]: DashboardFilters[Key] | null;
-}>;
-
-const statusParser = parseAsStringLiteral(["all", "open", "closed"] as const).withDefault("all").withOptions({ clearOnDefault: true });
-const priorityParser = parseAsStringLiteral(["all", "low", "medium", "high", "critical"] as const).withDefault("all").withOptions({ clearOnDefault: true });
-const pinnedParser = parseAsStringLiteral(["all", "pinned", "unpinned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
-const sortParser = parseAsStringLiteral(["recent", "oldest", "priority", "status"] as const).withDefault("recent").withOptions({ clearOnDefault: true });
-const assigneeParser = parseAsStringLiteral(["all", "me", "unassigned"] as const).withDefault("all").withOptions({ clearOnDefault: true });
-const groupByParser = parseAsStringLiteral(["none", "status", "page", "assignee", "project"] as const).withDefault("none").withOptions({ clearOnDefault: true });
-const densityParser = parseAsStringLiteral(["comfortable", "compact"] as const).withDefault("comfortable").withOptions({ clearOnDefault: true });
+const statusParser = parseAsStringLiteral(DASHBOARD_STATUS_FILTERS).withDefault("all").withOptions({ clearOnDefault: true });
+const priorityParser = parseAsStringLiteral(DASHBOARD_PRIORITY_FILTERS).withDefault("all").withOptions({ clearOnDefault: true });
+const pinnedParser = parseAsStringLiteral(DASHBOARD_PINNED_FILTERS).withDefault("all").withOptions({ clearOnDefault: true });
+const sortParser = parseAsStringLiteral(DASHBOARD_SORT_MODES).withDefault("recent").withOptions({ clearOnDefault: true });
+const assigneeParser = parseAsStringLiteral(DASHBOARD_ASSIGNEE_FILTERS).withDefault("all").withOptions({ clearOnDefault: true });
+const groupByParser = parseAsStringLiteral(DASHBOARD_GROUP_BY).withDefault("none").withOptions({ clearOnDefault: true });
+const densityParser = parseAsStringLiteral(DASHBOARD_DENSITIES).withDefault("comfortable").withOptions({ clearOnDefault: true });
 
 const projectParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const markParser = parseAsString;
@@ -76,6 +69,7 @@ export function useDashboardFilters() {
       markId: "mark",
       groupBy: "group",
     },
+    shallow: false,
   });
 
   const update = useCallback(

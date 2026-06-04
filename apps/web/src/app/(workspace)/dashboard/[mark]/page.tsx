@@ -8,6 +8,11 @@ import {
   type PageSearchParams,
 } from "@/lib/page-search-params";
 import { getDashboardReadModelAction } from "@/lib/workspace/actions";
+import {
+  DASHBOARD_PAGE_SIZE,
+  dashboardMarkFiltersFromQuery,
+  dashboardQueryFromSearchParams,
+} from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
 
 export const metadata: Metadata = {
@@ -23,11 +28,21 @@ export default async function DashboardMarkPage({
 }) {
   const { mark } = await params;
   const urlParams = pageSearchParamsToUrlSearchParams(await searchParams);
-  const requestedProjectId = urlParams.get("project");
-  const readModel = await getDashboardReadModelAction({
+  const dashboardQuery = dashboardQueryFromSearchParams(urlParams);
+  const requestedProjectId =
+    dashboardQuery.projectId === "all" ? null : dashboardQuery.projectId;
+  const readModelRequest = {
     projectId: requestedProjectId,
     markParam: mark,
-  });
+    filters: dashboardMarkFiltersFromQuery(dashboardQuery),
+    pagination: {
+      enabled: false,
+      page: 1,
+      pageSize: DASHBOARD_PAGE_SIZE,
+    },
+    detailOnly: true,
+  };
+  const readModel = await getDashboardReadModelAction(readModelRequest);
 
   if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
     urlParams.set("project", readModel.selectedProjectId);
@@ -42,8 +57,7 @@ export default async function DashboardMarkPage({
   return (
     <DashboardReadModelProvider
       initialData={readModel}
-      projectId={readModel.selectedProjectId}
-      markParam={mark}
+      request={readModelRequest}
     >
       <WorkspaceDashboard markParam={mark} />
     </DashboardReadModelProvider>

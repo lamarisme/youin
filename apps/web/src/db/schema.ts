@@ -28,6 +28,7 @@ export const markEventTypeEnum = pgEnum("mark_event_type", [
   "status_changed",
   "priority_changed",
   "pinned_changed",
+  "prompt_copied",
   "comment_added",
   "assignee_changed",
   "label_changed",

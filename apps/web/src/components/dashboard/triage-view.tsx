@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   CircleDashed,
@@ -14,6 +15,7 @@ import { toast } from "sonner";
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
+import { useDashboardReadModel } from "@/components/providers/workspace-read-model-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,9 +37,11 @@ import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateMarkMutation,
   useDeleteMarkMutation,
+  useLogMarkPromptCopyMutation,
   useToggleMarkStatusMutation,
   useUpdateMarkPriorityMutation,
 } from "@/lib/queries/use-workspace-mutations";
+import { buildBulkMarksAiPrompt } from "@/lib/workspace/mark-ai-prompt";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { markHref } from "@/lib/workspace/routes";
 
@@ -47,12 +51,9 @@ import { MarkFilters } from "./mark-filters";
 import { MarkTable } from "./mark-table";
 import { formatMarkPageLabel } from "./mark-page-label";
 import { NewMarkForm } from "./new-mark-form";
-import { getTriageAttentionCounts } from "./triage-cockpit";
 import { useDashboardFilters, type DashboardFilters } from "./use-dashboard-filters";
 import { useMarkTableModel } from "./use-mark-table-model";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
-
-const PAGE_SIZE = 8;
 
 export function TriageView() {
   const { workspace, userId, displayNamePreference } =
@@ -65,6 +66,8 @@ export function TriageView() {
   const { mutateAsync: toggleMarkStatus } = useToggleMarkStatusMutation();
   const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutateAsync: deleteMark } = useDeleteMarkMutation();
+  const { mutate: logPromptCopy } = useLogMarkPromptCopyMutation();
+  const { pagination, scopeCounts } = useDashboardReadModel();
   const { filters, update } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,30 +83,14 @@ export function TriageView() {
     return workspace.projects.find((project) => project.id === routeProjectId) ?? null;
   }, [routeProjectId, workspace.projects]);
 
-  const activeProjectId = selectedProject?.id ?? null;
   const newMarkProject = selectedProject ?? workspace.projects[0] ?? null;
   const isMyMarksPage = filters.assignee === "me";
-  const scopeMarks = useMemo(
-    () =>
-      activeProjectId
-        ? workspace.marks.filter((mark) => mark.projectId === activeProjectId)
-        : workspace.marks,
-    [activeProjectId, workspace.marks],
-  );
 
   const visibleMarks = useVisibleDashboardMarks({
     marks: workspace.marks,
     filters,
     viewerId: userId,
   });
-  const attentionCounts = useMemo(
-    () => getTriageAttentionCounts(scopeMarks, userId),
-    [scopeMarks, userId],
-  );
-  const scopeCounts = useMemo(
-    () => ({ ...attentionCounts, total: scopeMarks.length }),
-    [attentionCounts, scopeMarks.length],
-  );
   const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
   const selectedMarks = useMemo(
@@ -120,7 +107,7 @@ export function TriageView() {
     filters.label !== "all" ||
     (!isMyMarksPage && filters.assignee !== "all") ||
     filters.q.trim().length > 0;
-  const showDashboardControls = scopeMarks.length > 0 || filtersActive;
+  const showDashboardControls = scopeCounts.total > 0 || filtersActive;
 
   function clearFilters() {
     update(
@@ -158,11 +145,21 @@ export function TriageView() {
     return () => window.removeEventListener("youin:new-mark", openNewMark);
   }, [setNewMarkDialogOpen]);
 
-  const totalPages = Math.max(1, Math.ceil(visibleMarks.length / PAGE_SIZE));
-  const displayPage = Math.min(Math.max(1, filters.page), totalPages);
+  const totalPages = pagination.enabled
+    ? pagination.totalPages
+    : Math.max(1, Math.ceil(visibleMarks.length / pagination.pageSize));
+  const displayPage = pagination.enabled
+    ? pagination.page
+    : Math.min(Math.max(1, filters.page), totalPages);
   const paginatedMarks = useMemo(
-    () => visibleMarks.slice((displayPage - 1) * PAGE_SIZE, (displayPage - 1) * PAGE_SIZE + PAGE_SIZE),
-    [visibleMarks, displayPage],
+    () =>
+      pagination.enabled
+        ? visibleMarks
+        : visibleMarks.slice(
+            (displayPage - 1) * pagination.pageSize,
+            (displayPage - 1) * pagination.pageSize + pagination.pageSize,
+          ),
+    [visibleMarks, displayPage, pagination.enabled, pagination.pageSize],
   );
   const {
     membersById,
@@ -242,6 +239,25 @@ export function TriageView() {
     setSelectedIds(new Set());
     if (failed === 0) {
       toast.success(`${ids.length} mark${ids.length === 1 ? "" : "s"} deleted.`);
+    }
+  }
+
+  async function handleBulkCopyPrompt() {
+    if (!selectedMarks.length) return;
+    const prompt = buildBulkMarksAiPrompt({
+      marks: selectedMarks,
+      labelsById,
+      projectsById,
+      workflowStatusesById,
+    });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      logPromptCopy({ markIds: selectedMarks.map((mark) => mark.id), target: "bulk" });
+      toast.success(
+        `Copied AI prompt for ${selectedMarks.length} mark${selectedMarks.length === 1 ? "" : "s"}.`,
+      );
+    } catch {
+      toast.error("Couldn't copy the prompt.");
     }
   }
 
@@ -356,12 +372,19 @@ export function TriageView() {
                 description={
                   filtersActive
                     ? "Broaden or clear filters to see more marks in this view."
-                    : "Start with one precise note on a live page. The mark keeps the page, selector, and discussion together."
+                    : "Capture a live UI element so the page, selector, screenshot, DOM context, and discussion land together."
                 }
                 action={
                   filtersActive ? (
                     <Button type="button" variant="outline" size="sm" className="h-9" onClick={clearFilters}>
                       Clear filters
+                    </Button>
+                  ) : !newMarkProject ? (
+                    <Button asChild variant="mark" size="sm" className="h-9">
+                      <Link href="/spaces">
+                        <Folder className="size-3.5" aria-hidden />
+                        Create project
+                      </Link>
                     </Button>
                   ) : (
                     <Button type="button" variant="mark" size="sm" className="h-9" onClick={() => setNewMarkDialogOpen(true)}>
@@ -407,7 +430,7 @@ export function TriageView() {
             )}
           </div>
 
-          {visibleMarks.length > 0 && filters.groupBy === "none" ? (
+          {(pagination.enabled ? pagination.totalItems > 0 : visibleMarks.length > 0) && filters.groupBy === "none" ? (
             <Pagination
               page={displayPage}
               totalPages={totalPages}
@@ -425,6 +448,7 @@ export function TriageView() {
           allClosed={allSelectedClosed}
           onSetStatus={handleBulkSetStatus}
           onSetPriority={handleBulkSetPriority}
+          onCopyPrompt={handleBulkCopyPrompt}
           onDelete={handleBulkDelete}
           onClear={() => setSelectedIds(new Set())}
         />

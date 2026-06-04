@@ -52,8 +52,10 @@ import {
 } from "@/lib/workspace/mark-page-url";
 
 import { FadeIn } from "@/components/motion";
+import { useDashboardReadModel } from "@/components/providers/workspace-read-model-provider";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CommentThread } from "./comment-thread";
+import { MarkAiPromptActions } from "./mark-ai-prompt-actions";
 import { MarkDetailActions } from "./mark-detail-actions";
 import { MarkDescriptionEditor } from "./mark-description-editor";
 import { MarkDescriptionRead } from "./mark-description-read";
@@ -108,6 +110,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     userId: s.userId,
     displayNamePreference: s.profile.displayNamePreference,
   }));
+  const { detailNavigation } = useDashboardReadModel();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
@@ -124,10 +127,22 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const project = workspace.projects.find((item) => item.id === mark.projectId) ?? null;
 
   const selectedIndex = visibleMarks.findIndex((p) => p.id === mark.id);
-  const canPrev = selectedIndex > 0;
-  const canNext = selectedIndex >= 0 && selectedIndex < visibleMarks.length - 1;
+  const previousDisplayKey =
+    detailNavigation?.previousDisplayKey ??
+    (selectedIndex > 0 ? visibleMarks[selectedIndex - 1]?.displayKey : null);
+  const nextDisplayKey =
+    detailNavigation?.nextDisplayKey ??
+    (selectedIndex >= 0 && selectedIndex < visibleMarks.length - 1
+      ? visibleMarks[selectedIndex + 1]?.displayKey
+      : null);
+  const canPrev = Boolean(previousDisplayKey);
+  const canNext = Boolean(nextDisplayKey);
   const positionLabel =
-    selectedIndex >= 0 ? `${selectedIndex + 1} of ${visibleMarks.length}` : "Mark view";
+    detailNavigation
+      ? `${detailNavigation.position} of ${detailNavigation.total}`
+      : selectedIndex >= 0
+        ? `${selectedIndex + 1} of ${visibleMarks.length}`
+        : "Mark view";
 
   const comments = useMemo(
     () => workspace.comments.filter((c) => c.markId === mark.id),
@@ -145,6 +160,22 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     () => new Map(workspace.members.map((m) => [m.id, m])),
     [workspace.members],
   );
+  const labelsById = useMemo(
+    () => new Map(workspace.labels.map((label) => [label.id, label])),
+    [workspace.labels],
+  );
+  const markLabels = useMemo(
+    () =>
+      mark.labelIds
+        .map((labelId) => labelsById.get(labelId))
+        .filter((label): label is WorkspaceLabel => Boolean(label)),
+    [labelsById, mark.labelIds],
+  );
+  const currentWorkflowStatus =
+    workspace.workflowStatuses.find((status) => status.id === mark.workflowStatusId) ??
+    workspace.workflowStatuses.find((status) => status.lifecycleStatus === mark.status) ??
+    null;
+  const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editTitle, setEditTitle] = useState(mark.title);
   const [editDescription, setEditDescription] = useState(mark.description);
@@ -263,9 +294,8 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   }
 
   function goAdjacent(direction: "prev" | "next") {
-    if (selectedIndex < 0) return;
-    const next = visibleMarks[direction === "prev" ? selectedIndex - 1 : selectedIndex + 1];
-    if (next) router.push(markHref(next.displayKey, searchParams));
+    const displayKey = direction === "prev" ? previousDisplayKey : nextDisplayKey;
+    if (displayKey) router.push(markHref(displayKey, searchParams));
   }
 
   function toggleRightSidebar() {
@@ -403,6 +433,16 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               displayNamePreference={displayNamePreference}
               showPinnedAction={isPane}
               onConfirmDelete={() => setConfirmDelete(true)}
+            />
+            <MarkAiPromptActions
+              mark={mark}
+              comments={comments}
+              membersById={membersById}
+              labels={markLabels}
+              project={project}
+              workflowStatus={currentWorkflowStatus}
+              assignee={assignee}
+              className="mt-2"
             />
           </div>
 

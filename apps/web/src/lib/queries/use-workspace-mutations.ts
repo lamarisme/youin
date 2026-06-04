@@ -5,7 +5,9 @@ import { toast } from "sonner";
 
 import { actionErrorMessage } from "@/lib/action-error";
 import type {
+  AiPromptTarget,
   MarkComment,
+  MarkEvent,
   MarkItem,
   MarkPriority,
   Workspace,
@@ -539,6 +541,26 @@ export function useSetMarkWorkflowStatusMutation() {
       toast.error(actionErrorMessage(e, "Couldn't update workflow status."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useLogMarkPromptCopyMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { markIds: string[]; target?: AiPromptTarget }) =>
+      ws.logMarkPromptCopyAction(input),
+    onSuccess: (events: MarkEvent[]) => {
+      if (!events.length) return;
+      updateWorkspace(queryClient, (workspace) => {
+        const existingIds = new Set(workspace.markEvents.map((event) => event.id));
+        const nextEvents = events.filter((event) => !existingIds.has(event.id));
+        if (!nextEvents.length) return workspace;
+        return {
+          ...workspace,
+          markEvents: [...nextEvents, ...workspace.markEvents],
+        };
+      });
+    },
   });
 }
 

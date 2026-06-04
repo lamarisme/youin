@@ -25,6 +25,7 @@ DROP FUNCTION IF EXISTS public.marks_assign_sequence();
 -- ── 2. Migration 0004-style enum toppings (idempotent) ──────────────────────
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
+ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'prompt_copied';
 
 -- ── 3. RLS + auth wiring + storage ───────────────────────────────────────────
 ALTER TABLE public.profiles

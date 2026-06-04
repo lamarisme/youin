@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
@@ -22,9 +22,26 @@ import type { Workspace } from "@/lib/collab-types";
 import type {
   AccountReadModel,
   DashboardReadModel,
+  DashboardReadModelRequest,
   ViewDetailReadModel,
   ViewsIndexReadModel,
 } from "@/lib/workspace/workspace-types";
+
+type DashboardReadModelClientState = Pick<
+  DashboardReadModel,
+  "filters" | "pagination" | "scopeCounts" | "detailNavigation"
+>;
+
+const DashboardReadModelContext =
+  createContext<DashboardReadModelClientState | null>(null);
+
+export function useDashboardReadModel(): DashboardReadModelClientState {
+  const context = useContext(DashboardReadModelContext);
+  if (!context) {
+    throw new Error("useDashboardReadModel must be used inside DashboardReadModelProvider.");
+  }
+  return context;
+}
 
 function completeWorkspace(
   workspace: ViewsIndexReadModel["workspace"],
@@ -71,23 +88,16 @@ function useSeedReadModelWorkspace(
 
 export function DashboardReadModelProvider({
   initialData,
-  projectId,
-  markParam,
+  request,
   children,
 }: {
   initialData: DashboardReadModel;
-  projectId?: string | null;
-  markParam?: string | null;
+  request: DashboardReadModelRequest;
   children: React.ReactNode;
 }) {
-  const selectedProjectId = projectId ?? initialData.selectedProjectId;
   const query = useQuery({
-    queryKey: workspaceKeys.dashboard(selectedProjectId, markParam),
-    queryFn: () =>
-      getDashboardReadModelAction({
-        projectId: selectedProjectId,
-        markParam,
-      }),
+    queryKey: workspaceKeys.dashboard(request),
+    queryFn: () => getDashboardReadModelAction(request),
     initialData,
     initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
     placeholderData: keepPreviousData,
@@ -102,10 +112,30 @@ export function DashboardReadModelProvider({
     query.data?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
+  const dashboardState = useMemo(
+    () => ({
+      filters: query.data?.filters ?? initialData.filters,
+      pagination: query.data?.pagination ?? initialData.pagination,
+      scopeCounts: query.data?.scopeCounts ?? initialData.scopeCounts,
+      detailNavigation: query.data?.detailNavigation ?? initialData.detailNavigation,
+    }),
+    [
+      initialData.detailNavigation,
+      initialData.filters,
+      initialData.pagination,
+      initialData.scopeCounts,
+      query.data?.detailNavigation,
+      query.data?.filters,
+      query.data?.pagination,
+      query.data?.scopeCounts,
+    ],
+  );
   return (
-    <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
-      {children}
-    </WorkspaceSnapshotProvider>
+    <DashboardReadModelContext.Provider value={dashboardState}>
+      <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
+        {children}
+      </WorkspaceSnapshotProvider>
+    </DashboardReadModelContext.Provider>
   );
 }
 

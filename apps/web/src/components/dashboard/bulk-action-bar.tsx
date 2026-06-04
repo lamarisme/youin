@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, CircleDashed, Trash2, X } from "lucide-react";
+import { Bot, CheckCircle2, CircleDashed, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -24,6 +24,7 @@ interface BulkActionBarProps {
   allClosed: boolean;
   onSetStatus: (status: "open" | "closed") => Promise<void> | void;
   onSetPriority: (priority: MarkPriority) => Promise<void> | void;
+  onCopyPrompt?: () => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onClear: () => void;
 }
@@ -33,6 +34,7 @@ export function BulkActionBar({
   allClosed,
   onSetStatus,
   onSetPriority,
+  onCopyPrompt,
   onDelete,
   onClear,
 }: BulkActionBarProps) {
@@ -62,6 +64,19 @@ export function BulkActionBar({
           <span className="text-mark">{count}</span> selected
         </span>
         <span aria-hidden className="hidden h-5 w-px bg-rule sm:block" />
+        {onCopyPrompt ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => run(onCopyPrompt)}
+            className="h-8 gap-1.5 px-2 text-ui-xs text-ink-2 hover:text-ink sm:h-7"
+          >
+            <Bot className="size-3" />
+            Copy AI prompt
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="sm"

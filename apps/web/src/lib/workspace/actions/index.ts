@@ -34,6 +34,8 @@ export {
   deleteMarkCommentAction,
 } from "./comments";
 
+export { logMarkPromptCopyAction } from "./prompt-copy";
+
 export {
   getInboxAction,
   markInboxReadAction,

@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -37,6 +37,16 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { labelColorClass } from "@/lib/workspace/label-styles";
+import {
+  DEFAULT_DASHBOARD_MARK_FILTERS,
+  DASHBOARD_PAGE_SIZE,
+  type DashboardDetailNavigation,
+  type DashboardMarkFilterRequest,
+  type DashboardPaginationInfo,
+  type DashboardPaginationRequest,
+  type DashboardScopeCounts,
+  type SortMode,
+} from "@/lib/workspace/dashboard-query";
 import {
   formatMarkDisplayKey,
   parseMarkRouteParam,
@@ -435,12 +445,20 @@ type MarkLoadOptions = {
   resolveImages: boolean;
   detailMarkId?: string | null;
   projectId?: string | null;
+  filters?: DashboardMarkFilterRequest;
+  pagination?: DashboardPaginationRequest;
+  viewerId?: string | null;
+  detailOnly?: boolean;
   supabase?: SupabaseClient;
 };
 
 type MarkRouteTarget = {
   id: string;
   projectId: string;
+};
+
+type MarkLoadResult = Pick<Workspace, "marks" | "comments" | "markEvents"> & {
+  pagination: DashboardPaginationInfo;
 };
 
 const markListSelect = {
@@ -458,6 +476,23 @@ const markListSelect = {
   legacyDisplayKey: marks.legacyDisplayKey,
   createdAt: marks.createdAt,
 };
+
+type MarkListRow = Pick<
+  typeof marks.$inferSelect,
+  | "id"
+  | "projectId"
+  | "title"
+  | "page"
+  | "description"
+  | "status"
+  | "workflowStatusId"
+  | "priority"
+  | "pinned"
+  | "assigneeUserId"
+  | "seq"
+  | "legacyDisplayKey"
+  | "createdAt"
+>;
 
 const markCaptureSelect = {
   id: marks.id,
@@ -524,19 +559,261 @@ function resolveDashboardProjectId(
   return null;
 }
 
+function normalizeDashboardFilters(
+  filters: DashboardMarkFilterRequest | undefined,
+): DashboardMarkFilterRequest {
+  return {
+    ...DEFAULT_DASHBOARD_MARK_FILTERS,
+    ...filters,
+    q: filters?.q?.trim().slice(0, 160) ?? "",
+  };
+}
+
+function normalizePagination(
+  pagination: DashboardPaginationRequest | undefined,
+): DashboardPaginationRequest {
+  return {
+    enabled: Boolean(pagination?.enabled),
+    page: Math.max(1, Number.isFinite(pagination?.page) ? Number(pagination?.page) : 1),
+    pageSize: Math.max(
+      1,
+      Math.min(
+        100,
+        Number.isFinite(pagination?.pageSize)
+          ? Number(pagination?.pageSize)
+          : DASHBOARD_PAGE_SIZE,
+      ),
+    ),
+  };
+}
+
+function dashboardMarkWhereClause(
+  workspaceId: string,
+  options: Pick<MarkLoadOptions, "projectId" | "filters" | "viewerId">,
+): SQL {
+  const filters = normalizeDashboardFilters(options.filters);
+  const conditions: SQL[] = [eq(marks.workspaceId, workspaceId)];
+
+  if (options.projectId) {
+    conditions.push(eq(marks.projectId, options.projectId));
+  }
+  if (filters.status !== "all") {
+    conditions.push(eq(marks.status, filters.status));
+  }
+  if (filters.workflowStatus !== "all") {
+    conditions.push(eq(marks.workflowStatusId, filters.workflowStatus));
+  }
+  if (filters.priority !== "all") {
+    conditions.push(eq(marks.priority, filters.priority));
+  }
+  if (filters.pinned === "pinned") {
+    conditions.push(eq(marks.pinned, true));
+  }
+  if (filters.pinned === "unpinned") {
+    conditions.push(eq(marks.pinned, false));
+  }
+  if (filters.label !== "all") {
+    conditions.push(sql`exists (
+      select 1
+      from ${marksToLabels}
+      where ${marksToLabels.markId} = ${marks.id}
+        and ${marksToLabels.labelId} = ${filters.label}
+    )`);
+  }
+  if (filters.assignee === "me") {
+    conditions.push(
+      options.viewerId
+        ? eq(marks.assigneeUserId, options.viewerId)
+        : sql`false`,
+    );
+  }
+  if (filters.assignee === "unassigned") {
+    conditions.push(isNull(marks.assigneeUserId));
+  }
+  if (filters.q) {
+    const query = `%${filters.q.toLowerCase()}%`;
+    conditions.push(sql`(
+      lower(${marks.title}) like ${query}
+      or lower(${marks.description}) like ${query}
+      or lower(${marks.page}) like ${query}
+      or lower(coalesce(${marks.legacyDisplayKey}, '')) like ${query}
+      or lower(concat(${WORKSPACE_MARK_PREFIX}, '-', ${marks.seq}::text)) like ${query}
+      or ${marks.id}::text like ${query}
+    )`);
+  }
+
+  return and(...conditions) ?? eq(marks.workspaceId, workspaceId);
+}
+
+function dashboardMarkOrderBy(sort: SortMode): SQL[] {
+  switch (sort) {
+    case "oldest":
+      return [asc(marks.createdAt), asc(marks.id)];
+    case "priority":
+      return [
+        sql`case ${marks.priority}
+          when 'critical' then 0
+          when 'high' then 1
+          when 'medium' then 2
+          when 'low' then 3
+          else 4
+        end`,
+        desc(marks.createdAt),
+        desc(marks.id),
+      ];
+    case "status":
+      return [
+        sql`case ${marks.status} when 'open' then 0 else 1 end`,
+        desc(marks.createdAt),
+        desc(marks.id),
+      ];
+    case "recent":
+    default:
+      return [desc(marks.createdAt), desc(marks.id)];
+  }
+}
+
+async function loadDashboardScopeCounts(
+  workspaceId: string,
+  projectId: string | null,
+  viewerId: string | null | undefined,
+): Promise<DashboardScopeCounts> {
+  const db = getDb();
+  const whereClause = projectId
+    ? and(eq(marks.workspaceId, workspaceId), eq(marks.projectId, projectId))
+    : eq(marks.workspaceId, workspaceId);
+  const [row] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      open: sql<number>`count(*) filter (where ${marks.status} = 'open')::int`,
+      critical: sql<number>`count(*) filter (where ${marks.status} = 'open' and ${marks.priority} = 'critical')::int`,
+      mine: viewerId
+        ? sql<number>`count(*) filter (where ${marks.status} = 'open' and ${marks.assigneeUserId} = ${viewerId})::int`
+        : sql<number>`0::int`,
+      unassigned: sql<number>`count(*) filter (where ${marks.status} = 'open' and ${marks.assigneeUserId} is null)::int`,
+    })
+    .from(marks)
+    .where(whereClause);
+
+  return {
+    total: Number(row?.total ?? 0),
+    open: Number(row?.open ?? 0),
+    critical: Number(row?.critical ?? 0),
+    mine: Number(row?.mine ?? 0),
+    unassigned: Number(row?.unassigned ?? 0),
+  };
+}
+
+async function loadDashboardDetailNavigation(
+  workspaceId: string,
+  options: Pick<MarkLoadOptions, "projectId" | "filters" | "viewerId">,
+  detailMarkId: string,
+): Promise<DashboardDetailNavigation | null> {
+  const db = getDb();
+  const filters = normalizeDashboardFilters(options.filters);
+  const whereClause = dashboardMarkWhereClause(workspaceId, options);
+  const orderBy = sql.join(dashboardMarkOrderBy(filters.sort), sql`, `);
+  const [row] = await db.execute<{
+    id: string;
+    seq: number;
+    previousSeq: number | null;
+    nextSeq: number | null;
+    position: number;
+    total: number;
+  }>(sql`
+    select
+      ranked.id,
+      ranked.seq,
+      ranked.previous_seq as "previousSeq",
+      ranked.next_seq as "nextSeq",
+      ranked.position,
+      ranked.total
+    from (
+      select
+        ${marks.id} as id,
+        ${marks.seq} as seq,
+        lag(${marks.seq}) over (order by ${orderBy}) as previous_seq,
+        lead(${marks.seq}) over (order by ${orderBy}) as next_seq,
+        (row_number() over (order by ${orderBy}))::int as position,
+        (count(*) over ())::int as total
+      from ${marks}
+      where ${whereClause}
+    ) ranked
+    where ranked.id = ${detailMarkId}
+    limit 1
+  `);
+  if (!row) return null;
+
+  return {
+    previousDisplayKey: row.previousSeq
+      ? formatMarkDisplayKey(Number(row.previousSeq))
+      : null,
+    nextDisplayKey: row.nextSeq
+      ? formatMarkDisplayKey(Number(row.nextSeq))
+      : null,
+    position: Number(row.position),
+    total: Number(row.total),
+  };
+}
+
 async function loadMarks(
   workspaceId: string,
   options: MarkLoadOptions,
-): Promise<Pick<Workspace, "marks" | "comments" | "markEvents">> {
+): Promise<MarkLoadResult> {
   const db = getDb();
-  const whereClause = options.projectId
-    ? and(eq(marks.workspaceId, workspaceId), eq(marks.projectId, options.projectId))
-    : eq(marks.workspaceId, workspaceId);
-  const markRows = await db
-    .select(markListSelect)
-    .from(marks)
-    .where(whereClause)
-    .orderBy(desc(marks.createdAt));
+  const filters = normalizeDashboardFilters(options.filters);
+  const requestedPagination = normalizePagination(options.pagination);
+  const whereClause = dashboardMarkWhereClause(workspaceId, {
+    projectId: options.projectId,
+    filters,
+    viewerId: options.viewerId,
+  });
+  const markWhereClause =
+    options.detailOnly && options.detailMarkId
+      ? (and(whereClause, eq(marks.id, options.detailMarkId)) ?? whereClause)
+      : whereClause;
+  const orderBy = dashboardMarkOrderBy(filters.sort);
+  let pagination: DashboardPaginationInfo;
+  let markRows: MarkListRow[];
+
+  if (requestedPagination.enabled) {
+    const [countRow] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(marks)
+      .where(markWhereClause);
+    const totalItems = Number(countRow?.total ?? 0);
+    const totalPages = Math.max(
+      1,
+      Math.ceil(totalItems / requestedPagination.pageSize),
+    );
+    const page = Math.min(requestedPagination.page, totalPages);
+    markRows = await db
+      .select(markListSelect)
+      .from(marks)
+      .where(markWhereClause)
+      .orderBy(...orderBy)
+      .limit(requestedPagination.pageSize)
+      .offset((page - 1) * requestedPagination.pageSize);
+    pagination = {
+      ...requestedPagination,
+      page,
+      totalItems,
+      totalPages,
+    };
+  } else {
+    markRows = await db
+      .select(markListSelect)
+      .from(marks)
+      .where(markWhereClause)
+      .orderBy(...orderBy);
+    pagination = {
+      enabled: false,
+      page: 1,
+      pageSize: requestedPagination.pageSize,
+      totalItems: markRows.length,
+      totalPages: 1,
+    };
+  }
   const markIds = markRows.map((mark) => mark.id);
   const detailMarkId =
     options.detailMarkId && markIds.includes(options.detailMarkId)
@@ -568,8 +845,7 @@ async function loadMarks(
           labelId: marksToLabels.labelId,
         })
         .from(marksToLabels)
-        .innerJoin(marks, eq(marksToLabels.markId, marks.id))
-        .where(whereClause),
+        .where(inArray(marksToLabels.markId, markIds)),
       options.includeCommentCounts
         ? db
             .select({
@@ -577,8 +853,7 @@ async function loadMarks(
               commentCount: sql<number>`count(*)::int`,
             })
             .from(markComments)
-            .innerJoin(marks, eq(markComments.markId, marks.id))
-            .where(whereClause)
+            .where(inArray(markComments.markId, markIds))
             .groupBy(markComments.markId)
         : Promise.resolve([]),
       options.includeComments
@@ -733,7 +1008,7 @@ async function loadMarks(
     metadata: metadataToUi(event.metadata),
   }));
 
-  return { marks: marksOut, comments, markEvents: markEventsOut };
+  return { marks: marksOut, comments, markEvents: markEventsOut, pagination };
 }
 
 async function loadWorkspaceCore(workspaceId: string) {
@@ -760,9 +1035,12 @@ export async function loadDashboardReadModel(
   workspaceId: string,
   request: DashboardReadModelRequest = {},
   supabase?: SupabaseClient,
+  viewerId?: string | null,
 ): Promise<DashboardReadModel> {
-  const core = await loadWorkspaceCore(workspaceId);
-  const markTarget = await loadMarkRouteTarget(workspaceId, request.markParam);
+  const [core, markTarget] = await Promise.all([
+    loadWorkspaceCore(workspaceId),
+    loadMarkRouteTarget(workspaceId, request.markParam),
+  ]);
   const selectedProjectId = resolveDashboardProjectId(
     core.projects,
     request,
@@ -772,18 +1050,48 @@ export async function loadDashboardReadModel(
     markTarget && (!selectedProjectId || markTarget.projectId === selectedProjectId)
       ? markTarget.id
       : null;
-  const markData = await loadMarks(workspaceId, {
-    includeComments: Boolean(detailMarkId),
-    includeCommentCounts: true,
-    includeEvents: Boolean(detailMarkId),
-    resolveImages: Boolean(detailMarkId),
-    detailMarkId,
+  const filters = normalizeDashboardFilters(request.filters);
+  const detailOptions = {
     projectId: selectedProjectId,
-    supabase,
-  });
+    filters,
+    viewerId,
+  };
+  const scopeCountsPromise =
+    detailMarkId && request.detailOnly
+      ? Promise.resolve({
+          total: 0,
+          open: 0,
+          critical: 0,
+          mine: 0,
+          unassigned: 0,
+        })
+      : loadDashboardScopeCounts(workspaceId, selectedProjectId, viewerId);
+  const [markData, scopeCounts, detailNavigation] = await Promise.all([
+    loadMarks(workspaceId, {
+      includeComments: Boolean(detailMarkId),
+      includeCommentCounts: !request.detailOnly,
+      includeEvents: Boolean(detailMarkId),
+      resolveImages: false,
+      detailMarkId,
+      projectId: selectedProjectId,
+      filters,
+      pagination: request.pagination,
+      viewerId,
+      detailOnly: Boolean(detailMarkId && request.detailOnly),
+      supabase,
+    }),
+    scopeCountsPromise,
+    detailMarkId
+      ? loadDashboardDetailNavigation(workspaceId, detailOptions, detailMarkId)
+      : Promise.resolve(null),
+  ]);
   return {
     loadedAt: new Date().toISOString(),
     selectedProjectId,
+    filters,
+    pagination: markData.pagination,
+    scopeCounts,
+    detailNavigation,
     workspace: {
       ...emptyWorkspace(core.identity.id, core.identity.name),
       projects: core.projects,

@@ -5,6 +5,7 @@ import type {
 
 export type MarkStatus = DomainMarkStatus;
 export type MarkPriority = DomainMarkPriority;
+export type AiPromptTarget = "codex" | "claude" | "generic" | "bulk";
 export type WorkflowStatusColor = "gray" | "blue" | "amber" | "green" | "red" | "violet";
 export type WorkspaceViewLayout = "list" | "board";
 export type WorkspaceViewStatusFilter = "all" | MarkStatus;
@@ -19,6 +20,7 @@ export type MarkEventType =
   | "status_changed"
   | "priority_changed"
   | "pinned_changed"
+  | "prompt_copied"
   | "comment_added"
   | "assignee_changed"
   | "label_changed";

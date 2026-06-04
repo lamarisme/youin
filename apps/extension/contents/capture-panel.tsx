@@ -242,6 +242,73 @@ function buildMarkFromCapture(
   }
 }
 
+function buildAiPromptFromMark(mark: Mark): string {
+  const selected = mark.domSnapshot?.selectedElement
+  const context = mark.domSnapshot?.context
+  const outerHTML =
+    selected?.outerHTML?.slice(0, 2200) ||
+    mark.outerHTMLPreview?.slice(0, 2200)
+  const visibleText = [
+    selected?.textContent?.slice(0, 700),
+    context?.nearbyText?.slice(0, 900)
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+  const screenshot =
+    mark.screenshotUrl ||
+    (mark.screenshotDataUrl ? "Captured locally in YouIn." : "Not captured")
+  const comments = mark.thread.length
+    ? mark.thread
+        .slice(0, 12)
+        .map(
+          (message, index) =>
+            `${index + 1}. ${message.authorLabel}: ${message.body.slice(
+              0,
+              900
+            )}`
+        )
+        .join("\n")
+    : "No comments yet."
+  const viewport = mark.viewport
+    ? `${mark.viewport.width}x${mark.viewport.height}@${mark.viewport.dpr}`
+    : "Not captured"
+
+  return [
+    "You are Codex, an AI coding agent working in this repository.",
+    "",
+    "Use the YouIn mark context below to implement the requested UI change. Start by locating the relevant page/component, then make the smallest high-quality code change that resolves the mark. Preserve existing project patterns.",
+    "",
+    "## Mark",
+    `- Title: ${mark.title}`,
+    `- Status: ${mark.status}`,
+    `- Priority: ${mark.priority}`,
+    `- Page URL: ${mark.url}`,
+    `- Page title: ${mark.pageTitle || "Not captured"}`,
+    "",
+    "## Requested Change",
+    mark.thread[0]?.body || mark.title,
+    "",
+    "## Page Context",
+    `- DOM selector: ${mark.selector || "Not captured"}`,
+    `- Selector strategy: ${mark.strategy || "Not captured"}`,
+    `- Viewport: ${viewport}`,
+    `- Screenshot: ${screenshot}`,
+    "",
+    "## Discussion",
+    comments,
+    visibleText ? `\n## Visible Text\n${visibleText}` : "",
+    outerHTML ? `\n## Selected Element DOM\n\`\`\`html\n${outerHTML}\n\`\`\`` : "",
+    "",
+    "## Output Expectations",
+    "- Explain the relevant files you changed.",
+    "- Keep the implementation scoped to this mark.",
+    "- Run or suggest the narrowest useful verification command.",
+    "- Call out any missing context if the selector or screenshot is stale."
+  ]
+    .filter(Boolean)
+    .join("\n")
+}
+
 const btnPrimary =
   "flex w-full cursor-pointer items-center justify-center rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-btn-primary-bg)] px-3 py-2 text-[13px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-[background-color,border-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-ext-btn-primary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.99] motion-reduce:active:scale-100"
 
@@ -911,6 +978,9 @@ const CapturePanel = () => {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveWarning, setSaveWarning] = useState<string | null>(null)
+  const [promptCopyState, setPromptCopyState] = useState<
+    "idle" | "copied" | "failed"
+  >("idle")
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [returnToList, setReturnToList] = useState(false)
   const [pendingListDeleteMarkId, setPendingListDeleteMarkId] = useState<
@@ -1341,6 +1411,16 @@ const CapturePanel = () => {
     }
   }
 
+  const copyAiPrompt = async (mark: Mark) => {
+    try {
+      await copyTextToClipboard(buildAiPromptFromMark(mark))
+      setPromptCopyState("copied")
+    } catch {
+      setPromptCopyState("failed")
+    }
+    window.setTimeout(() => setPromptCopyState("idle"), 1600)
+  }
+
   const retryMarkSync = async () => {
     if (!viewingMark || saving) return
     setSaving(true)
@@ -1559,6 +1639,16 @@ const CapturePanel = () => {
         <button
           type="button"
           className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
+          onClick={() => void copyAiPrompt(undoAction.mark)}>
+          {promptCopyState === "copied"
+            ? "Prompt copied"
+            : promptCopyState === "failed"
+              ? "Copy failed"
+              : "Copy prompt"}
+        </button>
+        <button
+          type="button"
+          className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
           onClick={() => void restoreUndoAction()}>
           Undo
         </button>
@@ -1731,6 +1821,16 @@ const CapturePanel = () => {
         {undoAction ? (
           <div className="border-t border-[color:var(--yi-ext-border-hairline)] px-3 py-2 text-[11px] text-[color:var(--yi-ext-text-muted)]">
             {undoAction.message}
+            <button
+              type="button"
+              className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
+              onClick={() => void copyAiPrompt(undoAction.mark)}>
+              {promptCopyState === "copied"
+                ? "Prompt copied"
+                : promptCopyState === "failed"
+                  ? "Copy failed"
+                  : "Copy prompt"}
+            </button>
             <button
               type="button"
               className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
@@ -2280,6 +2380,16 @@ const CapturePanel = () => {
               </div>
 
               <div className="mt-5 flex flex-col gap-2">
+                <button
+                  type="button"
+                  className={btnPrimary}
+                  onClick={() => void copyAiPrompt(viewingMark)}>
+                  {promptCopyState === "copied"
+                    ? "Prompt copied"
+                    : promptCopyState === "failed"
+                      ? "Copy failed"
+                      : "Copy AI prompt"}
+                </button>
                 <a
                   href={`${WEB_APP_URL}/dashboard`}
                   target="_blank"

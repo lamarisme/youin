@@ -8,6 +8,11 @@ import {
   type PageSearchParams,
 } from "@/lib/page-search-params";
 import { getDashboardReadModelAction } from "@/lib/workspace/actions";
+import {
+  dashboardMarkFiltersFromQuery,
+  dashboardPaginationFromQuery,
+  dashboardQueryFromSearchParams,
+} from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
 import { DashboardUrlNormalizer } from "./dashboard-url-normalizer";
 
@@ -21,15 +26,20 @@ export default async function DashboardPage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const params = pageSearchParamsToUrlSearchParams(await searchParams);
+  const dashboardQuery = dashboardQueryFromSearchParams(params);
   const mark = params.get("mark");
   if (mark) {
     redirect(markHref(mark, params));
   }
 
-  const requestedProjectId = params.get("project");
-  const readModel = await getDashboardReadModelAction({
+  const requestedProjectId =
+    dashboardQuery.projectId === "all" ? null : dashboardQuery.projectId;
+  const readModelRequest = {
     projectId: requestedProjectId,
-  });
+    filters: dashboardMarkFiltersFromQuery(dashboardQuery),
+    pagination: dashboardPaginationFromQuery(dashboardQuery),
+  };
+  const readModel = await getDashboardReadModelAction(readModelRequest);
 
   if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
     params.set("project", readModel.selectedProjectId);
@@ -42,10 +52,23 @@ export default async function DashboardPage({
     return <DashboardUrlNormalizer href={query ? `/dashboard?${query}` : "/dashboard"} />;
   }
 
+  if (
+    readModel.pagination.enabled &&
+    readModel.pagination.page !== dashboardQuery.page
+  ) {
+    if (readModel.pagination.page === 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(readModel.pagination.page));
+    }
+    const query = params.toString();
+    return <DashboardUrlNormalizer href={query ? `/dashboard?${query}` : "/dashboard"} />;
+  }
+
   return (
     <DashboardReadModelProvider
       initialData={readModel}
-      projectId={readModel.selectedProjectId}
+      request={readModelRequest}
     >
       <WorkspaceDashboard />
     </DashboardReadModelProvider>
