@@ -140,20 +140,8 @@
     "skipLink": "Skip to main content",
     "nav": [
       {
-        "href": "#problem",
-        "label": "Problem"
-      },
-      {
         "href": "#loop",
-        "label": "Spatial backlog"
-      },
-      {
-        "href": "#integrations",
-        "label": "Integrations"
-      },
-      {
-        "href": "#who",
-        "label": "Teams"
+        "label": "How it works"
       },
       {
         "href": "#install",
@@ -163,111 +151,14 @@
     "hero": {
       "eyebrow": "Spatial backlog",
       "title": "Your product backlog, pinned to your actual UI.",
-      "subtitle": "Stop dragging UI work through screenshots and Slack. Click the live interface, and YouIn creates a task with the selector, screenshot, browser context, and discussion already attached.",
+      "subtitle": "Click the live interface, create the task, and keep the selector, screenshot, browser context, and discussion attached.",
       "chromeCta": "Join free beta",
-      "secondaryCta": "See the loop",
       "proofLabel": "Beta details",
       "proof": ["Free during beta", "Chrome extension", "No card required"]
     },
-    "productStage": {
-      "ariaLabel": "YouIn demo showing a mark pinned to a pricing CTA and carried into triage",
-      "urlBar": "app.client.com/pricing",
-      "overlayLabel": "youin overlay",
-      "liveSiteName": "Client portal",
-      "liveSiteSection": "Pricing page",
-      "liveNavProduct": "Product",
-      "liveNavPricing": "Pricing",
-      "liveNavDocs": "Docs",
-      "livePageEyebrow": "SaaS billing",
-      "livePageTitle": "Pick a plan that fits.",
-      "livePageSubtitle": "A reviewer spots a contrast issue on the Pro CTA. The task stays attached to the exact button.",
-      "livePageCta": "Upgrade to Pro",
-      "planStarter": "Starter",
-      "planPro": "Pro",
-      "planScale": "Scale",
-      "planStarterPrice": "$19",
-      "planProPrice": "$49",
-      "planScalePrice": "$99",
-      "planBadge": "Reviewing",
-      "workspaceName": "Client portal",
-      "workspaceSubtitle": "Website QA",
-      "navItems": ["Inbox", "Triage", "Projects", "Views"],
-      "triageLabel": "Triage",
-      "triageTitle": "Pricing review",
-      "newMark": "New mark",
-      "rows": [
-        {
-          "id": "YIN-114",
-          "title": "Pricing card CTA has low contrast",
-          "status": "open",
-          "priority": "High",
-          "path": "/pricing"
-        },
-        {
-          "id": "YIN-113",
-          "title": "Mobile nav overlaps invite button",
-          "status": "open",
-          "priority": "Medium",
-          "path": "/pricing"
-        },
-        {
-          "id": "YIN-112",
-          "title": "Empty state copy needs a better next step",
-          "status": "resolved",
-          "priority": "Low",
-          "path": "/settings"
-        }
-      ],
-      "statsOpen": "Open",
-      "statsResolved": "Resolved",
-      "statsSynced": "Pinned",
-      "statsOpenValue": "18",
-      "statsResolvedValue": "42",
-      "statsSyncedValue": "31",
-      "commentPreview": "Low contrast on primary CTA",
-      "detailId": "YIN-114",
-      "detailTitle": "Pricing card CTA has low contrast",
-      "detailBody": "Selector, viewport, screenshot, and browser metadata are already captured.",
-      "detailComments": "3 comments",
-      "taskStatus": "Open mark",
-      "selectorLabel": "Selector",
-      "selectorValue": "button[data-plan=\"pro\"]",
-      "viewportLabel": "Viewport",
-      "viewportValue": "1440x900",
-      "screenshotLabel": "Capture",
-      "screenshotValue": "Attached",
-      "mobileRowTitle": "Pricing card CTA has low contrast",
-      "mobileRowMeta": "YIN-114 · /pricing"
-    },
-    "loopScenes": {
-      "capture": {
-        "selector": "button[data-plan=\"pro\"]",
-        "url": "/pricing",
-        "viewport": "1440×900",
-        "elementLabel": "Pro plan CTA"
-      },
-      "anchor": {
-        "selectorLabel": "Selector",
-        "viewportLabel": "Viewport",
-        "fallbackLabel": "Fallback",
-        "selector": "button[data-plan=\"pro\"]",
-        "viewport": "1440×900",
-        "fallback": "Screenshot anchor",
-        "status": "Anchor live",
-        "liveBadge": "Live",
-        "footerNote": "Anchor survives DOM drift"
-      },
-      "sync": {
-        "issueId": "YIN-114",
-        "title": "Pricing card CTA has low contrast",
-        "meta": "Synced from YIN-114",
-        "status": "Ready for review",
-        "destination": "YouIn"
-      }
-    },
     "problem": {
       "title": "The work is spatial. The tools are flat.",
-      "p1": "Review starts on the page, then gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the work attached to the exact interface moment that created it.",
+      "p1": "Review starts on the page, then gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the work attached to the interface moment that created it.",
       "oldLoopLabel": "The old loop",
       "oldLoopBody": "Screenshot, annotate, paste in chat, explain the page, answer follow-up questions, repeat after the next deploy.",
       "withLabel": "With YouIn",
@@ -279,7 +170,7 @@
       "steps": [
         {
           "title": "Pin work to the live element",
-          "body": "Click the exact button, card, modal, table row, or empty state. YouIn captures the URL, selector, viewport, browser, and screenshot automatically."
+          "body": "Click the exact button, card, modal, table row, or empty state. YouIn captures the URL, selector, viewport, and screenshot automatically."
         },
         {
           "title": "Keep context after the page changes",
@@ -288,51 +179,6 @@
         {
           "title": "Move it through the backlog",
           "body": "Triage, assign, discuss, and resolve the mark with visual context and workflow status in one place. No screenshot translation needed."
-        }
-      ]
-    },
-    "integrations": {
-      "eyebrow": "Install paths",
-      "title": "Start with the extension. Embed the same capture layer later.",
-      "subtitle": "The Chrome extension is the fastest way to mark any page. Teams that need a first-party flow can use the planned hosted script or npm package without changing the capture model.",
-      "options": [
-        {
-          "name": "Chrome extension",
-          "status": "Available",
-          "body": "Mark any web app or staging site without changing the codebase."
-        },
-        {
-          "name": "Hosted script",
-          "status": "Planned",
-          "body": "Drop a tiny script into a first-party app so reviewers can create marks from inside your own product surface."
-        },
-        {
-          "name": "NPM package",
-          "status": "Planned",
-          "body": "Install a React-friendly package when teams want typed APIs, identity, route context, and deeper UI control."
-        }
-      ],
-      "contractTitle": "One contract underneath",
-      "contractBody": "Allowed domains, user identity, route and entity metadata, screenshots, selectors, and workspace routing stay consistent across every install path."
-    },
-    "who": {
-      "eyebrow": "Focused wedge",
-      "title": "Built for teams with expensive feedback loops.",
-      "personas": [
-        {
-          "role": "Web agencies",
-          "detail": "Client review",
-          "body": "Turn client comments into precise UI tasks without asking reviewers to write tickets or describe screenshots."
-        },
-        {
-          "role": "Small product teams",
-          "detail": "PMs + designers + devs",
-          "body": "Manage UI debt directly on the live product, with statuses and saved views that fit how the team already ships."
-        },
-        {
-          "role": "Solo builders",
-          "detail": "Indie + small teams",
-          "body": "Use YouIn as a spatial to-do list for your own app, with every fix living where the bug lives."
         }
       ]
     },
