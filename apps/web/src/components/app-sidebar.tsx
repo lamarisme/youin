@@ -463,8 +463,8 @@ function SidebarViewsSection({
         </div>
       ) : (
         <>
-          <div className="flex h-7 items-center justify-between px-2">
-            <p className="text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
+          <div className="flex h-8 items-center justify-between px-2">
+            <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
               Views
             </p>
             <Tooltip>
@@ -473,11 +473,11 @@ function SidebarViewsSection({
                   href="/views"
                   aria-label={actionLabel}
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                    "flex size-7 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
                     SIDEBAR_FOCUS,
                   )}
                 >
-                  <Plus className="size-3.5" aria-hidden />
+                  <Plus className="size-4" aria-hidden />
                 </Link>
               </TooltipTrigger>
               <TooltipContent>{actionLabel}</TooltipContent>
@@ -496,11 +496,11 @@ function SidebarViewsSection({
               <Link
                 href="/views"
                 className={cn(
-                  "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-xs text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                  "group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-ui-sm text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
                   SIDEBAR_FOCUS,
                 )}
               >
-                <Plus className="size-[1rem] shrink-0" aria-hidden />
+                <Plus className="size-[1.05rem] shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1 truncate">Create view</span>
               </Link>
             )}
@@ -552,14 +552,14 @@ function SidebarViewLink({
       aria-current={active ? "page" : undefined}
       title={view.name}
       className={cn(
-        "group flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-ui-xs transition-colors",
+        "group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-ui-sm transition-colors",
         active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
         SIDEBAR_FOCUS,
       )}
     >
       <View
         className={cn(
-          "size-[1rem] shrink-0 transition-colors",
+          "size-[1.05rem] shrink-0 transition-colors",
           active ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
         )}
         aria-hidden
