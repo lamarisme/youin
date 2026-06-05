@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import {
-  CheckCircle2,
+  Briefcase,
   CircleDot,
   Crosshair,
-  MessageSquare,
-  MousePointer2,
-  PanelRight,
+  Layers,
+  ListTodo,
+  Pin,
+  Sparkles,
+  Terminal,
 } from "lucide-react";
 
 import { BrandLockup } from "@/components/brand-lockup";
@@ -22,25 +24,23 @@ import {
 
 type LandingNavItem = { href: string; label: string };
 type LoopStep = { title: string; body: string };
-type LandingHero = { proof: string[] };
 type ContextItem = { label: string; value: string; body: string };
 type AudienceItem = { label: string; body: string };
 
-const loopIcons = [MousePointer2, MessageSquare, PanelRight] as const;
+const loopIcons = [Pin, Layers, ListTodo] as const;
+const audienceIcons = [Briefcase, Sparkles, Terminal] as const;
 
 export default async function Home() {
   const t = await getTranslations("landing");
   const messages = (await import("@youin/i18n/messages/en.json")).default;
   const landing = messages.landing as {
     nav: LandingNavItem[];
-    hero: LandingHero;
     loop: { steps: LoopStep[] };
     context: { items: ContextItem[] };
     audience: { items: AudienceItem[] };
   };
 
   const navItems = landing.nav;
-  const heroProof = landing.hero.proof;
   const loopSteps = landing.loop.steps;
   const contextItems = landing.context.items;
   const audienceItems = landing.audience.items;
@@ -103,18 +103,18 @@ export default async function Home() {
         <main id="main" className="section-stack pb-[var(--page-y-loose)]">
           <section className="section-reveal">
             <div className="shell min-w-0 py-[clamp(3.5rem,7vw,7.5rem)]">
-              <div className="mx-auto max-w-4xl text-center relative z-10 grid min-w-0 gap-[var(--space-xl)] px-4">
-                <div className="flex flex-col items-center gap-[var(--space-lg)]">
+              <div className="w-full text-left relative z-10 grid min-w-0 gap-[var(--space-xl)] px-4">
+                <div className="flex flex-col items-start gap-[var(--space-lg)]">
                   <p className="text-eyebrow">{t("hero.eyebrow")}</p>
-                  <h1 className="text-editorial-hero text-ink text-center max-w-[20ch]">
+                  <h1 className="text-editorial-hero text-ink text-left max-w-none">
                     {t("hero.title")}
                   </h1>
-                  <p className="mx-auto w-full min-w-0 max-w-[55ch] text-pretty text-ui-lg leading-relaxed text-ink-2 text-center">
+                  <p className="w-full min-w-0 max-w-[75ch] text-pretty text-ui-lg leading-relaxed text-ink-2 text-left">
                     {t("hero.subtitle")}
                   </p>
                 </div>
 
-                <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <div className="flex flex-col items-start justify-start gap-4 sm:flex-row">
                   <LandingPrimaryButton href="/signup">
                     {t("hero.chromeCta")}
                   </LandingPrimaryButton>
@@ -122,18 +122,6 @@ export default async function Home() {
                     {t("hero.secondaryCta")}
                   </SecondaryCtaButton>
                 </div>
-
-                <ul
-                  className="flex flex-wrap items-center justify-center gap-3 text-ink-3 text-ui-xs leading-snug"
-                  aria-label={t("hero.proofLabel")}
-                >
-                  {heroProof.map((item) => (
-                    <li key={item} className="inline-flex min-h-[1.625rem] items-center gap-2 border border-rule rounded-md bg-paper-elevated/78 px-2 py-0.5">
-                      <CheckCircle2 className="size-3.5 shrink-0 text-mark" aria-hidden />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
               </div>
             </div>
           </section>
@@ -240,20 +228,23 @@ export default async function Home() {
                 </h2>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                {audienceItems.map((item) => (
-                  <article
-                    key={item.label}
-                    className="rounded-lg border border-rule bg-paper-elevated p-4"
-                  >
-                    <Crosshair className="mb-5 size-4 text-mark" aria-hidden />
-                    <h3 className="font-display text-title-sm text-ink">
-                      {item.label}
-                    </h3>
-                    <p className="mt-3 text-pretty text-ui-sm leading-relaxed text-ink-2">
-                      {item.body}
-                    </p>
-                  </article>
-                ))}
+                {audienceItems.map((item, index) => {
+                  const Icon = audienceIcons[index] ?? Crosshair;
+                  return (
+                    <article
+                      key={item.label}
+                      className="rounded-lg border border-rule bg-paper-elevated p-4"
+                    >
+                      <Icon className="mb-5 size-4 text-mark" aria-hidden />
+                      <h3 className="font-display text-title-sm text-ink">
+                        {item.label}
+                      </h3>
+                      <p className="mt-3 text-pretty text-ui-sm leading-relaxed text-ink-2">
+                        {item.body}
+                      </p>
+                    </article>
+                  );
+                })}
               </div>
             </div>
           </section>
