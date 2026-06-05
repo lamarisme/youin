@@ -20,7 +20,7 @@ import {
   View,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { BrandLogo } from "@/components/brand-logo";
@@ -51,37 +51,17 @@ import {
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
 import type { WorkspaceView } from "@/lib/collab-types";
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
-import {
-  safeLocalStorageGet,
-  safeLocalStorageSet,
-} from "@/lib/safe-local-storage";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
 
 const SIDEBAR_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
-
-function useSidebarCollapsed() {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return safeLocalStorageGet("youin-sidebar-collapsed") === "true";
-  });
-
-  const toggle = useCallback(() => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      safeLocalStorageSet("youin-sidebar-collapsed", String(next));
-      return next;
-    });
-  }, []);
-
-  return { collapsed, toggle } as const;
-}
 
 export function AppSidebar() {
   const tNav = useTranslations("nav");
@@ -92,7 +72,10 @@ export function AppSidebar() {
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
+  const collapsed = useWorkspaceUiStore((state) => state.sidebarCollapsed);
+  const toggleCollapsed = useWorkspaceUiStore(
+    (state) => state.toggleSidebarCollapsed,
+  );
 
   const {
     profileName,

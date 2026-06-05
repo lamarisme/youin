@@ -1,42 +1,27 @@
 "use client";
 
-import { createContext, useContext, useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 
-import { useLocalStorageState } from "@/lib/use-local-storage-state";
+import { useWorkspaceUiStore, type Theme } from "@/lib/collab-store";
 
-type Theme = "light" | "dark";
-
-interface ThemeContextValue {
+interface ThemeState {
   theme: Theme;
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useLocalStorageState<Theme>("youin-theme", "dark");
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const theme = useWorkspaceUiStore((state) => state.theme);
 
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        toggleTheme: () => setTheme((prev) => (prev === "dark" ? "light" : "dark")),
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
-  );
+  return children;
 }
 
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used inside ThemeProvider.");
-  }
-  return context;
+export function useTheme(): ThemeState {
+  const theme = useWorkspaceUiStore((state) => state.theme);
+  const toggleTheme = useWorkspaceUiStore((state) => state.toggleTheme);
+  return { theme, toggleTheme };
 }

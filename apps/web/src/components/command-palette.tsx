@@ -2,13 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -32,7 +29,9 @@ import {
 import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
+import { DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
@@ -51,37 +50,31 @@ interface PaletteCommand {
   run: () => void;
 }
 
-const OpenCommandPaletteContext = createContext<(() => void) | null>(null);
-
 export function useOpenCommandPalette() {
-  const open = useContext(OpenCommandPaletteContext);
-  if (!open) {
-    throw new Error("useOpenCommandPalette must be used within CommandPaletteProvider");
-  }
-  return open;
+  return useWorkspaceUiStore((state) => state.openCommandPalette);
 }
 
 export function CommandPaletteProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
+  const open = useWorkspaceUiStore((state) => state.commandPaletteOpen);
+  const setOpen = useWorkspaceUiStore((state) => state.setCommandPaletteOpen);
+  const toggleOpen = useWorkspaceUiStore((state) => state.toggleCommandPalette);
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        setOpen((o) => !o);
+        toggleOpen();
       }
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  const openPalette = useCallback(() => setOpen(true), []);
+  }, [toggleOpen]);
 
   return (
-    <OpenCommandPaletteContext.Provider value={openPalette}>
+    <>
       {children}
       <CommandPaletteDialog open={open} onOpenChange={setOpen} />
-    </OpenCommandPaletteContext.Provider>
+    </>
   );
 }
 
@@ -325,6 +318,7 @@ function CommandPaletteDialog({
         "dark:shadow-[0_24px_60px_-24px_oklch(8%_0.018_62_/_0.6)]",
       )}
     >
+      <DialogTitle className="sr-only">{t("label")}</DialogTitle>
       <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
         <Command.Input

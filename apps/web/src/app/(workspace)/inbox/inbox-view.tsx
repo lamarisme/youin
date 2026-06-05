@@ -41,7 +41,7 @@ export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
     workspaceId,
     userId,
     initialData ?? inboxSnapshot,
-    initialData ? Date.now() : updatedAtFromIso(loadedAt),
+    initialData ? undefined : updatedAtFromIso(loadedAt),
   );
   const memberLookup = useMemo(
     () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
