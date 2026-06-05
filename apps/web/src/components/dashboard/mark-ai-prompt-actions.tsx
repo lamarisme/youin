@@ -5,6 +5,11 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type {
   MarkComment,
   MarkItem,
@@ -30,6 +35,7 @@ interface MarkAiPromptActionsProps {
   workflowStatus?: WorkspaceWorkflowStatus | null;
   assignee?: TeamMember;
   className?: string;
+  iconOnly?: boolean;
 }
 
 type CopyState = "idle" | "copied" | "failed";
@@ -43,6 +49,7 @@ export function MarkAiPromptActions({
   workflowStatus,
   assignee,
   className,
+  iconOnly = false,
 }: MarkAiPromptActionsProps) {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const { mutate: logPromptCopy } = useLogMarkPromptCopyMutation();
@@ -75,27 +82,44 @@ export function MarkAiPromptActions({
         ? "Copy failed"
         : "Copy prompt";
 
+  const button = (
+    <Button
+      type="button"
+      size={iconOnly ? "icon-sm" : "sm"}
+      variant={iconOnly ? "ghost" : "outline"}
+      onClick={() => void copyPrompt()}
+      aria-label={label}
+      className={cn(
+        iconOnly
+          ? "size-7 rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20"
+          : "h-8 gap-1.5 px-2.5 text-ui-sm transition-colors",
+        copyState === "copied" &&
+          (iconOnly ? "bg-ok-soft text-ok hover:bg-ok-soft hover:text-ok" : "border-ok/30 bg-ok-soft text-ok"),
+        copyState === "failed" &&
+          (iconOnly
+            ? "bg-destructive-soft text-destructive-token hover:bg-destructive-soft hover:text-destructive-token"
+            : "border-destructive/30 bg-destructive-soft text-destructive-token"),
+      )}
+    >
+      {copyState === "copied" ? (
+        <Check className="size-3.5" aria-hidden />
+      ) : (
+        <Copy className="size-3.5" aria-hidden />
+      )}
+      {!iconOnly ? label : null}
+    </Button>
+  );
+
   return (
     <div className={cn("flex items-center", className)}>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={() => void copyPrompt()}
-        aria-label={label}
-        className={cn(
-          "h-8 gap-1.5 px-2.5 text-ui-sm transition-colors",
-          copyState === "copied" && "border-ok/30 bg-ok-soft text-ok",
-          copyState === "failed" && "border-destructive/30 bg-destructive-soft text-destructive",
-        )}
-      >
-        {copyState === "copied" ? (
-          <Check className="size-3.5" aria-hidden />
-        ) : (
-          <Copy className="size-3.5" aria-hidden />
-        )}
-        {label}
-      </Button>
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent side="bottom">{label}</TooltipContent>
+        </Tooltip>
+      ) : (
+        button
+      )}
     </div>
   );
 }

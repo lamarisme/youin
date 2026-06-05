@@ -27,9 +27,14 @@ import { MarkPageOpenButton } from "./mark-page-open";
 interface MarkDetailCaptureProps {
   mark: MarkItem;
   variant?: "compact" | "hero";
+  spacing?: "normal" | "none";
 }
 
-export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptureProps) {
+export function MarkDetailCapture({
+  mark,
+  variant = "compact",
+  spacing = "normal",
+}: MarkDetailCaptureProps) {
   const cap = mark.capture;
   const pageOrigin = formatMarkPageOrigin(mark.page);
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
@@ -48,7 +53,7 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
       <div
         className={cn(
           "flex min-h-10 flex-wrap items-center gap-2 rounded-md bg-paper-2/60 px-3 py-2 text-ui-sm text-ink-3 ring-1 ring-rule/35",
-          isHero ? "mt-4" : "mt-5",
+          spacing === "normal" && (isHero ? "mt-4" : "mt-5"),
         )}
       >
         <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
@@ -67,7 +72,12 @@ export function MarkDetailCapture({ mark, variant = "compact" }: MarkDetailCaptu
 
   return (
     <>
-      <div className={cn("overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45", isHero ? "mt-4" : "mt-5")}>
+      <div
+        className={cn(
+          "overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45",
+          spacing === "normal" && (isHero ? "mt-4" : "mt-5"),
+        )}
+      >
         <div className="flex items-center gap-2 px-3 py-2">
           <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
           <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">

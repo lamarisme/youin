@@ -21,6 +21,7 @@ import {
   PanelRightOpen,
   Pencil,
   Tags,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -383,85 +384,123 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
         style={!isPane ? detailLayoutStyle : undefined}
         className={cn(
           isPane
-            ? "space-y-4"
+            ? "space-y-3"
             : "grid gap-4 lg:grid-cols-[minmax(0,1fr)_var(--mark-detail-sidebar-width)]",
         )}
       >
         <div className="min-w-0">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-ui-xs font-semibold text-mark">
-                {mark.displayKey}
-              </span>
-            </div>
-            {editingField === "title" ? (
-              <div className="mt-1 flex items-start gap-1">
-                <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  onKeyDown={(e) => handleEditKeyDown(e, "title")}
-                  placeholder="What needs attention?"
-                  maxLength={180}
-                  autoFocus
-                  aria-invalid={titleInvalid || undefined}
-                  className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 text-title-md font-semibold leading-[1.15] shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
-                />
-                <InlineEditActions
-                  field="title"
-                  disabled={titleInvalid}
-                  saving={isSavingEdit}
-                  onCancel={cancelEdit}
-                  onSave={(field) => void saveEdit(field)}
-                />
-              </div>
-            ) : (
-              <h1 className="mt-0.5 text-title-md font-semibold leading-[1.15] text-ink">
-                <button
-                  type="button"
-                  onClick={() => startEdit("title")}
-                  className="group flex max-w-full items-start gap-1.5 rounded-md text-left outline-none transition-colors hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
-                >
-                  <span className="break-words">{mark.title}</span>
-                  <span className="mt-0.5 hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
-                    <Pencil className="size-3.5" aria-hidden />
+          <section className="min-w-0">
+            <div className="pb-4">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="inline-flex h-6 items-center rounded-sm bg-mark-soft/70 px-1.5 font-mono text-ui-xs font-semibold text-mark">
+                    {mark.displayKey}
                   </span>
-                </button>
-              </h1>
-            )}
-            <MarkDetailActions
-              mark={mark}
-              members={workspace.members}
-              workflowStatuses={workspace.workflowStatuses}
-              projects={workspace.projects}
-              displayNamePreference={displayNamePreference}
-              showPinnedAction={isPane}
-              onConfirmDelete={() => setConfirmDelete(true)}
-            />
-            <MarkAiPromptActions
-              mark={mark}
-              comments={comments}
-              membersById={membersById}
-              labels={markLabels}
-              project={project}
-              workflowStatus={currentWorkflowStatus}
-              assignee={assignee}
-              className="mt-2"
-            />
-          </div>
+                  {project?.name ? (
+                    <span className="min-w-0 truncate rounded-sm bg-paper-2 px-1.5 py-0.5 text-ui-xs font-medium text-ink-2">
+                      {project.name}
+                    </span>
+                  ) : null}
+                  {!isPane ? (
+                    <span className="font-mono text-ui-2xs tabular-nums text-ink-3">
+                      {positionLabel}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <MarkAiPromptActions
+                    mark={mark}
+                    comments={comments}
+                    membersById={membersById}
+                    labels={markLabels}
+                    project={project}
+                    workflowStatus={currentWorkflowStatus}
+                    assignee={assignee}
+                    iconOnly
+                  />
+                  {!isPane ? (
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={() => setConfirmDelete(true)}
+                      aria-label="Delete mark"
+                      className="size-7 rounded-md text-ink-3 hover:bg-destructive-soft hover:text-destructive-token focus-visible:ring-2 focus-visible:ring-destructive/20"
+                    >
+                      <Trash2 className="size-3.5" aria-hidden />
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
 
-          {isPane ? <MarkDetailCapture mark={mark} variant="hero" /> : null}
+              {editingField === "title" ? (
+                <div className="mt-2 flex items-start gap-1">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={(e) => handleEditKeyDown(e, "title")}
+                    placeholder="What needs attention?"
+                    maxLength={180}
+                    autoFocus
+                    aria-invalid={titleInvalid || undefined}
+                    className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 text-title-lg font-semibold leading-tight shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
+                  />
+                  <InlineEditActions
+                    field="title"
+                    disabled={titleInvalid}
+                    saving={isSavingEdit}
+                    onCancel={cancelEdit}
+                    onSave={(field) => void saveEdit(field)}
+                  />
+                </div>
+              ) : (
+                <h1 className="mt-2 text-title-lg font-semibold leading-tight text-ink">
+                  <button
+                    type="button"
+                    onClick={() => startEdit("title")}
+                    className="group -mx-1 flex max-w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
+                  >
+                    <span className="break-words">{mark.title}</span>
+                    <span className="mt-0.5 hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
+                      <Pencil className="size-3.5" aria-hidden />
+                    </span>
+                  </button>
+                </h1>
+              )}
 
-          <div className="mt-3 rounded-md bg-paper-2 ring-1 ring-rule/45">
-            <div className="grid min-h-10 gap-1 px-3 py-2 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:items-center sm:gap-3">
-              <span
-                className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
-                aria-label="Page"
-                title="Page"
-              >
-                <Link2 className="size-3.5" aria-hidden />
-              </span>
+              <MarkDetailActions
+                mark={mark}
+                members={workspace.members}
+                workflowStatuses={workspace.workflowStatuses}
+                projects={workspace.projects}
+                displayNamePreference={displayNamePreference}
+                showPinnedAction={isPane}
+                showDeleteAction={isPane}
+                layout={isPane ? "inline" : "grid"}
+                className={isPane ? undefined : "mt-4"}
+                onConfirmDelete={() => setConfirmDelete(true)}
+              />
+            </div>
+
+            {isPane ? (
+              <div className="border-t border-rule/60 py-3">
+                <MarkDetailCapture mark={mark} variant="hero" spacing="none" />
+              </div>
+            ) : null}
+
+            <DetailContentSection
+              title="Page"
+              icon={<Link2 className="size-3.5" aria-hidden />}
+              action={
+                <MarkPageOpenButton
+                  page={mark.page}
+                  appearance="icon"
+                  className="size-8 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20"
+                />
+              }
+            >
               {editingField === "page" ? (
-                <div className="flex min-w-0 items-start gap-1">
+                <div className="flex min-w-0 items-start gap-1 rounded-md bg-paper-2/70 px-2 py-1 ring-1 ring-rule/40">
                   <Input
                     value={editPage}
                     onChange={(e) => setEditPage(e.target.value)}
@@ -474,7 +513,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     maxLength={300}
                     autoFocus
                     aria-invalid={pageInvalid || undefined}
-                    className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 font-mono text-ui-sm shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
+                    className="h-8 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 font-mono text-ui-sm shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0"
                   />
                   <InlineEditActions
                     field="page"
@@ -488,7 +527,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <button
                   type="button"
                   onClick={() => startEdit("page")}
-                  className="group flex min-h-10 min-w-0 items-center justify-between gap-2 rounded-md text-left outline-none hover:text-ink focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
+                  className="group flex min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
                 >
                   <span className="min-w-0 truncate font-mono text-ui-xs text-ink-2">
                     {mark.page}
@@ -499,107 +538,89 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   />
                 </button>
               )}
-              <MarkPageOpenButton
-                page={mark.page}
-                appearance="icon"
-                className="size-10 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20 sm:size-8"
-              />
-            </div>
-          </div>
+            </DetailContentSection>
 
-          {!isPane ? <MarkDetailCapture mark={mark} /> : null}
+            {!isPane ? (
+              <div className="border-t border-rule/60 py-3">
+                <MarkDetailCapture mark={mark} spacing="none" />
+              </div>
+            ) : null}
 
-          {editingField === "description" ? (
-            <div className="mt-5">
-              <div className="mb-2 grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2">
-                <span
-                  className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
-                  aria-label="Notes"
-                  title="Notes"
-                >
-                  <FileText className="size-3.5" aria-hidden />
-                </span>
-                <span className="sr-only">Notes</span>
-                <InlineEditActions
-                  field="description"
-                  saving={isSavingEdit}
-                  onCancel={cancelEdit}
-                  onSave={(field) => void saveEdit(field)}
-                />
-              </div>
-              <div onKeyDown={(e) => handleEditKeyDown(e, "description")}>
-                <MarkDescriptionEditor
-                  key={`${mark.id}-inline-description`}
-                  value={editDescription}
-                  onChange={setEditDescription}
-                  placeholder="Describe what should change…"
-                  disabled={isSavingEdit}
-                  autoFocus
-                  className="rounded-sm border-rule/45 bg-transparent shadow-none hover:border-rule/70 hover:bg-transparent focus-within:border-rule-strong/70 focus-within:bg-transparent focus-within:ring-0"
-                />
-              </div>
-            </div>
-          ) : mark.description ? (
-            <div className="mt-5">
-              <div className="mb-2 grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2">
-                <span
-                  className="inline-flex size-6 items-center justify-center rounded-md text-ink-3"
-                  aria-label="Notes"
-                  title="Notes"
-                >
-                  <FileText className="size-3.5" aria-hidden />
-                </span>
-                <span className="sr-only">Notes</span>
+            <DetailContentSection
+              title="Notes"
+              icon={<FileText className="size-3.5" aria-hidden />}
+              action={
+                editingField === "description" ? (
+                  <InlineEditActions
+                    field="description"
+                    saving={isSavingEdit}
+                    onCancel={cancelEdit}
+                    onSave={(field) => void saveEdit(field)}
+                  />
+                ) : mark.description ? (
+                  <button
+                    type="button"
+                    onClick={() => startEdit("description")}
+                    className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
+                    aria-label="Edit notes"
+                  >
+                    <Pencil className="size-3.5" aria-hidden />
+                  </button>
+                ) : null
+              }
+            >
+              {editingField === "description" ? (
+                <div onKeyDown={(e) => handleEditKeyDown(e, "description")}>
+                  <MarkDescriptionEditor
+                    key={`${mark.id}-inline-description`}
+                    value={editDescription}
+                    onChange={setEditDescription}
+                    placeholder="Describe what should change..."
+                    disabled={isSavingEdit}
+                    autoFocus
+                    className="rounded-md border-rule/45 bg-paper shadow-none hover:border-rule/70 hover:bg-paper focus-within:border-rule-strong/70 focus-within:bg-paper focus-within:ring-0"
+                  />
+                </div>
+              ) : mark.description ? (
+                <div className="rounded-md bg-paper px-2.5 py-2 ring-1 ring-rule/35">
+                  <MarkDescriptionRead html={mark.description} />
+                </div>
+              ) : (
                 <button
                   type="button"
                   onClick={() => startEdit("description")}
-                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8 sm:min-w-8"
-                  aria-label="Edit notes"
+                  className="flex min-h-9 w-full items-center justify-between rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left text-ui-sm text-ink-3 ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
                 >
+                  <span>Add notes</span>
                   <Pencil className="size-3.5" aria-hidden />
                 </button>
-              </div>
-              <MarkDescriptionRead html={mark.description} />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => startEdit("description")}
-              className="mt-5 flex min-h-10 w-full items-center justify-between rounded-md bg-paper-2 px-3 py-2 text-left text-ui-sm text-ink-3 ring-1 ring-rule/45 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-8"
-            >
-              <span>Add notes</span>
-              <Pencil className="size-3.5" aria-hidden />
-            </button>
-          )}
+              )}
+            </DetailContentSection>
 
-          <div className="mt-3 grid min-h-8 gap-2 sm:grid-cols-[2rem_minmax(0,1fr)] sm:items-center">
-            <span
-              className="inline-flex size-8 items-center justify-center rounded-md text-ink-3"
-              aria-label="Labels"
-              title="Labels"
-            >
-              <Tags className="size-3.5" aria-hidden />
-            </span>
-            <LabelPicker
-              labels={workspace.labels}
-              selectedIds={mark.labelIds}
-              onChange={(next) => setMarkLabels({ markId: mark.id, labelIds: next })}
-              onCreate={async (name): Promise<WorkspaceLabel | undefined> => {
-                try {
-                  const created = await createLabel(name);
-                  return {
-                    id: created.id,
-                    name: created.name,
-                    colorClass: labelColorClass(created.id),
-                  };
-                } catch {
-                  return undefined;
-                }
-              }}
-              placeholder="Label this mark…"
-              variant="inline"
-            />
-          </div>
+            <DetailContentSection title="Labels" icon={<Tags className="size-3.5" aria-hidden />}>
+              <div className="rounded-md bg-paper-2/70 p-1 ring-1 ring-rule/40">
+                <LabelPicker
+                  labels={workspace.labels}
+                  selectedIds={mark.labelIds}
+                  onChange={(next) => setMarkLabels({ markId: mark.id, labelIds: next })}
+                  onCreate={async (name): Promise<WorkspaceLabel | undefined> => {
+                    try {
+                      const created = await createLabel(name);
+                      return {
+                        id: created.id,
+                        name: created.name,
+                        colorClass: labelColorClass(created.id),
+                      };
+                    } catch {
+                      return undefined;
+                    }
+                  }}
+                  placeholder="Label this mark..."
+                  variant="inline"
+                />
+              </div>
+            </DetailContentSection>
+          </section>
         </div>
 
         <DetailSidebar
@@ -686,6 +707,33 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
       </Dialog>
 
     </>
+  );
+}
+
+function DetailContentSection({
+  title,
+  icon,
+  action,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-t border-rule/60 py-3 sm:py-3.5">
+      <div className="mb-2 flex min-h-7 items-center gap-2">
+        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
+          {icon}
+        </span>
+        <h2 className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
+          {title}
+        </h2>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 
