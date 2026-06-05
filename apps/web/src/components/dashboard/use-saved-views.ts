@@ -2,6 +2,19 @@
 
 import { useCallback, useRef, useSyncExternalStore } from "react";
 
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from "../../lib/safe-local-storage.ts";
+import {
+  DASHBOARD_ASSIGNEE_FILTERS,
+  DASHBOARD_DENSITIES,
+  DASHBOARD_GROUP_BY,
+  DASHBOARD_PINNED_FILTERS,
+  DASHBOARD_PRIORITY_FILTERS,
+  DASHBOARD_SORT_MODES,
+  DASHBOARD_STATUS_FILTERS,
+} from "../../lib/workspace/dashboard-query.ts";
 import type { DashboardFilters } from "./use-dashboard-filters";
 
 export type SavedViewFilters = Pick<
@@ -29,57 +42,84 @@ export interface SavedView {
 const STORAGE_PREFIX = "youin:saved-views:";
 const EMPTY_VIEWS: SavedView[] = [];
 const localSubscribers = new Set<() => void>();
+const FALLBACK_CREATED_AT = "1970-01-01T00:00:00.000Z";
 
 function storageKey(workspaceId: string): string {
   return `${STORAGE_PREFIX}${workspaceId}`;
 }
 
-function parseViews(raw: string | null): SavedView[] {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isSavedViewRecord(
+  value: unknown,
+): value is Record<string, unknown> & { id: string; name: string } {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string"
+  );
+}
+
+function isStringIn<T extends readonly string[]>(
+  value: unknown,
+  values: T,
+): value is T[number] {
+  return typeof value === "string" && values.includes(value as T[number]);
+}
+
+function stringOrAll(value: unknown): string {
+  return typeof value === "string" && value.trim() ? value.trim() : "all";
+}
+
+function normalizeSavedViewFilters(value: unknown): SavedViewFilters {
+  const raw = isRecord(value) ? value : {};
+  return {
+    projectId: stringOrAll(raw.projectId),
+    status: isStringIn(raw.status, DASHBOARD_STATUS_FILTERS)
+      ? raw.status
+      : "all",
+    workflowStatus: stringOrAll(raw.workflowStatus),
+    priority: isStringIn(raw.priority, DASHBOARD_PRIORITY_FILTERS)
+      ? raw.priority
+      : "all",
+    pinned: isStringIn(raw.pinned, DASHBOARD_PINNED_FILTERS)
+      ? raw.pinned
+      : "all",
+    label: stringOrAll(raw.label),
+    assignee: isStringIn(raw.assignee, DASHBOARD_ASSIGNEE_FILTERS)
+      ? raw.assignee
+      : "all",
+    q: typeof raw.q === "string" ? raw.q.slice(0, 160) : "",
+    sort: isStringIn(raw.sort, DASHBOARD_SORT_MODES) ? raw.sort : "recent",
+    groupBy: isStringIn(raw.groupBy, DASHBOARD_GROUP_BY)
+      ? raw.groupBy
+      : "none",
+    density: isStringIn(raw.density, DASHBOARD_DENSITIES)
+      ? raw.density
+      : "comfortable",
+  };
+}
+
+export function parseSavedViews(raw: string | null): SavedView[] {
   if (!raw) return EMPTY_VIEWS;
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return EMPTY_VIEWS;
     const valid = parsed
-      .filter(
-        (v): v is SavedView =>
-        typeof v === "object" &&
-        v !== null &&
-        typeof (v as SavedView).id === "string" &&
-        typeof (v as SavedView).name === "string" &&
-        typeof (v as SavedView).filters === "object",
-      )
+      .filter(isSavedViewRecord)
       .map((view) => ({
-        ...view,
-        filters: {
-          projectId:
-            typeof view.filters.projectId === "string"
-              ? view.filters.projectId
-              : "all",
-          status: view.filters.status,
-          workflowStatus:
-            typeof view.filters.workflowStatus === "string"
-              ? view.filters.workflowStatus
-              : "all",
-          priority: view.filters.priority,
-          pinned: view.filters.pinned,
-          label: view.filters.label,
-          assignee: view.filters.assignee,
-          q: view.filters.q,
-          sort: view.filters.sort,
-          groupBy: (
-            view.filters.groupBy === "status" ||
-            view.filters.groupBy === "page" ||
-            view.filters.groupBy === "assignee" ||
-            view.filters.groupBy === "project"
-              ? view.filters.groupBy
-              : "none"
-          ) as SavedViewFilters["groupBy"],
-          density: (view.filters.density === "compact"
-            ? "compact"
-            : "comfortable") as SavedViewFilters["density"],
-        },
+        id: view.id.slice(0, 120),
+        name: view.name.trim().slice(0, 60),
+        filters: normalizeSavedViewFilters(view.filters),
+        createdAt:
+          typeof view.createdAt === "string"
+            ? view.createdAt
+            : FALLBACK_CREATED_AT,
       }));
-    return valid.length === 0 ? EMPTY_VIEWS : valid;
+    const named = valid.filter((view) => view.id && view.name);
+    return named.length === 0 ? EMPTY_VIEWS : named;
   } catch {
     return EMPTY_VIEWS;
   }
@@ -87,11 +127,7 @@ function parseViews(raw: string | null): SavedView[] {
 
 function writeStorage(workspaceId: string, views: SavedView[]): void {
   if (typeof window === "undefined" || !workspaceId) return;
-  try {
-    window.localStorage.setItem(storageKey(workspaceId), JSON.stringify(views));
-  } catch {
-    // Quota exceeded or storage unavailable, silently no-op.
-  }
+  safeLocalStorageSet(storageKey(workspaceId), JSON.stringify(views));
   for (const cb of localSubscribers) cb();
 }
 
@@ -167,9 +203,9 @@ export function useSavedViews(workspaceId: string) {
 
   const getSnapshot = useCallback(() => {
     if (typeof window === "undefined" || !workspaceId) return EMPTY_VIEWS;
-    const raw = window.localStorage.getItem(storageKey(workspaceId));
+    const raw = safeLocalStorageGet(storageKey(workspaceId));
     if (raw === cacheRef.current.raw) return cacheRef.current.views;
-    const next = parseViews(raw);
+    const next = parseSavedViews(raw);
     cacheRef.current = { raw, views: next };
     return next;
   }, [workspaceId]);

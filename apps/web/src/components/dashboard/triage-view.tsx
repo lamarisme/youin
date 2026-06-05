@@ -405,7 +405,7 @@ export function TriageView() {
                 density={filters.density === "compact" ? "compact" : "default"}
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
-                onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
+                markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
                 onToggleMarkStatus={handleRowToggleStatus}
               />
             ) : (
@@ -422,7 +422,7 @@ export function TriageView() {
                   isMyMarksPage,
                 })}
                 density={filters.density === "compact" ? "compact" : "default"}
-                onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParams))}
+                markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
                 onToggleMarkStatus={handleRowToggleStatus}
                 selectedIds={selectedIds}
                 onSelectionChange={handleSelectionChange}
@@ -477,7 +477,7 @@ function GroupedMarkTables({
   density,
   selectedIds,
   onSelectionChange,
-  onSelectMark,
+  markHrefFor,
   onToggleMarkStatus,
 }: {
   groups: GroupedMarkSection[];
@@ -490,7 +490,7 @@ function GroupedMarkTables({
   density: "default" | "compact";
   selectedIds: Set<string>;
   onSelectionChange: (ids: Set<string>) => void;
-  onSelectMark: (mark: MarkItem) => void;
+  markHrefFor: (mark: MarkItem) => string;
   onToggleMarkStatus: (mark: MarkItem) => void | Promise<void>;
 }) {
   return (
@@ -521,7 +521,7 @@ function GroupedMarkTables({
             showSectionHeader={false}
             activeMarkId={activeMarkId}
             density={density}
-            onSelectMark={onSelectMark}
+            markHrefFor={markHrefFor}
             onToggleMarkStatus={onToggleMarkStatus}
             selectedIds={selectedIds}
             onSelectionChange={onSelectionChange}

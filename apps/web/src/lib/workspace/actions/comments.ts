@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { markComments, marks } from "@/db/schema";
+import { isMarkImageStoragePath } from "@/lib/mark-image-path";
 import { normalizeCommentForStorage } from "@/lib/mark-description";
 
 import {
@@ -23,16 +24,38 @@ export async function addMarkCommentsAction(
     .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
     .limit(1);
   if (!mark) throw new Error("Mark not found.");
-  const inserts = items.map((item) => ({
-    markId: markId,
-    authorUserId: ctx.userId,
-    type: item.type,
-    body:
-      item.type === "text"
-        ? normalizeCommentForStorage(item.body ?? "")
-        : null,
-    imageUrl: item.type === "image" ? (item.imageUrl ?? null) : null,
-  }));
+  const inserts: (typeof markComments.$inferInsert)[] = [];
+  for (const item of items) {
+    if (item.type === "text") {
+      const body = normalizeCommentForStorage(item.body ?? "");
+      if (body) {
+        inserts.push({
+          markId: markId,
+          authorUserId: ctx.userId,
+          type: "text",
+          body,
+          imageUrl: null,
+        });
+      }
+      continue;
+    }
+    if (
+      !isMarkImageStoragePath(item.imageUrl, {
+        workspaceId: ctx.workspaceId,
+        markId,
+      })
+    ) {
+      throw new Error("Image upload is invalid.");
+    }
+    inserts.push({
+      markId: markId,
+      authorUserId: ctx.userId,
+      type: "image",
+      body: null,
+      imageUrl: item.imageUrl,
+    });
+  }
+  if (!inserts.length) throw new Error("Comment can't be empty.");
   await withWorkspaceActor(ctx, async (tx) => {
     await tx.insert(markComments).values(inserts);
   });
@@ -63,12 +86,13 @@ export async function updateMarkCommentAction(
   if (!row) throw new Error("Comment not found.");
   if (row.authorUserId !== ctx.userId)
     throw new Error("You can only edit your own comments.");
-  if (row.type !== "text")
-    throw new Error("Only text comments can be edited.");
-  await ctx.db
-    .update(markComments)
-    .set({ body: normalized })
-    .where(eq(markComments.id, commentId));
+  if (row.type !== "text") throw new Error("Only text comments can be edited.");
+  await withWorkspaceActor(ctx, async (tx) => {
+    await tx
+      .update(markComments)
+      .set({ body: normalized })
+      .where(eq(markComments.id, commentId));
+  });
   revalidateWorkspaceViews();
 }
 
@@ -90,6 +114,8 @@ export async function deleteMarkCommentAction(
   if (!row) throw new Error("Comment not found.");
   if (row.authorUserId !== ctx.userId)
     throw new Error("You can only delete your own comments.");
-  await ctx.db.delete(markComments).where(eq(markComments.id, commentId));
+  await withWorkspaceActor(ctx, async (tx) => {
+    await tx.delete(markComments).where(eq(markComments.id, commentId));
+  });
   revalidateWorkspaceViews();
 }

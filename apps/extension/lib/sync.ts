@@ -7,8 +7,8 @@ import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
   getActiveProjectId,
-  getProjects,
   getMarks,
+  getProjects,
   markSynced,
   markSyncFailure,
   patchMark,
@@ -128,7 +128,10 @@ export async function syncWorkspaceFromRemote(
 
   const projectIds = new Set(nextProjects.map((project) => project.id))
   const projectByNameLc = new Map(
-    nextProjects.map((project) => [project.name.trim().toLowerCase(), project.id])
+    nextProjects.map((project) => [
+      project.name.trim().toLowerCase(),
+      project.id
+    ])
   )
   const fallbackProjectId = nextProjects[0]?.id ?? prevProjects[0]?.id ?? ""
 
@@ -224,7 +227,7 @@ async function reloadMark(markId: string): Promise<Mark | undefined> {
 async function uploadLocalMarkScreenshot(
   mark: Mark,
   workspaceId: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; screenshotUrl?: string }> {
   if (!mark.remoteMarkId || !mark.screenshotDataUrl) return { ok: true }
   const upload = await uploadMarkScreenshot(
     workspaceId,
@@ -240,12 +243,13 @@ async function uploadLocalMarkScreenshot(
     .eq("id", mark.remoteMarkId)
   if (error) return { ok: false, error: error.message }
 
+  const screenshotUrl = upload.signedUrl ?? mark.screenshotUrl
   await patchMark(mark.id, {
     screenshotDataUrl: undefined,
-    screenshotUrl: mark.screenshotDataUrl
+    screenshotUrl
   })
   await markSynced(mark.id)
-  return { ok: true }
+  return { ok: true, screenshotUrl }
 }
 
 async function responseErrorMessage(
@@ -433,9 +437,12 @@ export async function pushMarkToWorkspace(
         remoteMarkId: createdMark.id,
         screenshotDataUrl
       }
-      const upload = await uploadLocalMarkScreenshot(screenshotMark, workspaceId)
+      const upload = await uploadLocalMarkScreenshot(
+        screenshotMark,
+        workspaceId
+      )
       if (upload.ok) {
-        screenshotUrl = screenshotDataUrl
+        screenshotUrl = upload.screenshotUrl
         screenshotDataUrl = undefined
       } else {
         warning = upload.error
@@ -520,6 +527,54 @@ function remoteThread(mark: RemoteMark): Mark["thread"] {
   }))
 }
 
+function pendingLocalCommentMessages(
+  local: Mark,
+  remoteMessages: Mark["thread"]
+): Mark["thread"] {
+  const pendingBodies = new Map<string, number>()
+  for (const op of local.pendingSyncOps ?? []) {
+    if (op.type !== "comment") continue
+    const body = op.body.trim()
+    if (!body) continue
+    pendingBodies.set(body, (pendingBodies.get(body) ?? 0) + 1)
+  }
+  if (!pendingBodies.size) return []
+
+  const remoteIds = new Set(remoteMessages.map((message) => message.id))
+  const pending: Mark["thread"] = []
+  for (const message of local.thread) {
+    if (remoteIds.has(message.id)) continue
+    const body = message.body.trim()
+    const remaining = pendingBodies.get(body) ?? 0
+    if (remaining < 1) continue
+    pending.push(message)
+    if (remaining === 1) pendingBodies.delete(body)
+    else pendingBodies.set(body, remaining - 1)
+  }
+  return pending
+}
+
+function mergeRemoteThread(
+  local: Mark,
+  remoteMessages: Mark["thread"],
+  hasPendingEdit: boolean
+): Mark["thread"] {
+  const pendingComments = pendingLocalCommentMessages(local, remoteMessages)
+  if (!hasPendingEdit) {
+    return [...remoteMessages, ...pendingComments].sort(
+      (a, b) => a.createdAt - b.createdAt
+    )
+  }
+
+  const openingMessage = local.thread[0] ?? remoteMessages[0]
+  const remoteReplies = openingMessage
+    ? remoteMessages.slice(1)
+    : remoteMessages
+  return [openingMessage, ...remoteReplies, ...pendingComments]
+    .filter((message): message is Mark["thread"][number] => Boolean(message))
+    .sort((a, b) => a.createdAt - b.createdAt)
+}
+
 function markFromRemoteMark(mark: RemoteMark): Mark {
   const raw = mark.page
   let origin = ""
@@ -533,7 +588,9 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
     pathname = ""
   }
 
-  const snapshot = mark.domSnapshot as unknown as Mark["domSnapshot"] | undefined
+  const snapshot = mark.domSnapshot as unknown as
+    | Mark["domSnapshot"]
+    | undefined
   const rect = snapshot?.selectedElement?.boundingRect
   const createdAt =
     new Date(mark.capturedAt || mark.createdAt).getTime() || Date.now()
@@ -581,13 +638,11 @@ function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
     (op) => op.type === "status"
   )
   const hasPendingEdit = local.pendingSyncOps?.some((op) => op.type === "edit")
-  const localMessageIds = new Set(local.thread.map((m) => m.id))
-  const mergedThread = [...local.thread]
-  if (!hasPendingEdit) {
-    for (const msg of remoteThread(mark)) {
-      if (!localMessageIds.has(msg.id)) mergedThread.push(msg)
-    }
-  }
+  const mergedThread = mergeRemoteThread(
+    local,
+    remoteThread(mark),
+    Boolean(hasPendingEdit)
+  )
 
   return {
     ...local,
@@ -648,7 +703,9 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
   const remoteMarks = body.marks ?? []
   const marks = await getMarks()
   const byRemoteId = new Map(
-    marks.filter((mark) => mark.remoteMarkId).map((mark) => [mark.remoteMarkId, mark])
+    marks
+      .filter((mark) => mark.remoteMarkId)
+      .map((mark) => [mark.remoteMarkId, mark])
   )
   const remoteIds = new Set(remoteMarks.map((mark) => mark.id))
   const next: Mark[] = []

@@ -14,6 +14,10 @@ import {
   normalizeDescriptionForStorage,
 } from "@/lib/mark-description";
 import {
+  readBoundedJsonBody,
+  RequestBodyTooLargeError,
+} from "@/lib/bounded-json";
+import {
   getActiveReviewLinkByToken,
   reviewOriginAllowed,
 } from "@/lib/review-links/public";
@@ -55,6 +59,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "content-type",
 };
+const MAX_GUEST_MARK_POST_BYTES = 256 * 1024;
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json(
@@ -130,8 +135,14 @@ export async function POST(
 
   let input: GuestMarkInput;
   try {
-    input = (await request.json()) as GuestMarkInput;
-  } catch {
+    input = await readBoundedJsonBody<GuestMarkInput>(
+      request,
+      MAX_GUEST_MARK_POST_BYTES,
+    );
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonError("Feedback payload is too large.", 413);
+    }
     return jsonError("Invalid JSON body.", 400);
   }
 
@@ -143,8 +154,7 @@ export async function POST(
     return jsonError("This review link is not enabled for this site.", 403);
   }
 
-  const title =
-    asString(input.title).trim().slice(0, 180) || "Guest feedback";
+  const title = asString(input.title).trim().slice(0, 180) || "Guest feedback";
   const rawComment = asString(input.comment).trim().slice(0, 2000);
   let description = "";
   let commentBody = "";
@@ -152,9 +162,7 @@ export async function POST(
     description = normalizeDescriptionForStorage(
       [rawComment, reviewerLine(input)].filter(Boolean).join("\n\n"),
     );
-    commentBody = rawComment
-      ? normalizeCommentForStorage(rawComment)
-      : "";
+    commentBody = rawComment ? normalizeCommentForStorage(rawComment) : "";
   } catch (error) {
     return jsonError(
       error instanceof Error ? error.message : "Feedback is invalid.",
@@ -184,7 +192,8 @@ export async function POST(
           asc(markWorkflowStatuses.position),
         )
         .limit(1);
-      if (!workflowStatus) throw new Error("Workspace is missing an open status.");
+      if (!workflowStatus)
+        throw new Error("Workspace is missing an open status.");
 
       const [mark] = await tx
         .insert(marks)

@@ -201,7 +201,7 @@ export async function archiveWorkflowStatusAction(
   const ctx = await requireWorkspaceContext();
   assertWorkspaceOwner(ctx);
 
-  await ctx.db.transaction(async (tx) => {
+  await withWorkspaceActor(ctx, async (tx) => {
     const [status] = await tx
       .select()
       .from(markWorkflowStatuses)

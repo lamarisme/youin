@@ -2,11 +2,13 @@ import { color, cssVars, fontFamily } from "@youin/design-tokens"
 import { toPng } from "html-to-image"
 import type { PlasmoCSConfig } from "plasmo"
 
+import {
+  dispatchCaptureToPanel,
+  dispatchCaptureUpdateToPanel
+} from "../lib/capture-panel-bridge"
 import { captureElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_LOCATION_CHANGE,
-  EVENT_REVIEW_CAPTURE,
-  EVENT_REVIEW_CAPTURE_UPDATE,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
@@ -20,6 +22,11 @@ import {
   type ReviewStartDetail,
   type ReviewStateDetail
 } from "../lib/events"
+import {
+  dispatchInternalEvent,
+  getInternalEventDetail,
+  isInternalEvent
+} from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import {
   CAPTURE_PANEL_SCRIPT,
@@ -364,7 +371,7 @@ function ensureHost() {
   toolbar.querySelector("button.drawer")?.addEventListener("click", (e) => {
     e.preventDefault()
     e.stopPropagation()
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
+    dispatchInternalEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST)
   })
   shadow.append(toolbar)
 
@@ -590,7 +597,7 @@ async function deliverReviewCapture(detail: ReviewCaptureDetail) {
     /* fall back to in-page bridge */
   }
 
-  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_CAPTURE, { detail }))
+  dispatchCaptureToPanel(detail)
 }
 
 async function dispatchReviewCapture(detail: ReviewCaptureDetail) {
@@ -636,9 +643,7 @@ function enrichCaptureAsync(
         ? undefined
         : screenshotCaptureError ?? "Could not capture screenshot."
     }
-    window.dispatchEvent(
-      new CustomEvent(EVENT_REVIEW_CAPTURE_UPDATE, { detail: patch })
-    )
+    dispatchCaptureUpdateToPanel(patch)
   })()
 }
 
@@ -725,9 +730,7 @@ async function captureRegionAndDispatch(rect: {
       screenshotPending: false,
       screenshotCaptureError: captureResult.error
     }
-    window.dispatchEvent(
-      new CustomEvent(EVENT_REVIEW_CAPTURE_UPDATE, { detail: patch })
-    )
+    dispatchCaptureUpdateToPanel(patch)
   })()
 }
 
@@ -831,7 +834,7 @@ function emitState() {
     active: mode !== "inactive",
     mode: reviewModeFromState()
   }
-  window.dispatchEvent(new CustomEvent(EVENT_REVIEW_STATE, { detail }))
+  dispatchInternalEvent(EVENT_REVIEW_STATE, detail)
 }
 
 function attachCaptureListeners() {
@@ -978,14 +981,23 @@ function deactivate() {
 }
 
 window.addEventListener(EVENT_REVIEW_START, (e) => {
-  const mode = (e as CustomEvent<ReviewStartDetail>).detail?.mode ?? "inspect"
-  if (mode === "screenshot") activateRegion()
+  if (!isInternalEvent(e)) return
+  const reviewMode =
+    getInternalEventDetail<ReviewStartDetail>(e)?.mode ?? "inspect"
+  if (reviewMode === "screenshot") activateRegion()
   else activate()
 })
-window.addEventListener(EVENT_REVIEW_EXIT, () => deactivate())
-window.addEventListener(EVENT_REVIEW_RESUME, () => resume())
-window.addEventListener(EVENT_REVIEW_PAUSE, () => pause())
-window.addEventListener(EVENT_LOCATION_CHANGE, () => {
+window.addEventListener(EVENT_REVIEW_EXIT, (e) => {
+  if (isInternalEvent(e)) deactivate()
+})
+window.addEventListener(EVENT_REVIEW_RESUME, (e) => {
+  if (isInternalEvent(e)) resume()
+})
+window.addEventListener(EVENT_REVIEW_PAUSE, (e) => {
+  if (isInternalEvent(e)) pause()
+})
+window.addEventListener(EVENT_LOCATION_CHANGE, (e) => {
+  if (!isInternalEvent(e)) return
   if (mode === "active") void refreshToolbarLabels()
 })
 

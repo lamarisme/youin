@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { marks } from "@/db/schema";
+import { normalizeMarkImageExtension } from "@/lib/mark-image-path";
 
 import { requireWorkspaceContext } from "./session";
 
@@ -18,9 +19,7 @@ export async function getMarkUploadUrlAction(
     .limit(1);
   if (!mark) throw new Error("Mark not found.");
 
-  const ext =
-    (fileExtRaw || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 8) ||
-    "bin";
+  const ext = normalizeMarkImageExtension(fileExtRaw);
   const id =
     typeof globalThis.crypto?.randomUUID === "function"
       ? globalThis.crypto.randomUUID()

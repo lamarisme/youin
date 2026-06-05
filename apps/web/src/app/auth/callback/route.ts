@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
 const DEFAULT_AFTER_AUTH = "/dashboard";
@@ -11,11 +12,10 @@ export async function GET(request: Request) {
   const otpType = requestUrl.searchParams.get("type") as EmailOtpType | null;
   const oauthError = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
-  let next = requestUrl.searchParams.get("next") ?? DEFAULT_AFTER_AUTH;
-
-  if (!next.startsWith("/")) {
-    next = DEFAULT_AFTER_AUTH;
-  }
+  const next = safeLocalRedirectPath(
+    requestUrl.searchParams.get("next"),
+    DEFAULT_AFTER_AUTH,
+  );
 
   function redirectAuthError(reason: "oauth" | "exchange" | "otp" | "incomplete") {
     const errorUrl = new URL("/auth/error", requestUrl.origin);

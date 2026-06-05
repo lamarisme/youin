@@ -50,8 +50,12 @@ import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from "@/lib/safe-local-storage";
 
-import { FadeIn } from "@/components/motion";
+
 import { useDashboardReadModel } from "@/components/providers/workspace-read-model-provider";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CommentThread } from "./comment-thread";
@@ -93,7 +97,7 @@ function clampDetailSidebarWidth(
 
 function initialDetailSidebarWidth() {
   if (typeof window === "undefined") return DETAIL_SIDEBAR_DEFAULT_WIDTH;
-  const storedWidth = Number(window.localStorage.getItem(DETAIL_SIDEBAR_WIDTH_KEY));
+  const storedWidth = Number(safeLocalStorageGet(DETAIL_SIDEBAR_WIDTH_KEY));
   return Number.isFinite(storedWidth)
     ? clampDetailSidebarWidth(storedWidth)
     : DETAIL_SIDEBAR_DEFAULT_WIDTH;
@@ -101,7 +105,7 @@ function initialDetailSidebarWidth() {
 
 function initialDetailSidebarCollapsed() {
   if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(DETAIL_SIDEBAR_COLLAPSED_KEY) === "true";
+  return safeLocalStorageGet(DETAIL_SIDEBAR_COLLAPSED_KEY) === "true";
 }
 
 export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
@@ -188,14 +192,14 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const isPane = variant === "pane";
 
   useEffect(() => {
-    window.localStorage.setItem(
+    safeLocalStorageSet(
       DETAIL_SIDEBAR_WIDTH_KEY,
       String(Math.round(rightSidebarWidth)),
     );
   }, [rightSidebarWidth]);
 
   useEffect(() => {
-    window.localStorage.setItem(
+    safeLocalStorageSet(
       DETAIL_SIDEBAR_COLLAPSED_KEY,
       String(rightSidebarCollapsed),
     );
@@ -373,9 +377,8 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
         />
       ) : null}
 
-      <FadeIn
+      <div
         key={mark.id}
-        delay={0.08}
         data-mark-detail-layout={!isPane || undefined}
         style={!isPane ? detailLayoutStyle : undefined}
         className={cn(
@@ -646,7 +649,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
             />
           </DetailDisclosure>
         </DetailSidebar>
-      </FadeIn>
+      </div>
 
       <Dialog
         open={confirmDelete}

@@ -39,6 +39,7 @@ import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
+import { isMarkImageStoragePath } from "@/lib/mark-image-path";
 import { normalizeWorkflowStatusColor } from "@/lib/workspace/workflow-statuses";
 import {
   normalizeWorkspaceViewConfig,
@@ -92,14 +93,6 @@ function metadataToUi(meta: unknown): string | undefined {
 }
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
-
-function isStoragePath(value: string | null | undefined): value is string {
-  if (!value) return false;
-  if (value.startsWith("data:")) return false;
-  if (value.startsWith("http://") || value.startsWith("https://")) return false;
-  if (value.startsWith("/")) return false;
-  return value.includes("/");
-}
 
 async function resolveImageUrls(
   supabase: SupabaseClient | undefined,
@@ -180,7 +173,10 @@ export async function loadWorkspaceAggregate(
           isNull(markWorkflowStatuses.archivedAt),
         ),
       )
-      .orderBy(asc(markWorkflowStatuses.position), asc(markWorkflowStatuses.createdAt)),
+      .orderBy(
+        asc(markWorkflowStatuses.position),
+        asc(markWorkflowStatuses.createdAt),
+      ),
     db
       .select()
       .from(marks)
@@ -296,9 +292,7 @@ export async function loadWorkspaceAggregate(
   const members: TeamMember[] = membersRows.map((row) => {
     const prof = profilesByUserId.get(row.userId);
     const name =
-      prof?.fullName?.trim() ||
-      prof?.email?.split("@")[0] ||
-      "Member";
+      prof?.fullName?.trim() || prof?.email?.split("@")[0] || "Member";
     return {
       id: row.userId,
       username: String(row.username ?? "").toLowerCase(),
@@ -340,9 +334,7 @@ export async function loadWorkspaceAggregate(
       email: invite.email,
       invitedAt: toIso(invite.invitedAt),
       invitedBy:
-        bp?.fullName?.trim() ||
-        bp?.email?.split("@")[0] ||
-        "Workspace owner",
+        bp?.fullName?.trim() || bp?.email?.split("@")[0] || "Workspace owner",
     };
   });
 
@@ -360,7 +352,9 @@ export async function loadWorkspaceAggregate(
 
   const markScreenshotPaths: string[] = [];
   for (const mark of marksRows) {
-    if (isStoragePath(mark.screenshotUrl)) markScreenshotPaths.push(mark.screenshotUrl);
+    if (isMarkImageStoragePath(mark.screenshotUrl)) {
+      markScreenshotPaths.push(mark.screenshotUrl);
+    }
   }
   const signedMarkScreenshotByPath = await resolveImageUrls(
     supabase,
@@ -369,8 +363,8 @@ export async function loadWorkspaceAggregate(
 
   const marksOut: MarkItem[] = marksRows.map((mark) => {
     const rawScreenshotUrl = mark.screenshotUrl;
-    const screenshotUrl = isStoragePath(rawScreenshotUrl)
-      ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
+    const screenshotUrl = isMarkImageStoragePath(rawScreenshotUrl)
+      ? signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl
       : rawScreenshotUrl;
     const domSnapshot =
       mark.domSnapshot &&
@@ -378,10 +372,19 @@ export async function loadWorkspaceAggregate(
       !Array.isArray(mark.domSnapshot)
         ? (mark.domSnapshot as Record<string, unknown>)
         : undefined;
-    const cap =
-      mark.selector
+    const cap = mark.selector
+      ? {
+          selector: mark.selector ?? undefined,
+          viewport: mark.viewport ?? undefined,
+          browser: mark.browser ?? undefined,
+          os: mark.os ?? undefined,
+          domSnapshot,
+          screenshotUrl: screenshotUrl ?? undefined,
+          capturedAt: mark.capturedAt ? toIso(mark.capturedAt) : undefined,
+        }
+      : mark.viewport || mark.browser || mark.os || domSnapshot
         ? {
-            selector: mark.selector ?? undefined,
+            selector: undefined,
             viewport: mark.viewport ?? undefined,
             browser: mark.browser ?? undefined,
             os: mark.os ?? undefined,
@@ -389,17 +392,7 @@ export async function loadWorkspaceAggregate(
             screenshotUrl: screenshotUrl ?? undefined,
             capturedAt: mark.capturedAt ? toIso(mark.capturedAt) : undefined,
           }
-        : mark.viewport || mark.browser || mark.os || domSnapshot
-          ? {
-              selector: undefined,
-              viewport: mark.viewport ?? undefined,
-              browser: mark.browser ?? undefined,
-              os: mark.os ?? undefined,
-              domSnapshot,
-              screenshotUrl: screenshotUrl ?? undefined,
-              capturedAt: mark.capturedAt ? toIso(mark.capturedAt) : undefined,
-            }
-          : undefined;
+        : undefined;
 
     const seq = Number(mark.seq ?? 0);
 
@@ -425,15 +418,16 @@ export async function loadWorkspaceAggregate(
 
   const storagePaths: string[] = [];
   for (const comment of commentsRows) {
-    if (isStoragePath(comment.imageUrl)) storagePaths.push(comment.imageUrl);
+    if (isMarkImageStoragePath(comment.imageUrl))
+      storagePaths.push(comment.imageUrl);
   }
   const signedByPath = await resolveImageUrls(supabase, storagePaths);
 
   const comments: MarkComment[] = commentsRows.map((comment) => {
     const raw = comment.imageUrl;
-    const imageUrl = isStoragePath(raw)
-      ? (signedByPath.get(raw) ?? raw ?? undefined)
-      : (raw ?? undefined);
+    const imageUrl = isMarkImageStoragePath(raw)
+      ? signedByPath.get(raw) ?? raw ?? undefined
+      : raw ?? undefined;
     return {
       id: comment.id,
       markId: comment.markId,

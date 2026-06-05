@@ -7,6 +7,7 @@ import { Suspense, useMemo } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 
 const REASON_MESSAGES: Record<string, string> = {
   oauth:
@@ -24,9 +25,7 @@ function AuthErrorContent() {
   const searchParams = useSearchParams();
 
   const next = useMemo(() => {
-    const requested = searchParams.get("next");
-    if (!requested) return DEFAULT_AFTER_AUTH;
-    return requested.startsWith("/") ? requested : DEFAULT_AFTER_AUTH;
+    return safeLocalRedirectPath(searchParams.get("next"), DEFAULT_AFTER_AUTH);
   }, [searchParams]);
 
   const reasonKey = searchParams.get("reason") ?? "incomplete";

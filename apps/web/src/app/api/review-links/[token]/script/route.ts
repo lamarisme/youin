@@ -26,6 +26,7 @@ function buildWidgetScript(options: {
   var selectedElement = null;
   var selectedPoint = null;
   var overlay = null;
+  var isSubmitting = false;
 
   host.id = "youin-guest-review";
   document.documentElement.appendChild(host);
@@ -136,6 +137,11 @@ function buildWidgetScript(options: {
     overlay = null;
   }
 
+  function stopCaptureMode() {
+    document.removeEventListener("click", captureClick, true);
+    document.documentElement.style.cursor = "";
+  }
+
   function drawOverlay(element) {
     removeOverlay();
     if (!element || element.nodeType !== 1) return;
@@ -178,6 +184,7 @@ function buildWidgetScript(options: {
     selectedElement = null;
     selectedPoint = null;
     status.textContent = "";
+    stopCaptureMode();
     removeOverlay();
   }
 
@@ -186,14 +193,14 @@ function buildWidgetScript(options: {
     if (path.indexOf(host) >= 0) return;
     event.preventDefault();
     event.stopPropagation();
-    document.removeEventListener("click", captureClick, true);
-    document.documentElement.style.cursor = "";
+    stopCaptureMode();
     selectedPoint = { x: event.clientX, y: event.clientY };
     drawOverlay(event.target);
     showForm(event.target);
   }
 
   button.addEventListener("click", function () {
+    stopCaptureMode();
     form.hidden = true;
     status.textContent = "Click the element you want to mark.";
     document.documentElement.style.cursor = "crosshair";
@@ -204,7 +211,9 @@ function buildWidgetScript(options: {
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
-    if (!selectedElement) return;
+    if (!selectedElement || isSubmitting) return;
+    isSubmitting = true;
+    submit.disabled = true;
     submit.setAttribute("aria-disabled", "true");
     status.textContent = "Sending...";
     fetch(ENDPOINT, {
@@ -237,6 +246,8 @@ function buildWidgetScript(options: {
     }).catch(function (error) {
       status.textContent = error && error.message ? error.message : "Could not send feedback.";
     }).finally(function () {
+      isSubmitting = false;
+      submit.disabled = false;
       submit.removeAttribute("aria-disabled");
     });
   });

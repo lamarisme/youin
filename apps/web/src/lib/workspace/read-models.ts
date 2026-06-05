@@ -2,11 +2,20 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
-import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
-  inboxReadStates,
   markComments,
   markEvents,
   markLabels,
@@ -36,7 +45,9 @@ import type {
   WorkspaceView,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { loadInboxSnapshotForWorkspace } from "@/lib/workspace/inbox-query";
 import { labelColorClass } from "@/lib/workspace/label-styles";
+import { isMarkImageStoragePath } from "@/lib/mark-image-path";
 import {
   DEFAULT_DASHBOARD_MARK_FILTERS,
   DASHBOARD_PAGE_SIZE,
@@ -104,14 +115,6 @@ function metadataToUi(meta: unknown): string | undefined {
   } catch {
     return undefined;
   }
-}
-
-function isStoragePath(value: string | null | undefined): value is string {
-  if (!value) return false;
-  if (value.startsWith("data:")) return false;
-  if (value.startsWith("http://") || value.startsWith("https://")) return false;
-  if (value.startsWith("/")) return false;
-  return value.includes("/");
 }
 
 async function resolveImageUrls(
@@ -304,9 +307,7 @@ async function loadMembers(workspaceId: string): Promise<TeamMember[]> {
   return memberRows.map((row) => {
     const profile = profilesByUserId.get(row.userId);
     const name =
-      profile?.fullName?.trim() ||
-      profile?.email?.split("@")[0] ||
-      "Member";
+      profile?.fullName?.trim() || profile?.email?.split("@")[0] || "Member";
     return {
       id: row.userId,
       username: String(row.username ?? "").toLowerCase(),
@@ -316,24 +317,6 @@ async function loadMembers(workspaceId: string): Promise<TeamMember[]> {
       role: (row.role as TeamRole) ?? "member",
     };
   });
-}
-
-async function loadInboxLastReadAt(
-  workspaceId: string,
-  userId: string,
-): Promise<string> {
-  const db = getDb();
-  const [readState] = await db
-    .select({ lastReadAt: inboxReadStates.lastReadAt })
-    .from(inboxReadStates)
-    .where(
-      and(
-        eq(inboxReadStates.workspaceId, workspaceId),
-        eq(inboxReadStates.userId, userId),
-      ),
-    )
-    .limit(1);
-  return readState?.lastReadAt ? toIso(readState.lastReadAt) : "";
 }
 
 export async function loadWorkspaceShell(
@@ -358,17 +341,19 @@ export async function loadWorkspaceShellBootstrap(
   workspaceId: string,
   userId: string,
 ): Promise<WorkspaceShellBootstrap> {
-  const [workspace, profile, inboxLastReadAt] = await Promise.all([
+  const db = getDb();
+  const [workspace, profile, inboxSnapshot] = await Promise.all([
     loadWorkspaceShell(workspaceId),
     loadUserProfile(userId),
-    loadInboxLastReadAt(workspaceId, userId),
+    loadInboxSnapshotForWorkspace({ db, workspaceId, userId }),
   ]);
   return {
     workspaceId,
     userId,
     workspace,
     profile,
-    inboxLastReadAt,
+    inboxLastReadAt: inboxSnapshot.lastReadAt,
+    inboxSnapshot,
     loadedAt: new Date().toISOString(),
   };
 }
@@ -574,7 +559,10 @@ function normalizePagination(
 ): DashboardPaginationRequest {
   return {
     enabled: Boolean(pagination?.enabled),
-    page: Math.max(1, Number.isFinite(pagination?.page) ? Number(pagination?.page) : 1),
+    page: Math.max(
+      1,
+      Number.isFinite(pagination?.page) ? Number(pagination?.page) : 1,
+    ),
     pageSize: Math.max(
       1,
       Math.min(
@@ -770,7 +758,7 @@ async function loadMarks(
   });
   const markWhereClause =
     options.detailOnly && options.detailMarkId
-      ? (and(whereClause, eq(marks.id, options.detailMarkId)) ?? whereClause)
+      ? and(whereClause, eq(marks.id, options.detailMarkId)) ?? whereClause
       : whereClause;
   const orderBy = dashboardMarkOrderBy(filters.sort);
   let pagination: DashboardPaginationInfo;
@@ -867,25 +855,30 @@ async function loadMarks(
         ? db
             .select()
             .from(markEvents)
-            .where(
-              and(
-                eq(markEvents.workspaceId, workspaceId),
-                eventScope,
-              ),
-            )
+            .where(and(eq(markEvents.workspaceId, workspaceId), eventScope))
             .orderBy(desc(markEvents.createdAt))
         : Promise.resolve([]),
       detailMarkId
         ? db
             .select(markCaptureSelect)
             .from(marks)
-            .where(and(eq(marks.workspaceId, workspaceId), eq(marks.id, detailMarkId)))
+            .where(
+              and(
+                eq(marks.workspaceId, workspaceId),
+                eq(marks.id, detailMarkId),
+              ),
+            )
             .limit(1)
             .then((rows) => rows[0] ?? null)
         : Promise.resolve(null),
     ];
-    [labelLinkRows, commentCountRows, commentRows, eventRows, detailCaptureRow] =
-      await Promise.all(jobs);
+    [
+      labelLinkRows,
+      commentCountRows,
+      commentRows,
+      eventRows,
+      detailCaptureRow,
+    ] = await Promise.all(jobs);
   }
 
   const labelsByMark = new Map<string, string[]>();
@@ -910,7 +903,9 @@ async function loadMarks(
 
   const markScreenshotPaths =
     options.resolveImages && detailCaptureRow
-      ? [detailCaptureRow.screenshotUrl].filter(isStoragePath)
+      ? [detailCaptureRow.screenshotUrl].filter((path): path is string =>
+          isMarkImageStoragePath(path),
+        )
       : [];
   const signedMarkScreenshotByPath = await resolveImageUrls(
     options.supabase,
@@ -918,11 +913,12 @@ async function loadMarks(
   );
 
   const marksOut: MarkItem[] = markRows.map((mark) => {
-    const captureRow = mark.id === detailCaptureRow?.id ? detailCaptureRow : null;
+    const captureRow =
+      mark.id === detailCaptureRow?.id ? detailCaptureRow : null;
     const rawScreenshotUrl = captureRow?.screenshotUrl ?? null;
     const screenshotUrl =
-      options.resolveImages && isStoragePath(rawScreenshotUrl)
-        ? (signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl)
+      options.resolveImages && isMarkImageStoragePath(rawScreenshotUrl)
+        ? signedMarkScreenshotByPath.get(rawScreenshotUrl) ?? rawScreenshotUrl
         : rawScreenshotUrl;
     const domSnapshot =
       captureRow?.domSnapshot &&
@@ -933,11 +929,11 @@ async function loadMarks(
     const capture =
       captureRow &&
       (captureRow.selector ||
-      captureRow.viewport ||
-      captureRow.browser ||
-      captureRow.os ||
-      domSnapshot ||
-      screenshotUrl)
+        captureRow.viewport ||
+        captureRow.browser ||
+        captureRow.os ||
+        domSnapshot ||
+        screenshotUrl)
         ? {
             selector: captureRow.selector ?? undefined,
             viewport: captureRow.viewport ?? undefined,
@@ -945,7 +941,9 @@ async function loadMarks(
             os: captureRow.os ?? undefined,
             domSnapshot,
             screenshotUrl: screenshotUrl ?? undefined,
-            capturedAt: captureRow.capturedAt ? toIso(captureRow.capturedAt) : undefined,
+            capturedAt: captureRow.capturedAt
+              ? toIso(captureRow.capturedAt)
+              : undefined,
           }
         : undefined;
     const seq = Number(mark.seq ?? 0);
@@ -973,7 +971,7 @@ async function loadMarks(
   const commentImagePaths = options.resolveImages
     ? commentRows
         .map((comment) => comment.imageUrl)
-        .filter(isStoragePath)
+        .filter((path): path is string => isMarkImageStoragePath(path))
     : [];
   const signedCommentImageByPath = await resolveImageUrls(
     options.supabase,
@@ -983,9 +981,9 @@ async function loadMarks(
   const comments: MarkComment[] = commentRows.map((comment) => {
     const raw = comment.imageUrl;
     const imageUrl =
-      options.resolveImages && isStoragePath(raw)
-        ? (signedCommentImageByPath.get(raw) ?? raw ?? undefined)
-        : (raw ?? undefined);
+      options.resolveImages && isMarkImageStoragePath(raw)
+        ? signedCommentImageByPath.get(raw) ?? raw ?? undefined
+        : raw ?? undefined;
     return {
       id: comment.id,
       markId: comment.markId,
@@ -1012,15 +1010,21 @@ async function loadMarks(
 }
 
 async function loadWorkspaceCore(workspaceId: string) {
-  const [identity, projectsWithCounts, views, labels, workflowStatuses, members] =
-    await Promise.all([
-      loadWorkspaceIdentity(workspaceId),
-      loadProjectsWithCounts(workspaceId),
-      loadViews(workspaceId),
-      loadLabels(workspaceId),
-      loadWorkflowStatuses(workspaceId),
-      loadMembers(workspaceId),
-    ]);
+  const [
+    identity,
+    projectsWithCounts,
+    views,
+    labels,
+    workflowStatuses,
+    members,
+  ] = await Promise.all([
+    loadWorkspaceIdentity(workspaceId),
+    loadProjectsWithCounts(workspaceId),
+    loadViews(workspaceId),
+    loadLabels(workspaceId),
+    loadWorkflowStatuses(workspaceId),
+    loadMembers(workspaceId),
+  ]);
   return {
     identity,
     projects: projectsWithCounts,
@@ -1047,7 +1051,8 @@ export async function loadDashboardReadModel(
     markTarget,
   );
   const detailMarkId =
-    markTarget && (!selectedProjectId || markTarget.projectId === selectedProjectId)
+    markTarget &&
+    (!selectedProjectId || markTarget.projectId === selectedProjectId)
       ? markTarget.id
       : null;
   const filters = normalizeDashboardFilters(request.filters);

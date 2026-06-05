@@ -1,12 +1,12 @@
 "use server";
 
 import {
-  loadAccountReadModel,
-  loadCommandPaletteIndexReadModel,
-  loadDashboardReadModel,
-  loadViewDetailReadModel,
-  loadViewsIndexReadModel,
-} from "@/lib/workspace/read-models";
+  getAccountReadModelForCurrentWorkspace,
+  getCommandPaletteIndexReadModelForCurrentWorkspace,
+  getDashboardReadModelForCurrentWorkspace,
+  getViewDetailReadModelForCurrentWorkspace,
+  getViewsIndexReadModelForCurrentWorkspace,
+} from "@/lib/workspace/server-read-models";
 import type {
   AccountReadModel,
   CommandPaletteIndexReadModel,
@@ -16,31 +16,24 @@ import type {
   ViewsIndexReadModel,
 } from "@/lib/workspace/workspace-types";
 
-import { requireWorkspaceContext } from "./session";
-
 export async function getDashboardReadModelAction(
   request: DashboardReadModelRequest = {},
 ): Promise<DashboardReadModel> {
-  const { workspaceId, supabase, userId } = await requireWorkspaceContext();
-  return loadDashboardReadModel(workspaceId, request, supabase, userId);
+  return getDashboardReadModelForCurrentWorkspace(request);
 }
 
 export async function getAccountReadModelAction(): Promise<AccountReadModel> {
-  const { workspaceId } = await requireWorkspaceContext();
-  return loadAccountReadModel(workspaceId);
+  return getAccountReadModelForCurrentWorkspace();
 }
 
 export async function getViewsIndexReadModelAction(): Promise<ViewsIndexReadModel> {
-  const { workspaceId } = await requireWorkspaceContext();
-  return loadViewsIndexReadModel(workspaceId);
+  return getViewsIndexReadModelForCurrentWorkspace();
 }
 
 export async function getViewDetailReadModelAction(): Promise<ViewDetailReadModel> {
-  const { workspaceId } = await requireWorkspaceContext();
-  return loadViewDetailReadModel(workspaceId);
+  return getViewDetailReadModelForCurrentWorkspace();
 }
 
 export async function getCommandPaletteIndexReadModelAction(): Promise<CommandPaletteIndexReadModel> {
-  const { workspaceId } = await requireWorkspaceContext();
-  return loadCommandPaletteIndexReadModel(workspaceId);
+  return getCommandPaletteIndexReadModelForCurrentWorkspace();
 }

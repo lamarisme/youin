@@ -1,17 +1,11 @@
 "use client";
 
-import { Bot, Braces, ChevronDown, Copy, Sparkles } from "lucide-react";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type {
-  AiPromptTarget,
   MarkComment,
   MarkItem,
   TeamMember,
@@ -38,15 +32,7 @@ interface MarkAiPromptActionsProps {
   className?: string;
 }
 
-const TARGETS: Array<{
-  target: AiPromptTarget;
-  label: string;
-  icon: typeof Bot;
-}> = [
-  { target: "codex", label: "Copy Codex prompt", icon: Bot },
-  { target: "claude", label: "Copy Claude Code prompt", icon: Sparkles },
-  { target: "generic", label: "Copy generic AI prompt", icon: Braces },
-];
+type CopyState = "idle" | "copied" | "failed";
 
 export function MarkAiPromptActions({
   mark,
@@ -58,9 +44,10 @@ export function MarkAiPromptActions({
   assignee,
   className,
 }: MarkAiPromptActionsProps) {
+  const [copyState, setCopyState] = useState<CopyState>("idle");
   const { mutate: logPromptCopy } = useLogMarkPromptCopyMutation();
 
-  async function copyPrompt(target: AiPromptTarget) {
+  async function copyPrompt() {
     const prompt = buildMarkAiPrompt({
       mark,
       comments: buildPromptComments(comments, membersById),
@@ -68,76 +55,47 @@ export function MarkAiPromptActions({
       project,
       workflowStatus,
       assignee: assignee ? memberPickerLabel(assignee, "full_name") : undefined,
-      target,
+      target: "generic",
     });
     try {
       await navigator.clipboard.writeText(prompt);
-      logPromptCopy({ markIds: [mark.id], target });
-      toast.success(promptToast(target));
+      logPromptCopy({ markIds: [mark.id], target: "generic" });
+      setCopyState("copied");
     } catch {
+      setCopyState("failed");
       toast.error("Couldn't copy the prompt.");
     }
+    window.setTimeout(() => setCopyState("idle"), 1600);
   }
 
-  async function copyPageUrl() {
-    try {
-      await navigator.clipboard.writeText(mark.page);
-      toast.success("Page URL copied.");
-    } catch {
-      toast.error("Couldn't copy the page URL.");
-    }
-  }
+  const label =
+    copyState === "copied"
+      ? "Prompt copied"
+      : copyState === "failed"
+        ? "Copy failed"
+        : "Copy prompt";
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-1.5", className)}>
+    <div className={cn("flex items-center", className)}>
       <Button
         type="button"
         size="sm"
-        variant="mark"
-        onClick={() => void copyPrompt("codex")}
-        className="h-8 gap-1.5 px-2 text-ui-sm"
+        variant="outline"
+        onClick={() => void copyPrompt()}
+        aria-label={label}
+        className={cn(
+          "h-8 gap-1.5 px-2.5 text-ui-sm transition-colors",
+          copyState === "copied" && "border-ok/30 bg-ok-soft text-ok",
+          copyState === "failed" && "border-destructive/30 bg-destructive-soft text-destructive",
+        )}
       >
-        <Bot className="size-3.5" aria-hidden />
-        Copy Codex prompt
+        {copyState === "copied" ? (
+          <Check className="size-3.5" aria-hidden />
+        ) : (
+          <Copy className="size-3.5" aria-hidden />
+        )}
+        {label}
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            aria-label="More prompt copy options"
-            className="h-8 w-8"
-          >
-            <ChevronDown className="size-3.5" aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          {TARGETS.map(({ target, label, icon: Icon }) => (
-            <DropdownMenuItem
-              key={target}
-              onClick={() => void copyPrompt(target)}
-              className="gap-2"
-            >
-              <Icon className="size-3.5" aria-hidden />
-              <span>{label}</span>
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuItem
-            onClick={() => void copyPageUrl()}
-            className="gap-2"
-          >
-            <Copy className="size-3.5" aria-hidden />
-            <span>Copy page URL</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
-}
-
-function promptToast(target: AiPromptTarget): string {
-  if (target === "codex") return "Codex prompt copied.";
-  if (target === "claude") return "Claude Code prompt copied.";
-  return "AI prompt copied.";
 }

@@ -33,7 +33,7 @@ import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { Kbd } from "@/components/ui/kbd";
-import { QUERY_CACHE } from "@/lib/queries/cache-policy";
+import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
@@ -98,13 +98,21 @@ function CommandPaletteDialog({
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { projects, views, workspaceId, userId } = useWorkspaceData((s) => ({
+  const { projects, views, workspaceId, userId, inboxSnapshot, loadedAt } =
+    useWorkspaceData((s) => ({
       projects: s.workspace.projects,
       views: s.workspace.views,
       workspaceId: s.workspaceId,
       userId: s.userId,
+      inboxSnapshot: s.inboxSnapshot,
+      loadedAt: s.loadedAt,
     }));
-  const inbox = useInbox(workspaceId, userId);
+  const inbox = useInbox(
+    workspaceId,
+    userId,
+    inboxSnapshot,
+    updatedAtFromIso(loadedAt),
+  );
   const paletteIndex = useQuery({
     queryKey: workspaceKeys.commandPaletteIndex(),
     queryFn: getCommandPaletteIndexReadModelAction,

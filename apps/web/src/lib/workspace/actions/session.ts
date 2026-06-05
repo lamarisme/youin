@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { and, eq, sql, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -31,6 +32,12 @@ export interface WorkspaceContext {
   role: WorkspaceRole;
 }
 
+export interface WorkspaceSession {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  userId: string;
+  workspaceId: string;
+}
+
 export async function setDbRequestUser(
   dbOrTx: RequestScopedDb,
   userId: string,
@@ -50,28 +57,34 @@ export async function withWorkspaceActor<T>(
   });
 }
 
-export async function requireWorkspaceContext(): Promise<WorkspaceContext> {
+export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | null> => {
   const supabase = await createClient();
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
+  if (error || !user) return null;
   const workspaceId = await ensureWorkspaceForUser(supabase, user);
+  return { supabase, userId: user.id, workspaceId };
+});
+
+export const requireWorkspaceContext = cache(async (): Promise<WorkspaceContext> => {
+  const session = await getWorkspaceSession();
+  if (!session) throw new Error("Unauthorized");
   const db = getDb();
   const [member] = await db
     .select({ role: workspaceMembers.role })
     .from(workspaceMembers)
     .where(
       and(
-        eq(workspaceMembers.workspaceId, workspaceId),
-        eq(workspaceMembers.userId, user.id),
+        eq(workspaceMembers.workspaceId, session.workspaceId),
+        eq(workspaceMembers.userId, session.userId),
       ),
     )
     .limit(1);
 
   if (!member) throw new Error("Workspace membership not found.");
-  return { supabase, db, userId: user.id, workspaceId, role: member.role };
-}
+  return { ...session, db, role: member.role };
+});
 
 export const requireSession = requireWorkspaceContext;

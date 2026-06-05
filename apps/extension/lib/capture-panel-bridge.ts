@@ -3,6 +3,10 @@ import {
   EVENT_REVIEW_CAPTURE_UPDATE,
   type ReviewCaptureDetail
 } from "./events"
+import {
+  dispatchInternalEvent,
+  getInternalEventDetail
+} from "./internal-events"
 
 export type CaptureHandler = (detail: ReviewCaptureDetail) => void
 export type CaptureUpdateHandler = (
@@ -71,6 +75,16 @@ export function deliverCaptureUpdate(detail: Partial<ReviewCaptureDetail>) {
   else state.pendingUpdates.push(detail)
 }
 
+export function dispatchCaptureToPanel(detail: ReviewCaptureDetail) {
+  dispatchInternalEvent(EVENT_REVIEW_CAPTURE, detail)
+}
+
+export function dispatchCaptureUpdateToPanel(
+  detail: Partial<ReviewCaptureDetail>
+) {
+  dispatchInternalEvent(EVENT_REVIEW_CAPTURE_UPDATE, detail)
+}
+
 /** Register window listeners once per page — survives script re-evaluation. */
 export function ensureCapturePanelBridgeListeners() {
   const state = bridge()
@@ -78,12 +92,12 @@ export function ensureCapturePanelBridgeListeners() {
   state.listenersReady = true
 
   window.addEventListener(EVENT_REVIEW_CAPTURE, (e) => {
-    const detail = (e as CustomEvent<ReviewCaptureDetail>).detail
+    const detail = getInternalEventDetail<ReviewCaptureDetail>(e)
     if (detail) deliverCapture(detail)
   })
 
   window.addEventListener(EVENT_REVIEW_CAPTURE_UPDATE, (e) => {
-    const detail = (e as CustomEvent<Partial<ReviewCaptureDetail>>).detail
+    const detail = getInternalEventDetail<Partial<ReviewCaptureDetail>>(e)
     if (detail) deliverCaptureUpdate(detail)
   })
 }

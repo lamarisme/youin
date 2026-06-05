@@ -3,7 +3,15 @@
 import { normalizeMarkPriority } from "@youin/domain";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
-import { markLabels, markWorkflowStatuses, marks, marksToLabels, projects, workspaceMembers } from "@/db/schema";
+import {
+  markEvents,
+  markLabels,
+  markWorkflowStatuses,
+  marks,
+  marksToLabels,
+  projects,
+  workspaceMembers,
+} from "@/db/schema";
 import type { MarkPriority } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -16,6 +24,7 @@ import {
 
 const BAD_PAGE =
   "Page must be a full http or https URL (for example https://app.example.com/pricing).";
+const BAD_TITLE = "Title can't be empty.";
 
 export interface CreatedMark {
   id: string;
@@ -102,6 +111,8 @@ export async function createMarkAction(input: {
   priority?: MarkPriority;
 }): Promise<CreatedMark> {
   const ctx = await requireWorkspaceContext();
+  const title = input.title.trim();
+  if (!title) throw new Error(BAD_TITLE);
   const pageNormalized = normalizeMarkPageUrl(input.page);
   if (!isValidMarkPageUrl(pageNormalized)) {
     throw new Error(BAD_PAGE);
@@ -124,7 +135,7 @@ export async function createMarkAction(input: {
       .values({
         workspaceId: ctx.workspaceId,
         projectId: input.projectId,
-        title: input.title.trim(),
+        title,
         description: normalizeDescriptionForStorage(input.description),
         page: pageNormalized,
         status: "open",
@@ -184,7 +195,11 @@ export async function updateMarkFieldsAction(
 ): Promise<void> {
   const ctx = await requireWorkspaceContext();
   const patch: Partial<typeof marks.$inferInsert> = {};
-  if (typeof updates.title === "string") patch.title = updates.title.trim();
+  if (typeof updates.title === "string") {
+    const title = updates.title.trim();
+    if (!title) throw new Error(BAD_TITLE);
+    patch.title = title;
+  }
   if (typeof updates.description === "string") {
     patch.description = normalizeDescriptionForStorage(updates.description);
   }
@@ -316,29 +331,41 @@ export async function setMarkLabelsAction(
   if (!mark) throw new Error("Mark not found.");
   await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, desired);
 
-  const existingRows = await ctx.db
-    .select({ labelId: marksToLabels.labelId })
-    .from(marksToLabels)
-    .where(eq(marksToLabels.markId, markId));
-  const existing = new Set(existingRows.map((row) => row.labelId));
+  await withWorkspaceActor(ctx, async (tx) => {
+    const existingRows = await tx
+      .select({ labelId: marksToLabels.labelId })
+      .from(marksToLabels)
+      .where(eq(marksToLabels.markId, markId));
+    const existing = new Set(existingRows.map((row) => row.labelId));
 
-  const toAdd = desired.filter((id) => !existing.has(id));
-  const toRemove = [...existing].filter((id) => !desired.includes(id));
+    const toAdd = desired.filter((id) => !existing.has(id));
+    const toRemove = [...existing].filter((id) => !desired.includes(id));
+    if (!toAdd.length && !toRemove.length) return;
 
-  if (toRemove.length) {
-    await ctx.db
-      .delete(marksToLabels)
-      .where(
-        and(
-          eq(marksToLabels.markId, markId),
-          inArray(marksToLabels.labelId, toRemove),
-        ),
-      );
-  }
-  if (toAdd.length) {
-    await ctx.db
-      .insert(marksToLabels)
-      .values(toAdd.map((labelId) => ({ markId: markId, labelId })));
-  }
+    if (toRemove.length) {
+      await tx
+        .delete(marksToLabels)
+        .where(
+          and(
+            eq(marksToLabels.markId, markId),
+            inArray(marksToLabels.labelId, toRemove),
+          ),
+        );
+    }
+    if (toAdd.length) {
+      await tx
+        .insert(marksToLabels)
+        .values(toAdd.map((labelId) => ({ markId: markId, labelId })));
+    }
+    await tx.insert(markEvents).values({
+      workspaceId: ctx.workspaceId,
+      markId,
+      actorUserId: ctx.userId,
+      type: "label_changed",
+      fromValue: [...existing].sort().join(","),
+      toValue: [...desired].sort().join(","),
+      metadata: { summary: "Labels updated." },
+    });
+  });
   revalidateWorkspaceViews();
 }

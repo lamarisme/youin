@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 
 import { AccountClient } from "../account-client";
 import { AccountReadModelProvider } from "@/components/providers/workspace-read-model-provider";
-import { getAccountReadModelAction } from "@/lib/workspace/actions";
 import { isAccountSection } from "@/lib/workspace/routes";
+import { getAccountReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 
 const SECTION_TITLES: Record<string, string> = {
   team: "Team settings",
@@ -35,7 +35,7 @@ export default async function AccountSectionPage({
     notFound();
   }
 
-  const readModel = await getAccountReadModelAction();
+  const readModel = await getAccountReadModelForCurrentWorkspace();
 
   return (
     <AccountReadModelProvider initialData={readModel}>

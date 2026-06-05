@@ -12,6 +12,11 @@ import {
   type ReviewMode,
   type ReviewStateDetail
 } from "../lib/events"
+import {
+  dispatchInternalEvent,
+  getInternalEventDetail,
+  isInternalEvent
+} from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import {
   getActiveSpaceId,
@@ -159,8 +164,7 @@ function Widget() {
   useEffect(() => {
     if (!window.__youinHistoryPatched) {
       window.__youinHistoryPatched = true
-      const notify = () =>
-        window.dispatchEvent(new CustomEvent(EVENT_LOCATION_CHANGE))
+      const notify = () => dispatchInternalEvent(EVENT_LOCATION_CHANGE)
       const pushState = history.pushState
       const replaceState = history.replaceState
       history.pushState = function (...args) {
@@ -195,22 +199,26 @@ function Widget() {
     }
 
     const onState = (e: Event) => {
-      const detail = (e as CustomEvent<ReviewStateDetail>).detail
+      const detail = getInternalEventDetail<ReviewStateDetail>(e)
+      if (!detail) return
       setActive(Boolean(detail?.active))
       if (detail?.mode) setActiveMode(detail.mode)
       if (detail?.active) setPinnedOpen(false)
     }
+    const onLocationChange = (e: Event) => {
+      if (isInternalEvent(e)) void refreshCount()
+    }
 
     chrome.storage.onChanged.addListener(onStorage)
     window.addEventListener(EVENT_REVIEW_STATE, onState)
-    window.addEventListener(EVENT_LOCATION_CHANGE, refreshCount)
+    window.addEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
     window.addEventListener("hashchange", refreshCount)
     window.addEventListener("popstate", refreshCount)
 
     return () => {
       chrome.storage.onChanged.removeListener(onStorage)
       window.removeEventListener(EVENT_REVIEW_STATE, onState)
-      window.removeEventListener(EVENT_LOCATION_CHANGE, refreshCount)
+      window.removeEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
       window.removeEventListener("hashchange", refreshCount)
       window.removeEventListener("popstate", refreshCount)
     }
@@ -234,13 +242,11 @@ function Widget() {
 
   const startReview = (mode: ReviewMode) => {
     setPinnedOpen(false)
-    window.dispatchEvent(
-      new CustomEvent(EVENT_REVIEW_START, { detail: { mode } })
-    )
+    dispatchInternalEvent(EVENT_REVIEW_START, { mode })
   }
 
   const toggleDrawer = () => {
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
+    dispatchInternalEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST)
   }
 
   const modeButtons = (
@@ -290,7 +296,7 @@ function Widget() {
             title={t("extension.widget.exitReview")}
             className="youin-widget-active inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-paper)] px-2.5 py-1 text-[12px] font-semibold text-[color:var(--yi-ink)] shadow-[0_14px_34px_-24px_oklch(18%_0.012_264_/_0.34),0_0_0_1px_var(--yi-ext-border-hairline)] outline-none transition-[background-color,color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:bg-[color:var(--yi-paper-elevated)] hover:text-[color:var(--yi-ink-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             onClick={() => {
-              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_EXIT))
+              dispatchInternalEvent(EVENT_REVIEW_EXIT)
             }}>
             {activeMode === "screenshot" ? <ScreenshotIcon /> : <InspectIcon />}
             <span className="text-[color:var(--yi-ext-text-muted)]">

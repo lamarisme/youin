@@ -14,6 +14,11 @@ import {
   normalizeCommentForStorage,
   normalizeDescriptionForStorage,
 } from "@/lib/mark-description";
+import { isMarkImageStoragePath } from "@/lib/mark-image-path";
+import {
+  readBoundedJsonBody,
+  RequestBodyTooLargeError,
+} from "@/lib/bounded-json";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import {
   isValidMarkPageUrl,
@@ -75,6 +80,12 @@ function asString(value: unknown): string {
 
 const DOM_SNAPSHOT_LIMIT = 30000;
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
+const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
+const MAX_SCREENSHOT_BASE64_LENGTH =
+  Math.ceil((MAX_SCREENSHOT_BYTES * 4) / 3) + 4;
+const MAX_MARK_POST_BYTES =
+  MAX_SCREENSHOT_BASE64_LENGTH + DOM_SNAPSHOT_LIMIT + 128 * 1024;
+const MAX_MARK_PATCH_BYTES = 32 * 1024;
 
 type JsonValue =
   | string
@@ -199,20 +210,21 @@ function parseDataUrlImage(
       ? "jpg"
       : mime === "webp"
         ? "webp"
-        : "png";
+        : mime === "png"
+          ? "png"
+          : null;
+  if (!ext) return null;
+  const base64 = match[2].replace(/\s/g, "");
+  if (base64.length > MAX_SCREENSHOT_BASE64_LENGTH) return null;
+  const bytes = Buffer.from(base64, "base64");
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_SCREENSHOT_BYTES) {
+    return null;
+  }
   return {
-    bytes: Buffer.from(match[2], "base64"),
+    bytes,
     contentType: `image/${ext === "jpg" ? "jpeg" : ext}`,
     ext,
   };
-}
-
-function isStoragePath(value: string | null | undefined): value is string {
-  if (!value) return false;
-  if (value.startsWith("data:")) return false;
-  if (value.startsWith("http://") || value.startsWith("https://")) return false;
-  if (value.startsWith("/")) return false;
-  return value.includes("/");
 }
 
 async function resolveImageUrls(
@@ -312,7 +324,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq("id", projectId)
       .maybeSingle();
     if (projectError) return jsonError(projectError.message, 400);
-    if (!project) return jsonError("Project was not found in this workspace.", 404);
+    if (!project)
+      return jsonError("Project was not found in this workspace.", 404);
   }
 
   let marksQuery = supabase
@@ -364,7 +377,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   );
   const screenshotPaths = (marks ?? [])
     .map((mark) => mark.screenshot_url as string | null | undefined)
-    .filter(isStoragePath);
+    .filter((path): path is string => isMarkImageStoragePath(path));
   const signedScreenshotByPath = await resolveImageUrls(
     supabase,
     screenshotPaths,
@@ -387,7 +400,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(
     {
       marks: (marks ?? []).map((mark) => ({
-        screenshotUrl: isStoragePath(
+        screenshotUrl: isMarkImageStoragePath(
           mark.screenshot_url as string | null | undefined,
         )
           ? signedScreenshotByPath.get(mark.screenshot_url as string) ??
@@ -415,8 +428,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let input: ExtensionMarkInput;
   try {
-    input = (await request.json()) as ExtensionMarkInput;
-  } catch {
+    input = await readBoundedJsonBody<ExtensionMarkInput>(
+      request,
+      MAX_MARK_POST_BYTES,
+    );
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonError("Capture payload is too large.", 413);
+    }
     return jsonError("Invalid JSON body.", 400);
   }
 
@@ -436,10 +455,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let workflowStatusId: string;
   const status = normalizeMarkStatus(asString(input.status));
   try {
-    projectId = await resolveProjectId(supabase, workspaceId, input.projectId);
-    workflowStatusId = await defaultWorkflowStatusId(supabase, workspaceId, status);
+    projectId = await resolveProjectId(
+      supabase,
+      workspaceId,
+      input.projectId ?? input.spaceId,
+    );
+    workflowStatusId = await defaultWorkflowStatusId(
+      supabase,
+      workspaceId,
+      status,
+    );
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Project is invalid.", 400);
+    return jsonError(
+      error instanceof Error ? error.message : "Project is invalid.",
+      400,
+    );
   }
 
   const description = normalizeDescriptionForStorage(
@@ -550,8 +580,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
   let input: ExtensionMarkPatchInput;
   try {
-    input = (await request.json()) as ExtensionMarkPatchInput;
-  } catch {
+    input = await readBoundedJsonBody<ExtensionMarkPatchInput>(
+      request,
+      MAX_MARK_PATCH_BYTES,
+    );
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return jsonError("Patch payload is too large.", 413);
+    }
     return jsonError("Invalid JSON body.", 400);
   }
 
@@ -590,9 +626,16 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const status = normalizeMarkStatus(statusInput);
     let workflowStatusId: string;
     try {
-      workflowStatusId = await defaultWorkflowStatusId(supabase, workspaceId, status);
+      workflowStatusId = await defaultWorkflowStatusId(
+        supabase,
+        workspaceId,
+        status,
+      );
     } catch (error) {
-      return jsonError(error instanceof Error ? error.message : "Status is invalid.", 400);
+      return jsonError(
+        error instanceof Error ? error.message : "Status is invalid.",
+        400,
+      );
     }
     const { error: statusError } = await supabase
       .from("marks")

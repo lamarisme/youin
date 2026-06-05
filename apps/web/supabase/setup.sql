@@ -27,6 +27,25 @@ ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed'
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'prompt_copied';
 
+DO $$
+DECLARE
+  fn text;
+BEGIN
+  FOREACH fn IN ARRAY ARRAY[
+    'public.set_mark_seq()',
+    'public.tg_set_updated_at()',
+    'public.seed_default_mark_workflow_statuses()',
+    'public.sync_mark_workflow_status()',
+    'public.log_mark_change()',
+    'public.log_comment_added()'
+  ]
+  LOOP
+    IF to_regprocedure(fn) IS NOT NULL THEN
+      EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC', fn);
+    END IF;
+  END LOOP;
+END $$;
+
 -- ── 3. RLS + auth wiring + storage ───────────────────────────────────────────
 ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_user_id_fkey;
@@ -64,6 +83,8 @@ CREATE TRIGGER on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
+
+REVOKE ALL ON FUNCTION public.handle_new_user() FROM PUBLIC;
 
 CREATE OR REPLACE FUNCTION public.user_workspace_member(p_workspace_id uuid)
 RETURNS boolean
@@ -321,7 +342,14 @@ CREATE POLICY mark_comments_insert ON public.mark_comments
 
 CREATE POLICY mark_comments_delete_own ON public.mark_comments
   FOR DELETE TO authenticated
-  USING (author_user_id = auth.uid());
+  USING (
+    author_user_id = (SELECT auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM public.marks m
+      WHERE m.id = mark_comments.mark_id
+        AND public.user_workspace_member(m.workspace_id)
+    )
+  );
 
 CREATE POLICY mark_events_select ON public.mark_events
   FOR SELECT TO authenticated
@@ -391,17 +419,29 @@ CREATE POLICY mark_images_insert_member ON storage.objects
   WITH CHECK (
     bucket_id = 'mark-images'
     AND public.user_workspace_member((storage.foldername(name))[1]::uuid)
-    AND owner = auth.uid()
+    AND owner = (SELECT auth.uid())
   );
 
 CREATE POLICY mark_images_update_owner ON storage.objects
   FOR UPDATE TO authenticated
-  USING (bucket_id = 'mark-images' AND owner = auth.uid())
-  WITH CHECK (bucket_id = 'mark-images' AND owner = auth.uid());
+  USING (
+    bucket_id = 'mark-images'
+    AND owner = (SELECT auth.uid())
+    AND public.user_workspace_member((storage.foldername(name))[1]::uuid)
+  )
+  WITH CHECK (
+    bucket_id = 'mark-images'
+    AND owner = (SELECT auth.uid())
+    AND public.user_workspace_member((storage.foldername(name))[1]::uuid)
+  );
 
 CREATE POLICY mark_images_delete_owner ON storage.objects
   FOR DELETE TO authenticated
-  USING (bucket_id = 'mark-images' AND owner = auth.uid());
+  USING (
+    bucket_id = 'mark-images'
+    AND owner = (SELECT auth.uid())
+    AND public.user_workspace_member((storage.foldername(name))[1]::uuid)
+  );
 
 -- ── 5. Onboarding RPCs ──────────────────────────────────────────────────────
 -- Run apps/web/supabase/onboarding-rpcs.sql next (bootstrap_workspace, attach_user_via_invite).

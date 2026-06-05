@@ -4,7 +4,7 @@ import { Bot, CheckCircle2, CircleDashed, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { SubmitButton } from "@/components/ui/submit-button";
-import { FadeIn } from "@/components/motion";
+
 import { FilterSelect } from "@/components/filter-select";
 import { CANONICAL_PIN_PRIORITY_OPTIONS } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export function BulkActionBar({
 
   return (
     <>
-      <FadeIn
+      <div
         role="region"
         aria-label={`${count} marks selected`}
         className="sticky bottom-2 z-20 mx-auto mt-2 flex w-fit max-w-[calc(100%-1.5rem)] flex-wrap items-center justify-center gap-1 rounded-md bg-paper-elevated px-1.5 py-1 ring-1 ring-rule-strong/60 sm:bottom-4 sm:max-w-full"
@@ -132,7 +132,7 @@ export function BulkActionBar({
         >
           <X className="size-3" />
         </Button>
-      </FadeIn>
+      </div>
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="sm:max-w-md">

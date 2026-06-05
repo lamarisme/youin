@@ -7,13 +7,13 @@ import {
   pageSearchParamsToUrlSearchParams,
   type PageSearchParams,
 } from "@/lib/page-search-params";
-import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import {
   DASHBOARD_PAGE_SIZE,
   dashboardMarkFiltersFromQuery,
   dashboardQueryFromSearchParams,
 } from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
+import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 
 export const metadata: Metadata = {
   title: "Mark detail",
@@ -42,7 +42,8 @@ export default async function DashboardMarkPage({
     },
     detailOnly: true,
   };
-  const readModel = await getDashboardReadModelAction(readModelRequest);
+  const readModel =
+    await getDashboardReadModelForCurrentWorkspace(readModelRequest);
 
   if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
     urlParams.set("project", readModel.selectedProjectId);

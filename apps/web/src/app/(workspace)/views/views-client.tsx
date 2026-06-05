@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
-import { FadeIn } from "@/components/motion";
+
 import { PageContainer } from "@/components/page-container";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,11 @@ import {
 } from "@/lib/queries/use-workspace-mutations";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
+import {
+  safeLocalStorageGet,
+  safeLocalStorageRemove,
+  safeLocalStorageSet,
+} from "@/lib/safe-local-storage";
 import {
   DEFAULT_WORKSPACE_VIEW_CONFIG,
   DEFAULT_WORKSPACE_VIEW_FILTERS,
@@ -69,23 +74,34 @@ export function ViewsClient() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createInitialLayout, setCreateInitialLayout] =
     useState<WorkspaceViewLayout>("list");
-  const [dismissedImport, setDismissedImport] = useState(() => {
-    if (typeof window === "undefined" || !workspaceId) return false;
-    return localStorage.getItem(`${LOCAL_IMPORT_DISMISSED_PREFIX}${workspaceId}`) === "true";
+  const importDismissKey = workspaceId
+    ? `${LOCAL_IMPORT_DISMISSED_PREFIX}${workspaceId}`
+    : "";
+  const [dismissedImportState, setDismissedImportState] = useState(() => {
+    const dismissed = importDismissKey
+      ? safeLocalStorageGet(importDismissKey) === "true"
+      : false;
+    return { key: importDismissKey, dismissed };
   });
+  if (dismissedImportState.key !== importDismissKey) {
+    const dismissed = importDismissKey
+      ? safeLocalStorageGet(importDismissKey) === "true"
+      : false;
+    setDismissedImportState({ key: importDismissKey, dismissed });
+  }
   const { views: localSavedViews } = useSavedViews(workspaceId);
   const { mutateAsync: createView, isPending: isCreating } =
     useCreateWorkspaceViewMutation();
   const { mutateAsync: deleteView, isPending: isDeleting } =
     useDeleteWorkspaceViewMutation();
 
-  const showImport = localSavedViews.length > 0 && !dismissedImport;
+  const showImport = localSavedViews.length > 0 && !dismissedImportState.dismissed;
 
   function dismissImport() {
-    if (workspaceId) {
-      localStorage.setItem(`${LOCAL_IMPORT_DISMISSED_PREFIX}${workspaceId}`, "true");
+    if (importDismissKey) {
+      safeLocalStorageSet(importDismissKey, "true");
     }
-    setDismissedImport(true);
+    setDismissedImportState({ key: importDismissKey, dismissed: true });
   }
 
   async function importLocalViews() {
@@ -109,7 +125,7 @@ export function ViewsClient() {
           },
         });
       }
-      localStorage.removeItem(`${LOCAL_SAVED_VIEWS_PREFIX}${workspaceId}`);
+      safeLocalStorageRemove(`${LOCAL_SAVED_VIEWS_PREFIX}${workspaceId}`);
       dismissImport();
       toast.success("Imported saved views.");
     } catch {
@@ -159,7 +175,7 @@ export function ViewsClient() {
       />
 
       {showImport ? (
-        <FadeIn className="flex flex-col gap-3 rounded-md bg-paper-2 p-3 text-ui-sm text-ink-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 rounded-md bg-paper-2 p-3 text-ui-sm text-ink-2 sm:flex-row sm:items-center">
           <div className="flex min-w-0 flex-1 items-start gap-2">
             <Import className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
             <div className="min-w-0">
@@ -177,7 +193,7 @@ export function ViewsClient() {
               <X className="size-3.5" aria-hidden />
             </Button>
           </div>
-        </FadeIn>
+        </div>
       ) : null}
 
       <div className="overflow-hidden rounded-md bg-paper-elevated">

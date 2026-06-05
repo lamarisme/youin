@@ -158,7 +158,12 @@ const DEFAULT_PROJECTS: Project[] = [
 ]
 
 const DEFAULT_SPACES: Space[] = [
-  { id: "local-general", projectId: "local-general", name: "General", createdAt: 0 }
+  {
+    id: "local-general",
+    projectId: "local-general",
+    name: "General",
+    createdAt: 0
+  }
 ]
 
 /** Client-side caps; enforced again on persist in {@link addMark}. */
@@ -174,12 +179,90 @@ export const STORAGE_LIMITS = {
   screenshotDataUrl: 900000
 } as const
 
+const MAX_LAYOUT_COORDINATE = 10000000
+const MAX_VIEWPORT_SIZE = 100000
+const MAX_DPR = 10
+
 const WIDGET_CORNERS: WidgetCorner[] = [
   "bottom-right",
   "bottom-left",
   "top-right",
   "top-left"
 ]
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object")
+}
+
+function boundedString(value: unknown, max: number): string | undefined {
+  return typeof value === "string" ? value.slice(0, max) : undefined
+}
+
+function finiteNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number
+): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, value))
+}
+
+function timestampOrNow(value: unknown): number {
+  return finiteNumber(value, Date.now(), 0, Number.MAX_SAFE_INTEGER)
+}
+
+function normalizeStoredProject(value: unknown): Project | undefined {
+  if (!isRecord(value)) return undefined
+  const id = boundedString(value.id, 180)?.trim()
+  if (!id) return undefined
+  const name = boundedString(value.name, STORAGE_LIMITS.projectName)?.trim()
+  return {
+    id,
+    name: name || "General",
+    description:
+      boundedString(value.description, STORAGE_LIMITS.projectDescription) ?? "",
+    createdAt: finiteNumber(value.createdAt, 0, 0, Number.MAX_SAFE_INTEGER)
+  }
+}
+
+function storedProjectIdFromRow(value: Record<string, unknown>): string {
+  return (
+    boundedString(value.projectId, 180) ??
+    boundedString(value.spaceId, 180) ??
+    ""
+  ).trim()
+}
+
+function storedPageUrlFromRow(value: Record<string, unknown>): string {
+  return boundedString(value.url, 4096) ?? ""
+}
+
+function isLocallyHiddenRow(value: Record<string, unknown>): boolean {
+  return (
+    typeof value.localHiddenAt === "number" &&
+    Number.isFinite(value.localHiddenAt)
+  )
+}
+
+function normalizeBbox(value: unknown): Mark["bbox"] {
+  const row = isRecord(value) ? value : {}
+  return {
+    x: finiteNumber(row.x, 0, -MAX_LAYOUT_COORDINATE, MAX_LAYOUT_COORDINATE),
+    y: finiteNumber(row.y, 0, -MAX_LAYOUT_COORDINATE, MAX_LAYOUT_COORDINATE),
+    width: finiteNumber(row.width, 0, 0, MAX_LAYOUT_COORDINATE),
+    height: finiteNumber(row.height, 0, 0, MAX_LAYOUT_COORDINATE)
+  }
+}
+
+function normalizeViewport(value: unknown): Mark["viewport"] {
+  const row = isRecord(value) ? value : {}
+  return {
+    width: finiteNumber(row.width, 0, 0, MAX_VIEWPORT_SIZE),
+    height: finiteNumber(row.height, 0, 0, MAX_VIEWPORT_SIZE),
+    dpr: finiteNumber(row.dpr, 1, 0.1, MAX_DPR)
+  }
+}
 
 function isWidgetCorner(v: unknown): v is WidgetCorner {
   return typeof v === "string" && WIDGET_CORNERS.includes(v as WidgetCorner)
@@ -222,7 +305,10 @@ function normalizeSyncOps(value: unknown): MarkSyncOperation[] {
   for (const item of value.slice(0, 50)) {
     if (!item || typeof item !== "object") continue
     const row = item as Record<string, unknown>
-    const id = typeof row.id === "string" && row.id ? row.id : makeSyncOpId()
+    const id =
+      typeof row.id === "string" && row.id
+        ? row.id.slice(0, 120)
+        : makeSyncOpId()
     const createdAt =
       typeof row.createdAt === "number" && Number.isFinite(row.createdAt)
         ? row.createdAt
@@ -336,7 +422,7 @@ function migrateRawMark(raw: unknown): Mark {
     throw new Error("Invalid mark record")
   }
   const p = raw as Record<string, unknown>
-  const createdAt = typeof p.createdAt === "number" ? p.createdAt : Date.now()
+  const createdAt = timestampOrNow(p.createdAt)
   const legacyComment = typeof p.comment === "string" ? p.comment : ""
   let thread: LocalThreadMessage[] = Array.isArray(p.thread)
     ? (p.thread as LocalThreadMessage[])
@@ -370,7 +456,7 @@ function migrateRawMark(raw: unknown): Mark {
       : legacyComment.trim()
         ? legacyComment.trim().slice(0, 120)
         : "Untitled mark"
-  const urlRaw = typeof p.url === "string" ? p.url : ""
+  const urlRaw = boundedString(p.url, 4096) ?? ""
   const url = normalizePageUrlForMatch(urlRaw) || urlRaw
 
   const remoteMarkId =
@@ -388,12 +474,19 @@ function migrateRawMark(raw: unknown): Mark {
   const priority: MarkPriority = isStoredMarkPriority(priorityRaw)
     ? priorityRaw
     : normalizeMarkPriority(undefined)
+  const rawScreenshotDataUrl =
+    typeof p.screenshotDataUrl === "string" ? p.screenshotDataUrl : ""
+  const rawScreenshotUrl =
+    typeof p.screenshotUrl === "string" ? p.screenshotUrl : ""
   const screenshotDataUrl =
-    typeof p.screenshotDataUrl === "string" &&
-    p.screenshotDataUrl.startsWith("data:image/") &&
-    p.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
-      ? p.screenshotDataUrl
-      : undefined
+    rawScreenshotDataUrl.startsWith("data:image/") &&
+    rawScreenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
+      ? rawScreenshotDataUrl
+      : !remoteMarkId &&
+          rawScreenshotUrl.startsWith("data:image/") &&
+          rawScreenshotUrl.length <= STORAGE_LIMITS.screenshotDataUrl
+        ? rawScreenshotUrl
+        : undefined
   const domSnapshot = normalizeDomSnapshot(p.domSnapshot)
   const pendingSyncOps = normalizeSyncOps(p.pendingSyncOps)
   const syncState = isMarkSyncState(p.syncState)
@@ -405,7 +498,11 @@ function migrateRawMark(raw: unknown): Mark {
     typeof p.syncError === "string" && p.syncError
       ? p.syncError.slice(0, 300)
       : undefined
-  const projectId = String(p.projectId ?? p.spaceId ?? "")
+  const projectId = (
+    boundedString(p.projectId, 180) ??
+    boundedString(p.spaceId, 180) ??
+    ""
+  ).trim()
 
   const base: Omit<Mark, "remoteMarkId"> & { remoteMarkId?: string } = {
     id:
@@ -420,45 +517,37 @@ function migrateRawMark(raw: unknown): Mark {
       typeof p.pageTitle === "string" && p.pageTitle
         ? p.pageTitle.slice(0, 280)
         : undefined,
-    origin: String(p.origin ?? ""),
-    pathname: String(p.pathname ?? ""),
-    selector: String(p.selector ?? ""),
+    origin: boundedString(p.origin, 4096) ?? "",
+    pathname: boundedString(p.pathname, 4096) ?? "",
+    selector: boundedString(p.selector, 2048) ?? "",
     strategy: isStrategy(p.strategy) ? p.strategy : "path",
-    bbox:
-      p.bbox && typeof p.bbox === "object"
-        ? (p.bbox as Mark["bbox"])
-        : { x: 0, y: 0, width: 0, height: 0 },
-    viewport:
-      p.viewport && typeof p.viewport === "object"
-        ? (p.viewport as Mark["viewport"])
-        : { width: 0, height: 0, dpr: 1 },
+    bbox: normalizeBbox(p.bbox),
+    viewport: normalizeViewport(p.viewport),
     title,
     thread,
     status,
     priority,
     createdAt,
-    updatedAt: typeof p.updatedAt === "number" ? p.updatedAt : createdAt,
-    outerHTMLPreview: String(p.outerHTMLPreview ?? "").slice(
-      0,
-      STORAGE_LIMITS.outerHTMLPreview
-    ),
+    updatedAt: finiteNumber(p.updatedAt, createdAt, 0, Number.MAX_SAFE_INTEGER),
+    outerHTMLPreview:
+      boundedString(p.outerHTMLPreview, STORAGE_LIMITS.outerHTMLPreview) ?? "",
     domSnapshot,
     screenshotDataUrl,
     syncState,
     syncError,
     screenshotUrl:
-      typeof p.screenshotUrl === "string" && p.screenshotUrl
-        ? p.screenshotUrl
+      rawScreenshotUrl && !rawScreenshotUrl.startsWith("data:")
+        ? rawScreenshotUrl
         : undefined,
     pendingSyncOps,
     remoteUpdatedAt:
       typeof p.remoteUpdatedAt === "number" &&
       Number.isFinite(p.remoteUpdatedAt)
-        ? p.remoteUpdatedAt
+        ? finiteNumber(p.remoteUpdatedAt, 0, 0, Number.MAX_SAFE_INTEGER)
         : undefined,
     localHiddenAt:
       typeof p.localHiddenAt === "number" && Number.isFinite(p.localHiddenAt)
-        ? p.localHiddenAt
+        ? finiteNumber(p.localHiddenAt, 0, 0, Number.MAX_SAFE_INTEGER)
         : undefined
   }
   return remoteMarkId ? { ...base, remoteMarkId } : base
@@ -472,6 +561,11 @@ async function read<T>(key: string, fallback: T): Promise<T> {
   } catch {
     return fallback
   }
+}
+
+async function readArray(key: string): Promise<unknown[]> {
+  const stored = await read<unknown>(key, [])
+  return Array.isArray(stored) ? stored : []
 }
 
 async function write(key: string, value: unknown): Promise<boolean> {
@@ -515,26 +609,35 @@ export async function addSpace(space: Space): Promise<boolean> {
 }
 
 export async function getProjects(): Promise<Project[]> {
-  const stored = await read<Project[] | null>(KEY_PROJECTS, null)
-  if (!stored) {
+  const stored = await read<unknown>(KEY_PROJECTS, null)
+  if (stored == null) {
     await write(KEY_PROJECTS, DEFAULT_PROJECTS)
     return DEFAULT_PROJECTS
   }
-  return stored.map((project) => ({
-    id: project.id,
-    name: project.name,
-    description: project.description ?? "",
-    createdAt: project.createdAt ?? 0
-  }))
+  if (!Array.isArray(stored)) {
+    await write(KEY_PROJECTS, DEFAULT_PROJECTS)
+    return DEFAULT_PROJECTS
+  }
+  const projects = stored
+    .map(normalizeStoredProject)
+    .filter((project): project is Project => Boolean(project))
+  return projects
 }
 
 export async function setProjects(projects: Project[]): Promise<boolean> {
-  return write(KEY_PROJECTS, projects)
+  return write(
+    KEY_PROJECTS,
+    projects
+      .map(normalizeStoredProject)
+      .filter((project): project is Project => Boolean(project))
+  )
 }
 
 export async function addProject(project: Project): Promise<boolean> {
   const projects = await getProjects()
-  return write(KEY_PROJECTS, [...projects, project])
+  const normalized = normalizeStoredProject(project)
+  if (!normalized) return false
+  return write(KEY_PROJECTS, [...projects, normalized])
 }
 
 export async function getActiveProjectId(): Promise<string> {
@@ -638,7 +741,7 @@ export function isHostDisabled(
 }
 
 export async function getMarks(): Promise<Mark[]> {
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   const out: Mark[] = []
   for (const row of stored) {
     try {
@@ -667,6 +770,10 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
     mark.screenshotDataUrl.length <= STORAGE_LIMITS.screenshotDataUrl
       ? mark.screenshotDataUrl
       : undefined
+  const screenshotUrl =
+    mark.screenshotUrl && !mark.screenshotUrl.startsWith("data:")
+      ? mark.screenshotUrl
+      : undefined
   const projectId = mark.projectId || mark.spaceId
   return {
     ...mark,
@@ -674,9 +781,14 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
     spaceId: projectId,
     url: normalizePageUrlForMatch(mark.url) || mark.url,
     pageTitle: mark.pageTitle?.slice(0, 280),
+    origin: mark.origin.slice(0, 4096),
+    pathname: mark.pathname.slice(0, 4096),
+    selector: mark.selector.slice(0, 2048),
     title: mark.title.slice(0, STORAGE_LIMITS.markTitle),
     status: normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
+    bbox: normalizeBbox(mark.bbox),
+    viewport: normalizeViewport(mark.viewport),
     thread: mark.thread.map((m) => ({
       ...m,
       body: m.body.slice(0, STORAGE_LIMITS.threadBody),
@@ -684,12 +796,25 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
     })),
     domSnapshot: normalizeDomSnapshot(mark.domSnapshot),
     screenshotDataUrl,
+    screenshotUrl,
     syncState: mark.remoteMarkId ? "synced" : "pending",
     syncError: undefined,
     pendingSyncOps: normalizeSyncOps(mark.pendingSyncOps),
     outerHTMLPreview: mark.outerHTMLPreview.slice(
       0,
       STORAGE_LIMITS.outerHTMLPreview
+    ),
+    createdAt: finiteNumber(
+      mark.createdAt,
+      Date.now(),
+      0,
+      Number.MAX_SAFE_INTEGER
+    ),
+    updatedAt: finiteNumber(
+      mark.updatedAt,
+      mark.createdAt,
+      0,
+      Number.MAX_SAFE_INTEGER
     ),
     captureKind: mark.captureKind === "region" ? "region" : "element"
   }
@@ -955,15 +1080,15 @@ export async function getMarksForPage(
   url: string
 ): Promise<Mark[]> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   const matching: unknown[] = []
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    const urlRaw = typeof p.url === "string" ? p.url : ""
+    const urlRaw = storedPageUrlFromRow(p)
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
-    if (String(p.projectId ?? p.spaceId ?? "") !== projectId) continue
-    if (typeof p.localHiddenAt === "number") continue
+    if (storedProjectIdFromRow(p) !== projectId) continue
+    if (isLocallyHiddenRow(p)) continue
     matching.push(row)
   }
   const out: Mark[] = []
@@ -993,16 +1118,16 @@ export async function getMarkStatusCountsForPage(
   url: string
 ): Promise<PageMarkStatusCounts> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   let open = 0
   let closed = 0
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    const urlRaw = typeof p.url === "string" ? p.url : ""
+    const urlRaw = storedPageUrlFromRow(p)
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
-    if (String(p.projectId ?? p.spaceId ?? "") !== projectId) continue
-    if (typeof p.localHiddenAt === "number") continue
+    if (storedProjectIdFromRow(p) !== projectId) continue
+    if (isLocallyHiddenRow(p)) continue
     const rawStatus = typeof p.status === "string" ? p.status : undefined
     if (normalizeMarkStatus(rawStatus) === "closed") closed += 1
     else open += 1
@@ -1011,12 +1136,13 @@ export async function getMarkStatusCountsForPage(
 }
 
 export async function getMarkSyncSummary(): Promise<MarkSyncSummary> {
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   let pending = 0
   let failed = 0
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
+    if (isLocallyHiddenRow(p)) continue
     const pendingOps = Array.isArray(p.pendingSyncOps)
       ? p.pendingSyncOps.length
       : 0
@@ -1037,26 +1163,30 @@ export async function getMarkCountsByPage(
   url: string
 ): Promise<Map<string, number>> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    const urlRaw = typeof p.url === "string" ? p.url : ""
+    const urlRaw = storedPageUrlFromRow(p)
     if (normalizePageUrlForMatch(urlRaw) !== n) continue
-    const sid = String(p.projectId ?? p.spaceId ?? "")
+    if (isLocallyHiddenRow(p)) continue
+    const sid = storedProjectIdFromRow(p)
+    if (!sid) continue
     counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts
 }
 
 export async function getMarkCountsBySpace(): Promise<Map<string, number>> {
-  const stored = await read<unknown[]>(KEY_MARKS, [])
+  const stored = await readArray(KEY_MARKS)
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    const sid = String(p.projectId ?? p.spaceId ?? "")
+    if (isLocallyHiddenRow(p)) continue
+    const sid = storedProjectIdFromRow(p)
+    if (!sid) continue
     counts.set(sid, (counts.get(sid) ?? 0) + 1)
   }
   return counts
@@ -1065,6 +1195,7 @@ export async function getMarkCountsBySpace(): Promise<Map<string, number>> {
 export async function getRecentMarks(limit = 5): Promise<Mark[]> {
   const marks = await getMarks()
   return marks
+    .filter((mark) => !mark.localHiddenAt)
     .slice()
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, limit)

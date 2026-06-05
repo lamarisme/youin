@@ -51,9 +51,14 @@ import {
 import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
 import type { WorkspaceView } from "@/lib/collab-types";
+import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
+import {
+  safeLocalStorageGet,
+  safeLocalStorageSet,
+} from "@/lib/safe-local-storage";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
@@ -64,13 +69,13 @@ const SIDEBAR_FOCUS =
 function useSidebarCollapsed() {
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
-    return localStorage.getItem("youin-sidebar-collapsed") === "true";
+    return safeLocalStorageGet("youin-sidebar-collapsed") === "true";
   });
 
   const toggle = useCallback(() => {
     setCollapsed((prev) => {
       const next = !prev;
-      localStorage.setItem("youin-sidebar-collapsed", String(next));
+      safeLocalStorageSet("youin-sidebar-collapsed", String(next));
       return next;
     });
   }, []);
@@ -89,19 +94,36 @@ export function AppSidebar() {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { collapsed, toggle: toggleCollapsed } = useSidebarCollapsed();
 
-  const { profileName, profileEmail, displayNamePreference, workspaceName, members, workspaceId, userId, views } =
-    useWorkspaceData((s) => ({
-      profileName: s.profile.name,
-      profileEmail: s.profile.email,
-      displayNamePreference: s.profile.displayNamePreference,
-      workspaceName: s.workspace.name,
-      members: s.workspace.members,
-      views: s.workspace.views,
-      workspaceId: s.workspaceId,
-      userId: s.userId,
-    }));
+  const {
+    profileName,
+    profileEmail,
+    displayNamePreference,
+    workspaceName,
+    members,
+    workspaceId,
+    userId,
+    views,
+    inboxSnapshot,
+    loadedAt,
+  } = useWorkspaceData((s) => ({
+    profileName: s.profile.name,
+    profileEmail: s.profile.email,
+    displayNamePreference: s.profile.displayNamePreference,
+    workspaceName: s.workspace.name,
+    members: s.workspace.members,
+    views: s.workspace.views,
+    workspaceId: s.workspaceId,
+    userId: s.userId,
+    inboxSnapshot: s.inboxSnapshot,
+    loadedAt: s.loadedAt,
+  }));
 
-  const inbox = useInbox(workspaceId, userId);
+  const inbox = useInbox(
+    workspaceId,
+    userId,
+    inboxSnapshot,
+    updatedAtFromIso(loadedAt),
+  );
   const openCommandPalette = useOpenCommandPalette();
 
   const myUsername = members.find((m) => m.id === userId)?.username?.trim() ?? "";

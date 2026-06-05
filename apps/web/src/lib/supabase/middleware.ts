@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { accountHref, isAccountSection, markHref } from "@/lib/workspace/routes";
 
@@ -74,16 +75,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && isAuthRoute && !allowSignedInAuthFlow) {
-    const redirectUrl = request.nextUrl.clone();
-    const nextParam = request.nextUrl.searchParams.get("next");
-    if (nextParam && nextParam.startsWith("/")) {
-      const nextUrl = new URL(nextParam, request.url);
-      const cleanNext = cleanWorkspacePath(nextUrl.pathname, nextUrl.searchParams);
-      return NextResponse.redirect(new URL(cleanNext, request.url));
-    }
-    redirectUrl.pathname = "/dashboard";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    const nextPath = safeLocalRedirectPath(
+      request.nextUrl.searchParams.get("next"),
+      "/dashboard",
+    );
+    const nextUrl = new URL(nextPath, request.url);
+    const cleanNext = cleanWorkspacePath(nextUrl.pathname, nextUrl.searchParams);
+    return NextResponse.redirect(new URL(cleanNext, request.url));
   }
 
   return response;

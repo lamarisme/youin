@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -22,9 +23,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = useMemo(() => {
-    const requested = searchParams.get("next");
-    if (!requested) return "/dashboard";
-    return requested.startsWith("/") ? requested : "/dashboard";
+    return safeLocalRedirectPath(searchParams.get("next"));
   }, [searchParams]);
   const callbackError = useMemo(() => searchParams.get("error"), [searchParams]);
 

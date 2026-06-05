@@ -40,7 +40,12 @@ function markSnapshotRead(snapshot: InboxSnapshot, lastReadAt: string): InboxSna
   };
 }
 
-export function useInbox(workspaceId: string, userId: string): InboxData {
+export function useInbox(
+  workspaceId: string,
+  userId: string,
+  initialData?: InboxSnapshot,
+  initialDataUpdatedAt?: number,
+): InboxData {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
     () => workspaceKeys.inbox(workspaceId, userId),
@@ -52,6 +57,8 @@ export function useInbox(workspaceId: string, userId: string): InboxData {
     queryKey,
     queryFn: getInboxAction,
     enabled,
+    initialData,
+    initialDataUpdatedAt,
     staleTime: QUERY_CACHE.inboxStaleMs,
     gcTime: QUERY_CACHE.gcMs,
     refetchOnMount: true,

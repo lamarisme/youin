@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { safeLocalStorageGet, safeLocalStorageSet } from "./safe-local-storage";
+
 export function useLocalStorageState<T>(key: string, initialValue: T) {
   const isClient = useMemo(() => typeof window !== "undefined", []);
   const [value, setValue] = useState<T>(() => {
     if (!isClient) return initialValue;
     try {
-      const fromStorage = window.localStorage.getItem(key);
-      if (fromStorage) {
+      const fromStorage = safeLocalStorageGet(key);
+      if (fromStorage !== null) {
         return JSON.parse(fromStorage) as T;
       }
     } catch {
@@ -19,7 +21,7 @@ export function useLocalStorageState<T>(key: string, initialValue: T) {
 
   useEffect(() => {
     if (!isClient) return;
-    window.localStorage.setItem(key, JSON.stringify(value));
+    safeLocalStorageSet(key, JSON.stringify(value));
   }, [isClient, key, value]);
 
   return [value, setValue] as const;

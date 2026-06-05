@@ -95,6 +95,7 @@ export function DashboardReadModelProvider({
   request: DashboardReadModelRequest;
   children: React.ReactNode;
 }) {
+  // TODO: migrate queryFn from server action to route handler (server actions are designed for mutations, not reads)
   const query = useQuery({
     queryKey: workspaceKeys.dashboard(request),
     queryFn: () => getDashboardReadModelAction(request),
@@ -146,6 +147,7 @@ export function AccountReadModelProvider({
   initialData: AccountReadModel;
   children: React.ReactNode;
 }) {
+  // TODO: migrate queryFn from server action to route handler
   const query = useQuery({
     queryKey: workspaceKeys.account(),
     queryFn: getAccountReadModelAction,
@@ -177,6 +179,7 @@ export function ViewsIndexReadModelProvider({
   initialData: ViewsIndexReadModel;
   children: React.ReactNode;
 }) {
+  // TODO: migrate queryFn from server action to route handler
   const query = useQuery({
     queryKey: workspaceKeys.viewsIndex(),
     queryFn: getViewsIndexReadModelAction,
@@ -211,6 +214,7 @@ export function ViewDetailReadModelProvider({
   initialData: ViewDetailReadModel;
   children: React.ReactNode;
 }) {
+  // TODO: migrate queryFn from server action to route handler
   const query = useQuery({
     queryKey: workspaceKeys.viewDetail(viewId),
     queryFn: getViewDetailReadModelAction,

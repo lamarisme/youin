@@ -15,19 +15,34 @@ import { cn } from "@/lib/utils";
 import { markHref } from "@/lib/workspace/routes";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
+import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 import { PageContainer } from "@/components/page-container";
+import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { rosterDisplayParts } from "@/lib/workspace/member-label";
 
-export function InboxView() {
-  const { workspace, workspaceId, userId, displayNamePreference } =
-    useWorkspaceData((s) => ({
-      workspace: s.workspace,
-      workspaceId: s.workspaceId,
-      userId: s.userId,
-      displayNamePreference: s.profile.displayNamePreference,
-    }));
+export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
+  const {
+    workspace,
+    workspaceId,
+    userId,
+    displayNamePreference,
+    inboxSnapshot,
+    loadedAt,
+  } = useWorkspaceData((s) => ({
+    workspace: s.workspace,
+    workspaceId: s.workspaceId,
+    userId: s.userId,
+    displayNamePreference: s.profile.displayNamePreference,
+    inboxSnapshot: s.inboxSnapshot,
+    loadedAt: s.loadedAt,
+  }));
 
-  const inbox = useInbox(workspaceId, userId);
+  const inbox = useInbox(
+    workspaceId,
+    userId,
+    initialData ?? inboxSnapshot,
+    initialData ? Date.now() : updatedAtFromIso(loadedAt),
+  );
   const memberLookup = useMemo(
     () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
     [workspace.members],

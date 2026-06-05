@@ -218,7 +218,7 @@ function ViewDetail({
           marks={visibleMarks}
           workspace={workspace}
           displayNamePreference={displayNamePreference}
-          onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
+          markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
         />
       ) : (
         <ViewList
@@ -227,7 +227,7 @@ function ViewDetail({
           displayNamePreference={displayNamePreference}
           page={page}
           onPageChange={setPage}
-          onSelectMark={(mark) => router.push(markHref(mark.displayKey, searchParamsFromFilters(filters)))}
+          markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
         />
       )}
     </PageContainer>
@@ -240,14 +240,14 @@ function ViewList({
   displayNamePreference,
   page,
   onPageChange,
-  onSelectMark,
+  markHrefFor,
 }: {
   marks: MarkItem[];
   workspace: Workspace;
   displayNamePreference: DisplayNamePreference;
   page: number;
   onPageChange: (page: number) => void;
-  onSelectMark: (mark: MarkItem) => void;
+  markHrefFor: (mark: MarkItem) => string;
 }) {
   const {
     membersById,
@@ -272,7 +272,7 @@ function ViewList({
             workflowStatusesById={workflowStatusesById}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
-            onSelectMark={onSelectMark}
+            markHrefFor={markHrefFor}
           />
         )}
       </div>
@@ -292,12 +292,12 @@ function StatusBoard({
   marks,
   workspace,
   displayNamePreference,
-  onSelectMark,
+  markHrefFor,
 }: {
   marks: MarkItem[];
   workspace: Workspace;
   displayNamePreference: DisplayNamePreference;
-  onSelectMark: (mark: MarkItem) => void;
+  markHrefFor: (mark: MarkItem) => string;
 }) {
   const columns = workspace.workflowStatuses.length
     ? workspace.workflowStatuses.map((status) => ({
@@ -326,7 +326,7 @@ function StatusBoard({
           marks={column.marks}
           workspace={workspace}
           displayNamePreference={displayNamePreference}
-          onSelectMark={onSelectMark}
+          markHrefFor={markHrefFor}
         />
       ))}
     </div>
@@ -338,13 +338,13 @@ function BoardColumn({
   marks,
   workspace,
   displayNamePreference,
-  onSelectMark,
+  markHrefFor,
 }: {
   title: string;
   marks: MarkItem[];
   workspace: Workspace;
   displayNamePreference: DisplayNamePreference;
-  onSelectMark: (mark: MarkItem) => void;
+  markHrefFor: (mark: MarkItem) => string;
 }) {
   const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
   return (
@@ -360,10 +360,10 @@ function BoardColumn({
       ) : (
         <div className="space-y-2 p-2">
           {marks.map((mark) => (
-            <button
+            <Link
               key={mark.id}
-              type="button"
-              onClick={() => onSelectMark(mark)}
+              href={markHrefFor(mark)}
+              prefetch
               className="block w-full rounded-md bg-paper-2 px-3 py-2.5 text-left transition-colors hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               <span className="block text-ui-sm font-medium leading-snug text-ink">{mark.title}</span>
@@ -386,7 +386,7 @@ function BoardColumn({
                   </span>
                 ) : null}
               </span>
-            </button>
+            </Link>
           ))}
         </div>
       )}

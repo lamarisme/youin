@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { FadeIn } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -71,7 +70,7 @@ export function MarkDetailNav({
   }
 
   return (
-    <FadeIn className="-mx-3 -mt-3 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5">
+    <div className="-mx-3 -mt-3 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5">
       <div className="flex min-h-8 min-w-0 items-center justify-between gap-2">
         <nav aria-label="Mark breadcrumb" className="min-w-0 flex-1">
           <ol className="flex min-w-0 items-center gap-0.5 text-ui-sm text-ink-2">
@@ -173,7 +172,7 @@ export function MarkDetailNav({
           </div>
         </div>
       </div>
-    </FadeIn>
+    </div>
   );
 }
 

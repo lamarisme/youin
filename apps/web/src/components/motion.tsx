@@ -1,49 +1,32 @@
 "use client";
 
-import { createElement } from "react";
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
+import { createElement, type JSX } from "react";
 
-const fadeInVariants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: { opacity: 1, y: 0 },
-};
-
+/**
+ * FadeIn – now renders instantly as a plain HTML element.
+ * All framer-motion animation has been removed.
+ */
 function FadeIn({
   children,
   className,
-  delay,
+  delay: _delay,
+  instant: _instant,
   as: Component = "div",
   ...props
-}: Omit<HTMLMotionProps<"div">, "children"> & {
+}: {
   children: React.ReactNode;
+  className?: string;
   delay?: number;
-  as?: keyof typeof motion;
+  instant?: boolean;
+  as?: keyof JSX.IntrinsicElements;
+  [key: string]: unknown;
 }) {
-  const reduceMotion = useReducedMotion();
-  if (reduceMotion) {
-    const tag = Component as keyof React.JSX.IntrinsicElements;
-    return createElement(tag, { className, ...props }, children);
-  }
-
-  const MotionComponent = motion[Component] as typeof motion.div;
-  return (
-    <MotionComponent
-      initial="hidden"
-      animate="visible"
-      variants={fadeInVariants}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-        mass: 1,
-        delay: delay ?? 0,
-      }}
-      className={className}
-      {...props}
-    >
-      {children}
-    </MotionComponent>
+  return createElement(
+    Component as keyof JSX.IntrinsicElements,
+    { className, ...props },
+    children,
   );
 }
 
 export { FadeIn };
+

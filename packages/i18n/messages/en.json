@@ -141,28 +141,36 @@
     "nav": [
       {
         "href": "#loop",
-        "label": "How it works"
+        "label": "Workflow"
+      },
+      {
+        "href": "#context",
+        "label": "Context"
       },
       {
         "href": "#install",
-        "label": "Get started"
+        "label": "Join beta"
       }
     ],
     "hero": {
-      "eyebrow": "Spatial backlog",
+      "eyebrow": "Spatial backlog for web teams",
       "title": "Your product backlog, pinned to your actual UI.",
-      "subtitle": "Click the live interface, create the task, and keep the selector, screenshot, browser context, and discussion attached.",
+      "subtitle": "YouIn turns live interface moments into actionable work. Every mark keeps the page, element, screenshot, viewport, discussion, and status attached.",
       "chromeCta": "Join free beta",
+      "secondaryCta": "See the workflow",
+      "pinNote": "The page sells the same spatial model the product uses.",
       "proofLabel": "Beta details",
-      "proof": ["Free during beta", "Chrome extension", "No card required"]
+      "proof": [
+        "Free during beta",
+        "Chrome extension",
+        "No card required",
+        "Built for shipped web apps"
+      ]
     },
     "problem": {
+      "eyebrow": "Why this exists",
       "title": "The work is spatial. The tools are flat.",
-      "p1": "Review starts on the page, then gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the work attached to the interface moment that created it.",
-      "oldLoopLabel": "The old loop",
-      "oldLoopBody": "Screenshot, annotate, paste in chat, explain the page, answer follow-up questions, repeat after the next deploy.",
-      "withLabel": "With YouIn",
-      "withBody": "Point once at the live UI. The task keeps its selector, capture, discussion, and status together."
+      "p1": "Review starts on the page, then gets flattened into screenshots, Slack archaeology, and tickets that say which button? YouIn keeps the work attached to the interface moment that created it."
     },
     "loop": {
       "eyebrow": "Spatial backlog",
@@ -182,12 +190,58 @@
         }
       ]
     },
+    "context": {
+      "eyebrow": "Context that survives handoff",
+      "title": "Every task arrives with the evidence already attached.",
+      "subtitle": "YouIn keeps the page-level and element-level details together so reviewers, designers, and developers can move from observation to fix without rebuilding the scene.",
+      "items": [
+        {
+          "label": "Element",
+          "value": "Selector and page URL",
+          "body": "The mark points back to the exact interface object that triggered the work."
+        },
+        {
+          "label": "Capture",
+          "value": "Screenshot and viewport",
+          "body": "The visual state is preserved even when the next deploy shifts the layout."
+        },
+        {
+          "label": "Workflow",
+          "value": "Discussion, owner, priority",
+          "body": "A mark behaves like real backlog work, not a loose comment floating in chat."
+        },
+        {
+          "label": "Workspace",
+          "value": "Projects and saved views",
+          "body": "Teams can triage open UI work by page, project, assignee, status, and priority."
+        }
+      ]
+    },
+    "audience": {
+      "eyebrow": "Built for real review rooms",
+      "title": "Where it lands.",
+      "items": [
+        {
+          "label": "Agencies",
+          "body": "Client notes stay attached to the site instead of becoming a screenshot scavenger hunt."
+        },
+        {
+          "label": "Product teams",
+          "body": "Design QA, copy fixes, and polish work enter the backlog with the same context they had on the page."
+        },
+        {
+          "label": "Indie builders",
+          "body": "Capture the issue while you see it, then return later with the browser state still intact."
+        }
+      ]
+    },
     "install": {
+      "eyebrow": "Join the beta",
       "title": "Stop describing the thing you can point at.",
       "subtitle": "The beta is free while the core workflow is shaped with early teams. The next time someone spots UI work, turn that exact element into the task.",
       "chromeCta": "Join free beta",
       "contactCta": "Talk to a human",
-      "glanceTitle": "At a glance",
+      "pinNote": "Final CTA, same rule: point once, keep the context.",
       "onboardingLabel": "Setup",
       "onboardingValue": "Under 2 minutes",
       "tabsLabel": "Workspace",

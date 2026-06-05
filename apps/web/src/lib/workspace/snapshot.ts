@@ -39,6 +39,10 @@ function emptyProfile(): UserProfile {
   };
 }
 
+function emptyInboxSnapshot() {
+  return { groups: [], totalEvents: 0, unreadCount: 0, lastReadAt: "" };
+}
+
 export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
   return {
     workspaceId: "",
@@ -46,6 +50,7 @@ export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
     workspace: emptyWorkspace(),
     profile: emptyProfile(),
     inboxLastReadAt: "",
+    inboxSnapshot: emptyInboxSnapshot(),
     loadedAt: "",
   };
 }
@@ -68,6 +73,7 @@ export function shellBootstrapToWorkspaceBootstrap(
     userId: shell.userId,
     profile: shell.profile,
     inboxLastReadAt: shell.inboxLastReadAt,
+    inboxSnapshot: shell.inboxSnapshot,
     loadedAt: shell.loadedAt,
     workspace: {
       ...emptyWorkspace(),
@@ -111,7 +117,8 @@ export function mergeShellIntoWorkspaceBootstrap(
     ...current,
     userId: shell.userId,
     profile: shell.profile,
-    inboxLastReadAt: current.inboxLastReadAt || shell.inboxLastReadAt,
+    inboxLastReadAt: shell.inboxSnapshot.lastReadAt || shell.inboxLastReadAt,
+    inboxSnapshot: shell.inboxSnapshot,
     workspace: {
       ...current.workspace,
       id: shell.workspace.id,

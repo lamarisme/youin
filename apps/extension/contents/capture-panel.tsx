@@ -25,6 +25,11 @@ import {
   type OpenMarkDetail,
   type ReviewCaptureDetail
 } from "../lib/events"
+import {
+  dispatchInternalEvent,
+  getInternalEventDetail,
+  isInternalEvent
+} from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
 import { normalizePageUrlForMatch } from "../lib/page-url"
@@ -116,7 +121,7 @@ if (!window.__youinCapturePanelMessageListener) {
         return true
       }
       if (t === MESSAGE_TOGGLE_FEEDBACK_LIST) {
-        window.dispatchEvent(new CustomEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST))
+        dispatchInternalEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST)
         sendResponse({ ok: true })
         return true
       }
@@ -1248,7 +1253,7 @@ const CapturePanel = () => {
     setFullImage(null)
     setPageMarks([])
     previousFocusRef.current?.focus?.()
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
+    dispatchInternalEvent(EVENT_REVIEW_RESUME)
   }, [])
 
   const openFeedbackList = useCallback(async () => {
@@ -1305,17 +1310,23 @@ const CapturePanel = () => {
   }, [])
 
   useEffect(() => {
-    window.addEventListener(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST, openFeedbackList)
+    const onToggleFeedbackList = (e: Event) => {
+      if (isInternalEvent(e)) void openFeedbackList()
+    }
+    window.addEventListener(
+      EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
+      onToggleFeedbackList
+    )
     return () =>
       window.removeEventListener(
         EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
-        openFeedbackList
+        onToggleFeedbackList
       )
   }, [openFeedbackList])
 
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const detail = (e as CustomEvent<Partial<OpenMarkDetail>>).detail
+      const detail = getInternalEventDetail<Partial<OpenMarkDetail>>(e)
       const markId = detail?.markId ?? detail?.pinId
       if (!markId) return
       void (async () => {
@@ -1759,7 +1770,7 @@ const CapturePanel = () => {
       }
       setOpen(false)
       scheduleReloadPageMarks(mark.url, mark.spaceId)
-      window.dispatchEvent(new CustomEvent(EVENT_REVIEW_RESUME))
+      dispatchInternalEvent(EVENT_REVIEW_RESUME)
     } finally {
       setSaving(false)
     }
@@ -1802,7 +1813,7 @@ const CapturePanel = () => {
 
   const openMarkFromList = (mark: Mark) => {
     scrollMarkIntoView(mark)
-    window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
+    dispatchInternalEvent(EVENT_REVIEW_PAUSE)
     setViewingMark(mark)
     setEditTitle(mark.title)
     setEditBody(mark.thread[0]?.body ?? "")

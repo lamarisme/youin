@@ -7,14 +7,13 @@ import {
   pageSearchParamsToUrlSearchParams,
   type PageSearchParams,
 } from "@/lib/page-search-params";
-import { getDashboardReadModelAction } from "@/lib/workspace/actions";
 import {
   dashboardMarkFiltersFromQuery,
   dashboardPaginationFromQuery,
   dashboardQueryFromSearchParams,
 } from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
-import { DashboardUrlNormalizer } from "./dashboard-url-normalizer";
+import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 
 export const metadata: Metadata = {
   title: "Triage",
@@ -39,17 +38,18 @@ export default async function DashboardPage({
     filters: dashboardMarkFiltersFromQuery(dashboardQuery),
     pagination: dashboardPaginationFromQuery(dashboardQuery),
   };
-  const readModel = await getDashboardReadModelAction(readModelRequest);
+  const readModel =
+    await getDashboardReadModelForCurrentWorkspace(readModelRequest);
 
   if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
     params.set("project", readModel.selectedProjectId);
-    return <DashboardUrlNormalizer href={`/dashboard?${params.toString()}`} />;
+    redirect(`/dashboard?${params.toString()}`);
   }
 
   if (!readModel.selectedProjectId && requestedProjectId) {
     params.delete("project");
     const query = params.toString();
-    return <DashboardUrlNormalizer href={query ? `/dashboard?${query}` : "/dashboard"} />;
+    redirect(query ? `/dashboard?${query}` : "/dashboard");
   }
 
   if (
@@ -62,7 +62,7 @@ export default async function DashboardPage({
       params.set("page", String(readModel.pagination.page));
     }
     const query = params.toString();
-    return <DashboardUrlNormalizer href={query ? `/dashboard?${query}` : "/dashboard"} />;
+    redirect(query ? `/dashboard?${query}` : "/dashboard");
   }
 
   return (

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,7 +27,8 @@ export interface MarkTableProps {
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
-  onSelectMark: (mark: MarkItem) => void;
+  markHrefFor?: (mark: MarkItem) => string;
+  onSelectMark?: (mark: MarkItem) => void;
   onToggleMarkStatus?: (mark: MarkItem) => void | Promise<void>;
   activeMarkId?: string;
   selectedIds?: Set<string>;
@@ -44,6 +47,7 @@ export function MarkTable(props: MarkTableProps) {
     workflowStatusesById,
     commentCountByMarkId,
     displayNamePreference,
+    markHrefFor,
     onSelectMark,
     onToggleMarkStatus,
     activeMarkId,
@@ -134,7 +138,8 @@ export function MarkTable(props: MarkTableProps) {
               hasSelection={selectedCount > 0}
               density={density}
               displayNamePreference={displayNamePreference}
-              onSelect={() => onSelectMark(mark)}
+              href={markHrefFor?.(mark)}
+              onSelect={onSelectMark ? () => onSelectMark(mark) : undefined}
               onToggleStatus={onToggleMarkStatus}
               onToggleSelected={(checked) => toggleSelection(mark.id, checked)}
             />
@@ -157,6 +162,7 @@ function MarkRow({
   hasSelection,
   density,
   displayNamePreference,
+  href,
   onSelect,
   onToggleStatus,
   onToggleSelected,
@@ -172,14 +178,23 @@ function MarkRow({
   hasSelection: boolean;
   density: "default" | "compact";
   displayNamePreference: DisplayNamePreference;
-  onSelect: () => void;
+  href?: string;
+  onSelect?: () => void;
   onToggleStatus?: (mark: MarkItem) => void | Promise<void>;
   onToggleSelected: (checked: boolean) => void;
 }) {
+  const router = useRouter();
   const workflowLabel = mark.workflowStatusId
     ? workflowStatusesById.get(mark.workflowStatusId)?.name
     : undefined;
   const rowHeight = density === "compact" ? "min-h-9 py-1" : "min-h-11 py-1.5";
+  const openLabel = `Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`;
+  const openClassName =
+    "min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30";
+
+  function prefetchDetail() {
+    if (href) router.prefetch(href);
+  }
 
   return (
     <li
@@ -215,20 +230,39 @@ function MarkRow({
 
         <RowStatusToggle mark={mark} label={workflowLabel} onToggle={onToggleStatus} />
 
-        <button
-          type="button"
-          onClick={onSelect}
-          aria-label={`Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`}
-          className="min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30"
-        >
-          <span className="flex min-w-0 items-baseline gap-2">
-            <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
-            <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
-              {mark.title}
+        {href ? (
+          <Link
+            href={href}
+            prefetch
+            onMouseEnter={prefetchDetail}
+            onFocus={prefetchDetail}
+            aria-label={openLabel}
+            className={openClassName}
+          >
+            <span className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
+              <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
+                {mark.title}
+              </span>
+              <RowLabels mark={mark} labelsById={labelsById} density={density} />
             </span>
-            <RowLabels mark={mark} labelsById={labelsById} density={density} />
-          </span>
-        </button>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={onSelect}
+            aria-label={openLabel}
+            className={openClassName}
+          >
+            <span className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
+              <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
+                {mark.title}
+              </span>
+              <RowLabels mark={mark} labelsById={labelsById} density={density} />
+            </span>
+          </button>
+        )}
 
         <RowMeta
           mark={mark}

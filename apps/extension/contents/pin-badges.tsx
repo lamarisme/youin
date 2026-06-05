@@ -13,6 +13,7 @@ import {
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_PAUSE
 } from "../lib/events"
+import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
 import {
@@ -176,13 +177,16 @@ const PinBadges = () => {
 
   useLayoutEffect(() => {
     const onViewport = () => scheduleViewportRefresh()
+    const onLocationChange = (e: Event) => {
+      if (isInternalEvent(e)) onViewport()
+    }
     window.addEventListener("scroll", onViewport, true)
     window.addEventListener("resize", onViewport)
-    window.addEventListener(EVENT_LOCATION_CHANGE, onViewport)
+    window.addEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
     return () => {
       window.removeEventListener("scroll", onViewport, true)
       window.removeEventListener("resize", onViewport)
-      window.removeEventListener(EVENT_LOCATION_CHANGE, onViewport)
+      window.removeEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null
@@ -215,12 +219,12 @@ const PinBadges = () => {
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
-              window.dispatchEvent(new CustomEvent(EVENT_REVIEW_PAUSE))
-              window.dispatchEvent(
-                new CustomEvent(EVENT_REVIEW_OPEN_MARK, {
-                  detail: { markId: mark.id, pinId: mark.id, attached }
-                })
-              )
+              dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+              dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
+                markId: mark.id,
+                pinId: mark.id,
+                attached
+              })
             }}>
             <span
               className={`relative flex h-6 w-6 -rotate-45 select-none items-center justify-center rounded-[999px_999px_999px_6px] shadow-[0_8px_18px_-14px_oklch(18%_0.012_264_/_0.48),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_90%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-105 motion-reduce:transition-none ${
