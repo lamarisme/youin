@@ -34,6 +34,7 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import {
   useCreateMarkMutation,
   useDeleteMarkMutation,
@@ -80,10 +81,17 @@ export function TriageView() {
 
   const selectedProject = useMemo(() => {
     if (!routeProjectId) return null;
-    return workspace.projects.find((project) => project.id === routeProjectId) ?? null;
+    return (
+      workspace.projects.find(
+        (project) => project.id === routeProjectId && !isOptimisticId(project.id),
+      ) ?? null
+    );
   }, [routeProjectId, workspace.projects]);
 
-  const newMarkProject = selectedProject ?? workspace.projects[0] ?? null;
+  const newMarkProject =
+    selectedProject ??
+    workspace.projects.find((project) => !isOptimisticId(project.id)) ??
+    null;
   const isMyMarksPage = filters.assignee === "me";
 
   const visibleMarks = useVisibleDashboardMarks({

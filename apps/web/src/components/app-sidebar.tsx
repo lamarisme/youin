@@ -52,6 +52,7 @@ import { Field } from "@/components/field";
 import { Input } from "@/components/ui/input";
 import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
@@ -273,7 +274,11 @@ export function AppSidebar() {
         />
       </nav>
 
-      <SidebarViewsSection views={views} pathname={pathname} collapsed={collapsed} />
+      <SidebarViewsSection
+        views={views.filter((view) => !isOptimisticId(view.id))}
+        pathname={pathname}
+        collapsed={collapsed}
+      />
 
       {/* Bottom section, desktop */}
       <div className="mt-auto hidden pt-2 lg:block">
@@ -602,18 +607,20 @@ function ProjectSwitcher({
     );
   }, [marks, projects]);
 
+  const navigableProjects = projects.filter((project) => !isOptimisticId(project.id));
   const urlProjectId = searchParams.get("project");
-  const selectedProject = projects.find((project) => project.id === urlProjectId) ?? null;
+  const selectedProject =
+    navigableProjects.find((project) => project.id === urlProjectId) ?? null;
   const selectedProjectId = selectedProject?.id ?? null;
   const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
-  const totalMarks = projects.reduce(
+  const totalMarks = navigableProjects.reduce(
     (sum, project) => sum + (projectStats.get(project.id)?.marks ?? 0),
     0,
   );
-  const switcherLabel = selectedProject?.name ?? (projects.length ? "All projects" : "No project");
+  const switcherLabel = selectedProject?.name ?? (navigableProjects.length ? "All projects" : "No project");
   const switcherMeta = selectedProject
     ? `${selectedStats?.marks ?? 0} mark${(selectedStats?.marks ?? 0) === 1 ? "" : "s"}`
-    : projects.length
+    : navigableProjects.length
       ? `${totalMarks} mark${totalMarks === 1 ? "" : "s"}`
       : "Create a project to start";
 
@@ -709,7 +716,7 @@ function ProjectSwitcher({
           <DropdownMenuLabel className="truncate">
             {workspaceName || "Workspace"}
           </DropdownMenuLabel>
-          {projects.length ? (
+          {navigableProjects.length ? (
             <DropdownMenuItem onClick={selectAllProjects}>
               <Check
                 className={cn(
@@ -725,7 +732,7 @@ function ProjectSwitcher({
               </div>
             </DropdownMenuItem>
           ) : null}
-          {projects.map((project) => {
+          {navigableProjects.map((project) => {
             const stats = projectStats.get(project.id);
             return (
               <DropdownMenuItem

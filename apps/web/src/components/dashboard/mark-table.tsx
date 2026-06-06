@@ -15,6 +15,7 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { formatDateShort } from "@/lib/dates";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
@@ -58,16 +59,26 @@ export function MarkTable(props: MarkTableProps) {
     showSectionHeader = true,
   } = props;
   const selectable = Boolean(selectedIds && onSelectionChange);
-  const selectedCount = selectedIds
-    ? marks.reduce((count, mark) => count + (selectedIds.has(mark.id) ? 1 : 0), 0)
+  const selectableMarksCount = selectable
+    ? marks.filter((mark) => !isOptimisticId(mark.id)).length
     : 0;
-  const allVisibleSelected = selectable && marks.length > 0 && selectedCount === marks.length;
-  const someVisibleSelected = selectable && selectedCount > 0 && selectedCount < marks.length;
+  const selectedCount = selectedIds
+    ? marks.reduce(
+        (count, mark) =>
+          count + (!isOptimisticId(mark.id) && selectedIds.has(mark.id) ? 1 : 0),
+        0,
+      )
+    : 0;
+  const allVisibleSelected =
+    selectable && selectableMarksCount > 0 && selectedCount === selectableMarksCount;
+  const someVisibleSelected =
+    selectable && selectedCount > 0 && selectedCount < selectableMarksCount;
 
   function toggleAllVisible(checked: boolean) {
     if (!selectedIds || !onSelectionChange) return;
     const next = new Set(selectedIds);
     for (const mark of marks) {
+      if (isOptimisticId(mark.id)) continue;
       if (checked) next.add(mark.id);
       else next.delete(mark.id);
     }
@@ -100,6 +111,7 @@ export function MarkTable(props: MarkTableProps) {
                   ? "Deselect all visible marks"
                   : "Select all visible marks"
               }
+              disabled={selectableMarksCount === 0}
               className="size-4"
             />
           ) : null}
@@ -120,14 +132,16 @@ export function MarkTable(props: MarkTableProps) {
 
       <ul role="list" className="divide-y divide-rule/40">
         {marks.map((mark) => {
+          const optimistic = isOptimisticId(mark.id);
           const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
           const commentCount = commentCountByMarkId.get(mark.id) ?? 0;
-          const selected = selectedIds?.has(mark.id) ?? false;
+          const selected = optimistic ? false : selectedIds?.has(mark.id) ?? false;
           const active = activeMarkId === mark.id;
           return (
             <MarkRow
               key={mark.id}
               mark={mark}
+              optimistic={optimistic}
               assignee={assignee}
               labelsById={labelsById}
               workflowStatusesById={workflowStatusesById}
@@ -152,6 +166,7 @@ export function MarkTable(props: MarkTableProps) {
 
 function MarkRow({
   mark,
+  optimistic,
   assignee,
   labelsById,
   workflowStatusesById,
@@ -168,6 +183,7 @@ function MarkRow({
   onToggleSelected,
 }: {
   mark: MarkItem;
+  optimistic: boolean;
   assignee?: TeamMember;
   labelsById: Map<string, WorkspaceLabel>;
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
@@ -193,7 +209,7 @@ function MarkRow({
     "min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30";
 
   function prefetchDetail() {
-    if (href) router.prefetch(href);
+    if (href && !optimistic) router.prefetch(href);
   }
 
   return (
@@ -217,8 +233,17 @@ function MarkRow({
         {selectable ? (
           <Checkbox
             checked={selected}
-            onCheckedChange={(value) => onToggleSelected(value === true)}
-            aria-label={selected ? `Deselect ${mark.title}` : `Select ${mark.title}`}
+            onCheckedChange={(value) => {
+              if (!optimistic) onToggleSelected(value === true);
+            }}
+            disabled={optimistic}
+            aria-label={
+              optimistic
+                ? `${mark.title} is still saving`
+                : selected
+                  ? `Deselect ${mark.title}`
+                  : `Select ${mark.title}`
+            }
             className={cn(
               "size-4 transition-opacity",
               selected || hasSelection
@@ -228,9 +253,13 @@ function MarkRow({
           />
         ) : null}
 
-        <RowStatusToggle mark={mark} label={workflowLabel} onToggle={onToggleStatus} />
+        <RowStatusToggle
+          mark={mark}
+          label={workflowLabel}
+          onToggle={optimistic ? undefined : onToggleStatus}
+        />
 
-        {href ? (
+        {href && !optimistic ? (
           <Link
             href={href}
             prefetch
@@ -251,11 +280,19 @@ function MarkRow({
           <button
             type="button"
             onClick={onSelect}
+            disabled={optimistic || !onSelect}
             aria-label={openLabel}
-            className={openClassName}
+            className={cn(openClassName, optimistic && "cursor-default opacity-75")}
           >
             <span className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
+              <span
+                className={cn(
+                  "shrink-0 font-mono text-ui-xs text-ink-3",
+                  optimistic && "animate-pulse",
+                )}
+              >
+                {mark.displayKey}
+              </span>
               <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
                 {mark.title}
               </span>

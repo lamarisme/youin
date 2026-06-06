@@ -32,6 +32,7 @@ import { useTheme } from "@/components/theme-provider";
 import { DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
@@ -267,24 +268,28 @@ function CommandPaletteDialog({
         run: () => toggleTheme(),
       },
     ];
-    const projectCommands: PaletteCommand[] = projects.map((project) => ({
-      id: `project-${project.id}`,
-      title: project.name,
-      subtitle: t("projectSub"),
-      group: "projects" as const,
-      keywords: ["project", "jump"],
-      icon: Hash,
-      run: () => router.push(`/dashboard?project=${project.id}`),
-    }));
-    const viewCommands: PaletteCommand[] = views.map((view) => ({
-      id: `view-${view.id}`,
-      title: view.name,
-      subtitle: `${viewLayoutLabel(view.layout)} view`,
-      group: "views" as const,
-      keywords: ["view", view.layout],
-      icon: View,
-      run: () => router.push(`/views/${view.id}`),
-    }));
+    const projectCommands: PaletteCommand[] = projects
+      .filter((project) => !isOptimisticId(project.id))
+      .map((project) => ({
+        id: `project-${project.id}`,
+        title: project.name,
+        subtitle: t("projectSub"),
+        group: "projects" as const,
+        keywords: ["project", "jump"],
+        icon: Hash,
+        run: () => router.push(`/dashboard?project=${project.id}`),
+      }));
+    const viewCommands: PaletteCommand[] = views
+      .filter((view) => !isOptimisticId(view.id))
+      .map((view) => ({
+        id: `view-${view.id}`,
+        title: view.name,
+        subtitle: `${viewLayoutLabel(view.layout)} view`,
+        group: "views" as const,
+        keywords: ["view", view.layout],
+        icon: View,
+        run: () => router.push(`/views/${view.id}`),
+      }));
     const markCommands: PaletteCommand[] = marks.map((mark) => ({
       id: `mark-${mark.id}`,
       title: `${mark.displayKey} ${mark.title}`,

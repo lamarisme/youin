@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
 import type { WorkspaceReviewLink } from "@/lib/collab-types";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCancelInviteMutation,
@@ -93,7 +94,8 @@ export function TeamTab() {
       ? "Username must be at least 2 characters."
       : null;
   const usernameFieldError = usernameError ?? usernameLengthError;
-  const defaultReviewProjectId = projects[0]?.id ?? "";
+  const reviewProjects = projects.filter((project) => !isOptimisticId(project.id));
+  const defaultReviewProjectId = reviewProjects[0]?.id ?? "";
   const [reviewLinkName, setReviewLinkName] = useState("");
   const [reviewTargetOrigin, setReviewTargetOrigin] = useState("");
   const [reviewProjectId, setReviewProjectId] = useState(defaultReviewProjectId);
@@ -335,8 +337,8 @@ export function TeamTab() {
                   onChange={(e) => setReviewProjectId(e.target.value)}
                   className="mt-1 h-10 w-full rounded-md border-0 bg-paper-elevated px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper-3 focus:ring-2 focus:ring-mark/20"
                 >
-                  {projects.length > 0 ? (
-                    projects.map((project) => (
+                  {reviewProjects.length > 0 ? (
+                    reviewProjects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.name}
                       </option>

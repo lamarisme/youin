@@ -36,6 +36,7 @@ import type {
   WorkspaceViewLayout,
 } from "@/lib/collab-types";
 import { formatRelative } from "@/lib/dates";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import {
   useCreateWorkspaceViewMutation,
   useDeleteWorkspaceViewMutation,
@@ -257,30 +258,44 @@ function ViewRow({
   view: WorkspaceView;
   onDelete: () => void;
 }) {
+  const saving = isOptimisticId(view.id);
+  const content = (
+    <>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3 group-hover:bg-paper-3">
+        <ViewLayoutIcon layout={view.layout} className="size-4" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="truncate text-ui-sm font-medium text-ink">{view.name}</span>
+          <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
+            {saving ? "Saving" : viewLayoutLabel(view.layout)}
+          </span>
+        </span>
+        <span className="mt-0.5 block truncate text-ui-xs text-ink-3">
+          {describeWorkspaceViewFilters(view.filters)} ·{" "}
+          {saving ? "Saving now" : `Updated ${formatRelative(view.updatedAt)}`}
+        </span>
+      </span>
+    </>
+  );
   return (
     <div className="group flex min-h-16 items-center gap-3 px-3 py-3 transition-colors hover:bg-paper-2">
-      <Link href={`/views/${view.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3 group-hover:bg-paper-3">
-          <ViewLayoutIcon layout={view.layout} className="size-4" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate text-ui-sm font-medium text-ink">{view.name}</span>
-            <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
-              {viewLayoutLabel(view.layout)}
-            </span>
-          </span>
-          <span className="mt-0.5 block truncate text-ui-xs text-ink-3">
-            {describeWorkspaceViewFilters(view.filters)} · Updated {formatRelative(view.updatedAt)}
-          </span>
-        </span>
-      </Link>
+      {saving ? (
+        <div className="flex min-w-0 flex-1 items-center gap-3 rounded-md opacity-75">
+          {content}
+        </div>
+      ) : (
+        <Link href={`/views/${view.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+          {content}
+        </Link>
+      )}
       <Button
         type="button"
         size="icon"
         variant="ghost"
         className="size-8 shrink-0 text-ink-3 opacity-70 hover:text-mark sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
         onClick={onDelete}
+        disabled={saving}
         aria-label={`Delete view ${view.name}`}
       >
         <Trash2 className="size-3.5" aria-hidden />

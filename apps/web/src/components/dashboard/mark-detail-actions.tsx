@@ -22,6 +22,7 @@ import type {
   TeamMember,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import {
   useAssignMarkMutation,
   useSetMarkWorkflowStatusMutation,
@@ -64,6 +65,12 @@ export function MarkDetailActions({
   const { mutate: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutate: assignMark } = useAssignMarkMutation();
   const { mutate: updateMark } = useUpdateMarkMutation();
+  const projectOptions = projects
+    .filter((project) => !isOptimisticId(project.id))
+    .map((project) => ({
+      value: project.id,
+      label: project.name,
+    }));
   const workflowStatusOptions = workflowStatuses.map((status) => ({
     value: status.id,
     label: status.name,
@@ -177,10 +184,7 @@ export function MarkDetailActions({
             if (v === mark.projectId) return;
             updateMark({ markId: mark.id, updates: { projectId: v } });
           }}
-          options={projects.map((project) => ({
-            value: project.id,
-            label: project.name,
-          }))}
+          options={projectOptions}
           ariaLabel="Mark project"
           triggerClassName={cn(
             "h-8 px-1.5 text-ui-sm",

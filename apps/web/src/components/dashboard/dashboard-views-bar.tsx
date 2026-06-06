@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { WorkspaceView, WorkspaceViewConfig, WorkspaceViewFilters } from "@/lib/collab-types";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { useCreateWorkspaceViewMutation } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
 import {
@@ -225,9 +226,14 @@ export function DashboardViewsBar({
         <ViewChip
           key={view.id}
           label={view.name}
-          title={describeWorkspaceViewFilters(view.filters)}
+          title={
+            isOptimisticId(view.id)
+              ? "Saving view"
+              : describeWorkspaceViewFilters(view.filters)
+          }
           icon={View}
           active={activeWorkspaceViewId === view.id}
+          disabled={isOptimisticId(view.id)}
           onClick={() => applyWorkspaceView(view)}
         />
       ))}

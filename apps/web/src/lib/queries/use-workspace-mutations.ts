@@ -10,6 +10,7 @@ import type {
   MarkEvent,
   MarkItem,
   MarkPriority,
+  MarkStatus,
   Workspace,
   WorkspaceLabel,
   WorkspaceProject,
@@ -20,6 +21,7 @@ import type {
   WorkspaceViewLayout,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { createOptimisticId } from "@/lib/optimistic-id";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
   getWorkspaceQueryData,
@@ -28,13 +30,18 @@ import {
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
-import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-statuses";
+import {
+  defaultWorkflowStatusForLifecycle,
+  normalizeWorkflowStatusColor,
+} from "@/lib/workspace/workflow-statuses";
+import { workspaceViewPayload } from "@/lib/workspace/views";
 import * as ws from "@/lib/workspace/actions";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
 type MutationContext = {
   previous?: WorkspaceBootstrap;
+  optimisticId?: string;
 };
 
 function invalidateWorkspace(queryClient: ReturnType<typeof useQueryClient>) {
@@ -69,6 +76,33 @@ function updateBundle(
 
 function snapshot(queryClient: ReturnType<typeof useQueryClient>): MutationContext {
   return { previous: getWorkspaceQueryData(queryClient) };
+}
+
+async function prepareOptimisticMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<MutationContext> {
+  await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
+  return snapshot(queryClient);
+}
+
+function replaceOptimisticOrAppend<T extends { id: string }>(
+  items: readonly T[],
+  item: T,
+  optimisticId: string | undefined,
+): { items: T[]; appended: boolean } {
+  let replaced = false;
+  const next = items.map((existing) => {
+    if (existing.id === item.id || (optimisticId && existing.id === optimisticId)) {
+      replaced = true;
+      return item;
+    }
+    return existing;
+  });
+  return replaced ? { items: next, appended: false } : { items: [...next, item], appended: true };
+}
+
+function optimisticCreatedAt(): string {
+  return new Date().toISOString();
 }
 
 function labelFromCreated(created: ws.CreatedLabel): WorkspaceLabel {
@@ -113,17 +147,47 @@ export function useCreateWorkspaceViewMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ws.createWorkspaceViewAction,
-    onSuccess: (view: WorkspaceView) => {
+    onMutate: async (input) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const name = input.name.trim();
+      if (!name) return context;
+      const optimisticId = createOptimisticId("view");
+      const now = optimisticCreatedAt();
+      context.optimisticId = optimisticId;
+      updateWorkspace(queryClient, (workspace, bundle) => {
+        const payload = workspaceViewPayload(input.layout, input.filters, input.config);
+        return {
+          ...workspace,
+          views: [
+            ...workspace.views,
+            {
+              id: optimisticId,
+              name: name.slice(0, 80),
+              ...payload,
+              createdByUserId: bundle.userId,
+              createdAt: now,
+              updatedAt: now,
+            },
+          ],
+        };
+      });
+      return context;
+    },
+    onSuccess: (view: WorkspaceView, _vars, context) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        views: workspace.views.some((item) => item.id === view.id)
-          ? workspace.views
-          : [...workspace.views, view],
+        views: replaceOptimisticOrAppend(
+          workspace.views,
+          view,
+          context?.optimisticId,
+        ).items,
       }));
       toast.success(`Created “${view.name}”.`);
     },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this view.")),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't create this view."));
+    },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
@@ -142,8 +206,7 @@ export function useUpdateWorkspaceViewMutation() {
       config?: Partial<WorkspaceViewConfig> | null;
     }) => ws.updateWorkspaceViewAction(viewId, input),
     onMutate: async ({ viewId, name, layout, filters, config }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         views: workspace.views.map((view) =>
@@ -181,8 +244,7 @@ export function useDeleteWorkspaceViewMutation() {
     mutationFn: ({ viewId }: { viewId: string; name?: string }) =>
       ws.deleteWorkspaceViewAction(viewId),
     onMutate: async ({ viewId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         views: workspace.views.filter((view) => view.id !== viewId),
@@ -208,15 +270,46 @@ export function useCreateProjectMutation() {
   return useMutation({
     mutationFn: ({ name, description }: { name: string; description?: string }) =>
       ws.createProjectAction(name, description),
-    onSuccess: (project: WorkspaceProject) => {
+    onMutate: async ({ name, description }) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const trimmed = name.trim();
+      if (!trimmed) return context;
+      const optimisticId = createOptimisticId("project");
+      context.optimisticId = optimisticId;
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        projects: [...workspace.projects, { ...project, markCount: project.markCount ?? 0 }],
+        projects: [
+          ...workspace.projects,
+          {
+            id: optimisticId,
+            name: trimmed,
+            description: description?.trim() ?? "",
+            createdAt: optimisticCreatedAt(),
+            markCount: 0,
+          },
+        ],
+      }));
+      return context;
+    },
+    onSuccess: (project: WorkspaceProject, _vars, context) => {
+      const normalizedProject = {
+        ...project,
+        markCount: project.markCount ?? 0,
+      };
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        projects: replaceOptimisticOrAppend(
+          workspace.projects,
+          normalizedProject,
+          context?.optimisticId,
+        ).items,
       }));
       toast.success(`Created “${project.name}”.`);
     },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this project.")),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't create this project."));
+    },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
@@ -258,16 +351,63 @@ export function useCreateMarkMutation() {
         createdAt: created.createdAt,
       };
     },
-    onSuccess: (mark) => {
-      updateWorkspace(queryClient, (workspace) => ({
-        ...workspace,
-        projects: adjustProjectMarkCount(workspace.projects, mark.projectId, 1),
-        marks: [...workspace.marks, mark],
-      }));
+    onMutate: async (input) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const title = input.title.trim();
+      if (!title) return context;
+      const optimisticId = createOptimisticId("mark");
+      context.optimisticId = optimisticId;
+      updateWorkspace(queryClient, (workspace) => {
+        const workflowStatus =
+          defaultWorkflowStatusForLifecycle(workspace.workflowStatuses, "open") ??
+          workspace.workflowStatuses.find((status) => status.lifecycleStatus === "open") ??
+          workspace.workflowStatuses[0];
+        const mark: MarkItem = {
+          id: optimisticId,
+          projectId: input.projectId,
+          seq: 0,
+          displayKey: "Saving",
+          title,
+          page: normalizeMarkPageUrl(input.page),
+          description: input.description || "",
+          status: "open",
+          workflowStatusId: workflowStatus?.id ?? "",
+          priority: input.priority ?? "medium",
+          pinned: false,
+          labelIds: Array.from(new Set(input.labelIds)),
+          commentCount: 0,
+          assigneeId: input.assigneeId ?? undefined,
+          createdAt: optimisticCreatedAt(),
+        };
+        return {
+          ...workspace,
+          projects: adjustProjectMarkCount(workspace.projects, input.projectId, 1),
+          marks: [mark, ...workspace.marks],
+        };
+      });
+      return context;
+    },
+    onSuccess: (mark, _vars, context) => {
+      updateWorkspace(queryClient, (workspace) => {
+        const result = replaceOptimisticOrAppend(
+          workspace.marks,
+          mark,
+          context?.optimisticId,
+        );
+        return {
+          ...workspace,
+          projects: result.appended
+            ? adjustProjectMarkCount(workspace.projects, mark.projectId, 1)
+            : workspace.projects,
+          marks: result.items,
+        };
+      });
       toast.success(`Created ${mark.displayKey}.`);
     },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this mark.")),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't create this mark."));
+    },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
@@ -277,8 +417,7 @@ export function useToggleMarkStatusMutation() {
   return useMutation({
     mutationFn: ws.toggleMarkStatusAction,
     onMutate: async (markId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) => {
@@ -309,8 +448,7 @@ export function useToggleMarkPinnedMutation() {
   return useMutation({
     mutationFn: ws.toggleMarkPinnedAction,
     onMutate: async (markId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) =>
@@ -338,8 +476,7 @@ export function useUpdateMarkPriorityMutation() {
       priority: MarkPriority;
     }) => ws.updateMarkPriorityAction(markId, priority),
     onMutate: async ({ markId, priority }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) =>
@@ -361,8 +498,7 @@ export function useDeleteMarkMutation() {
   return useMutation({
     mutationFn: ws.deleteMarkAction,
     onMutate: async (markId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => {
         const deleted = workspace.marks.find((mark) => mark.id === markId);
         return {
@@ -402,8 +538,7 @@ export function useUpdateMarkMutation() {
       };
     }) => ws.updateMarkFieldsAction(markId, updates),
     onMutate: async ({ markId, updates }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => {
         const existing = workspace.marks.find((mark) => mark.id === markId);
         const nextProjectId = updates.projectId;
@@ -460,8 +595,7 @@ export function useAssignMarkMutation() {
       assigneeId: string | null;
     }) => ws.assignMarkAction(markId, assigneeId),
     onMutate: async ({ markId, assigneeId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) =>
@@ -484,8 +618,7 @@ export function useSetMarkLabelsMutation() {
     mutationFn: ({ markId, labelIds }: { markId: string; labelIds: string[] }) =>
       ws.setMarkLabelsAction(markId, labelIds),
     onMutate: async ({ markId, labelIds }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       const nextLabelIds = Array.from(new Set(labelIds));
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
@@ -514,8 +647,7 @@ export function useSetMarkWorkflowStatusMutation() {
       workflowStatusId: string;
     }) => ws.setMarkWorkflowStatusAction(markId, workflowStatusId),
     onMutate: async ({ markId, workflowStatusId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => {
         const workflowStatus = workflowStatusById(
           workspace.workflowStatuses,
@@ -584,8 +716,7 @@ export function useAddCommentsMutation() {
       return comments;
     },
     onMutate: async (comments) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) =>
@@ -614,8 +745,7 @@ export function useUpdateCommentMutation() {
     mutationFn: ({ commentId, body }: { commentId: string; body: string }) =>
       ws.updateMarkCommentAction(commentId, body),
     onMutate: async ({ commentId, body }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         comments: workspace.comments.map((comment) =>
@@ -637,8 +767,7 @@ export function useDeleteCommentMutation() {
   return useMutation({
     mutationFn: ws.deleteMarkCommentAction,
     onMutate: async (commentId) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         marks: workspace.marks.map((mark) =>
@@ -673,8 +802,7 @@ export function useUpdateProfileMutation() {
   return useMutation({
     mutationFn: ws.updateProfileAction,
     onMutate: async (updates: ProfileUpdates) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateBundle(queryClient, (bundle) => ({
         ...bundle,
         profile: {
@@ -714,8 +842,7 @@ export function useUpdateMyWorkspaceUsernameMutation() {
   return useMutation({
     mutationFn: ws.updateMyWorkspaceUsernameAction,
     onMutate: async (username) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       const normalized = username.trim().toLowerCase();
       updateWorkspace(queryClient, (workspace, bundle) => ({
         ...workspace,
@@ -739,8 +866,7 @@ export function useUpdateWorkspaceMutation() {
   return useMutation({
     mutationFn: ws.updateWorkspaceAction,
     onMutate: async (updates: { name: string }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         name: updates.name.trim(),
@@ -760,17 +886,50 @@ export function useCreateWorkflowStatusMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ws.createWorkflowStatusAction,
-    onSuccess: (status) => {
+    onMutate: async (input) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const name = input.name.trim().replace(/\s+/g, " ");
+      if (!name) return context;
+      const optimisticId = createOptimisticId("workflow-status");
+      context.optimisticId = optimisticId;
+      updateWorkspace(queryClient, (workspace) => {
+        const position =
+          Math.max(-1, ...workspace.workflowStatuses.map((status) => status.position)) + 1;
+        const lifecycleStatus: MarkStatus =
+          input.lifecycleStatus === "closed" ? "closed" : "open";
+        return {
+          ...workspace,
+          workflowStatuses: [
+            ...workspace.workflowStatuses,
+            {
+              id: optimisticId,
+              name: name.slice(0, 40),
+              color: normalizeWorkflowStatusColor(input.color),
+              lifecycleStatus,
+              position,
+              isDefaultOpen: false,
+              isDefaultClosed: false,
+            },
+          ],
+        };
+      });
+      return context;
+    },
+    onSuccess: (status, _vars, context) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        workflowStatuses: workspace.workflowStatuses.some((item) => item.id === status.id)
-          ? workspace.workflowStatuses
-          : [...workspace.workflowStatuses, status],
+        workflowStatuses: replaceOptimisticOrAppend(
+          workspace.workflowStatuses,
+          status,
+          context?.optimisticId,
+        ).items,
       }));
       toast.success(`Created “${status.name}”.`);
     },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this workflow status.")),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't create this workflow status."));
+    },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
@@ -784,8 +943,7 @@ export function useUpdateWorkflowStatusMutation() {
     }: ws.WorkflowStatusUpdateInput & { statusId: string }) =>
       ws.updateWorkflowStatusAction(statusId, input),
     onMutate: async ({ statusId, ...input }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         workflowStatuses: workspace.workflowStatuses.map((status) => {
@@ -832,8 +990,7 @@ export function useArchiveWorkflowStatusMutation() {
     mutationFn: ({ statusId }: { statusId: string; name?: string }) =>
       ws.archiveWorkflowStatusAction(statusId),
     onMutate: async ({ statusId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => {
         const archived = workflowStatusById(workspace.workflowStatuses, statusId);
         const fallback =
@@ -881,8 +1038,7 @@ export function useInviteMemberMutation() {
   return useMutation({
     mutationFn: ws.inviteMemberAction,
     onMutate: async (email) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       const trimmed = email.trim().toLowerCase();
       updateWorkspace(queryClient, (workspace, bundle) => ({
         ...workspace,
@@ -916,8 +1072,7 @@ export function useCancelInviteMutation() {
     mutationFn: ({ inviteId }: { inviteId: string; email?: string }) =>
       ws.cancelInviteAction(inviteId),
     onMutate: async ({ inviteId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         invites: workspace.invites.filter((invite) => invite.id !== inviteId),
@@ -963,8 +1118,7 @@ export function useRevokeReviewLinkMutation() {
     mutationFn: ({ linkId }: { linkId: string; name?: string }) =>
       ws.revokeReviewLinkAction(linkId),
     onMutate: async ({ linkId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         reviewLinks: workspace.reviewLinks.map((link) =>
@@ -995,8 +1149,7 @@ export function useRemoveMemberMutation() {
       name?: string;
     }) => ws.removeMemberAction(memberUserId),
     onMutate: async ({ memberUserId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         members: workspace.members.filter((member) => member.id !== memberUserId),
@@ -1028,18 +1181,41 @@ export function useCreateLabelMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ws.createLabelAction,
-    onSuccess: (created, name) => {
+    onMutate: async (name) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const trimmed = name.trim();
+      if (!trimmed) return context;
+      const optimisticId = createOptimisticId("label");
+      context.optimisticId = optimisticId;
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        labels: [
+          ...workspace.labels,
+          {
+            id: optimisticId,
+            name: trimmed,
+            colorClass: labelColorClass(optimisticId),
+          },
+        ],
+      }));
+      return context;
+    },
+    onSuccess: (created, name, context) => {
       const label = labelFromCreated(created);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        labels: workspace.labels.some((item) => item.id === label.id)
-          ? workspace.labels
-          : [...workspace.labels, label],
+        labels: replaceOptimisticOrAppend(
+          workspace.labels,
+          label,
+          context?.optimisticId,
+        ).items,
       }));
       toast.success(`Created label “${name.trim()}”.`);
     },
-    onError: (e) =>
-      toast.error(actionErrorMessage(e, "Couldn't create this label.")),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't create this label."));
+    },
     onSettled: () => invalidateWorkspace(queryClient),
   });
 }
@@ -1050,8 +1226,7 @@ export function useDeleteLabelMutation() {
     mutationFn: ({ labelId }: { labelId: string; name?: string }) =>
       ws.deleteLabelAction(labelId),
     onMutate: async ({ labelId }) => {
-      await queryClient.cancelQueries({ queryKey: workspaceKeys.bootstrap() });
-      const context = snapshot(queryClient);
+      const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         labels: workspace.labels.filter((label) => label.id !== labelId),

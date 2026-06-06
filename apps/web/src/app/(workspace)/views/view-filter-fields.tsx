@@ -16,6 +16,7 @@ import type {
   WorkspaceViewPriorityFilter,
   WorkspaceViewStatusFilter,
 } from "@/lib/collab-types";
+import { isOptimisticId } from "@/lib/optimistic-id";
 
 type ViewFilterPatch = Partial<WorkspaceViewFilters>;
 
@@ -35,10 +36,12 @@ export function ViewScopeFields({
   const projectOptions = useMemo<ReadonlyArray<FilterOption>>(
     () => [
       { value: "all", label: "All projects" },
-      ...workspace.projects.map((project) => ({
-        value: project.id,
-        label: project.name,
-      })),
+      ...workspace.projects
+        .filter((project) => !isOptimisticId(project.id))
+        .map((project) => ({
+          value: project.id,
+          label: project.name,
+        })),
     ],
     [workspace.projects],
   );
