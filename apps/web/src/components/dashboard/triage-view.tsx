@@ -6,10 +6,17 @@ import {
   CircleDashed,
   Folder,
   Link2,
+  Loader2,
   Plus,
   UserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
@@ -33,6 +40,9 @@ import type {
   WorkspaceProject,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import type {
+  DashboardScopeCounts,
+} from "@/lib/workspace/dashboard-query";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
@@ -45,6 +55,7 @@ import {
 import { buildBulkMarksAiPrompt } from "@/lib/workspace/mark-ai-prompt";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 import { markHref } from "@/lib/workspace/routes";
+import { cn } from "@/lib/utils";
 
 import { BulkActionBar } from "./bulk-action-bar";
 import { DashboardViewsBar } from "./dashboard-views-bar";
@@ -68,8 +79,16 @@ export function TriageView() {
   const { mutateAsync: updateMarkPriority } = useUpdateMarkPriorityMutation();
   const { mutateAsync: deleteMark } = useDeleteMarkMutation();
   const { mutate: logPromptCopy } = useLogMarkPromptCopyMutation();
-  const { pagination, scopeCounts } = useDashboardReadModel();
-  const { filters, update } = useDashboardFilters();
+  const {
+    pagination,
+    isFetching,
+    isPlaceholderData,
+  } = useDashboardReadModel();
+  const {
+    filters,
+    update,
+    isPending: isFilterTransitionPending,
+  } = useDashboardFilters();
   const router = useRouter();
   const searchParams = useSearchParams();
   const routeProjectId = searchParams.get("project");
@@ -94,16 +113,47 @@ export function TriageView() {
     null;
   const isMyMarksPage = filters.assignee === "me";
 
-  const visibleMarks = useVisibleDashboardMarks({
+  const currentVisibleMarks = useVisibleDashboardMarks({
     marks: workspace.marks,
     filters,
     viewerId: userId,
   });
+  const scopeCounts = useMemo(
+    () =>
+      dashboardScopeCountsFromMarks(
+        workspace.marks,
+        filters.projectId === "all" ? null : filters.projectId,
+        userId,
+      ),
+    [filters.projectId, userId, workspace.marks],
+  );
+  const isDashboardUpdating =
+    isFilterTransitionPending || isFetching || isPlaceholderData;
+  const rowFilters = filters;
+  const visibleMarks = currentVisibleMarks;
+  const rowPagination = pagination;
+  const rowSelectedProject = useMemo(() => {
+    if (rowFilters.projectId === "all") return null;
+    return (
+      workspace.projects.find(
+        (project) => project.id === rowFilters.projectId && !isOptimisticId(project.id),
+      ) ?? null
+    );
+  }, [rowFilters.projectId, workspace.projects]);
+  const rowIsMyMarksPage = rowFilters.assignee === "me";
   const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
+  const scopedSelectedIds = useMemo(
+    () => pruneSelectedIds(selectedIds, visibleMarks),
+    [selectedIds, visibleMarks],
+  );
+  if (scopedSelectedIds !== selectedIds) {
+    setSelectedIds(scopedSelectedIds);
+  }
+
   const selectedMarks = useMemo(
-    () => visibleMarks.filter((p) => selectedIds.has(p.id)),
-    [visibleMarks, selectedIds],
+    () => visibleMarks.filter((p) => scopedSelectedIds.has(p.id)),
+    [visibleMarks, scopedSelectedIds],
   );
   const allSelectedClosed = selectedMarks.length > 0 && selectedMarks.every((p) => p.status === "closed");
 
@@ -153,21 +203,21 @@ export function TriageView() {
     return () => window.removeEventListener("youin:new-mark", openNewMark);
   }, [setNewMarkDialogOpen]);
 
-  const totalPages = pagination.enabled
-    ? pagination.totalPages
-    : Math.max(1, Math.ceil(visibleMarks.length / pagination.pageSize));
-  const displayPage = pagination.enabled
-    ? pagination.page
-    : Math.min(Math.max(1, filters.page), totalPages);
+  const totalPages = rowPagination.enabled
+    ? rowPagination.totalPages
+    : Math.max(1, Math.ceil(visibleMarks.length / rowPagination.pageSize));
+  const displayPage = rowPagination.enabled
+    ? rowPagination.page
+    : Math.min(Math.max(1, rowFilters.page), totalPages);
   const paginatedMarks = useMemo(
     () =>
-      pagination.enabled
+      rowPagination.enabled
         ? visibleMarks
         : visibleMarks.slice(
-            (displayPage - 1) * pagination.pageSize,
-            (displayPage - 1) * pagination.pageSize + pagination.pageSize,
+            (displayPage - 1) * rowPagination.pageSize,
+            (displayPage - 1) * rowPagination.pageSize + rowPagination.pageSize,
           ),
-    [visibleMarks, displayPage, pagination.enabled, pagination.pageSize],
+    [visibleMarks, displayPage, rowPagination.enabled, rowPagination.pageSize],
   );
   const {
     membersById,
@@ -178,11 +228,11 @@ export function TriageView() {
   } = useMarkTableModel(workspace);
   const groupedMarks = useMemo(
     () =>
-      filters.groupBy === "none"
+      rowFilters.groupBy === "none"
         ? []
         : groupDashboardMarks({
             marks: visibleMarks,
-            groupBy: filters.groupBy,
+            groupBy: rowFilters.groupBy,
             membersById,
             projectsById,
             workflowStatusesById,
@@ -190,13 +240,15 @@ export function TriageView() {
           }),
     [
       visibleMarks,
-      filters.groupBy,
+      rowFilters.groupBy,
       membersById,
       projectsById,
       workflowStatusesById,
       displayNamePreference,
     ],
   );
+  const showUpdatingPlaceholder =
+    isDashboardUpdating && visibleMarks.length === 0;
 
   /** Receives the full new selection set from MarkTable. */
   function handleSelectionChange(ids: Set<string>) {
@@ -340,6 +392,7 @@ export function TriageView() {
                 filters={filters}
                 labels={workspace.labels}
                 lockedAssignee={isMyMarksPage ? "me" : undefined}
+                isUpdating={isDashboardUpdating}
                 showAppliedFilters={visibleMarks.length > 0}
                 onChange={update}
               />
@@ -370,8 +423,22 @@ export function TriageView() {
             </DialogContent>
           </Dialog>
 
-          <div className="overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60">
-            {visibleMarks.length === 0 ? (
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60",
+              isDashboardUpdating && "ring-mark/20",
+            )}
+            aria-busy={isDashboardUpdating || undefined}
+          >
+            {isDashboardUpdating && visibleMarks.length > 0 ? (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-mark/70 motion-safe:animate-pulse"
+              />
+            ) : null}
+            {showUpdatingPlaceholder ? (
+              <DashboardListUpdatingState />
+            ) : visibleMarks.length === 0 ? (
               <EmptyState
                 variant="plain"
                 className="rounded-none border-0 px-6 py-16"
@@ -402,7 +469,7 @@ export function TriageView() {
                   )
                 }
               />
-            ) : filters.groupBy !== "none" ? (
+            ) : rowFilters.groupBy !== "none" ? (
               <GroupedMarkTables
                 groups={groupedMarks}
                 membersById={membersById}
@@ -410,8 +477,8 @@ export function TriageView() {
                 workflowStatusesById={workflowStatusesById}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
-                density={filters.density === "compact" ? "compact" : "default"}
-                selectedIds={selectedIds}
+                density={rowFilters.density === "compact" ? "compact" : "default"}
+                selectedIds={scopedSelectedIds}
                 onSelectionChange={handleSelectionChange}
                 markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
                 onToggleMarkStatus={handleRowToggleStatus}
@@ -425,20 +492,20 @@ export function TriageView() {
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
                 sectionTitle={listSectionTitle({
-                  filters,
-                  selectedProjectName: selectedProject?.name,
-                  isMyMarksPage,
+                  filters: rowFilters,
+                  selectedProjectName: rowSelectedProject?.name,
+                  isMyMarksPage: rowIsMyMarksPage,
                 })}
-                density={filters.density === "compact" ? "compact" : "default"}
+                density={rowFilters.density === "compact" ? "compact" : "default"}
                 markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
                 onToggleMarkStatus={handleRowToggleStatus}
-                selectedIds={selectedIds}
+                selectedIds={scopedSelectedIds}
                 onSelectionChange={handleSelectionChange}
               />
             )}
           </div>
 
-          {(pagination.enabled ? pagination.totalItems > 0 : visibleMarks.length > 0) && filters.groupBy === "none" ? (
+          {(rowPagination.enabled ? rowPagination.totalItems > 0 : visibleMarks.length > 0) && rowFilters.groupBy === "none" ? (
             <Pagination
               page={displayPage}
               totalPages={totalPages}
@@ -473,6 +540,18 @@ type GroupedMarkSection = {
   icon: ReactNode;
   marks: MarkItem[];
 };
+
+function DashboardListUpdatingState() {
+  return (
+    <div
+      role="status"
+      className="flex min-h-56 flex-col items-center justify-center gap-2 px-6 py-16 text-center text-ink-3"
+    >
+      <Loader2 className="size-4 animate-spin" aria-hidden />
+      <p className="text-ui-sm font-medium text-ink-2">Updating marks</p>
+    </div>
+  );
+}
 
 function GroupedMarkTables({
   groups,
@@ -634,4 +713,55 @@ function listSectionTitle({
   if (filters.assignee === "unassigned") return "Unassigned";
   if (filters.assignee === "me") return "Mine";
   return "All marks";
+}
+
+function pruneSelectedIds(
+  selectedIds: Set<string>,
+  visibleMarks: readonly MarkItem[],
+): Set<string> {
+  if (selectedIds.size === 0) return selectedIds;
+  const visibleIds = new Set(
+    visibleMarks
+      .filter((mark) => !isOptimisticId(mark.id))
+      .map((mark) => mark.id),
+  );
+  let changed = false;
+  const next = new Set<string>();
+  for (const id of selectedIds) {
+    if (visibleIds.has(id)) {
+      next.add(id);
+    } else {
+      changed = true;
+    }
+  }
+  return changed ? next : selectedIds;
+}
+
+function dashboardScopeCountsFromMarks(
+  marks: readonly MarkItem[],
+  projectId: string | null,
+  viewerId: string | null,
+): DashboardScopeCounts {
+  const scopedMarks = projectId
+    ? marks.filter((mark) => mark.projectId === projectId)
+    : marks;
+  return scopedMarks.reduce<DashboardScopeCounts>(
+    (counts, mark) => {
+      counts.total += 1;
+      if (mark.status !== "open") return counts;
+
+      counts.open += 1;
+      if (mark.priority === "critical") counts.critical += 1;
+      if (viewerId && mark.assigneeId === viewerId) counts.mine += 1;
+      if (!mark.assigneeId) counts.unassigned += 1;
+      return counts;
+    },
+    {
+      open: 0,
+      critical: 0,
+      mine: 0,
+      unassigned: 0,
+      total: 0,
+    },
+  );
 }

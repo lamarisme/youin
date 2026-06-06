@@ -9,6 +9,12 @@ const appDir = dirname(fileURLToPath(import.meta.url));
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: join(appDir, "../.."),
+  experimental: {
+    staleTimes: {
+      dynamic: 60,
+      static: 300,
+    },
+  },
 };
 
 export default withNextIntl(nextConfig);

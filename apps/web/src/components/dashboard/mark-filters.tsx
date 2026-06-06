@@ -3,6 +3,7 @@
 import {
   Check,
   ListFilter,
+  Loader2,
   Search,
   UserCheck,
   UserRound,
@@ -45,6 +46,7 @@ interface MarkFiltersProps {
   filters: DashboardFilters;
   labels: WorkspaceLabel[];
   lockedAssignee?: AssigneeFilter;
+  isUpdating?: boolean;
   showAppliedFilters?: boolean;
   onChange: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
@@ -53,6 +55,7 @@ export function MarkFilters({
   filters,
   labels,
   lockedAssignee,
+  isUpdating = false,
   showAppliedFilters = true,
   onChange,
 }: MarkFiltersProps) {
@@ -214,7 +217,10 @@ export function MarkFilters({
   const assigneeActiveClass = "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated";
 
   return (
-    <div className="w-full space-y-1.5">
+    <div
+      className="w-full space-y-1.5"
+      aria-busy={isUpdating || undefined}
+    >
       <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-b border-rule/70 pb-2">
         <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
@@ -427,6 +433,16 @@ export function MarkFilters({
             </div>
           </DialogContent>
         </Dialog>
+
+        {isUpdating ? (
+          <span
+            role="status"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-3"
+          >
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            <span className="sr-only">Updating marks</span>
+          </span>
+        ) : null}
       </div>
 
       {showAppliedFilters && activeFilters.length > 0 ? (

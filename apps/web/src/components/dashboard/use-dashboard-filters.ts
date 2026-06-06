@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useTransition } from "react";
 import {
   parseAsInteger,
   parseAsString,
@@ -63,13 +63,15 @@ const dashboardFilterParsers = {
 };
 
 export function useDashboardFilters() {
+  const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useQueryStates(dashboardFilterParsers, {
     urlKeys: {
       projectId: "project",
       markId: "mark",
       groupBy: "group",
     },
-    shallow: false,
+    shallow: true,
+    startTransition,
   });
 
   const update = useCallback(
@@ -85,5 +87,5 @@ export function useDashboardFilters() {
     [setFilters],
   );
 
-  return { filters, update };
+  return { filters, update, isPending };
 }

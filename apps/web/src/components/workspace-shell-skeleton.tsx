@@ -90,86 +90,37 @@ function DashboardFiltersSkeleton() {
   return (
     <div aria-hidden="true" className="w-full space-y-1.5">
       <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-b border-rule/70 pb-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {["w-[4.75rem]", "w-[5.75rem]", "w-[4.5rem]", "w-[7rem]"].map((width, index) => (
-            <ShimmerBar key={`dashboard-attention-${String(index)}`} className={cn("h-8 rounded-md", width)} />
-          ))}
-        </div>
         <ShimmerBar className="h-9 min-w-[min(100%,13rem)] flex-1 rounded-md sm:h-8 sm:flex-none sm:basis-[280px]" />
         <ShimmerBar className="h-9 w-[5.75rem] rounded-md sm:h-8" />
-        <div className="ml-auto flex items-center gap-2">
-          <ShimmerBar className="hidden h-5 w-20 rounded-sm sm:block" />
-          <ShimmerBar className="h-7 w-16 rounded-md" />
-        </div>
       </div>
     </div>
   );
 }
 
-function DashboardMobileListSkeleton() {
+function DashboardMarkListSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <div
       aria-hidden="true"
-      className="overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60 md:hidden"
+      className="overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60"
     >
-      {Array.from({ length: 5 }).map((_, index) => (
-        <div
-          key={`dashboard-mobile-row-${String(index)}`}
-          className="border-b border-rule/50 px-3 py-3 last:border-b-0"
-        >
-          <div className="flex items-start gap-3">
-            <ShimmerBar className="mt-1 size-5 shrink-0 rounded-sm" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <ShimmerBar className="h-3 w-10 rounded-sm" />
-                    <ShimmerBar className="h-4 w-3/4 max-w-[18rem] rounded-sm" />
-                  </div>
-                  <ShimmerBar className="h-3 w-2/3 max-w-[16rem] rounded-sm" />
-                </div>
-                <ShimmerBar className="size-8 shrink-0 rounded-md" />
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <ShimmerBar className="h-6 w-[5.75rem] rounded-full" />
-                <ShimmerBar className="h-6 w-[4.5rem] rounded-full" />
-                <ShimmerBar className="h-6 w-8 rounded-full" />
-                <ShimmerBar className="h-5 w-12 rounded-sm" />
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DashboardTableSkeleton() {
-  return (
-    <div
-      aria-hidden="true"
-      className="hidden overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60 md:block"
-    >
-      <div className="grid h-7 grid-cols-[1.25rem_8rem_minmax(10rem,1fr)_6rem_7rem_6.5rem_2.5rem_4rem_2rem] items-center gap-3 border-b border-rule/60 bg-paper-2/70 px-3">
+      <div className="grid min-h-10 grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto] items-center gap-2 bg-paper-2/65 px-3">
         <ShimmerBar className="size-4 rounded-sm" />
-        <ShimmerBar className="h-2.5 w-14 rounded-sm" />
-        <ShimmerBar className="h-2.5 w-12 rounded-sm" />
-        <ShimmerBar className="h-2.5 w-14 rounded-sm" />
-        <ShimmerBar className="h-2.5 w-12 rounded-sm" />
-        <ShimmerBar className="h-2.5 w-16 rounded-sm" />
-        <span />
-        <ShimmerBar className="h-2.5 w-10 rounded-sm" />
-        <span />
+        <ShimmerBar className="size-6 rounded-sm" />
+        <div className="flex min-w-0 items-baseline gap-2">
+          <ShimmerBar className="h-4 w-20 rounded-sm" />
+          <ShimmerBar className="h-3 w-5 rounded-sm" />
+        </div>
+        <ShimmerBar className="h-5 w-20 rounded-sm" />
       </div>
-      <div className="divide-y divide-rule/45">
-        {Array.from({ length: 8 }).map((_, index) => (
+      <div className="divide-y divide-rule/40">
+        {Array.from({ length: rows }).map((_, index) => (
           <div
-            key={`dashboard-table-row-${String(index)}`}
-            className="grid min-h-[3.5rem] grid-cols-[1.25rem_8rem_minmax(10rem,1fr)_6rem_7rem_6.5rem_2.5rem_4rem_2rem] items-center gap-3 px-3 py-2"
+            key={`dashboard-mark-row-${String(index)}`}
+            className="grid min-h-11 grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5"
           >
             <ShimmerBar className="size-4 rounded-sm" />
-            <ShimmerBar className="h-7 w-full rounded-md" />
-            <div className="min-w-0 space-y-1.5">
+            <ShimmerBar className="size-6 rounded-sm" />
+            <div className="min-w-0 rounded-sm">
               <div className="flex min-w-0 items-center gap-2">
                 <ShimmerBar className="h-3 w-10 shrink-0 rounded-sm" />
                 <ShimmerBar
@@ -178,18 +129,18 @@ function DashboardTableSkeleton() {
                     index % 3 === 0 ? "w-4/5" : index % 3 === 1 ? "w-2/3" : "w-3/5",
                   )}
                 />
+                {index % 3 === 0 ? (
+                  <ShimmerBar className="hidden h-5 w-14 shrink-0 rounded-sm lg:block" />
+                ) : null}
               </div>
-              <ShimmerBar className="h-3 w-1/2 max-w-[18rem] rounded-sm" />
             </div>
-            <ShimmerBar className="h-7 w-full rounded-md" />
-            <div className="flex min-w-0 gap-1">
-              <ShimmerBar className="h-5 w-12 rounded-sm" />
-              {index % 2 === 0 ? <ShimmerBar className="h-5 w-10 rounded-sm" /> : null}
+            <div className="ml-2 flex min-w-0 shrink-0 items-center justify-end gap-2">
+              {index % 4 === 0 ? <ShimmerBar className="size-1.5 rounded-full" /> : null}
+              {index % 3 === 0 ? <ShimmerBar className="hidden h-3 w-7 rounded-sm sm:block" /> : null}
+              {index % 2 === 0 ? <ShimmerBar className="hidden size-5 rounded-full sm:block" /> : null}
+              <ShimmerBar className="h-3 w-12 rounded-sm sm:w-16" />
+              <ShimmerBar className="hidden size-7 rounded-md sm:block" />
             </div>
-            <ShimmerBar className="h-7 w-full rounded-md" />
-            {index % 4 === 0 ? <ShimmerBar className="h-5 w-full rounded-full" /> : <span />}
-            <ShimmerBar className="h-3 w-10 rounded-sm" />
-            <ShimmerBar className="size-7 rounded-md" />
           </div>
         ))}
       </div>
@@ -246,8 +197,7 @@ export function DashboardMainSkeleton({ id }: { id?: string }) {
 
       <DashboardViewChipsSkeleton />
       <DashboardFiltersSkeleton />
-      <DashboardMobileListSkeleton />
-      <DashboardTableSkeleton />
+      <DashboardMarkListSkeleton />
 
       <div aria-hidden="true" className="hidden items-center justify-center gap-1.5 md:flex">
         <ShimmerBar className="h-8 w-24 rounded-md" />
@@ -422,8 +372,7 @@ export function ViewDetailMainSkeleton({ id }: { id?: string }) {
         </div>
       </section>
       <DashboardFiltersSkeleton />
-      <DashboardMobileListSkeleton />
-      <DashboardTableSkeleton />
+      <DashboardMarkListSkeleton rows={6} />
       <div aria-hidden="true" className="hidden items-center justify-center gap-1.5 md:flex">
         <ShimmerBar className="h-8 w-24 rounded-md" />
         <ShimmerBar className="h-4 w-20 rounded-sm" />

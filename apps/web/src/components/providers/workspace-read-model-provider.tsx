@@ -24,13 +24,22 @@ import type {
   DashboardReadModel,
   DashboardReadModelRequest,
   ViewDetailReadModel,
+  WorkspaceBootstrap,
   ViewsIndexReadModel,
 } from "@/lib/workspace/workspace-types";
 
 type DashboardReadModelClientState = Pick<
   DashboardReadModel,
-  "filters" | "pagination" | "scopeCounts" | "detailNavigation"
->;
+  | "selectedProjectId"
+  | "filters"
+  | "pagination"
+  | "scopeCounts"
+  | "detailNavigation"
+  | "loadedAt"
+> & {
+  isFetching: boolean;
+  isPlaceholderData: boolean;
+};
 
 const DashboardReadModelContext =
   createContext<DashboardReadModelClientState | null>(null);
@@ -64,6 +73,16 @@ function completeWorkspace(
 
 function readModelUpdatedAt(loadedAt: string): number | undefined {
   return updatedAtFromIso(loadedAt);
+}
+
+function selectDashboardWorkspaceSnapshot(
+  current: WorkspaceBootstrap | undefined,
+  snapshot: WorkspaceBootstrap | undefined,
+): WorkspaceBootstrap | undefined {
+  if (!snapshot) return current;
+  if (!current || current.workspaceId !== snapshot.workspaceId) return snapshot;
+  if (current.loadedAt === snapshot.loadedAt) return current;
+  return snapshot;
 }
 
 function useSeedReadModelWorkspace(
@@ -113,27 +132,38 @@ export function DashboardReadModelProvider({
     query.data?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
+  const workspaceSnapshot = selectDashboardWorkspaceSnapshot(current.data, snapshot);
   const dashboardState = useMemo(
     () => ({
+      selectedProjectId: query.data?.selectedProjectId ?? initialData.selectedProjectId,
       filters: query.data?.filters ?? initialData.filters,
       pagination: query.data?.pagination ?? initialData.pagination,
       scopeCounts: query.data?.scopeCounts ?? initialData.scopeCounts,
       detailNavigation: query.data?.detailNavigation ?? initialData.detailNavigation,
+      loadedAt: query.data?.loadedAt ?? initialData.loadedAt,
+      isFetching: query.isFetching,
+      isPlaceholderData: query.isPlaceholderData,
     }),
     [
       initialData.detailNavigation,
       initialData.filters,
+      initialData.loadedAt,
       initialData.pagination,
+      initialData.selectedProjectId,
       initialData.scopeCounts,
       query.data?.detailNavigation,
       query.data?.filters,
+      query.data?.loadedAt,
       query.data?.pagination,
+      query.data?.selectedProjectId,
       query.data?.scopeCounts,
+      query.isFetching,
+      query.isPlaceholderData,
     ],
   );
   return (
     <DashboardReadModelContext.Provider value={dashboardState}>
-      <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
+      <WorkspaceSnapshotProvider value={workspaceSnapshot}>
         {children}
       </WorkspaceSnapshotProvider>
     </DashboardReadModelContext.Provider>

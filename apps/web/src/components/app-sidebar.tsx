@@ -20,7 +20,7 @@ import {
   View,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type MouseEvent } from "react";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { BrandLogo } from "@/components/brand-logo";
@@ -76,6 +76,20 @@ export function AppSidebar() {
   const collapsed = useWorkspaceUiStore((state) => state.sidebarCollapsed);
   const toggleCollapsed = useWorkspaceUiStore(
     (state) => state.toggleSidebarCollapsed,
+  );
+  const navigateFromSidebar = useCallback(
+    (href: string) => {
+      const target = new URL(href, window.location.origin);
+      const nextHref = `${target.pathname}${target.search}${target.hash}`;
+
+      if (pathname === "/dashboard" && target.pathname === "/dashboard") {
+        window.history.pushState(null, "", nextHref);
+        return;
+      }
+
+      router.push(nextHref);
+    },
+    [pathname, router],
   );
 
   const {
@@ -160,7 +174,7 @@ export function AppSidebar() {
             collapsed={collapsed}
             pathname={pathname}
             searchParams={searchParams}
-            onNavigate={(href) => router.push(href)}
+            onNavigate={navigateFromSidebar}
           />
 
           {/* Desktop: collapse toggle */}
@@ -271,6 +285,7 @@ export function AppSidebar() {
           shortcut="M"
           active={myMarksActive}
           collapsed={collapsed}
+          onNavigate={navigateFromSidebar}
         />
       </nav>
 
@@ -324,6 +339,7 @@ function SidebarNavLink({
   collapsed,
   badgeCount = 0,
   badgeLabel,
+  onNavigate,
 }: {
   href: string;
   label: string;
@@ -333,8 +349,25 @@ function SidebarNavLink({
   collapsed: boolean;
   badgeCount?: number;
   badgeLabel?: string;
+  onNavigate?: (href: string) => void;
 }) {
   const showBadge = badgeCount > 0;
+  const handleClick = onNavigate
+    ? (event: MouseEvent<HTMLAnchorElement>) => {
+        if (
+          event.defaultPrevented ||
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.altKey ||
+          event.shiftKey
+        ) {
+          return;
+        }
+        event.preventDefault();
+        onNavigate(href);
+      }
+    : undefined;
 
   if (collapsed) {
     return (
@@ -342,6 +375,8 @@ function SidebarNavLink({
         <TooltipTrigger asChild>
           <Link
             href={href}
+            prefetch={true}
+            onClick={handleClick}
             aria-current={active ? "page" : undefined}
             aria-label={label}
             className={cn(
@@ -369,6 +404,8 @@ function SidebarNavLink({
   return (
     <Link
       href={href}
+      prefetch={true}
+      onClick={handleClick}
       aria-current={active ? "page" : undefined}
       className={cn(
         "group relative inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md px-3 py-2 text-ui-md transition-colors",
@@ -453,6 +490,7 @@ function SidebarViewsSection({
             <TooltipTrigger asChild>
               <Link
                 href="/views"
+                prefetch={true}
                 aria-label={actionLabel}
                 className={cn(
                   "flex size-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
@@ -476,6 +514,7 @@ function SidebarViewsSection({
               <TooltipTrigger asChild>
                 <Link
                   href="/views"
+                  prefetch={true}
                   aria-label={actionLabel}
                   className={cn(
                     "flex size-7 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
@@ -500,6 +539,7 @@ function SidebarViewsSection({
             ) : (
               <Link
                 href="/views"
+                prefetch={true}
                 className={cn(
                   "group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-ui-sm text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
                   SIDEBAR_FOCUS,
@@ -528,6 +568,7 @@ function SidebarViewIconLink({
       <TooltipTrigger asChild>
         <Link
           href={`/views/${view.id}`}
+          prefetch={true}
           aria-current={active ? "page" : undefined}
           aria-label={view.name}
           className={cn(
@@ -554,6 +595,7 @@ function SidebarViewLink({
   return (
     <Link
       href={`/views/${view.id}`}
+      prefetch={true}
       aria-current={active ? "page" : undefined}
       title={view.name}
       className={cn(
@@ -1015,7 +1057,7 @@ function AccountMenuContent({
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <DropdownMenuItem asChild>
-        <Link href="/account">
+        <Link href="/account" prefetch={true}>
           <User className="size-4" />
           {t("accountSettings")}
         </Link>

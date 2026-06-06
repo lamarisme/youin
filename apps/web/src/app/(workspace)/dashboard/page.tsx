@@ -8,9 +8,8 @@ import {
   type PageSearchParams,
 } from "@/lib/page-search-params";
 import {
-  dashboardMarkFiltersFromQuery,
-  dashboardPaginationFromQuery,
-  dashboardQueryFromSearchParams,
+  DASHBOARD_PAGE_SIZE,
+  DEFAULT_DASHBOARD_MARK_FILTERS,
 } from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
 import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
@@ -25,42 +24,31 @@ export default async function DashboardPage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const params = pageSearchParamsToUrlSearchParams(await searchParams);
-  const dashboardQuery = dashboardQueryFromSearchParams(params);
   const mark = params.get("mark");
   if (mark) {
     redirect(markHref(mark, params));
   }
 
+  const projectParam = params.get("project")?.trim();
   const requestedProjectId =
-    dashboardQuery.projectId === "all" ? null : dashboardQuery.projectId;
+    projectParam && projectParam !== "all" ? projectParam : null;
   const readModelRequest = {
-    projectId: requestedProjectId,
-    filters: dashboardMarkFiltersFromQuery(dashboardQuery),
-    pagination: dashboardPaginationFromQuery(dashboardQuery),
+    projectId: null,
+    filters: DEFAULT_DASHBOARD_MARK_FILTERS,
+    pagination: {
+      enabled: false,
+      page: 1,
+      pageSize: DASHBOARD_PAGE_SIZE,
+    },
   };
   const readModel =
     await getDashboardReadModelForCurrentWorkspace(readModelRequest);
 
-  if (readModel.selectedProjectId && requestedProjectId !== readModel.selectedProjectId) {
-    params.set("project", readModel.selectedProjectId);
-    redirect(`/dashboard?${params.toString()}`);
-  }
-
-  if (!readModel.selectedProjectId && requestedProjectId) {
-    params.delete("project");
-    const query = params.toString();
-    redirect(query ? `/dashboard?${query}` : "/dashboard");
-  }
-
   if (
-    readModel.pagination.enabled &&
-    readModel.pagination.page !== dashboardQuery.page
+    requestedProjectId &&
+    !readModel.workspace.projects.some((project) => project.id === requestedProjectId)
   ) {
-    if (readModel.pagination.page === 1) {
-      params.delete("page");
-    } else {
-      params.set("page", String(readModel.pagination.page));
-    }
+    params.delete("project");
     const query = params.toString();
     redirect(query ? `/dashboard?${query}` : "/dashboard");
   }
