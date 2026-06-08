@@ -134,6 +134,13 @@
       "when": 1780682400000,
       "tag": "0018_workspace_invitation_phase_1",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780686000000,
+      "tag": "0019_fix_invite_acceptance_conflict",
+      "breakpoints": true
     }
   ]
 }

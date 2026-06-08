@@ -336,7 +336,7 @@ BEGIN
         'member'
       )
     )
-    ON CONFLICT (workspace_id, user_id) DO NOTHING;
+    ON CONFLICT ON CONSTRAINT workspace_members_pkey DO NOTHING;
   END IF;
 
   UPDATE public.workspace_invites
