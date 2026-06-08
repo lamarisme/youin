@@ -56,6 +56,8 @@ export {
 } from "./profile";
 
 export {
+  acceptWorkspaceInviteAction,
+  discoverPendingWorkspaceInvitesAction,
   inviteMemberAction,
   cancelInviteAction,
   removeMemberAction,

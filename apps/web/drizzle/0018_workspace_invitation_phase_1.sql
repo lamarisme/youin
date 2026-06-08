@@ -1,171 +1,7 @@
-/*
-  youin onboarding RPCs (idempotent).
-
-  Run AFTER `setup.sql` once Drizzle migrations have created the public tables.
-
-  Provides two SECURITY DEFINER functions used during user creation:
-
-    bootstrap_workspace(name, project_name, project_description, invite_emails)
-      Atomically creates a workspace, adds the caller as owner,
-      creates a default project, seeds default tags/statuses, and fans out invites.
-
-    discover_pending_workspace_invites()
-      Lists valid pending invites for the caller's authenticated email.
-
-    accept_workspace_invite(invite_id, token)
-      Explicitly accepts one pending invite after validating recipient,
-      status, and expiration.
-
-    attach_user_via_invite()
-      Legacy bootstrap helper. If the caller's email matches a valid pending
-      invite, attach them as a member of that workspace and mark one invite
-      accepted. Returns the workspace_id, or NULL if no invite.
-
-  Both bypass RLS for the bootstrap window (when the user has no
-  memberships yet) but are scoped to the current auth.uid().
-*/
-
-DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[]);
-DROP FUNCTION IF EXISTS public.bootstrap_workspace(text, text, text, text[], text);
-DROP FUNCTION IF EXISTS public.bootstrap_workspace(text[], text, text, text, text);
-DROP FUNCTION IF EXISTS public.attach_user_via_invite();
-DROP FUNCTION IF EXISTS public.attach_user_via_invite(text);
 DROP FUNCTION IF EXISTS public.accept_workspace_invite(uuid, text);
+--> statement-breakpoint
 DROP FUNCTION IF EXISTS public.discover_pending_workspace_invites();
-
-CREATE OR REPLACE FUNCTION public.member_username_from_email(p_workspace_id uuid, p_email text)
-RETURNS text
-LANGUAGE plpgsql
-VOLATILE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  base text;
-  cand text;
-  n int := 0;
-BEGIN
-  base := substring(
-    regexp_replace(lower(split_part(trim(coalesce(p_email, '')), '@', 1)), '[^a-z0-9_]', '_', 'g'),
-    1,
-    32
-  );
-  base := trim(both '_' from base);
-  IF base IS NULL OR length(base) < 2 THEN
-    base := 'member';
-  END IF;
-
-  LOOP
-    cand := substring(base || CASE WHEN n = 0 THEN '' ELSE n::text END FROM 1 FOR 48);
-    EXIT WHEN NOT EXISTS (
-      SELECT 1
-      FROM workspace_members wm
-      WHERE wm.workspace_id = p_workspace_id
-        AND lower(wm.username) = lower(cand)
-    );
-    n := n + 1;
-    IF n > 5000 THEN
-      cand := substring('u' || replace(gen_random_uuid()::text, '-', '') FROM 1 FOR 32);
-      EXIT;
-    END IF;
-  END LOOP;
-  RETURN COALESCE(NULLIF(trim(lower(cand)), ''), 'member');
-END;
-$$;
-
-REVOKE ALL ON FUNCTION public.member_username_from_email(uuid, text) FROM PUBLIC;
-
-CREATE OR REPLACE FUNCTION public.bootstrap_workspace(
-  p_workspace_name text,
-  p_project_name text DEFAULT 'General',
-  p_project_description text DEFAULT '',
-  p_invite_emails text[] DEFAULT ARRAY[]::text[],
-  p_username text DEFAULT NULL
-)
-RETURNS uuid
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_user_id uuid := auth.uid();
-  v_workspace_id uuid;
-  v_project_id uuid;
-  v_invite_email text;
-  v_resolved_username text;
-  v_user_email text;
-BEGIN
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'Not authenticated';
-  END IF;
-
-  SELECT COALESCE(email, '') INTO v_user_email
-    FROM auth.users WHERE id = v_user_id LIMIT 1;
-  IF NOT FOUND THEN
-    v_user_email := '';
-  END IF;
-
-  INSERT INTO public.workspaces (name)
-  VALUES (COALESCE(NULLIF(TRIM(p_workspace_name), ''), 'My workspace'))
-  RETURNING id INTO v_workspace_id;
-
-  -- Resolve username: try provided username first, fall back to auto-generation
-  IF p_username IS NOT NULL AND length(TRIM(p_username)) >= 2 THEN
-    v_resolved_username := lower(TRIM(p_username));
-    -- If taken, auto-generate from email instead
-    IF EXISTS (
-      SELECT 1 FROM workspace_members wm
-      WHERE wm.workspace_id = v_workspace_id
-        AND lower(wm.username) = v_resolved_username
-    ) THEN
-      v_resolved_username := public.member_username_from_email(v_workspace_id, v_user_email);
-    END IF;
-  ELSE
-    v_resolved_username := public.member_username_from_email(v_workspace_id, v_user_email);
-  END IF;
-
-  v_resolved_username := COALESCE(
-    NULLIF(trim(lower(v_resolved_username)), ''),
-    public.member_username_from_email(v_workspace_id, v_user_email),
-    'member'
-  );
-
-  INSERT INTO public.workspace_members (workspace_id, user_id, role, username)
-  VALUES (
-    v_workspace_id,
-    v_user_id,
-    'owner'::public.workspace_role,
-    left(v_resolved_username, 48)
-  );
-
-  INSERT INTO public.projects (workspace_id, name, description)
-  VALUES (
-    v_workspace_id,
-    COALESCE(NULLIF(TRIM(p_project_name), ''), 'General'),
-    COALESCE(p_project_description, '')
-  )
-  RETURNING id INTO v_project_id;
-
-  INSERT INTO public.mark_labels (workspace_id, name)
-  SELECT v_workspace_id, name
-  FROM unnest(ARRAY['Copy', 'UI', 'A11y', 'Bug']) AS name;
-
-  IF p_invite_emails IS NOT NULL THEN
-    FOREACH v_invite_email IN ARRAY p_invite_emails LOOP
-      v_invite_email := lower(trim(v_invite_email));
-      IF v_invite_email LIKE '%@%' AND v_invite_email LIKE '%.%' THEN
-        INSERT INTO public.workspace_invites
-          (workspace_id, email, invited_by_user_id, status, source)
-        VALUES
-          (v_workspace_id, v_invite_email, v_user_id, 'pending', 'signup');
-      END IF;
-    END LOOP;
-  END IF;
-
-  RETURN v_workspace_id;
-END;
-$$;
-
+--> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.discover_pending_workspace_invites()
 RETURNS TABLE (
   invite_id uuid,
@@ -222,7 +58,7 @@ BEGIN
   ORDER BY wi.invited_at DESC;
 END;
 $$;
-
+--> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.accept_workspace_invite(
   p_invite_id uuid DEFAULT NULL,
   p_token text DEFAULT NULL
@@ -350,7 +186,7 @@ BEGIN
     v_invite.id;
 END;
 $$;
-
+--> statement-breakpoint
 CREATE OR REPLACE FUNCTION public.attach_user_via_invite(p_token text DEFAULT NULL)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -378,8 +214,6 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- If a token is provided, match by token; otherwise match by email.
-  -- This legacy helper intentionally accepts one valid invite only.
   IF v_token IS NOT NULL THEN
     SELECT wi.id
       INTO v_invite_id
@@ -418,12 +252,15 @@ BEGIN
   RETURN v_workspace_id;
 END;
 $$;
-
-REVOKE ALL ON FUNCTION public.bootstrap_workspace(text, text, text, text[], text) FROM PUBLIC;
+--> statement-breakpoint
 REVOKE ALL ON FUNCTION public.discover_pending_workspace_invites() FROM PUBLIC;
+--> statement-breakpoint
 REVOKE ALL ON FUNCTION public.accept_workspace_invite(uuid, text) FROM PUBLIC;
+--> statement-breakpoint
 REVOKE ALL ON FUNCTION public.attach_user_via_invite(text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.bootstrap_workspace(text, text, text, text[], text) TO authenticated;
+--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION public.discover_pending_workspace_invites() TO authenticated;
+--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION public.accept_workspace_invite(uuid, text) TO authenticated;
+--> statement-breakpoint
 GRANT EXECUTE ON FUNCTION public.attach_user_via_invite(text) TO authenticated;

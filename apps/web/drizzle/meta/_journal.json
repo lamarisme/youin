@@ -127,6 +127,13 @@
       "when": 1780678800000,
       "tag": "0017_membership_scoped_delete_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780682400000,
+      "tag": "0018_workspace_invitation_phase_1",
+      "breakpoints": true
     }
   ]
 }
