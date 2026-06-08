@@ -18,6 +18,10 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     redirect(`/login?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
 
+  if (bootstrapResult.status === "unresolved") {
+    redirect(`/onboarding?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
+  }
+
   if (bootstrapResult.status === "incomplete") {
     redirect(`/auth/error?reason=incomplete&next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }

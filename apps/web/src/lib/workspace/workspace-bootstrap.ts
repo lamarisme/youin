@@ -12,6 +12,8 @@ type BootstrapWorkspaceArgs = {
   username: string | null;
 };
 
+export type CreateWorkspaceForUserArgs = Partial<BootstrapWorkspaceArgs>;
+
 function isMissingBootstrapSignatureError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const maybeError = error as { code?: unknown; message?: unknown };
@@ -58,12 +60,56 @@ async function bootstrapWorkspace(
   return legacy.data as string;
 }
 
+function workspaceArgsFromUser(
+  user: User,
+  overrides: CreateWorkspaceForUserArgs = {},
+): BootstrapWorkspaceArgs {
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const wsNameRaw =
+    typeof meta.workspace_name === "string" ? meta.workspace_name.trim() : "";
+  const projectNameRaw =
+    typeof meta.first_project_name === "string"
+      ? meta.first_project_name.trim()
+      : typeof meta.first_space_name === "string"
+        ? meta.first_space_name.trim()
+        : "";
+  const goalRaw =
+    typeof meta.workspace_goal === "string" ? meta.workspace_goal.trim() : "";
+  const usernameRaw =
+    typeof meta.workspace_username === "string"
+      ? meta.workspace_username.trim()
+      : "";
+  const teammateInvites = Array.isArray(meta.teammate_invites)
+    ? (meta.teammate_invites as unknown[]).filter(
+        (v): v is string => typeof v === "string",
+      )
+    : [];
+  const fallbackName = `${user.email?.split("@")[0] ?? "Your"} workspace`;
+
+  return {
+    workspaceName: overrides.workspaceName?.trim() || wsNameRaw || fallbackName,
+    projectName: overrides.projectName?.trim() || projectNameRaw || "General",
+    projectDescription: overrides.projectDescription?.trim() ?? goalRaw,
+    inviteEmails: overrides.inviteEmails ?? teammateInvites,
+    username:
+      overrides.username !== undefined
+        ? overrides.username
+        : usernameRaw.length >= 2
+          ? usernameRaw
+          : null,
+  };
+}
+
 /**
  * Upsert profile row for authenticated user so RLS and member lists have email / display name.
  */
-export async function syncProfileFromUser(supabase: SupabaseClient, user: User): Promise<void> {
+export async function syncProfileFromUser(
+  supabase: SupabaseClient,
+  user: User,
+): Promise<void> {
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const fromMeta = typeof meta.full_name === "string" ? meta.full_name.trim() : "";
+  const fromMeta =
+    typeof meta.full_name === "string" ? meta.full_name.trim() : "";
   void supabase;
   const db = getDb();
   await db
@@ -85,19 +131,15 @@ export async function syncProfileFromUser(supabase: SupabaseClient, user: User):
 }
 
 /**
- * Ensure the user has at least one workspace.
+ * Resolve an existing workspace membership for the authenticated user.
  *
- * Order of resolution:
- *   1. Existing membership → return its workspace_id.
- *   2. Pending invite for this user's email → attach via RPC, return workspace_id.
- *   3. Otherwise → bootstrap a fresh workspace via RPC (creates workspace, adds
- *      the user as owner, seeds default project + labels, fans out signup invites).
- *
- * The two RPCs are SECURITY DEFINER (see supabase/onboarding-rpcs.sql); they are
- * required to atomically work around the RLS chicken-and-egg problem where a
- * brand-new user is not yet a member of any workspace.
+ * This intentionally does not attach invites or create a workspace. The
+ * join-or-create decision now belongs to the onboarding gate.
  */
-export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: User): Promise<string> {
+export async function resolveWorkspaceForUser(
+  supabase: SupabaseClient,
+  user: User,
+): Promise<string | null> {
   await syncProfileFromUser(supabase, user);
   const db = getDb();
 
@@ -107,34 +149,25 @@ export async function ensureWorkspaceForUser(supabase: SupabaseClient, user: Use
     .where(eq(workspaceMembers.userId, user.id))
     .limit(1);
 
-  if (existing?.workspaceId) return existing.workspaceId;
+  return existing?.workspaceId ?? null;
+}
 
-  const { data: invitedWid, error: attachErr } = await supabase.rpc("attach_user_via_invite");
-  if (attachErr) throw attachErr;
-  if (invitedWid) return invitedWid as string;
+export async function createWorkspaceForUser(
+  supabase: SupabaseClient,
+  user: User,
+  args: CreateWorkspaceForUserArgs = {},
+): Promise<string> {
+  const existingWorkspaceId = await resolveWorkspaceForUser(supabase, user);
+  if (existingWorkspaceId) return existingWorkspaceId;
 
-  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const wsNameRaw = typeof meta.workspace_name === "string" ? meta.workspace_name.trim() : "";
-  const projectNameRaw =
-    typeof meta.first_project_name === "string"
-      ? meta.first_project_name.trim()
-      : typeof meta.first_space_name === "string"
-        ? meta.first_space_name.trim()
-        : "";
-  const goalRaw = typeof meta.workspace_goal === "string" ? meta.workspace_goal.trim() : "";
-  const usernameRaw = typeof meta.workspace_username === "string" ? meta.workspace_username.trim() : undefined;
+  return bootstrapWorkspace(supabase, workspaceArgsFromUser(user, args));
+}
 
-  const teammateInvites = Array.isArray(meta.teammate_invites)
-    ? (meta.teammate_invites as unknown[]).filter((v): v is string => typeof v === "string")
-    : [];
-
-  const fallbackName = `${user.email?.split("@")[0] ?? "Your"} workspace`;
-
-  return bootstrapWorkspace(supabase, {
-    workspaceName: wsNameRaw || fallbackName,
-    projectName: projectNameRaw || "General",
-    projectDescription: goalRaw,
-    inviteEmails: teammateInvites,
-    username: usernameRaw && usernameRaw.length >= 2 ? usernameRaw : null,
-  });
+export async function ensureWorkspaceForUser(
+  supabase: SupabaseClient,
+  user: User,
+): Promise<string> {
+  const workspaceId = await resolveWorkspaceForUser(supabase, user);
+  if (!workspaceId) throw new Error("Workspace onboarding required.");
+  return workspaceId;
 }

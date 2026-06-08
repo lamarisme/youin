@@ -23,7 +23,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = useMemo(() => {
-    return safeLocalRedirectPath(searchParams.get("next"));
+    return safeLocalRedirectPath(searchParams.get("next"), "/onboarding");
   }, [searchParams]);
   const callbackError = useMemo(() => searchParams.get("error"), [searchParams]);
 

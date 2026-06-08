@@ -4,6 +4,12 @@ export {
 } from "./bootstrap";
 
 export {
+  createOnboardingWorkspaceAction,
+  type CreateOnboardingWorkspaceInput,
+  type CreateOnboardingWorkspaceResult,
+} from "./onboarding";
+
+export {
   getAccountReadModelAction,
   getCommandPaletteIndexReadModelAction,
   getDashboardReadModelAction,
