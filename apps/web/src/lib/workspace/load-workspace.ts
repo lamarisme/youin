@@ -333,6 +333,9 @@ export async function loadWorkspaceAggregate(
       id: invite.id,
       email: invite.email,
       invitedAt: toIso(invite.invitedAt),
+      expiresAt: toIso(invite.expiresAt),
+      acceptedAt: invite.acceptedAt ? toIso(invite.acceptedAt) : undefined,
+      status: invite.status,
       invitedBy:
         bp?.fullName?.trim() || bp?.email?.split("@")[0] || "Workspace owner",
     };

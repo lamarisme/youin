@@ -101,16 +101,18 @@ export async function inviteMemberAction(email: string): Promise<void> {
 export async function cancelInviteAction(inviteId: string): Promise<void> {
   const ctx = await requireWorkspaceContext();
   assertWorkspaceOwner(ctx);
-  const [deleted] = await ctx.db
-    .delete(workspaceInvites)
+  const [revoked] = await ctx.db
+    .update(workspaceInvites)
+    .set({ status: "revoked" })
     .where(
       and(
         eq(workspaceInvites.id, inviteId),
         eq(workspaceInvites.workspaceId, ctx.workspaceId),
+        eq(workspaceInvites.status, "pending"),
       ),
     )
     .returning({ id: workspaceInvites.id });
-  if (!deleted) throw new Error("Invite not found.");
+  if (!revoked) throw new Error("Pending invite not found.");
   revalidateWorkspaceViews();
 }
 

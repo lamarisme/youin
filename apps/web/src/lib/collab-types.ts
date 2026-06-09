@@ -26,6 +26,7 @@ export type MarkEventType =
   | "label_changed";
 
 export type TeamRole = "owner" | "member";
+export type TeamInviteStatus = "pending" | "accepted" | "revoked" | "expired";
 
 /** How this user sees teammate names: full name or @username only — never both. @mentions always use {@link TeamMember.username}. */
 export type DisplayNamePreference = "full_name" | "username";
@@ -47,6 +48,9 @@ export interface TeamInvite {
   email: string;
   invitedAt: string;
   invitedBy: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  status: TeamInviteStatus;
 }
 
 export interface WorkspaceReviewLink {

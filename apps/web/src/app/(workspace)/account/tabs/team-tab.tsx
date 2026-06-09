@@ -10,7 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
-import type { WorkspaceReviewLink } from "@/lib/collab-types";
+import type {
+  TeamInvite,
+  TeamInviteStatus,
+  WorkspaceReviewLink,
+} from "@/lib/collab-types";
+import { formatDateShort } from "@/lib/dates";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
@@ -21,6 +26,7 @@ import {
   useRemoveMemberMutation,
   useUpdateMyWorkspaceUsernameMutation,
 } from "@/lib/queries/use-workspace-mutations";
+import { effectiveInviteStatus } from "@/lib/workspace/invite-state";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
@@ -42,6 +48,31 @@ function reviewLinkState(link: WorkspaceReviewLink): "active" | "expired" | "rev
     return "expired";
   }
   return "active";
+}
+
+function inviteStatusClass(status: TeamInviteStatus): string {
+  switch (status) {
+    case "accepted":
+      return "border-ok/20 bg-ok-soft text-ok";
+    case "pending":
+      return "border-mark/20 bg-mark-soft text-mark";
+    case "expired":
+    case "revoked":
+      return "border-rule bg-paper-3 text-ink-3";
+  }
+}
+
+function inviteStatusDetail(invite: TeamInvite, status: TeamInviteStatus): string {
+  if (status === "accepted" && invite.acceptedAt) {
+    return `Accepted ${formatDateShort(invite.acceptedAt)}`;
+  }
+  if (status === "expired") {
+    return `Expired ${formatDateShort(invite.expiresAt)}`;
+  }
+  if (status === "pending") {
+    return `Expires ${formatDateShort(invite.expiresAt)}`;
+  }
+  return `Invited ${formatDateShort(invite.invitedAt)}`;
 }
 
 export function TeamTab() {
@@ -86,6 +117,9 @@ export function TeamTab() {
       ? "Enter a complete email like name@company.com."
       : null;
   const canInvite = inviteIsValid && !isInviting;
+  const pendingInviteCount = invites.filter(
+    (invite) => effectiveInviteStatus(invite) === "pending",
+  ).length;
 
   const trimmedUsername = usernameDraft.trim().toLowerCase();
   const usernameUnchanged = me ? trimmedUsername === me.username : true;
@@ -260,7 +294,7 @@ export function TeamTab() {
             Invite a teammate
           </Label>
           <p className="mt-0.5 text-ui-xs text-ink-3">
-            They&apos;ll get an email invite and join as a member with full access.
+            YouIn matches this invitation when that email signs in. Email delivery is not required.
           </p>
           <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row">
             <Input
@@ -284,11 +318,11 @@ export function TeamTab() {
               onClick={handleInvite}
               loading={isInviting}
               disabled={!canInvite}
-              loadingText="Sending…"
+              loadingText="Creating…"
               className="h-10 shrink-0 sm:h-8 sm:px-4"
             >
               <UserPlus className="size-3.5" />
-              Send invite
+              Create invite
             </SubmitButton>
           </div>
           {inviteFieldError || inviteError ? (
@@ -448,9 +482,9 @@ export function TeamTab() {
           <p className="text-eyebrow">
             Members <span className="text-ink-3">({members.length})</span>
           </p>
-          {invites.length > 0 ? (
+          {pendingInviteCount > 0 ? (
             <p className="text-ui-xs text-ink-3">
-              {invites.length} pending invite{invites.length === 1 ? "" : "s"}
+              {pendingInviteCount} pending invite{pendingInviteCount === 1 ? "" : "s"}
             </p>
           ) : null}
         </div>
@@ -508,30 +542,45 @@ export function TeamTab() {
           })}
         </ProductList>
 
-        {/* Pending invites stay visually subordinate with a dashed border. */}
         {invites.length > 0 ? (
-          <ProductList tone="subtle" className="mt-2.5">
-            {invites.map((inv) => (
-              <ProductListItem
-                key={inv.id}
-                className="flex items-center justify-between gap-3 py-2 text-ui-sm hover:bg-paper-3/45"
-              >
-                <span className="inline-flex min-w-0 items-center gap-2 text-ink-2">
-                  <span className="text-ui-2xs uppercase tracking-wider text-ink-3">
-                    Invited
-                  </span>
-                  <span className="truncate">{inv.email}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleCancel(inv.id, inv.email)}
-                  aria-label={`Cancel invite for ${inv.email}`}
-                  className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
+          <ProductList tone="subtle" className="mt-2.5" aria-label="Workspace invitations">
+            {invites.map((invite) => {
+              const status = effectiveInviteStatus(invite);
+              return (
+                <ProductListItem
+                  key={invite.id}
+                  className="flex items-center justify-between gap-3 py-2.5 text-ui-sm hover:bg-paper-3/45"
                 >
-                  <X className="size-3.5" />
-                </button>
-              </ProductListItem>
-            ))}
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="truncate font-medium text-ink-2">
+                        {invite.email}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={cn("text-ui-2xs capitalize", inviteStatusClass(status))}
+                      >
+                        {status}
+                      </Badge>
+                    </div>
+                    <p className="mt-0.5 text-ui-xs text-ink-3">
+                      {inviteStatusDetail(invite, status)}
+                      <span> · Invited by {invite.invitedBy}</span>
+                    </p>
+                  </div>
+                  {isOwner && status === "pending" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleCancel(invite.id, invite.email)}
+                      aria-label={`Revoke invite for ${invite.email}`}
+                      className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  ) : null}
+                </ProductListItem>
+              );
+            })}
           </ProductList>
         ) : null}
       </section>

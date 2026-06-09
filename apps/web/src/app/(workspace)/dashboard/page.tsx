@@ -13,6 +13,7 @@ import {
 } from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
 import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
+import { discoverPendingWorkspaceInvitesAction } from "@/lib/workspace/actions";
 
 export const metadata: Metadata = {
   title: "Triage",
@@ -41,8 +42,10 @@ export default async function DashboardPage({
       pageSize: DASHBOARD_PAGE_SIZE,
     },
   };
-  const readModel =
-    await getDashboardReadModelForCurrentWorkspace(readModelRequest);
+  const [readModel, pendingInvites] = await Promise.all([
+    getDashboardReadModelForCurrentWorkspace(readModelRequest),
+    discoverPendingWorkspaceInvitesAction().catch(() => []),
+  ]);
 
   if (
     requestedProjectId &&
@@ -58,7 +61,7 @@ export default async function DashboardPage({
       initialData={readModel}
       request={readModelRequest}
     >
-      <WorkspaceDashboard />
+      <WorkspaceDashboard pendingInvites={pendingInvites} />
     </DashboardReadModelProvider>
   );
 }
