@@ -81,8 +81,7 @@ export function InboxView({
     const result = await acceptWorkspaceInviteAction({ inviteId: invite.id });
     if (
       result.status === "accepted" ||
-      result.status === "already_member" ||
-      result.status === "already_accepted"
+      result.status === "already_member"
     ) {
       setResolvedInviteIds((ids) => new Set(ids).add(invite.id));
       setInviteMessage({
@@ -92,8 +91,7 @@ export function InboxView({
             ? `Joined ${invite.workspaceName}.`
             : `The invitation for ${invite.workspaceName} is already resolved.`,
       });
-      inbox.refetch();
-      router.refresh();
+      router.replace("/dashboard");
       return;
     }
 
@@ -277,7 +275,7 @@ function InboxInvitations({
                         </>
                       ) : (
                         <>
-                          Join workspace
+                          Join and open
                           <ArrowRight className="size-3.5" aria-hidden />
                         </>
                       )}

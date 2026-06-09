@@ -155,6 +155,13 @@
       "when": 1780693200000,
       "tag": "0021_fix_invite_acceptance_status_ambiguity",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781017200000,
+      "tag": "0022_active_workspace_selection",
+      "breakpoints": true
     }
   ]
 }

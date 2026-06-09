@@ -1,8 +1,9 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { profiles, workspaceMembers } from "@/db/schema";
+import { chooseActiveWorkspaceId } from "@/lib/workspace/workspace-resolution";
 
 type BootstrapWorkspaceArgs = {
   workspaceName: string;
@@ -143,13 +144,43 @@ export async function resolveWorkspaceForUser(
   await syncProfileFromUser(supabase, user);
   const db = getDb();
 
-  const [existing] = await db
+  const [profile] = await db
+    .select({ currentWorkspaceId: profiles.currentWorkspaceId })
+    .from(profiles)
+    .where(eq(profiles.id, user.id))
+    .limit(1);
+  const memberships = await db
     .select({ workspaceId: workspaceMembers.workspaceId })
     .from(workspaceMembers)
     .where(eq(workspaceMembers.userId, user.id))
-    .limit(1);
+    .orderBy(
+      asc(workspaceMembers.createdAt),
+      asc(workspaceMembers.workspaceId),
+    );
+  const currentWorkspaceId = profile?.currentWorkspaceId ?? null;
+  const resolvedWorkspaceId = chooseActiveWorkspaceId(
+    currentWorkspaceId,
+    memberships,
+  );
 
-  return existing?.workspaceId ?? null;
+  if (resolvedWorkspaceId !== currentWorkspaceId) {
+    await db
+      .update(profiles)
+      .set({
+        currentWorkspaceId: resolvedWorkspaceId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(profiles.id, user.id),
+          currentWorkspaceId
+            ? eq(profiles.currentWorkspaceId, currentWorkspaceId)
+            : isNull(profiles.currentWorkspaceId),
+        ),
+      );
+  }
+
+  return resolvedWorkspaceId;
 }
 
 export async function createWorkspaceForUser(
