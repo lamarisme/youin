@@ -313,10 +313,10 @@ BEGIN
   END IF;
 
   IF v_invite.expires_at <= now() THEN
-    UPDATE public.workspace_invites
+    UPDATE public.workspace_invites AS wi
     SET status = 'expired'
-    WHERE id = v_invite.id
-      AND status = 'pending';
+    WHERE wi.id = v_invite.id
+      AND wi.status = 'pending';
 
     RETURN QUERY SELECT 'expired'::text, v_invite.workspace_id, v_invite.id;
     RETURN;
@@ -336,13 +336,13 @@ BEGIN
         'member'
       )
     )
-    ON CONFLICT ON CONSTRAINT workspace_members_pkey DO NOTHING;
+    ON CONFLICT ON CONSTRAINT workspace_members_workspace_id_user_id_pk DO NOTHING;
   END IF;
 
-  UPDATE public.workspace_invites
+  UPDATE public.workspace_invites AS wi
   SET status = 'accepted', accepted_at = now()
-  WHERE id = v_invite.id
-    AND status = 'pending';
+  WHERE wi.id = v_invite.id
+    AND wi.status = 'pending';
 
   RETURN QUERY SELECT
     CASE WHEN v_is_member THEN 'already_member' ELSE 'accepted' END::text,
