@@ -9,9 +9,17 @@ export const metadata: Metadata = {
 };
 
 export default async function InboxPage() {
-  const [initialData, pendingInvites] = await Promise.all([
+  const [initialData, inviteDiscovery] = await Promise.all([
     getInboxReadModelForCurrentWorkspace(),
-    discoverPendingWorkspaceInvitesAction(),
+    discoverPendingWorkspaceInvitesAction()
+      .then((invites) => ({ invites, failed: false }))
+      .catch(() => ({ invites: [], failed: true })),
   ]);
-  return <InboxView initialData={initialData} pendingInvites={pendingInvites} />;
+  return (
+    <InboxView
+      initialData={initialData}
+      pendingInvites={inviteDiscovery.invites}
+      invitationDiscoveryFailed={inviteDiscovery.failed}
+    />
+  );
 }

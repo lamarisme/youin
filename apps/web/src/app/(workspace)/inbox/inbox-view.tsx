@@ -8,15 +8,16 @@ import { ArrowRight, CheckCheck, Inbox, Loader2, MailCheck } from "lucide-react"
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
+import { Notice } from "@/components/notice";
 import { Button } from "@/components/ui/button";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import type { DisplayNamePreference } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
 import { acceptWorkspaceInviteAction } from "@/lib/workspace/actions";
+import { workspaceInviteAcceptanceFeedback } from "@/lib/workspace/invite-acceptance-feedback";
 import type {
   PendingWorkspaceInvite,
-  WorkspaceInviteAcceptanceStatus,
 } from "@/lib/workspace/invitations";
 import { markHref } from "@/lib/workspace/routes";
 
@@ -29,9 +30,11 @@ import { rosterDisplayParts } from "@/lib/workspace/member-label";
 export function InboxView({
   initialData,
   pendingInvites = [],
+  invitationDiscoveryFailed = false,
 }: {
   initialData?: InboxSnapshot;
   pendingInvites?: PendingWorkspaceInvite[];
+  invitationDiscoveryFailed?: boolean;
 }) {
   const router = useRouter();
   const [resolvedInviteIds, setResolvedInviteIds] = useState<Set<string>>(() => new Set());
@@ -78,32 +81,28 @@ export function InboxView({
 
   async function acceptInvite(invite: PendingWorkspaceInvite): Promise<void> {
     setInviteMessage(null);
-    const result = await acceptWorkspaceInviteAction({ inviteId: invite.id });
-    if (
-      result.status === "accepted" ||
-      result.status === "already_member"
-    ) {
+    try {
+      const result = await acceptWorkspaceInviteAction({ inviteId: invite.id });
+      const feedback = workspaceInviteAcceptanceFeedback(
+        result.status,
+        invite.workspaceName,
+      );
       setResolvedInviteIds((ids) => new Set(ids).add(invite.id));
       setInviteMessage({
-        tone: "success",
-        body:
-          result.status === "accepted"
-            ? `Joined ${invite.workspaceName}.`
-            : `The invitation for ${invite.workspaceName} is already resolved.`,
+        tone: feedback.tone,
+        body: `${feedback.title}. ${feedback.body}`,
       });
-      router.replace("/dashboard");
-      return;
-    }
-
-    if (result.status === "expired" || result.status === "revoked" || result.status === "not_found") {
-      setResolvedInviteIds((ids) => new Set(ids).add(invite.id));
+      if (feedback.success) {
+        router.replace("/dashboard");
+        return;
+      }
       router.refresh();
+    } catch {
+      setInviteMessage({
+        tone: "danger",
+        body: `Could not check the invitation for ${invite.workspaceName}. Try again.`,
+      });
     }
-
-    setInviteMessage({
-      tone: "danger",
-      body: inviteAcceptanceMessage(result.status, invite.workspaceName),
-    });
   }
 
   return (
@@ -134,17 +133,28 @@ export function InboxView({
         )}
       />
 
-      {inviteMessage ? (
+      {invitationDiscoveryFailed ? (
         <div
-          className={cn(
-            "mb-3 rounded-md border px-3 py-2 text-ui-xs leading-snug",
-            inviteMessage.tone === "success"
-              ? "border-ok/25 bg-ok-soft text-ok"
-              : "border-destructive/30 bg-destructive-soft text-destructive",
-          )}
+          role="alert"
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-ui-xs leading-snug text-destructive"
         >
-          {inviteMessage.body}
+          <span>Workspace invitations could not be checked. Inbox activity is still available.</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8"
+            onClick={() => router.refresh()}
+          >
+            Try again
+          </Button>
         </div>
+      ) : null}
+
+      {inviteMessage ? (
+        <Notice tone={inviteMessage.tone} className="mb-3">
+          {inviteMessage.body}
+        </Notice>
       ) : null}
 
       {hasInvitationCards ? (
@@ -238,6 +248,21 @@ function InboxInvitations({
 
   return (
     <section className={className} aria-label="Workspace invitations">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <div>
+          <p className="text-eyebrow">Workspace invitations</p>
+          <p className="mt-0.5 text-ui-xs text-ink-3">
+            {invites.length === 1
+              ? "Join the workspace when you are ready."
+              : "Choose one workspace to join. The other invitations will remain available."}
+          </p>
+        </div>
+        {invites.length > 1 ? (
+          <span className="text-ui-xs tabular-nums text-ink-3">
+            {invites.length} pending
+          </span>
+        ) : null}
+      </div>
       <ProductList>
         {invites.map((invite) => {
           const isAccepting = acceptingInviteId === invite.id;
@@ -410,32 +435,6 @@ function formatDate(iso: string): string {
     day: "numeric",
     year: "numeric",
   }).format(date);
-}
-
-function inviteAcceptanceMessage(
-  status: WorkspaceInviteAcceptanceStatus,
-  workspaceName: string,
-): string {
-  switch (status) {
-    case "expired":
-      return `The invitation for ${workspaceName} has expired.`;
-    case "revoked":
-      return `The invitation for ${workspaceName} is no longer available.`;
-    case "email_mismatch":
-      return `This invitation belongs to a different email address.`;
-    case "not_found":
-      return `This invitation could not be found.`;
-    case "invalid_request":
-      return "Choose a valid invitation before continuing.";
-    case "already_accepted":
-      return `The invitation for ${workspaceName} was already accepted.`;
-    case "already_member":
-      return `You are already a member of ${workspaceName}.`;
-    case "accepted":
-      return `Joined ${workspaceName}.`;
-    default:
-      return "Could not accept this invitation.";
-  }
 }
 
 function formatCount(count: number): string {

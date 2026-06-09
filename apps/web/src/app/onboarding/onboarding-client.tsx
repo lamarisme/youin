@@ -2,17 +2,26 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Building2, Loader2, MailCheck } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  Loader2,
+  LogOut,
+  MailCheck,
+  RefreshCw,
+} from "lucide-react";
 
 import { Field } from "@/components/field";
 import { Notice } from "@/components/notice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { createClient } from "@/lib/supabase/client";
 import {
   acceptWorkspaceInviteAction,
   createOnboardingWorkspaceAction,
 } from "@/lib/workspace/actions";
+import { workspaceInviteAcceptanceFeedback } from "@/lib/workspace/invite-acceptance-feedback";
 import type {
   PendingWorkspaceInvite,
   WorkspaceInviteAcceptanceStatus,
@@ -23,25 +32,6 @@ interface OnboardingClientProps {
   defaultWorkspaceName: string;
   defaultProjectName: string;
   nextPath: string;
-}
-
-function acceptanceMessage(status: WorkspaceInviteAcceptanceStatus): string {
-  switch (status) {
-    case "already_accepted":
-      return "This invitation was already accepted. Ask the workspace owner for a fresh invite if you still need access.";
-    case "email_mismatch":
-      return "This invitation belongs to a different email address. Sign in with the invited email to join.";
-    case "expired":
-      return "This invitation has expired. Ask the workspace owner to send a new one.";
-    case "invalid_request":
-      return "Choose a valid invitation before continuing.";
-    case "not_found":
-      return "This invitation could not be found.";
-    case "revoked":
-      return "This invitation is no longer available.";
-    default:
-      return "Could not accept this invitation. Try again.";
-  }
 }
 
 function formatDate(value: string): string {
@@ -64,15 +54,22 @@ export function OnboardingClient({
   const [workspaceName, setWorkspaceName] = useState(defaultWorkspaceName);
   const [projectName, setProjectName] = useState(defaultProjectName);
   const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
+  const [inviteOutcomes, setInviteOutcomes] = useState<
+    Record<string, WorkspaceInviteAcceptanceStatus>
+  >({});
   const [creating, setCreating] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasInvites = invites.length > 0;
+  const unresolvedInvites = invites.filter((invite) => !inviteOutcomes[invite.id]);
+  const hasUnresolvedInvites = unresolvedInvites.length > 0;
+  const hasEmailMismatch = Object.values(inviteOutcomes).includes("email_mismatch");
   const normalizedWorkspaceName = workspaceName.trim();
   const canCreate = normalizedWorkspaceName.length >= 2 && !creating;
   const inviteCountLabel = useMemo(() => {
-    if (invites.length === 1) return "1 pending invitation";
-    return `${invites.length} pending invitations`;
-  }, [invites.length]);
+    if (unresolvedInvites.length === 1) return "1 pending invitation";
+    return `${unresolvedInvites.length} pending invitations`;
+  }, [unresolvedInvites.length]);
 
   async function handleAcceptInvite(invite: PendingWorkspaceInvite) {
     setError(null);
@@ -84,15 +81,30 @@ export function OnboardingClient({
         router.refresh();
         return;
       }
-      setError(acceptanceMessage(result.status));
-    } catch (acceptError) {
-      setError(
-        acceptError instanceof Error
-          ? acceptError.message
-          : "Could not accept this invitation.",
-      );
+      setInviteOutcomes((outcomes) => ({
+        ...outcomes,
+        [invite.id]: result.status,
+      }));
+    } catch {
+      setError("Could not check this invitation. Try again.");
     } finally {
       setAcceptingInviteId(null);
+    }
+  }
+
+  async function handleUseAnotherAccount() {
+    if (signingOut) return;
+    setSigningOut(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) throw signOutError;
+      router.replace("/login?next=%2Fonboarding");
+      router.refresh();
+    } catch {
+      setError("Could not sign out. Try again.");
+      setSigningOut(false);
     }
   }
 
@@ -108,12 +120,8 @@ export function OnboardingClient({
       });
       router.replace(nextPath);
       router.refresh();
-    } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "Could not create this workspace.",
-      );
+    } catch {
+      setError("Could not create this workspace. Try again.");
     } finally {
       setCreating(false);
     }
@@ -126,15 +134,29 @@ export function OnboardingClient({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-eyebrow">Workspace</p>
             <span className="rounded-full border border-info/25 bg-info-soft px-2 py-0.5 text-ui-xs font-medium text-info">
-              {hasInvites ? inviteCountLabel : "Create workspace"}
+              {hasUnresolvedInvites
+                ? inviteCountLabel
+                : hasInvites
+                  ? "Needs attention"
+                  : "Create workspace"}
             </span>
           </div>
           <h1 className="mt-2 text-[1.25rem] font-semibold leading-tight text-ink sm:text-[1.5rem]">
-            {hasInvites ? "Join your workspace" : "Create your workspace"}
+            {hasUnresolvedInvites
+              ? unresolvedInvites.length > 1
+                ? "Choose a workspace"
+                : "Join your workspace"
+              : hasInvites
+                ? "Invitation needs attention"
+                : "Create your workspace"}
           </h1>
           <p className="mt-1.5 max-w-[44ch] text-ui-sm leading-relaxed text-ink-2">
-            {hasInvites
-              ? "You were invited with this account. Join before creating anything new."
+            {hasUnresolvedInvites
+              ? unresolvedInvites.length > 1
+                ? "Choose one invitation to continue. The others will remain available after you join."
+                : "You were invited with this account. Join before creating anything new."
+              : hasInvites
+                ? "This invitation cannot be used as-is. Review the status below before continuing."
               : "Start the place where captures become projects, marks, and team decisions."}
           </p>
         </header>
@@ -149,6 +171,10 @@ export function OnboardingClient({
           <div className="motion-enter mt-6 space-y-3">
             {invites.map((invite) => {
               const isAccepting = acceptingInviteId === invite.id;
+              const outcome = inviteOutcomes[invite.id];
+              const feedback = outcome
+                ? workspaceInviteAcceptanceFeedback(outcome, invite.workspaceName)
+                : null;
               return (
                 <article
                   key={invite.id}
@@ -171,29 +197,65 @@ export function OnboardingClient({
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 flex justify-end border-t border-rule pt-3">
-                    <Button
-                      type="button"
-                      className="h-10 min-w-[148px]"
-                      onClick={() => void handleAcceptInvite(invite)}
-                      disabled={Boolean(acceptingInviteId)}
-                    >
-                      {isAccepting ? (
-                        <>
-                          <Loader2 className="animate-spin" />
-                          Joining...
-                        </>
-                      ) : (
-                        <>
-                          Join workspace
-                          <ArrowRight className="size-4" />
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  {feedback ? (
+                    <Notice tone={feedback.tone} className="mt-3">
+                      <span className="font-medium">{feedback.title}.</span>{" "}
+                      {feedback.body}
+                    </Notice>
+                  ) : (
+                    <div className="mt-3 flex justify-end border-t border-rule pt-3">
+                      <Button
+                        type="button"
+                        className="h-10 w-full sm:w-auto sm:min-w-[148px]"
+                        onClick={() => void handleAcceptInvite(invite)}
+                        disabled={Boolean(acceptingInviteId)}
+                      >
+                        {isAccepting ? (
+                          <>
+                            <Loader2 className="animate-spin" />
+                            Joining...
+                          </>
+                        ) : (
+                          <>
+                            Join workspace
+                            <ArrowRight className="size-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </article>
               );
             })}
+            {!hasUnresolvedInvites ? (
+              <div className="flex flex-col gap-2 border-t border-rule pt-3 sm:flex-row sm:justify-end">
+                {hasEmailMismatch ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10"
+                    disabled={signingOut}
+                    onClick={() => void handleUseAnotherAccount()}
+                  >
+                    {signingOut ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <LogOut className="size-4" />
+                    )}
+                    Use another account
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  className="h-10"
+                  onClick={() => router.refresh()}
+                  disabled={signingOut}
+                >
+                  <RefreshCw className="size-4" />
+                  Check invitations again
+                </Button>
+              </div>
+            ) : null}
           </div>
         ) : (
           <form className="motion-enter mt-6 space-y-4" onSubmit={handleCreateWorkspace}>
