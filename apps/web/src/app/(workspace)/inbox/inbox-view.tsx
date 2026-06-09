@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { formatDistance } from "date-fns";
-import { ArrowRight, CheckCheck, Inbox } from "lucide-react";
+import { ArrowRight, CheckCheck, Inbox, Loader2, MailCheck } from "lucide-react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
@@ -12,6 +13,11 @@ import { ProductList, ProductListItem } from "@/components/product-list";
 import type { DisplayNamePreference } from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
+import { acceptWorkspaceInviteAction } from "@/lib/workspace/actions";
+import type {
+  PendingWorkspaceInvite,
+  WorkspaceInviteAcceptanceStatus,
+} from "@/lib/workspace/invitations";
 import { markHref } from "@/lib/workspace/routes";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
@@ -20,7 +26,19 @@ import { PageContainer } from "@/components/page-container";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { rosterDisplayParts } from "@/lib/workspace/member-label";
 
-export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
+export function InboxView({
+  initialData,
+  pendingInvites = [],
+}: {
+  initialData?: InboxSnapshot;
+  pendingInvites?: PendingWorkspaceInvite[];
+}) {
+  const router = useRouter();
+  const [resolvedInviteIds, setResolvedInviteIds] = useState<Set<string>>(() => new Set());
+  const [inviteMessage, setInviteMessage] = useState<{
+    tone: "danger" | "success";
+    body: string;
+  } | null>(null);
   const {
     workspace,
     workspaceId,
@@ -51,6 +69,44 @@ export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
     () => new Map(workspace.projects.map((project) => [project.id, project.name])),
     [workspace.projects],
   );
+  const visibleInvites = useMemo(
+    () => pendingInvites.filter((invite) => !resolvedInviteIds.has(invite.id)),
+    [pendingInvites, resolvedInviteIds],
+  );
+  const hasInvitationCards = visibleInvites.length > 0;
+  const hasInboxGroups = inbox.groups.length > 0;
+
+  async function acceptInvite(invite: PendingWorkspaceInvite): Promise<void> {
+    setInviteMessage(null);
+    const result = await acceptWorkspaceInviteAction({ inviteId: invite.id });
+    if (
+      result.status === "accepted" ||
+      result.status === "already_member" ||
+      result.status === "already_accepted"
+    ) {
+      setResolvedInviteIds((ids) => new Set(ids).add(invite.id));
+      setInviteMessage({
+        tone: "success",
+        body:
+          result.status === "accepted"
+            ? `Joined ${invite.workspaceName}.`
+            : `The invitation for ${invite.workspaceName} is already resolved.`,
+      });
+      inbox.refetch();
+      router.refresh();
+      return;
+    }
+
+    if (result.status === "expired" || result.status === "revoked" || result.status === "not_found") {
+      setResolvedInviteIds((ids) => new Set(ids).add(invite.id));
+      router.refresh();
+    }
+
+    setInviteMessage({
+      tone: "danger",
+      body: inviteAcceptanceMessage(result.status, invite.workspaceName),
+    });
+  }
 
   return (
     <PageContainer>
@@ -80,6 +136,27 @@ export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
         )}
       />
 
+      {inviteMessage ? (
+        <div
+          className={cn(
+            "mb-3 rounded-md border px-3 py-2 text-ui-xs leading-snug",
+            inviteMessage.tone === "success"
+              ? "border-ok/25 bg-ok-soft text-ok"
+              : "border-destructive/30 bg-destructive-soft text-destructive",
+          )}
+        >
+          {inviteMessage.body}
+        </div>
+      ) : null}
+
+      {hasInvitationCards ? (
+        <InboxInvitations
+          invites={visibleInvites}
+          onAccept={acceptInvite}
+          className={hasInboxGroups ? "mb-4" : undefined}
+        />
+      ) : null}
+
       {inbox.isError ? (
         <EmptyState
           icon={Inbox}
@@ -94,7 +171,7 @@ export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
         />
       ) : inbox.isPending ? (
         <InboxLoadingRows />
-      ) : inbox.groups.length === 0 ? (
+      ) : !hasInboxGroups && !hasInvitationCards ? (
         <EmptyState
           icon={Inbox}
           title={userId ? "Inbox empty." : "Sign in to see your inbox."}
@@ -137,6 +214,87 @@ export function InboxView({ initialData }: { initialData?: InboxSnapshot }) {
         </ProductList>
       )}
     </PageContainer>
+  );
+}
+
+function InboxInvitations({
+  invites,
+  onAccept,
+  className,
+}: {
+  invites: PendingWorkspaceInvite[];
+  onAccept: (invite: PendingWorkspaceInvite) => Promise<void>;
+  className?: string;
+}) {
+  const [acceptingInviteId, setAcceptingInviteId] = useState<string | null>(null);
+
+  async function handleAccept(invite: PendingWorkspaceInvite) {
+    if (acceptingInviteId) return;
+    setAcceptingInviteId(invite.id);
+    try {
+      await onAccept(invite);
+    } finally {
+      setAcceptingInviteId(null);
+    }
+  }
+
+  return (
+    <section className={className} aria-label="Workspace invitations">
+      <ProductList>
+        {invites.map((invite) => {
+          const isAccepting = acceptingInviteId === invite.id;
+          return (
+            <ProductListItem
+              key={invite.id}
+              interactive={false}
+              className="px-4 py-3"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-info-soft text-info">
+                  <MailCheck className="size-4" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="grid min-w-0 gap-x-3 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="min-w-0">
+                      <p className="text-ui-xs font-medium uppercase text-ink-3">
+                        Workspace invitation
+                      </p>
+                      <h2 className="mt-1 truncate text-ui-md font-semibold text-ink">
+                        {invite.workspaceName}
+                      </h2>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 min-w-[132px] sm:col-start-2 sm:row-span-2"
+                      onClick={() => void handleAccept(invite)}
+                      disabled={Boolean(acceptingInviteId)}
+                    >
+                      {isAccepting ? (
+                        <>
+                          <Loader2 className="animate-spin" />
+                          Joining...
+                        </>
+                      ) : (
+                        <>
+                          Join workspace
+                          <ArrowRight className="size-3.5" aria-hidden />
+                        </>
+                      )}
+                    </Button>
+                    <p className="min-w-0 text-ui-sm text-ink-2 sm:col-start-1">
+                      Invited by {invite.invitedBy}
+                      {invite.invitedByEmail ? ` (${invite.invitedByEmail})` : ""}.
+                      <span className="text-ink-3"> Expires {formatDate(invite.expiresAt)}.</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </ProductListItem>
+          );
+        })}
+      </ProductList>
+    </section>
   );
 }
 
@@ -244,6 +402,42 @@ function formatRelative(iso: string, baseTime: number): string {
   if (Number.isNaN(date.getTime())) return "recently";
   const baseDate = Number.isFinite(baseTime) && baseTime > 0 ? new Date(baseTime) : date;
   return formatDistance(date, baseDate, { addSuffix: true });
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "soon";
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function inviteAcceptanceMessage(
+  status: WorkspaceInviteAcceptanceStatus,
+  workspaceName: string,
+): string {
+  switch (status) {
+    case "expired":
+      return `The invitation for ${workspaceName} has expired.`;
+    case "revoked":
+      return `The invitation for ${workspaceName} is no longer available.`;
+    case "email_mismatch":
+      return `This invitation belongs to a different email address.`;
+    case "not_found":
+      return `This invitation could not be found.`;
+    case "invalid_request":
+      return "Choose a valid invitation before continuing.";
+    case "already_accepted":
+      return `The invitation for ${workspaceName} was already accepted.`;
+    case "already_member":
+      return `You are already a member of ${workspaceName}.`;
+    case "accepted":
+      return `Joined ${workspaceName}.`;
+    default:
+      return "Could not accept this invitation.";
+  }
 }
 
 function formatCount(count: number): string {
