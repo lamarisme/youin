@@ -78,7 +78,7 @@ function SignUpPageContent() {
   const passwordFieldError =
     password.length > 0 && password.length < 8 ? "Must be at least 8 characters." : null;
   const isInvited = Boolean(inviteToken);
-  const visibleSteps = isInvited ? STEPS.slice(0, 2) : STEPS;
+  const visibleSteps = STEPS.slice(0, 2);
   const totalSteps = visibleSteps.length;
   const canContinueAccess = emailIsValid && agreedToTerms;
   const canContinueProfile =
@@ -134,7 +134,7 @@ function SignUpPageContent() {
     try {
       const supabase = createClient();
       const redirectTo = new URL("/auth/callback", window.location.origin);
-      redirectTo.searchParams.set("next", "/dashboard");
+      redirectTo.searchParams.set("next", "/onboarding");
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -142,10 +142,10 @@ function SignUpPageContent() {
           emailRedirectTo: redirectTo.toString(),
           data: {
             full_name: name.trim(),
-            workspace_name: isInvited ? undefined : workspaceName.trim(),
+            workspace_name: workspaceName.trim() || undefined,
             workspace_username: username.trim().toLowerCase(),
             invite_token: inviteToken,
-            first_project_name: isInvited ? undefined : firstProjectName.trim() || "General",
+            first_project_name: firstProjectName.trim() || "General",
             workspace_goal: undefined,
             teammate_invites: [],
           },
@@ -158,7 +158,7 @@ function SignUpPageContent() {
       }
 
       if (data.session) {
-        router.push("/dashboard");
+        router.push("/onboarding");
         return;
       }
 
@@ -175,7 +175,7 @@ function SignUpPageContent() {
     try {
       const supabase = createClient();
       const redirectTo = new URL("/auth/callback", window.location.origin);
-      redirectTo.searchParams.set("next", "/dashboard");
+      redirectTo.searchParams.set("next", "/onboarding");
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {

@@ -4,6 +4,12 @@ export {
 } from "./bootstrap";
 
 export {
+  createOnboardingWorkspaceAction,
+  type CreateOnboardingWorkspaceInput,
+  type CreateOnboardingWorkspaceResult,
+} from "./onboarding";
+
+export {
   getAccountReadModelAction,
   getCommandPaletteIndexReadModelAction,
   getDashboardReadModelAction,
@@ -56,6 +62,8 @@ export {
 } from "./profile";
 
 export {
+  acceptWorkspaceInviteAction,
+  discoverPendingWorkspaceInvitesAction,
   inviteMemberAction,
   cancelInviteAction,
   removeMemberAction,

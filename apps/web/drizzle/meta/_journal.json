@@ -127,6 +127,41 @@
       "when": 1780678800000,
       "tag": "0017_membership_scoped_delete_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780682400000,
+      "tag": "0018_workspace_invitation_phase_1",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780686000000,
+      "tag": "0019_fix_invite_acceptance_conflict",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780689600000,
+      "tag": "0020_fix_invite_acceptance_constraint_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780693200000,
+      "tag": "0021_fix_invite_acceptance_status_ambiguity",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1781017200000,
+      "tag": "0022_active_workspace_selection",
+      "breakpoints": true
     }
   ]
 }

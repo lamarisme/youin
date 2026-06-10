@@ -3,7 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
-const DEFAULT_AFTER_AUTH = "/dashboard";
+const DEFAULT_AFTER_AUTH = "/onboarding";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);

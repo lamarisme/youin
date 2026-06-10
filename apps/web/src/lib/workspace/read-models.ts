@@ -363,7 +363,8 @@ async function loadInvites(workspaceId: string): Promise<TeamInvite[]> {
   const inviteRows = await db
     .select()
     .from(workspaceInvites)
-    .where(eq(workspaceInvites.workspaceId, workspaceId));
+    .where(eq(workspaceInvites.workspaceId, workspaceId))
+    .orderBy(desc(workspaceInvites.invitedAt));
   const inviterIds = Array.from(
     new Set(inviteRows.map((invite) => invite.invitedByUserId)),
   );
@@ -393,6 +394,9 @@ async function loadInvites(workspaceId: string): Promise<TeamInvite[]> {
       id: invite.id,
       email: invite.email,
       invitedAt: toIso(invite.invitedAt),
+      expiresAt: toIso(invite.expiresAt),
+      acceptedAt: invite.acceptedAt ? toIso(invite.acceptedAt) : undefined,
+      status: invite.status,
       invitedBy:
         inviter?.fullName?.trim() ||
         inviter?.email?.split("@")[0] ||

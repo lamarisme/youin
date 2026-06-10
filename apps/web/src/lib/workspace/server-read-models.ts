@@ -10,7 +10,7 @@ import {
 } from "@/lib/workspace/read-models";
 import { loadInboxSnapshotForWorkspace } from "@/lib/workspace/inbox-query";
 import {
-  getWorkspaceSession,
+  getWorkspaceSessionResult,
   requireWorkspaceContext,
 } from "@/lib/workspace/actions/session";
 import type {
@@ -27,6 +27,7 @@ import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 export type CurrentWorkspaceShellBootstrapResult =
   | { status: "authenticated"; bootstrap: WorkspaceShellBootstrap }
   | { status: "anonymous" }
+  | { status: "unresolved" }
   | { status: "incomplete" };
 
 function logWorkspaceBootstrapError(error: unknown): void {
@@ -55,8 +56,9 @@ function isNextDynamicServerError(error: unknown): boolean {
 
 export async function getCurrentWorkspaceShellBootstrap(): Promise<CurrentWorkspaceShellBootstrapResult> {
   try {
-    const session = await getWorkspaceSession();
-    if (!session) return { status: "anonymous" };
+    const session = await getWorkspaceSessionResult();
+    if (session.status === "anonymous") return { status: "anonymous" };
+    if (session.status === "unresolved") return { status: "unresolved" };
     const bootstrap = await loadWorkspaceShellBootstrap(
       session.workspaceId,
       session.userId,

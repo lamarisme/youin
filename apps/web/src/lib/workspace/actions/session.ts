@@ -8,7 +8,7 @@ import { getDb } from "@/db/client";
 import { workspaceMembers } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import type { WorkspaceRole } from "@/lib/workspace/authz";
-import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
+import { resolveWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
 export function revalidateWorkspaceViews(): void {
   revalidatePath("/dashboard");
@@ -38,6 +38,11 @@ export interface WorkspaceSession {
   workspaceId: string;
 }
 
+export type WorkspaceSessionResult =
+  | { status: "anonymous" }
+  | { status: "unresolved"; supabase: Awaited<ReturnType<typeof createClient>>; userId: string }
+  | { status: "authenticated"; supabase: Awaited<ReturnType<typeof createClient>>; userId: string; workspaceId: string };
+
 export async function setDbRequestUser(
   dbOrTx: RequestScopedDb,
   userId: string,
@@ -57,15 +62,28 @@ export async function withWorkspaceActor<T>(
   });
 }
 
-export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | null> => {
+export const getWorkspaceSessionResult = cache(async (): Promise<WorkspaceSessionResult> => {
   const supabase = await createClient();
   const {
     data: { user },
     error,
   } = await supabase.auth.getUser();
-  if (error || !user) return null;
-  const workspaceId = await ensureWorkspaceForUser(supabase, user);
-  return { supabase, userId: user.id, workspaceId };
+  if (error || !user) return { status: "anonymous" };
+  const workspaceId = await resolveWorkspaceForUser(supabase, user);
+  if (!workspaceId) {
+    return { status: "unresolved", supabase, userId: user.id };
+  }
+  return { status: "authenticated", supabase, userId: user.id, workspaceId };
+});
+
+export const getWorkspaceSession = cache(async (): Promise<WorkspaceSession | null> => {
+  const result = await getWorkspaceSessionResult();
+  if (result.status !== "authenticated") return null;
+  return {
+    supabase: result.supabase,
+    userId: result.userId,
+    workspaceId: result.workspaceId,
+  };
 });
 
 export const requireWorkspaceContext = cache(async (): Promise<WorkspaceContext> => {

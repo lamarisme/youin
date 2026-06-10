@@ -24,7 +24,7 @@ import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
-import { ensureWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
+import { resolveWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -190,7 +190,12 @@ async function createAuthorizedClient(
   if (userError || !user) return { error: jsonError("Unauthorized.", 401) };
 
   try {
-    const workspaceId = await ensureWorkspaceForUser(supabase, user);
+    const workspaceId = await resolveWorkspaceForUser(supabase, user);
+    if (!workspaceId) {
+      return {
+        error: jsonError("Complete onboarding in YouIn before capturing marks.", 409),
+      };
+    }
     return { supabase, user, workspaceId };
   } catch (error) {
     const message =

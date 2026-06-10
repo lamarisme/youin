@@ -5,6 +5,7 @@ import type {
   WorkspaceViewFilters,
 } from "@/lib/collab-types";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   foreignKey,
@@ -60,6 +61,10 @@ export const profiles = pgTable(
     /** Mirror of auth email for member lists (updated from trigger/app). */
     email: text("email"),
     fullName: text("full_name"),
+    currentWorkspaceId: uuid("current_workspace_id").references(
+      (): AnyPgColumn => workspaces.id,
+      { onDelete: "set null" },
+    ),
     title: text("title").notNull().default(""),
     about: text("about").notNull().default(""),
     avatarUrl: text("avatar_url").notNull().default(""),
@@ -72,7 +77,10 @@ export const profiles = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index("profiles_updated_at_idx").on(table.updatedAt)],
+  (table) => [
+    index("profiles_current_workspace_id_idx").on(table.currentWorkspaceId),
+    index("profiles_updated_at_idx").on(table.updatedAt),
+  ],
 );
 
 export const workspaces = pgTable(

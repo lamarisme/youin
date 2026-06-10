@@ -1048,6 +1048,10 @@ export function useInviteMemberMutation() {
             id: crypto.randomUUID(),
             email: trimmed,
             invitedAt: new Date().toISOString(),
+            expiresAt: new Date(
+              Date.now() + 14 * 24 * 60 * 60 * 1000,
+            ).toISOString(),
+            status: "pending",
             invitedBy:
               bundle.profile.name ||
               bundle.profile.email?.split("@")[0] ||
@@ -1057,10 +1061,11 @@ export function useInviteMemberMutation() {
       }));
       return context;
     },
-    onSuccess: (_, email) => toast.success(`Invite sent to ${email.trim()}.`),
+    onSuccess: (_, email) =>
+      toast.success(`Invitation created for ${email.trim()}.`),
     onError: (e, _vars, context) => {
       restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't send invite."));
+      toast.error(actionErrorMessage(e, "Couldn't create invitation."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
   });
@@ -1075,19 +1080,21 @@ export function useCancelInviteMutation() {
       const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
-        invites: workspace.invites.filter((invite) => invite.id !== inviteId),
+        invites: workspace.invites.map((invite) =>
+          invite.id === inviteId ? { ...invite, status: "revoked" } : invite,
+        ),
       }));
       return context;
     },
     onSuccess: (_, vars) =>
       toast.success(
         vars.email
-          ? `Cancelled invite for ${vars.email}.`
-          : "Invite cancelled.",
+          ? `Revoked invite for ${vars.email}.`
+          : "Invite revoked.",
       ),
     onError: (e, _vars, context) => {
       restoreWorkspace(queryClient, context);
-      toast.error(actionErrorMessage(e, "Couldn't cancel invite."));
+      toast.error(actionErrorMessage(e, "Couldn't revoke invite."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
   });

@@ -60,6 +60,7 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/auth/error") ||
     path.startsWith("/auth/forgot-password");
   const isProtectedRoute =
+    path.startsWith("/onboarding") ||
     path.startsWith("/dashboard") ||
     path.startsWith("/inbox") ||
     path.startsWith("/views") ||
@@ -77,7 +78,7 @@ export async function updateSession(request: NextRequest) {
   if (user && isAuthRoute && !allowSignedInAuthFlow) {
     const nextPath = safeLocalRedirectPath(
       request.nextUrl.searchParams.get("next"),
-      "/dashboard",
+      "/onboarding",
     );
     const nextUrl = new URL(nextPath, request.url);
     const cleanNext = cleanWorkspacePath(nextUrl.pathname, nextUrl.searchParams);
