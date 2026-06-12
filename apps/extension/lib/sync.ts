@@ -8,7 +8,6 @@ import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
   getActiveProjectId,
   getMarks,
-  getProjects,
   markSynced,
   markSyncFailure,
   patchMark,
@@ -23,6 +22,7 @@ import {
   type Project
 } from "./storage"
 import { getSupabase, WEB_APP_URL } from "./supabase"
+import { fetchActiveWorkspaceContext } from "./workspace-context"
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -58,6 +58,17 @@ async function workspaceIdForUser(userId: string): Promise<string | null> {
   return data.workspace_id as string
 }
 
+async function ensureActiveProjectForProjects(projects: Project[]): Promise<string> {
+  const active = await getActiveProjectId()
+  if (active && projects.some((project) => project.id === active)) {
+    return active
+  }
+  const nextActive = projects[0]?.id ?? ""
+  await setActiveProjectId(nextActive)
+  await setActiveSpaceId(nextActive)
+  return nextActive
+}
+
 export interface SyncWorkspaceResult {
   ok: boolean
   error?: string
@@ -66,14 +77,14 @@ export interface SyncWorkspaceResult {
 }
 
 /**
- * Fetch projects for the user's workspace from Postgres, replace chrome.storage mirrors,
- * and remap marks from legacy local ids to remote project UUIDs by project name match.
+ * Fetch projects for the dashboard-active workspace and replace chrome.storage mirrors.
  */
 export async function syncWorkspaceFromRemote(
   userId: string
 ): Promise<SyncWorkspaceResult> {
-  const workspaceId = await workspaceIdForUser(userId)
-  if (!workspaceId) {
+  void userId
+  const context = await fetchActiveWorkspaceContext()
+  if (!context) {
     return {
       ok: false,
       error:
@@ -82,30 +93,8 @@ export async function syncWorkspaceFromRemote(
       spaceCount: 0
     }
   }
-  const supabase = getSupabase()
-  const prevProjects = await getProjects()
-  const { data: projectRows, error: projectErr } = await supabase
-    .from("projects")
-    .select("id,name,description,created_at")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true })
-  if (projectErr) {
-    return {
-      ok: false,
-      error: projectErr.message,
-      projectCount: 0,
-      spaceCount: 0
-    }
-  }
 
-  const nextProjects: Project[] = (projectRows ?? []).map((project) => ({
-    id: project.id as string,
-    name: String(project.name),
-    description: String(project.description ?? ""),
-    createdAt: project.created_at
-      ? new Date(project.created_at as string).getTime()
-      : Date.now()
-  }))
+  const nextProjects = context.projects
   await setProjects(nextProjects)
   await setSpaces(
     nextProjects.map((project) => ({
@@ -126,45 +115,7 @@ export async function syncWorkspaceFromRemote(
     }
   }
 
-  const projectIds = new Set(nextProjects.map((project) => project.id))
-  const projectByNameLc = new Map(
-    nextProjects.map((project) => [
-      project.name.trim().toLowerCase(),
-      project.id
-    ])
-  )
-  const fallbackProjectId = nextProjects[0]?.id ?? prevProjects[0]?.id ?? ""
-
-  function remapProjectId(projectId: string): string {
-    if (projectIds.has(projectId)) return projectId
-    const meta = prevProjects.find((project) => project.id === projectId)
-    const byName = meta
-      ? projectByNameLc.get(meta.name.trim().toLowerCase())
-      : undefined
-    return byName ?? fallbackProjectId ?? projectId
-  }
-
-  const marks = await getMarks()
-  let changed = false
-  const mapped = marks.map((p) => {
-    const projectId = remapProjectId(p.projectId || p.spaceId)
-    if (projectId === p.projectId && projectId === p.spaceId) return p
-    changed = true
-    return { ...p, projectId, spaceId: projectId }
-  })
-  if (changed) {
-    await saveMarks(mapped)
-  }
-
-  const active = await getActiveProjectId()
-  const nextActive = remapProjectId(active)
-  if (nextActive !== active) {
-    await setActiveProjectId(nextActive)
-    await setActiveSpaceId(nextActive)
-  } else if (!nextProjects.some((project) => project.id === active)) {
-    await setActiveProjectId(nextProjects[0]?.id ?? "")
-    await setActiveSpaceId(nextProjects[0]?.id ?? "")
-  }
+  await ensureActiveProjectForProjects(nextProjects)
 
   return {
     ok: true,
@@ -674,8 +625,19 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
 
   let res: Response
   try {
+    const context = await fetchActiveWorkspaceContext()
+    if (!context) {
+      return {
+        ok: false,
+        attempted: 0,
+        synced: 0,
+        failed: 0,
+        error:
+          "No workspace found for this user. Use the web app once to finish setup."
+      }
+    }
     const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
-    const activeProjectId = await getActiveProjectId()
+    const activeProjectId = await ensureActiveProjectForProjects(context.projects)
     if (isUuidLike(activeProjectId)) {
       url.searchParams.set("projectId", activeProjectId)
     }

@@ -43,7 +43,7 @@ import {
   type Project,
   type WidgetCorner
 } from "./lib/storage"
-import { getSupabase, WEB_APP_URL } from "./lib/supabase"
+import { WEB_APP_URL } from "./lib/supabase"
 import {
   isWorkspaceRemoteSyncFresh,
   markWorkspaceRemoteSyncComplete,
@@ -51,6 +51,7 @@ import {
   syncWorkspaceFromRemote,
   syncWorkspaceMarksFromRemote
 } from "./lib/sync"
+import { fetchActiveWorkspaceContext } from "./lib/workspace-context"
 
 const SYNC_NOW = "youin:sync-now"
 
@@ -148,23 +149,8 @@ async function sendReviewCommandToActiveTab(
 }
 
 async function fetchWorkspaceLabel(): Promise<string | null> {
-  const session = await getSession()
-  if (!session?.user?.id) return null
-  const supabase = getSupabase()
-  const { data: mem, error: mErr } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", session.user.id)
-    .limit(1)
-    .maybeSingle()
-  if (mErr || !mem?.workspace_id) return null
-  const { data: ws, error: wErr } = await supabase
-    .from("workspaces")
-    .select("name")
-    .eq("id", mem.workspace_id as string)
-    .single()
-  if (wErr || !ws?.name) return null
-  return String(ws.name)
+  const context = await fetchActiveWorkspaceContext()
+  return context?.workspaceName ?? null
 }
 
 async function openDrawerOnActiveTab(): Promise<{
