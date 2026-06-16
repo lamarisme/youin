@@ -43,15 +43,15 @@ function DashboardViewChipsSkeleton() {
   return (
     <div
       aria-hidden="true"
-      className="flex min-w-0 items-center gap-1 overflow-hidden border-b border-rule/70 pb-2"
+      className="flex min-w-0 items-center gap-1.5 overflow-hidden border-b border-rule/70 pb-2"
     >
-      {["w-[4.75rem]", "w-[5.5rem]", "w-[6.25rem]", "w-[4.75rem]", "w-[5rem]"].map((width, index) => (
-        <ShimmerBar key={`dashboard-view-${String(index)}`} className={cn("h-7 shrink-0 rounded-md", width)} />
+      {["w-16", "w-20", "w-14"].map((width, index) => (
+        <ShimmerBar
+          key={`dashboard-view-${String(index)}`}
+          className={cn("h-10 shrink-0 rounded-md sm:h-7", width)}
+        />
       ))}
-      <div className="ml-auto flex shrink-0 items-center gap-1">
-        <ShimmerBar className="hidden h-7 w-14 rounded-md sm:block" />
-        <ShimmerBar className="h-7 w-[4.5rem] rounded-md" />
-      </div>
+      <ShimmerBar className="ml-auto h-10 w-9 shrink-0 rounded-md sm:h-7" />
     </div>
   );
 }
@@ -88,59 +88,41 @@ function ProductRowsSkeleton({ rows = 5 }: { rows?: number }) {
 
 function DashboardFiltersSkeleton() {
   return (
-    <div aria-hidden="true" className="w-full space-y-1.5">
+    <div aria-hidden="true" className="w-full">
       <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-b border-rule/70 pb-2">
-        <ShimmerBar className="h-9 min-w-[min(100%,13rem)] flex-1 rounded-md sm:h-8 sm:flex-none sm:basis-[280px]" />
-        <ShimmerBar className="h-9 w-[5.75rem] rounded-md sm:h-8" />
+        <ShimmerBar className="h-11 min-w-[min(100%,13rem)] flex-1 rounded-md sm:h-8 sm:flex-none sm:basis-[280px]" />
+        <ShimmerBar className="h-11 w-24 rounded-md sm:h-8" />
       </div>
     </div>
   );
 }
 
-function DashboardMarkListSkeleton({ rows = 8 }: { rows?: number }) {
+function DashboardMarkListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div
       aria-hidden="true"
       className="overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60"
     >
-      <div className="grid min-h-10 grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto] items-center gap-2 bg-paper-2/65 px-3">
-        <ShimmerBar className="size-4 rounded-sm" />
-        <ShimmerBar className="size-6 rounded-sm" />
-        <div className="flex min-w-0 items-baseline gap-2">
-          <ShimmerBar className="h-4 w-20 rounded-sm" />
-          <ShimmerBar className="h-3 w-5 rounded-sm" />
-        </div>
-        <ShimmerBar className="h-5 w-20 rounded-sm" />
+      <div className="flex min-h-11 items-center gap-2 bg-paper-2/65 px-3 sm:min-h-10">
+        <ShimmerBar className="h-4 w-24 rounded-sm" />
+        <ShimmerBar className="h-3 w-6 rounded-sm" />
       </div>
       <div className="divide-y divide-rule/40">
         {Array.from({ length: rows }).map((_, index) => (
           <div
             key={`dashboard-mark-row-${String(index)}`}
-            className="grid min-h-11 grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5"
+            className="flex min-h-12 items-center gap-3 px-3 py-2 sm:min-h-11 sm:py-1.5"
           >
-            <ShimmerBar className="size-4 rounded-sm" />
-            <ShimmerBar className="size-6 rounded-sm" />
-            <div className="min-w-0 rounded-sm">
-              <div className="flex min-w-0 items-center gap-2">
-                <ShimmerBar className="h-3 w-10 shrink-0 rounded-sm" />
-                <ShimmerBar
-                  className={cn(
-                    "h-4 rounded-sm",
-                    index % 3 === 0 ? "w-4/5" : index % 3 === 1 ? "w-2/3" : "w-3/5",
-                  )}
-                />
-                {index % 3 === 0 ? (
-                  <ShimmerBar className="hidden h-5 w-14 shrink-0 rounded-sm lg:block" />
-                ) : null}
-              </div>
+            <ShimmerBar className="size-4 shrink-0 rounded-sm max-sm:size-5" />
+            <div className="min-w-0 flex-1">
+              <ShimmerBar
+                className={cn(
+                  "h-4 rounded-sm",
+                  index % 3 === 0 ? "w-4/5" : index % 3 === 1 ? "w-2/3" : "w-3/5",
+                )}
+              />
             </div>
-            <div className="ml-2 flex min-w-0 shrink-0 items-center justify-end gap-2">
-              {index % 4 === 0 ? <ShimmerBar className="size-1.5 rounded-full" /> : null}
-              {index % 3 === 0 ? <ShimmerBar className="hidden h-3 w-7 rounded-sm sm:block" /> : null}
-              {index % 2 === 0 ? <ShimmerBar className="hidden size-5 rounded-full sm:block" /> : null}
-              <ShimmerBar className="h-3 w-12 rounded-sm sm:w-16" />
-              <ShimmerBar className="hidden size-7 rounded-md sm:block" />
-            </div>
+            <ShimmerBar className="hidden h-3 w-16 shrink-0 rounded-sm sm:block" />
           </div>
         ))}
       </div>
@@ -192,18 +174,12 @@ export function DashboardMainSkeleton({ id }: { id?: string }) {
         <div className="flex min-w-0 items-center gap-1.5">
           <ShimmerBar className="h-4 w-16 rounded-sm" />
         </div>
-        <ShimmerBar className="h-7 w-[5.5rem] rounded-md" />
+        <ShimmerBar className="h-9 w-20 rounded-md sm:h-7" />
       </div>
 
       <DashboardViewChipsSkeleton />
       <DashboardFiltersSkeleton />
       <DashboardMarkListSkeleton />
-
-      <div aria-hidden="true" className="hidden items-center justify-center gap-1.5 md:flex">
-        <ShimmerBar className="h-8 w-24 rounded-md" />
-        <ShimmerBar className="h-4 w-20 rounded-sm" />
-        <ShimmerBar className="h-8 w-20 rounded-md" />
-      </div>
     </div>
   );
 }
@@ -222,44 +198,26 @@ export function MarkDetailMainSkeleton({ id }: { id?: string }) {
         className="-mx-3 -mt-3 flex min-h-9 items-center justify-between gap-2 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5"
       >
         <div className="flex min-w-0 flex-1 items-center gap-1">
-          <ShimmerBar className="h-4 w-12 rounded-sm" />
-          <ShimmerBar className="h-3 w-3 rounded-sm" />
-          <ShimmerBar className="h-4 w-20 rounded-sm" />
-          <ShimmerBar className="h-4 min-w-0 max-w-64 flex-1 rounded-sm" />
+          <ShimmerBar className="h-4 w-14 rounded-sm" />
+          <ShimmerBar className="h-4 min-w-0 max-w-56 flex-1 rounded-sm" />
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <ShimmerBar className="size-7 rounded-md" />
-          <ShimmerBar className="size-7 rounded-md" />
-          <ShimmerBar className="h-7 w-16 rounded-full" />
+          <ShimmerBar className="size-9 rounded-md sm:size-7" />
+          <ShimmerBar className="h-9 w-14 rounded-full sm:h-7" />
         </div>
       </div>
 
       <div aria-hidden="true" className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section className="min-w-0 space-y-3">
-          <ShimmerBar className="h-4 w-20 rounded-sm" />
-          <ShimmerBar className="h-8 max-w-2xl rounded-md" />
-          <div className="flex flex-wrap gap-2">
-            <ShimmerBar className="h-7 w-24 rounded-md" />
-            <ShimmerBar className="h-7 w-28 rounded-md" />
-            <ShimmerBar className="h-7 w-20 rounded-md" />
-          </div>
-          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
-            <ShimmerBar className="h-4 w-16 rounded-sm" />
-            <ShimmerBar className="mt-3 h-5 max-w-xl rounded-sm" />
-          </div>
-          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
-            <ShimmerBar className="h-4 w-28 rounded-sm" />
-            <ShimmerBar className="mt-3 h-20 rounded-md" />
-          </div>
+          <ShimmerBar className="h-5 w-28 rounded-sm" />
+          <ShimmerBar className="h-8 max-w-xl rounded-md" />
+          <ShimmerBar className="h-28 rounded-md" />
+          <ShimmerBar className="h-36 rounded-md" />
         </section>
 
         <aside className="hidden min-w-0 space-y-3 lg:block">
           <ShimmerBar className="aspect-[4/3] rounded-md" />
-          <div className="rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
-            <ShimmerBar className="h-4 w-24 rounded-sm" />
-            <ShimmerBar className="mt-3 h-4 w-full rounded-sm" />
-            <ShimmerBar className="mt-2 h-4 w-2/3 rounded-sm" />
-          </div>
+          <ShimmerBar className="h-24 rounded-md" />
         </aside>
       </div>
     </div>
