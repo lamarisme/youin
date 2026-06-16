@@ -24,9 +24,9 @@ import { labelUsageFromMarks } from "@/lib/workspace/read-model-mappers";
 
 export function LabelsTab() {
   const { labels, marks } = useWorkspaceData((s) => ({
-      labels: s.workspace.labels,
-      marks: s.workspace.marks,
-    }));
+    labels: s.workspace.labels,
+    marks: s.workspace.marks,
+  }));
   const { mutateAsync: deleteLabel, isPending: isDeleting } =
     useDeleteLabelMutation();
 
@@ -58,7 +58,7 @@ export function LabelsTab() {
       {labels.length === 0 ? (
         <EmptyState
           icon={Tag}
-          title="No labels yet."
+          title="No labels yet"
           description="Open a mark in the dashboard and add a label. It will show up here."
           action={
             <Button asChild size="sm" variant="outline" className="h-10 sm:h-8">
@@ -76,6 +76,7 @@ export function LabelsTab() {
             return (
               <ProductListItem
                 key={label.id}
+                interactive={false}
                 className="flex items-center justify-between gap-3"
               >
                 <span className="inline-flex items-center gap-2">

@@ -120,7 +120,7 @@ export function StatusesTab() {
       ) : null}
       {error ? <Notice tone="danger">{error}</Notice> : null}
 
-      <div className="flex flex-wrap items-end gap-2 rounded-md bg-paper-2 p-2">
+      <div className="flex flex-wrap items-end gap-2 rounded-md bg-paper-2 p-2 ring-1 ring-rule/45">
         <label className="min-w-[min(100%,12rem)] flex-1">
           <span className="text-eyebrow mb-1 block">Name</span>
           <Input
@@ -165,6 +165,7 @@ export function StatusesTab() {
           return (
             <ProductListItem
               key={status.id}
+              interactive={false}
               className="flex flex-wrap items-center justify-between gap-3"
             >
               <div className="min-w-[12rem] flex-1">

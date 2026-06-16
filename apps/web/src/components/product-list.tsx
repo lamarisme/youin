@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 type ProductListTone = "default" | "subtle";
 
 const TONE_CLASS: Record<ProductListTone, string> = {
-  default: "bg-paper-elevated",
-  subtle: "bg-paper-2/60",
+  default: "bg-paper-elevated ring-1 ring-rule/55",
+  subtle: "bg-paper-2/60 ring-1 ring-rule/40",
 };
 
 interface ProductListProps extends React.HTMLAttributes<HTMLElement> {
@@ -23,7 +23,11 @@ export function ProductList({
   const Comp = as ?? "ul";
   return (
     <Comp
-      className={cn("space-y-0 overflow-hidden rounded-md", TONE_CLASS[tone], className)}
+      className={cn(
+        "divide-y divide-rule/55 overflow-hidden rounded-md",
+        TONE_CLASS[tone],
+        className,
+      )}
       {...props}
     />
   );
@@ -38,7 +42,7 @@ export function ProductListItem({
     <li
       className={cn(
         "px-3 py-2.5",
-        interactive && "transition-colors hover:bg-paper-2",
+        interactive && "transition-colors hover:bg-paper-2/75",
         className,
       )}
       {...props}

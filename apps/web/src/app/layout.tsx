@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { GeistMono } from "geist/font/mono";
+import { Kodchasan } from "next/font/google";
 
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
@@ -12,6 +13,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const fontMono = GeistMono;
+const fontLogo = Kodchasan({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-logo",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -39,7 +45,7 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang="en" className={`${fontMono.variable} h-full`}>
+    <html lang="en" className={`${fontMono.variable} ${fontLogo.variable} h-full`}>
       <body className="min-h-full flex flex-col bg-paper font-sans text-ink antialiased">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>

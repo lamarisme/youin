@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/empty-state";
+import { Notice } from "@/components/notice";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -229,6 +231,12 @@ export function TeamTab() {
           description="Add teammates and decide who can see this workspace."
         />
 
+        {!isOwner ? (
+          <Notice tone="info">
+            Only workspace owners can invite teammates or create guest review links.
+          </Notice>
+        ) : null}
+
         {me ? (
           <div>
             <Label htmlFor="workspace-username" className="text-ui-xs font-medium text-ink-2">
@@ -289,52 +297,54 @@ export function TeamTab() {
           </div>
         ) : null}
 
-        <div>
-          <Label htmlFor="invite-email" className="text-ui-xs font-medium text-ink-2">
-            Invite a teammate
-          </Label>
-          <p className="mt-0.5 text-ui-xs text-ink-3">
-            YouIn matches this invitation when that email signs in. Email delivery is not required.
-          </p>
-          <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row">
-            <Input
-              id="invite-email"
-              type="email"
-              autoComplete="email"
-              value={inviteEmail}
-              onChange={(e) => {
-                setInviteError(null);
-                setInviteEmail(e.target.value);
-              }}
-              placeholder="colleague@company.com"
-              aria-invalid={Boolean(inviteFieldError) || undefined}
-              aria-describedby={
-                inviteFieldError || inviteError ? "invite-email-error" : undefined
-              }
-              className="h-10 flex-1 rounded-md border-transparent bg-transparent text-ui-md shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-8 sm:text-ui-sm"
-              onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
-            />
-            <SubmitButton
-              onClick={handleInvite}
-              loading={isInviting}
-              disabled={!canInvite}
-              loadingText="Creating…"
-              className="h-10 shrink-0 sm:h-8 sm:px-4"
-            >
-              <UserPlus className="size-3.5" />
-              Create invite
-            </SubmitButton>
-          </div>
-          {inviteFieldError || inviteError ? (
-            <p
-              id="invite-email-error"
-              role="alert"
-              className="mt-1.5 text-ui-xs text-mark"
-            >
-              {inviteFieldError ?? inviteError}
+        {isOwner ? (
+          <div>
+            <Label htmlFor="invite-email" className="text-ui-xs font-medium text-ink-2">
+              Invite a teammate
+            </Label>
+            <p className="mt-0.5 text-ui-xs text-ink-3">
+              YouIn matches this invitation when that email signs in. Email delivery is not required.
             </p>
-          ) : null}
-        </div>
+            <div className="mt-2 flex max-w-xl flex-col gap-2 sm:flex-row">
+              <Input
+                id="invite-email"
+                type="email"
+                autoComplete="email"
+                value={inviteEmail}
+                onChange={(e) => {
+                  setInviteError(null);
+                  setInviteEmail(e.target.value);
+                }}
+                placeholder="colleague@company.com"
+                aria-invalid={Boolean(inviteFieldError) || undefined}
+                aria-describedby={
+                  inviteFieldError || inviteError ? "invite-email-error" : undefined
+                }
+                className="h-10 flex-1 rounded-md border-transparent bg-transparent text-ui-md shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0 sm:h-8 sm:text-ui-sm"
+                onKeyDown={(e) => e.key === "Enter" && canInvite && handleInvite()}
+              />
+              <SubmitButton
+                onClick={handleInvite}
+                loading={isInviting}
+                disabled={!canInvite}
+                loadingText="Creating…"
+                className="h-10 shrink-0 sm:h-8 sm:px-4"
+              >
+                <UserPlus className="size-3.5" />
+                Create invite
+              </SubmitButton>
+            </div>
+            {inviteFieldError || inviteError ? (
+              <p
+                id="invite-email-error"
+                role="alert"
+                className="mt-1.5 text-ui-xs text-destructive-token"
+              >
+                {inviteFieldError ?? inviteError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-4">
@@ -344,7 +354,7 @@ export function TeamTab() {
         />
 
         {isOwner ? (
-          <div className="space-y-3 rounded-md bg-paper-2 p-3">
+          <div className="space-y-3 rounded-md bg-paper-2 p-3 ring-1 ring-rule/45">
             <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div>
                 <Label htmlFor="review-origin" className="text-ui-xs font-medium text-ink-2">
@@ -403,7 +413,7 @@ export function TeamTab() {
               </SubmitButton>
             </div>
             {reviewLinkError ? (
-              <p role="alert" className="text-ui-xs text-mark">
+              <p role="alert" className="text-ui-xs text-destructive-token">
                 {reviewLinkError}
               </p>
             ) : null}
@@ -419,6 +429,7 @@ export function TeamTab() {
               return (
                 <ProductListItem
                   key={link.id}
+                  interactive={false}
                   className={cn(
                     "space-y-2",
                     muted && "opacity-65",
@@ -433,8 +444,8 @@ export function TeamTab() {
                         </Badge>
                       </p>
                       <p className="mt-0.5 truncate text-ui-xs text-ink-3">
-                        {link.targetOrigin}
-                        {project ? ` -> ${project.name}` : ""}
+                        <span>{link.targetOrigin}</span>
+                        {project ? <span> to {project.name}</span> : null}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
@@ -470,74 +481,85 @@ export function TeamTab() {
             })}
           </ProductList>
         ) : (
-          <div className="rounded-md bg-paper-2 px-3 py-4 text-ui-sm text-ink-3">
-            No guest review links yet.
-          </div>
+          <EmptyState
+            icon={Link2}
+            title="No guest review links yet"
+            description={
+              isOwner
+                ? "Create one when reviewers need to mark a staging or client site without the extension."
+                : "Workspace owners can create links for staging and client review sessions."
+            }
+            className="py-8"
+          />
         )}
       </section>
 
-      {/* Roster list, bordered so it visually anchors as the team. */}
       <section>
-        <div className="mb-2.5 flex items-baseline justify-between gap-2">
-          <p className="text-eyebrow">
-            Members <span className="text-ink-3">({members.length})</span>
-          </p>
-          {pendingInviteCount > 0 ? (
-            <p className="text-ui-xs text-ink-3">
-              {pendingInviteCount} pending invite{pendingInviteCount === 1 ? "" : "s"}
-            </p>
-          ) : null}
-        </div>
+        <ProductSectionHeader
+          title="Members"
+          description={
+            pendingInviteCount > 0
+              ? `${pendingInviteCount} pending invite${pendingInviteCount === 1 ? "" : "s"}`
+              : "People with access to this workspace."
+          }
+          className="mb-3"
+          action={
+            <Badge variant="outline" className="font-mono text-ui-2xs tabular-nums">
+              {members.length}
+            </Badge>
+          }
+        />
         <ProductList>
           {members.map((member) => {
             const parts = memberDisplayParts(member, displayNamePreference);
             const handlePrimary = displayNamePreference === "username";
             return (
-            <ProductListItem
-              key={member.id}
-              className="flex items-center justify-between gap-3"
-            >
-              <div className="flex min-w-0 items-center gap-2.5">
-                <Avatar className="size-7 shrink-0">
-                  <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
-                    {member.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-x-1.5 text-ui-sm font-medium text-ink">
-                    <span
-                      className={cn(
-                        "truncate",
-                        handlePrimary && "font-mono text-mark",
-                      )}
-                    >
-                      {parts.primary}
-                    </span>
-                    {member.id === userId ? (
-                      <span className="text-ui-xs font-normal text-ink-3">(you)</span>
-                    ) : null}
-                  </p>
-                  <p className="truncate text-ui-xs text-ink-3">{member.email}</p>
+              <ProductListItem
+                key={member.id}
+                interactive={false}
+                className="flex items-center justify-between gap-3"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Avatar className="size-7 shrink-0">
+                    <AvatarFallback className="bg-paper-3 text-ui-2xs font-medium text-ink-2">
+                      {member.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-ui-sm font-medium text-ink">
+                      <span
+                        className={cn(
+                          "truncate",
+                          handlePrimary && "font-mono text-mark",
+                        )}
+                      >
+                        {parts.primary}
+                      </span>
+                      {member.id === userId ? (
+                        <span className="text-ui-xs font-normal text-ink-3">(you)</span>
+                      ) : null}
+                    </p>
+                    <p className="truncate text-ui-xs text-ink-3">{member.email}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Badge variant="outline" className="text-ui-2xs capitalize">
-                  {member.role}
-                </Badge>
-                {isOwner && member.id !== userId && member.role !== "owner" ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
-                    }
-                    aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
-                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                ) : null}
-              </div>
-            </ProductListItem>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge variant="outline" className="text-ui-2xs capitalize">
+                    {member.role}
+                  </Badge>
+                  {isOwner && member.id !== userId && member.role !== "owner" ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
+                      }
+                      aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
+                      className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  ) : null}
+                </div>
+              </ProductListItem>
             );
           })}
         </ProductList>
@@ -549,6 +571,7 @@ export function TeamTab() {
               return (
                 <ProductListItem
                   key={invite.id}
+                  interactive={false}
                   className="flex items-center justify-between gap-3 py-2.5 text-ui-sm hover:bg-paper-3/45"
                 >
                   <div className="min-w-0">

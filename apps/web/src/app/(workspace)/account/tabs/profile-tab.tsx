@@ -213,7 +213,7 @@ function InlineProfileRow({
 
   if (active) {
     return (
-      <div className="grid gap-1 rounded-md px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4">
+      <div className="grid gap-1 bg-paper-2/55 px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4">
         <label htmlFor={id} className="pt-1.5 text-ui-xs font-medium text-ink-2">
           {label}
         </label>
@@ -258,7 +258,7 @@ function InlineProfileRow({
             />
           )}
           {error ? (
-            <p id={`${id}-error`} role="alert" className="text-ui-xs text-mark">
+            <p id={`${id}-error`} role="alert" className="text-ui-xs text-destructive-token">
               {error}
             </p>
           ) : null}
@@ -278,7 +278,7 @@ function InlineProfileRow({
     <button
       type="button"
       onClick={() => onEdit(field)}
-      className="group grid w-full gap-1 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-paper-3/55 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4"
+      className="group grid w-full gap-1 px-3 py-2.5 text-left transition-colors hover:bg-paper-2/75 sm:grid-cols-[10rem_minmax(0,1fr)_4.25rem] sm:items-start sm:gap-4"
     >
       <span className="text-ui-xs font-medium text-ink-2">{label}</span>
       <span
@@ -307,7 +307,7 @@ function NamePreferenceRow({
   onSelect: (value: DisplayNamePreference) => void;
 }) {
   return (
-    <div className="grid gap-2 rounded-md px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
+    <div className="grid gap-2 px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-4">
       <div>
         <p className="text-ui-xs font-medium text-ink-2">Names in workspace</p>
         <p className="mt-0.5 text-ui-xs leading-snug text-ink-3">
@@ -356,7 +356,7 @@ function NamePrefButton({
       className={cn(
         "rounded-md border px-3 py-2 text-left transition-colors disabled:pointer-events-none disabled:opacity-60",
         checked
-          ? "border-transparent bg-mark-soft text-ink"
+          ? "border-mark/15 bg-mark-soft/80 text-ink ring-1 ring-mark/15"
           : "border-transparent bg-transparent text-ink-2 hover:bg-paper-3",
       )}
     >

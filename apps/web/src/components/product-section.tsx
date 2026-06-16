@@ -18,7 +18,12 @@ export function ProductSectionHeader({
   className,
 }: ProductSectionHeaderProps) {
   return (
-    <div className={cn("flex items-start justify-between gap-3", className)}>
+    <div
+      className={cn(
+        "flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3",
+        className,
+      )}
+    >
       <div className="min-w-0">
         {eyebrow ? <p className="text-eyebrow">{eyebrow}</p> : null}
         {title ? (
@@ -30,7 +35,7 @@ export function ProductSectionHeader({
           </p>
         ) : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="shrink-0 sm:pt-0.5">{action}</div> : null}
     </div>
   );
 }

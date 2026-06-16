@@ -111,6 +111,7 @@ export function IntegrationsTab() {
             return (
               <ProductListItem
                 key={surface.title}
+                interactive={false}
                 className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
               >
                 <div className="flex min-w-0 gap-3">
@@ -158,6 +159,7 @@ export function IntegrationsTab() {
             return (
               <ProductListItem
                 key={point.title}
+                interactive={false}
                 className="flex items-start gap-3"
               >
                 <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-paper text-ink-2">

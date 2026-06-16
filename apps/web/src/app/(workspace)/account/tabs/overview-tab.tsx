@@ -113,7 +113,6 @@ export function OverviewTab() {
           </div>
         )}
 
-        {/* Inline meta chips, denser than separate cards. */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-ui-sm text-ink-2">
           <span className="inline-flex items-center gap-1.5">
             <span className="text-ink-3">Role</span>
@@ -138,10 +137,9 @@ export function OverviewTab() {
         </div>
       </section>
 
-      {/* Settings, grouped as a divider-separated list. */}
       <section>
         <ProductSectionHeader
-          title="Security & notifications"
+          title="Security and notifications"
           description="Sign-in protection and how the team hears about activity."
         />
 
@@ -175,7 +173,7 @@ function SettingRow({
   muted?: boolean;
 }) {
   return (
-    <ProductListItem className="flex items-center justify-between gap-4">
+    <ProductListItem interactive={false} className="flex items-center justify-between gap-4">
       <div className={muted ? "opacity-70" : undefined}>
         <p className="text-ui-sm font-medium text-ink">{title}</p>
         <p className="mt-0.5 text-ui-xs text-ink-3">{description}</p>

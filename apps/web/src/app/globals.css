@@ -9,6 +9,7 @@
   --font-display: var(--font-display-family), ui-sans-serif, system-ui, sans-serif;
   --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-logo: var(--font-logo), sans-serif;
 
   --text-ui-2xs: var(--yi-font-ui-2xs);
   --text-ui-xs: var(--yi-font-ui-xs);

@@ -44,7 +44,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
     {
       value: "overview",
       label: "Overview",
-      detail: "Workspace and security",
+      detail: "Identity and defaults",
       icon: BadgeCheck,
     },
     {
@@ -57,14 +57,14 @@ export function AccountClient({ section = null }: { section?: string | null }) {
     {
       value: "integrations",
       label: "Integrations",
-      detail: "Extension and app installs",
+      detail: "Capture entry points",
       icon: Blocks,
       count: reviewLinkCount,
     },
     {
       value: "labels",
       label: "Labels",
-      detail: "Mark taxonomy",
+      detail: "Tag vocabulary",
       icon: Tags,
       count: labelCount,
     },
@@ -78,7 +78,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
     {
       value: "profile",
       label: "Profile",
-      detail: "Your display identity",
+      detail: "Display identity",
       icon: UserRound,
     },
   ];
@@ -90,20 +90,20 @@ export function AccountClient({ section = null }: { section?: string | null }) {
       <AppHeader
         title="Account settings"
         eyebrow="Settings"
-        subtitle="Team access, integrations, labels, workflow statuses, and profile."
+        subtitle="Manage workspace access, capture paths, taxonomy, workflow, and your profile."
       />
 
-      <div className="grid gap-5 lg:grid-cols-[15rem_minmax(0,56rem)] lg:items-start lg:gap-7">
+      <div className="grid gap-5 lg:grid-cols-[13.5rem_minmax(0,58rem)] lg:items-start lg:gap-8 xl:grid-cols-[14rem_minmax(0,62rem)]">
         <nav
           aria-label="Account sections"
-          className="-mx-3 overflow-x-auto border-y border-rule/70 bg-paper-2/70 px-3 py-2 sm:-mx-4 sm:px-4 lg:sticky lg:top-4 lg:mx-0 lg:overflow-visible lg:rounded-lg lg:border lg:bg-paper-elevated lg:p-1.5"
+          className="-mx-3 border-y border-rule/70 bg-paper-2/70 px-3 py-2 sm:-mx-4 sm:px-4 lg:sticky lg:top-4 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0"
         >
-          <div className="hidden px-2 pb-2 pt-1 lg:block">
+          <div className="hidden px-1 pb-2 lg:block">
             <p className="text-ui-2xs font-medium uppercase tracking-[0.08em] text-ink-3">
-              Settings
+              Sections
             </p>
           </div>
-          <div className="flex min-w-max gap-1 lg:min-w-0 lg:flex-col">
+          <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:min-w-0 lg:flex-col lg:gap-1.5">
             {sections.map((section) => {
               const active = section.value === activeSection;
               const Icon = section.icon;
@@ -113,18 +113,18 @@ export function AccountClient({ section = null }: { section?: string | null }) {
                   href={accountHref(section.value)}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group flex min-h-11 w-full shrink-0 items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
+                    "group flex min-h-11 w-full shrink-0 items-center gap-2 rounded-md px-2.5 py-2 text-left transition-[background-color,color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                     "lg:min-h-12 lg:px-2.5",
                     active
-                      ? "bg-paper text-ink shadow-hairline ring-1 ring-rule/70"
-                      : "text-ink-2 hover:bg-paper-3/70 hover:text-ink",
+                      ? "bg-paper-elevated text-ink ring-1 ring-rule/60"
+                      : "text-ink-2 hover:bg-paper-2/80 hover:text-ink",
                   )}
                 >
                   <span
                     className={cn(
                       "inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-paper-3 text-ink-3 transition-colors",
                       active
-                        ? "bg-mark-soft text-mark"
+                        ? "bg-mark-soft/80 text-mark"
                         : "group-hover:text-ink-2",
                     )}
                     aria-hidden
@@ -143,7 +143,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
                     <span
                       className={cn(
                         "rounded bg-paper-3 px-1.5 py-px font-mono text-ui-2xs tabular-nums",
-                        active ? "text-mark" : "text-ink-3",
+                        active ? "text-mark-ink" : "text-ink-3",
                       )}
                     >
                       {section.count}
@@ -157,7 +157,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
 
         <section
           aria-label={`${activeSectionMeta.label} settings`}
-          className="min-w-0 lg:border-l lg:border-rule/70 lg:pl-7"
+          className="min-w-0 lg:border-l lg:border-rule/70 lg:pl-8"
         >
           {activeSection === "overview" ? <OverviewTab /> : null}
           {activeSection === "team" ? <TeamTab /> : null}
