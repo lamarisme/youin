@@ -71,14 +71,14 @@ export function MarkDetailNav({
 
   return (
     <div className="-mx-3 -mt-3 border-b border-rule/70 bg-paper px-3 py-1 sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-5 lg:px-5">
-      <div className="flex min-h-8 min-w-0 items-center justify-between gap-2">
+      <div className="flex min-h-11 min-w-0 items-center justify-between gap-2 sm:min-h-8">
         <nav aria-label="Mark breadcrumb" className="min-w-0 flex-1">
           <ol className="flex min-w-0 items-center gap-0.5 text-ui-sm text-ink-2">
             <li className="min-w-0 shrink-0">
               <button
                 type="button"
                 onClick={onBack}
-                className="rounded-md px-1.5 py-0.5 font-medium text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25"
+                className="min-h-10 rounded-md px-2 font-medium text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 sm:min-h-0 sm:px-1.5 sm:py-0.5"
               >
                 Marks
               </button>
@@ -148,24 +148,24 @@ export function MarkDetailNav({
               <TooltipContent side="bottom">Open captured page</TooltipContent>
             </Tooltip>
           ) : null}
-          <div className="ml-0.5 inline-flex h-7 items-center overflow-hidden rounded-full border border-rule/80 bg-paper-elevated shadow-none">
+          <div className="ml-0.5 inline-flex h-10 items-center overflow-hidden rounded-full border border-rule/80 bg-paper-elevated shadow-none sm:h-7">
             <button
               type="button"
               onClick={onPrev}
               disabled={!canPrev}
               aria-label="Go to previous mark"
-              className="inline-flex size-7 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45"
+              className="inline-flex size-10 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45 sm:size-7"
             >
               <ChevronLeft className="size-3.5" aria-hidden />
             </button>
-            <span className="h-4 w-px bg-rule" aria-hidden />
+            <span className="h-5 w-px bg-rule sm:h-4" aria-hidden />
             <button
               type="button"
               onClick={onNext}
               disabled={!canNext}
               aria-label="Go to next mark"
               title={positionLabel}
-              className="inline-flex size-7 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45"
+              className="inline-flex size-10 items-center justify-center text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink disabled:pointer-events-none disabled:opacity-45 sm:size-7"
             >
               <ChevronRight className="size-3.5" aria-hidden />
             </button>

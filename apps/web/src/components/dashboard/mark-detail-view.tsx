@@ -626,6 +626,9 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
         <DetailSidebar
           isPane={isPane}
           collapsed={rightSidebarCollapsed}
+          width={rightSidebarWidth}
+          minWidth={DETAIL_SIDEBAR_MIN_WIDTH}
+          maxWidth={DETAIL_SIDEBAR_MAX_WIDTH}
           onToggleCollapsed={toggleRightSidebar}
           onResizeStart={handleRightSidebarResizeStart}
           onResizeKeyDown={handleRightSidebarResizeKeyDown}
@@ -756,7 +759,7 @@ function InlineEditActions({
         type="button"
         onClick={onCancel}
         disabled={saving}
-        className="inline-flex size-8 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50 sm:size-7"
+        className="inline-flex size-10 items-center justify-center rounded-sm text-ink-3 transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/25 disabled:pointer-events-none disabled:opacity-50 sm:size-7"
         aria-label={`Cancel ${field} edit`}
       >
         <X className="size-3.5 sm:size-3" aria-hidden />
@@ -765,7 +768,7 @@ function InlineEditActions({
         type="button"
         onClick={() => onSave(field)}
         disabled={saving || disabled}
-        className="inline-flex size-8 items-center justify-center rounded-sm text-mark transition-colors hover:bg-mark-soft hover:text-mark focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45 sm:size-7"
+        className="inline-flex size-10 items-center justify-center rounded-sm text-mark transition-colors hover:bg-mark-soft hover:text-mark focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45 sm:size-7"
         aria-label={`Save ${field}`}
       >
         <Check className="size-3.5 sm:size-3" aria-hidden />
@@ -777,6 +780,9 @@ function InlineEditActions({
 function DetailSidebar({
   isPane,
   collapsed,
+  width,
+  minWidth,
+  maxWidth,
   onToggleCollapsed,
   onResizeStart,
   onResizeKeyDown,
@@ -784,6 +790,9 @@ function DetailSidebar({
 }: {
   isPane: boolean;
   collapsed: boolean;
+  width: number;
+  minWidth: number;
+  maxWidth: number;
   onToggleCollapsed: () => void;
   onResizeStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onResizeKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
@@ -796,13 +805,19 @@ function DetailSidebar({
       {!isPane ? (
         <button
           type="button"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuemin={minWidth}
+          aria-valuemax={maxWidth}
+          aria-valuenow={Math.round(width)}
+          aria-disabled={collapsed || undefined}
+          disabled={collapsed}
           onPointerDown={onResizeStart}
           onKeyDown={onResizeKeyDown}
           aria-label="Resize details sidebar"
-          title="Drag to resize"
+          title={collapsed ? "Expand details sidebar before resizing" : "Drag or use arrow keys to resize"}
           className={cn(
-            "absolute -left-3 top-0 z-10 hidden h-full w-3 cursor-col-resize rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 lg:block",
-            collapsed && "cursor-default",
+            "absolute -left-3 top-0 z-10 hidden h-full w-3 cursor-col-resize rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 disabled:pointer-events-none disabled:opacity-0 lg:block",
           )}
         >
           <span className="sr-only">Resize details sidebar</span>

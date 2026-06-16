@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
   CircleDashed,
   Folder,
   Link2,
   Loader2,
   Plus,
+  RefreshCcw,
   UserRound,
 } from "lucide-react";
 import {
@@ -40,9 +42,6 @@ import type {
   WorkspaceProject,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
-import type {
-  DashboardScopeCounts,
-} from "@/lib/workspace/dashboard-query";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
@@ -81,6 +80,9 @@ export function TriageView() {
   const { mutate: logPromptCopy } = useLogMarkPromptCopyMutation();
   const {
     pagination,
+    scopeCounts,
+    refreshErrorMessage,
+    retryRefresh,
     isFetching,
     isPlaceholderData,
   } = useDashboardReadModel();
@@ -118,15 +120,6 @@ export function TriageView() {
     filters,
     viewerId: userId,
   });
-  const scopeCounts = useMemo(
-    () =>
-      dashboardScopeCountsFromMarks(
-        workspace.marks,
-        filters.projectId === "all" ? null : filters.projectId,
-        userId,
-      ),
-    [filters.projectId, userId, workspace.marks],
-  );
   const isDashboardUpdating =
     isFilterTransitionPending || isFetching || isPlaceholderData;
   const rowFilters = filters;
@@ -143,13 +136,18 @@ export function TriageView() {
   const rowIsMyMarksPage = rowFilters.assignee === "me";
   const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
+  const updateDashboardFilters: typeof update = useCallback(
+    (patch, options) => {
+      setSelectedIds(new Set());
+      update(patch, options);
+    },
+    [update],
+  );
+
   const scopedSelectedIds = useMemo(
     () => pruneSelectedIds(selectedIds, visibleMarks),
     [selectedIds, visibleMarks],
   );
-  if (scopedSelectedIds !== selectedIds) {
-    setSelectedIds(scopedSelectedIds);
-  }
 
   const selectedMarks = useMemo(
     () => visibleMarks.filter((p) => scopedSelectedIds.has(p.id)),
@@ -168,7 +166,7 @@ export function TriageView() {
   const showDashboardControls = scopeCounts.total > 0 || filtersActive;
 
   function clearFilters() {
-    update(
+    updateDashboardFilters(
       {
         status: "all",
         workflowStatus: "all",
@@ -182,8 +180,12 @@ export function TriageView() {
     );
   }
 
-  function handleRowToggleStatus(mark: MarkItem) {
-    void toggleMarkStatus(mark.id);
+  async function handleRowToggleStatus(mark: MarkItem) {
+    try {
+      await toggleMarkStatus(mark.id);
+    } catch {
+      // Mutation toast handles the failure and rolls back optimistic state.
+    }
   }
 
   const setNewMarkDialogOpen = useCallback((open: boolean) => {
@@ -265,10 +267,19 @@ export function TriageView() {
       targets.map((p) => toggleMarkStatus(p.id)),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = targets.length - failed;
     setSelectedIds(new Set());
     if (failed === 0) {
       toast.success(
-        `${targets.length} mark${targets.length === 1 ? "" : "s"} ${target === "closed" ? "closed" : "reopened"}.`,
+        `${formatMarkCount(targets.length)} ${target === "closed" ? "closed" : "reopened"}.`,
+      );
+    } else if (succeeded > 0) {
+      toast.error(
+        `${formatMarkCount(succeeded)} ${target === "closed" ? "closed" : "reopened"}; ${formatMarkCount(failed)} failed.`,
+      );
+    } else {
+      toast.error(
+        `Couldn't ${target === "closed" ? "close" : "reopen"} ${formatMarkCount(failed)}.`,
       );
     }
   }
@@ -283,11 +294,16 @@ export function TriageView() {
       targets.map((p) => updateMarkPriority({ markId: p.id, priority })),
     );
     const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = targets.length - failed;
     setSelectedIds(new Set());
     if (failed === 0) {
-      toast.success(
-        `${targets.length} mark${targets.length === 1 ? "" : "s"} updated.`,
+      toast.success(`${formatMarkCount(targets.length)} updated.`);
+    } else if (succeeded > 0) {
+      toast.error(
+        `${formatMarkCount(succeeded)} updated; ${formatMarkCount(failed)} failed.`,
       );
+    } else {
+      toast.error(`Couldn't update priority for ${formatMarkCount(failed)}.`);
     }
   }
 
@@ -296,9 +312,16 @@ export function TriageView() {
     if (ids.length === 0) return;
     const results = await Promise.allSettled(ids.map((id) => deleteMark(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = ids.length - failed;
     setSelectedIds(new Set());
     if (failed === 0) {
-      toast.success(`${ids.length} mark${ids.length === 1 ? "" : "s"} deleted.`);
+      toast.success(`${formatMarkCount(ids.length)} deleted.`);
+    } else if (succeeded > 0) {
+      toast.error(
+        `${formatMarkCount(succeeded)} deleted; ${formatMarkCount(failed)} failed.`,
+      );
+    } else {
+      toast.error(`Couldn't delete ${formatMarkCount(failed)}.`);
     }
   }
 
@@ -314,7 +337,7 @@ export function TriageView() {
       await navigator.clipboard.writeText(prompt);
       logPromptCopy({ markIds: selectedMarks.map((mark) => mark.id), target: "bulk" });
       toast.success(
-        `Copied AI prompt for ${selectedMarks.length} mark${selectedMarks.length === 1 ? "" : "s"}.`,
+        `Copied AI prompt for ${formatMarkCount(selectedMarks.length)}.`,
       );
     } catch {
       toast.error("Couldn't copy the prompt.");
@@ -385,7 +408,7 @@ export function TriageView() {
                 filters={filters}
                 viewerId={userId}
                 counts={scopeCounts}
-                onApply={update}
+                onApply={updateDashboardFilters}
               />
 
               <MarkFilters
@@ -394,8 +417,16 @@ export function TriageView() {
                 lockedAssignee={isMyMarksPage ? "me" : undefined}
                 isUpdating={isDashboardUpdating}
                 showAppliedFilters={visibleMarks.length > 0}
-                onChange={update}
+                onChange={updateDashboardFilters}
               />
+
+              {refreshErrorMessage ? (
+                <DashboardRefreshNotice
+                  message={refreshErrorMessage}
+                  isRetrying={isFetching}
+                  onRetry={retryRefresh}
+                />
+              ) : null}
             </>
           ) : null}
 
@@ -509,7 +540,7 @@ export function TriageView() {
             <Pagination
               page={displayPage}
               totalPages={totalPages}
-              onPageChange={(p) => update({ page: p })}
+              onPageChange={(p) => updateDashboardFilters({ page: p })}
               className="mt-2"
             />
           ) : null}
@@ -547,8 +578,49 @@ function DashboardListUpdatingState() {
       role="status"
       className="flex min-h-56 flex-col items-center justify-center gap-2 px-6 py-16 text-center text-ink-3"
     >
-      <Loader2 className="size-4 animate-spin" aria-hidden />
+      <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden />
       <p className="text-ui-sm font-medium text-ink-2">Updating marks</p>
+    </div>
+  );
+}
+
+function DashboardRefreshNotice({
+  message,
+  isRetrying,
+  onRetry,
+}: {
+  message: string;
+  isRetrying: boolean;
+  onRetry: () => Promise<void>;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-2 rounded-md border border-warn/25 bg-warn-soft px-3 py-2.5 text-ui-xs text-ink-2 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex min-w-0 items-start gap-2">
+        <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warn" aria-hidden />
+        <p className="min-w-0 leading-snug">
+          <span className="font-medium text-ink">Showing the last loaded dashboard.</span>{" "}
+          <span className="text-ink-2">{message}</span>
+        </p>
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={isRetrying}
+        onClick={() => {
+          void onRetry();
+        }}
+        className="h-8 shrink-0 border-warn/30 bg-paper/80 text-ink-2 hover:bg-paper hover:text-ink"
+      >
+        <RefreshCcw
+          className={cn("size-3.5", isRetrying && "animate-spin motion-reduce:animate-none")}
+          aria-hidden
+        />
+        Retry
+      </Button>
     </div>
   );
 }
@@ -584,7 +656,7 @@ function GroupedMarkTables({
     <div className="divide-y divide-rule/60">
       {groups.map((group) => (
         <section key={group.id}>
-          <div className="flex min-h-10 items-center gap-2 bg-paper-2/70 px-3 py-2">
+          <div className="flex min-h-11 items-center gap-2 bg-paper-2/70 px-3 py-2 sm:min-h-10">
             <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-ink-3">
               {group.icon}
             </span>
@@ -737,31 +809,6 @@ function pruneSelectedIds(
   return changed ? next : selectedIds;
 }
 
-function dashboardScopeCountsFromMarks(
-  marks: readonly MarkItem[],
-  projectId: string | null,
-  viewerId: string | null,
-): DashboardScopeCounts {
-  const scopedMarks = projectId
-    ? marks.filter((mark) => mark.projectId === projectId)
-    : marks;
-  return scopedMarks.reduce<DashboardScopeCounts>(
-    (counts, mark) => {
-      counts.total += 1;
-      if (mark.status !== "open") return counts;
-
-      counts.open += 1;
-      if (mark.priority === "critical") counts.critical += 1;
-      if (viewerId && mark.assigneeId === viewerId) counts.mine += 1;
-      if (!mark.assigneeId) counts.unassigned += 1;
-      return counts;
-    },
-    {
-      open: 0,
-      critical: 0,
-      mine: 0,
-      unassigned: 0,
-      total: 0,
-    },
-  );
+function formatMarkCount(count: number): string {
+  return `${count} mark${count === 1 ? "" : "s"}`;
 }

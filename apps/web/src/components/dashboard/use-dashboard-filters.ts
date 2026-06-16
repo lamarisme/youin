@@ -70,7 +70,7 @@ export function useDashboardFilters() {
       markId: "mark",
       groupBy: "group",
     },
-    shallow: true,
+    shallow: false,
     startTransition,
   });
 

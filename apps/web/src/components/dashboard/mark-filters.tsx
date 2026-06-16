@@ -209,10 +209,10 @@ export function MarkFilters({
     setQueryDraft("");
   }
 
-  const dialogSelectClass = "h-8 w-full justify-between bg-paper-elevated text-ui-sm shadow-none sm:w-[11rem]";
+  const dialogSelectClass = "h-11 w-full justify-between bg-paper-elevated text-ui-sm shadow-none sm:h-8 sm:w-[11rem]";
   const dialogLabelClass = "text-ui-sm font-medium text-ink-2";
   const assigneeButtonClass =
-    "h-8 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none";
+    "h-11 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none sm:h-8";
   const assigneeIdleClass = "text-ink-2 hover:bg-paper-elevated hover:text-ink";
   const assigneeActiveClass = "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated";
 
@@ -238,7 +238,7 @@ export function MarkFilters({
             }}
             placeholder="Search marks"
             aria-label="Search marks by title, description, or page"
-            className="h-9 rounded-md bg-paper-elevated pl-8 pr-8 text-ui-sm shadow-none sm:h-8"
+            className="h-11 rounded-md bg-paper-elevated pl-8 pr-10 text-ui-sm shadow-none sm:h-8 sm:pr-8"
           />
           {queryDraft ? (
             <button
@@ -248,7 +248,7 @@ export function MarkFilters({
                 onChange({ q: null }, { resetPage: true });
               }}
               aria-label="Clear search"
-              className="absolute right-1.5 inline-flex size-7 items-center justify-center rounded-sm text-ink-3 hover:bg-paper-2 hover:text-ink"
+              className="absolute right-1 inline-flex size-9 items-center justify-center rounded-sm text-ink-3 hover:bg-paper-2 hover:text-ink sm:right-1.5 sm:size-7"
             >
               <X className="size-3.5 sm:size-3" />
             </button>
@@ -266,7 +266,7 @@ export function MarkFilters({
                   ? `Open dashboard filters (${hiddenControlCount} active)`
                   : "Open dashboard filters"
               }
-              className="h-9 gap-1.5 px-2.5 text-ui-sm font-normal sm:h-8"
+              className="h-11 gap-1.5 px-3 text-ui-sm font-normal sm:h-8 sm:px-2.5"
             >
               <ListFilter className="size-3.5 opacity-75 sm:size-3" aria-hidden />
               <span className="tabular-nums">
@@ -303,7 +303,7 @@ export function MarkFilters({
                         aria-pressed={active}
                         onClick={() => onChange({ status: option.value }, { resetPage: true })}
                         className={cn(
-                          "h-8 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none",
+                          "h-11 min-w-0 gap-1 rounded-sm px-2 text-ui-sm font-normal shadow-none sm:h-8",
                           active
                             ? "border-rule/70 bg-paper-elevated text-ink hover:bg-paper-elevated"
                             : "text-ink-2 hover:bg-paper-elevated hover:text-ink",
@@ -398,7 +398,7 @@ export function MarkFilters({
                         key={f.key}
                         type="button"
                         onClick={f.reset}
-                        className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-2 text-ui-xs text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink"
+                        className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-3 text-ui-xs text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink sm:min-h-7 sm:px-2"
                         aria-label={`Clear ${f.label} filter (${f.value})`}
                       >
                         <span className="truncate text-ink-3">{f.label}</span>
@@ -437,9 +437,9 @@ export function MarkFilters({
         {isUpdating ? (
           <span
             role="status"
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-3"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink-3 sm:size-8"
           >
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
+            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
             <span className="sr-only">Updating marks</span>
           </span>
         ) : null}

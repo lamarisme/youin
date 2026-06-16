@@ -98,7 +98,7 @@ export function MarkTable(props: MarkTableProps) {
       {showSectionHeader ? (
         <div
           className={cn(
-            "grid min-h-10 items-center gap-2 bg-paper-2/65 px-3 text-ui-sm text-ink",
+            "grid min-h-11 items-center gap-2 bg-paper-2/65 px-3 text-ui-sm text-ink sm:min-h-10",
             markListGridClass(selectable),
           )}
         >
@@ -112,7 +112,7 @@ export function MarkTable(props: MarkTableProps) {
                   : "Select all visible marks"
               }
               disabled={selectableMarksCount === 0}
-              className="size-4"
+              className="sm:size-4"
             />
           ) : null}
           <span className="inline-flex size-6 items-center justify-center text-ink-3">
@@ -203,10 +203,13 @@ function MarkRow({
   const workflowLabel = mark.workflowStatusId
     ? workflowStatusesById.get(mark.workflowStatusId)?.name
     : undefined;
-  const rowHeight = density === "compact" ? "min-h-9 py-1" : "min-h-11 py-1.5";
+  const rowHeight =
+    density === "compact"
+      ? "min-h-11 py-1 sm:min-h-9"
+      : "min-h-12 py-2 sm:min-h-11 sm:py-1.5";
   const openLabel = `Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`;
   const openClassName =
-    "min-w-0 rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30";
+    "flex min-h-11 min-w-0 items-center rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30 sm:min-h-0";
 
   function prefetchDetail() {
     if (href && !optimistic) router.prefetch(href);
@@ -245,10 +248,10 @@ function MarkRow({
                   : `Select ${mark.title}`
             }
             className={cn(
-              "size-4 transition-opacity",
+              "transition-opacity sm:size-4",
               selected || hasSelection
                 ? "opacity-100"
-                : "opacity-0 group-hover/mark-row:opacity-100 group-focus-within/mark-row:opacity-100",
+                : "opacity-100 lg:opacity-0 lg:group-hover/mark-row:opacity-100 lg:group-focus-within/mark-row:opacity-100",
             )}
           />
         ) : null}
@@ -262,7 +265,7 @@ function MarkRow({
         {href && !optimistic ? (
           <Link
             href={href}
-            prefetch
+            prefetch={false}
             onMouseEnter={prefetchDetail}
             onFocus={prefetchDetail}
             aria-label={openLabel}
@@ -288,7 +291,7 @@ function MarkRow({
               <span
                 className={cn(
                   "shrink-0 font-mono text-ui-xs text-ink-3",
-                  optimistic && "animate-pulse",
+                  optimistic && "motion-safe:animate-pulse",
                 )}
               >
                 {mark.displayKey}
@@ -359,7 +362,7 @@ function RowStatusToggle({
       aria-label={open ? `Close ${mark.title}` : `Reopen ${mark.title}`}
       title={open ? `Close: ${title}` : `Reopen: ${title}`}
       className={cn(
-        "inline-flex size-6 items-center justify-center rounded-sm text-ink-3 outline-none transition-colors hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25",
+        "inline-flex size-11 items-center justify-center rounded-sm text-ink-3 outline-none transition-colors hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25 sm:size-6",
         open ? "hover:text-ok focus-visible:text-ok" : "text-ok hover:text-mark focus-visible:text-mark",
       )}
     >
@@ -416,7 +419,7 @@ function RowMeta({
   displayNamePreference: DisplayNamePreference;
 }) {
   return (
-    <div className="ml-2 flex min-w-0 shrink-0 items-center justify-end gap-2 text-ink-3">
+    <div className="ml-1 flex min-w-0 shrink-0 items-center justify-end gap-1 text-ink-3 sm:ml-2 sm:gap-2">
       {mark.pinned ? (
         <Bookmark className="size-3.5 shrink-0 text-mark" aria-label="Pinned" />
       ) : null}
@@ -432,6 +435,7 @@ function RowMeta({
       ) : null}
       {assignee ? (
         <span
+          className="hidden sm:inline-flex"
           title={memberPickerLabel(assignee, displayNamePreference)}
           role="img"
           aria-label={`Assigned to ${memberPickerLabel(assignee, displayNamePreference)}`}
@@ -445,7 +449,7 @@ function RowMeta({
       ) : null}
       <span
         className={cn(
-          "w-16 shrink-0 text-right text-ui-sm tabular-nums",
+          "hidden w-16 shrink-0 text-right text-ui-sm tabular-nums sm:inline",
           density === "compact" && "text-ui-xs",
         )}
         title={mark.createdAt}
@@ -457,10 +461,10 @@ function RowMeta({
           page={mark.page}
           appearance="icon"
           stopPropagation
-          className="size-7 border-transparent bg-transparent opacity-0 shadow-none transition-opacity hover:bg-paper-3 group-hover/mark-row:opacity-100 group-focus-within/mark-row:opacity-100"
+          className="size-9 border-transparent bg-transparent shadow-none transition-opacity hover:bg-paper-3 lg:size-7 lg:opacity-0 lg:group-hover/mark-row:opacity-100 lg:group-focus-within/mark-row:opacity-100"
         />
       ) : (
-        <span className="size-7" aria-hidden />
+        <span className="hidden size-7 lg:block" aria-hidden />
       )}
     </div>
   );

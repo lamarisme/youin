@@ -42,9 +42,12 @@ export function BulkActionBar({
   const [busy, setBusy] = useState(false);
 
   async function run(fn: () => Promise<void> | void) {
+    if (busy) return;
     setBusy(true);
     try {
       await fn();
+    } catch {
+      // Callers own user-facing errors. Keep the bar recoverable on unexpected rejection.
     } finally {
       setBusy(false);
     }
@@ -55,12 +58,12 @@ export function BulkActionBar({
       <div
         role="region"
         aria-label={`${count} marks selected`}
-        className="sticky bottom-2 z-20 mx-auto mt-2 flex w-fit max-w-[calc(100%-1.5rem)] flex-wrap items-center justify-center gap-1 rounded-md bg-paper-elevated px-1.5 py-1 ring-1 ring-rule-strong/60 sm:bottom-4 sm:max-w-full"
+        className="sticky bottom-2 z-20 mx-auto mt-2 flex w-[calc(100%-1rem)] max-w-full flex-wrap items-center justify-center gap-1.5 rounded-md bg-paper-elevated px-2 py-1.5 ring-1 ring-rule-strong/60 sm:bottom-4 sm:w-fit sm:gap-1 sm:px-1.5 sm:py-1"
       >
         <span className="sr-only" aria-live="polite">
           {busy ? "Updating selected marks." : `${count} marks selected.`}
         </span>
-        <span className="flex h-7 items-center gap-1.5 px-1.5 text-ui-2xs font-medium tabular-nums text-ink">
+        <span className="flex h-10 items-center gap-1.5 px-1.5 text-ui-xs font-medium tabular-nums text-ink sm:h-7 sm:text-ui-2xs">
           <span className="text-mark">{count}</span> selected
         </span>
         <span aria-hidden className="hidden h-5 w-px bg-rule sm:block" />
@@ -71,7 +74,7 @@ export function BulkActionBar({
             variant="ghost"
             disabled={busy}
             onClick={() => run(onCopyPrompt)}
-            className="h-8 gap-1.5 px-2 text-ui-xs text-ink-2 hover:text-ink sm:h-7"
+            className="h-10 gap-1.5 px-2.5 text-ui-xs text-ink-2 hover:text-ink sm:h-7 sm:px-2"
           >
             <Bot className="size-3" />
             Copy AI prompt
@@ -83,7 +86,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => run(() => onSetStatus(allClosed ? "open" : "closed"))}
-          className="h-8 gap-1.5 px-2 text-ui-xs text-ink-2 hover:text-ink sm:h-7"
+          className="h-10 gap-1.5 px-2.5 text-ui-xs text-ink-2 hover:text-ink sm:h-7 sm:px-2"
         >
           {allClosed ? (
             <>
@@ -107,7 +110,7 @@ export function BulkActionBar({
           ]}
           ariaLabel="Set priority for selected marks"
           disabled={busy}
-          triggerClassName="h-8 w-[118px] text-ui-xs sm:h-7 sm:w-[124px]"
+          triggerClassName="h-10 w-[126px] text-ui-xs sm:h-7 sm:w-[124px]"
         />
         <Button
           type="button"
@@ -115,7 +118,7 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => setConfirmDelete(true)}
-          className="h-8 gap-1.5 px-2 text-ui-xs text-destructive-token hover:bg-destructive-soft hover:text-destructive-token sm:h-7"
+          className="h-10 gap-1.5 px-2.5 text-ui-xs text-destructive-token hover:bg-destructive-soft hover:text-destructive-token sm:h-7 sm:px-2"
         >
           <Trash2 className="size-3" />
           Delete
@@ -128,13 +131,18 @@ export function BulkActionBar({
           disabled={busy}
           onClick={onClear}
           aria-label="Clear selection"
-          className="size-8 text-ink-3 hover:text-ink sm:size-7"
+          className="size-10 text-ink-3 hover:text-ink sm:size-7"
         >
           <X className="size-3" />
         </Button>
       </div>
 
-      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+      <Dialog
+        open={confirmDelete}
+        onOpenChange={(open) => {
+          if (!busy) setConfirmDelete(open);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete {count} mark{count === 1 ? "" : "s"}?</DialogTitle>

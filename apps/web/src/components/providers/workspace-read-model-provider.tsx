@@ -18,6 +18,7 @@ import {
   getViewDetailReadModelAction,
   getViewsIndexReadModelAction,
 } from "@/lib/workspace/actions";
+import { actionErrorMessage } from "@/lib/action-error";
 import type { Workspace } from "@/lib/collab-types";
 import type {
   AccountReadModel,
@@ -39,6 +40,8 @@ type DashboardReadModelClientState = Pick<
 > & {
   isFetching: boolean;
   isPlaceholderData: boolean;
+  refreshErrorMessage: string | null;
+  retryRefresh: () => Promise<void>;
 };
 
 const DashboardReadModelContext =
@@ -127,38 +130,55 @@ export function DashboardReadModelProvider({
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
   });
+  const {
+    data: dashboardData,
+    error: dashboardError,
+    isError: isDashboardError,
+    isFetching,
+    isPlaceholderData,
+    refetch,
+  } = query;
   const snapshot = useSeedReadModelWorkspace(
-    query.data?.workspace,
-    query.data?.loadedAt,
+    dashboardData?.workspace,
+    dashboardData?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
   const workspaceSnapshot = selectDashboardWorkspaceSnapshot(current.data, snapshot);
   const dashboardState = useMemo(
     () => ({
-      selectedProjectId: query.data?.selectedProjectId ?? initialData.selectedProjectId,
-      filters: query.data?.filters ?? initialData.filters,
-      pagination: query.data?.pagination ?? initialData.pagination,
-      scopeCounts: query.data?.scopeCounts ?? initialData.scopeCounts,
-      detailNavigation: query.data?.detailNavigation ?? initialData.detailNavigation,
-      loadedAt: query.data?.loadedAt ?? initialData.loadedAt,
-      isFetching: query.isFetching,
-      isPlaceholderData: query.isPlaceholderData,
+      selectedProjectId: dashboardData?.selectedProjectId ?? initialData.selectedProjectId,
+      filters: dashboardData?.filters ?? initialData.filters,
+      pagination: dashboardData?.pagination ?? initialData.pagination,
+      scopeCounts: dashboardData?.scopeCounts ?? initialData.scopeCounts,
+      detailNavigation: dashboardData?.detailNavigation ?? initialData.detailNavigation,
+      loadedAt: dashboardData?.loadedAt ?? initialData.loadedAt,
+      isFetching,
+      isPlaceholderData,
+      refreshErrorMessage: isDashboardError
+        ? actionErrorMessage(dashboardError, "Couldn't refresh dashboard data.")
+        : null,
+      retryRefresh: async () => {
+        await refetch();
+      },
     }),
     [
+      dashboardData?.detailNavigation,
+      dashboardData?.filters,
+      dashboardData?.loadedAt,
+      dashboardData?.pagination,
+      dashboardData?.scopeCounts,
+      dashboardData?.selectedProjectId,
+      dashboardError,
       initialData.detailNavigation,
       initialData.filters,
       initialData.loadedAt,
       initialData.pagination,
       initialData.selectedProjectId,
       initialData.scopeCounts,
-      query.data?.detailNavigation,
-      query.data?.filters,
-      query.data?.loadedAt,
-      query.data?.pagination,
-      query.data?.selectedProjectId,
-      query.data?.scopeCounts,
-      query.isFetching,
-      query.isPlaceholderData,
+      isDashboardError,
+      isFetching,
+      isPlaceholderData,
+      refetch,
     ],
   );
   return (

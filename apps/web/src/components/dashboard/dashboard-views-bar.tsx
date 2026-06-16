@@ -205,7 +205,7 @@ export function DashboardViewsBar({
     <div
       role="toolbar"
       aria-label="Dashboard views"
-      className="flex min-w-0 items-center gap-1 overflow-x-auto border-b border-rule/70 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="flex min-w-0 items-center gap-1.5 overflow-x-auto border-b border-rule/70 pb-2 [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
     >
       {visibleBuiltIns.map((view) => (
         <ViewChip
@@ -238,9 +238,9 @@ export function DashboardViewsBar({
         />
       ))}
 
-      <div className="ml-auto flex shrink-0 items-center gap-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-1">
         {saving ? (
-          <span className="inline-flex h-7 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65">
+          <span className="inline-flex min-h-10 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65 sm:min-h-7">
             <input
               ref={inputRef}
               value={draftName}
@@ -259,14 +259,14 @@ export function DashboardViewsBar({
               placeholder="View name"
               aria-label="View name"
               maxLength={80}
-              className="h-6 w-28 min-w-0 bg-transparent px-1 text-ui-xs text-ink outline-none placeholder:text-ink-3 sm:w-36"
+              className="h-9 w-28 min-w-0 bg-transparent px-1 text-ui-sm text-ink outline-none placeholder:text-ink-3 sm:h-6 sm:w-36 sm:text-ui-xs"
             />
             <Button
               type="button"
               size="sm"
               variant="ghost"
               aria-busy={isPending || undefined}
-              className="h-6 min-w-14 px-2 text-ui-xs"
+              className="h-9 min-w-14 px-2 text-ui-xs sm:h-6"
               disabled={!draftName.trim() || isPending}
               onClick={() => void commitSave()}
             >
@@ -305,25 +305,31 @@ function ViewChip({
   return (
     <button
       type="button"
+      aria-label={
+        typeof count === "number"
+          ? `${label}, ${formatScopeCountLabel(count)}`
+          : label
+      }
       aria-pressed={active}
       disabled={disabled}
       title={title}
       onClick={onClick}
       className={cn(
-        "inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2 text-ui-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45",
+        "inline-flex h-10 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-ui-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/25 disabled:pointer-events-none disabled:opacity-45 sm:h-7 sm:px-2 sm:text-ui-xs",
         active
           ? "bg-paper-2 text-ink ring-1 ring-rule/70"
           : "text-ink-3 hover:bg-paper-2 hover:text-ink",
       )}
     >
-      <Icon className={cn("size-3 shrink-0", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
+      <Icon className={cn("size-3.5 shrink-0 sm:size-3", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
       <span className="max-w-[8rem] truncate">{label}</span>
       {typeof count === "number" ? (
         <span
           className={cn(
-            "font-mono text-ui-2xs tabular-nums",
+            "min-w-3 text-right font-mono text-ui-2xs tabular-nums",
             active ? "text-mark" : "text-ink-3",
           )}
+          aria-hidden
         >
           {formatScopeCount(count)}
         </span>
@@ -335,6 +341,11 @@ function ViewChip({
 function formatScopeCount(count: number): string {
   if (count > 99) return "99+";
   return String(count);
+}
+
+function formatScopeCountLabel(count: number): string {
+  if (count > 99) return "99 or more marks";
+  return `${count} mark${count === 1 ? "" : "s"}`;
 }
 
 function toWorkspaceSnapshot(filters: DashboardFilters): {

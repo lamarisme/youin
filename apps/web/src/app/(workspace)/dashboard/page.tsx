@@ -8,8 +8,9 @@ import {
   type PageSearchParams,
 } from "@/lib/page-search-params";
 import {
-  DASHBOARD_PAGE_SIZE,
-  DEFAULT_DASHBOARD_MARK_FILTERS,
+  dashboardMarkFiltersFromQuery,
+  dashboardPaginationFromQuery,
+  dashboardQueryFromSearchParams,
 } from "@/lib/workspace/dashboard-query";
 import { markHref } from "@/lib/workspace/routes";
 import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
@@ -30,17 +31,13 @@ export default async function DashboardPage({
     redirect(markHref(mark, params));
   }
 
-  const projectParam = params.get("project")?.trim();
+  const dashboardQuery = dashboardQueryFromSearchParams(params);
   const requestedProjectId =
-    projectParam && projectParam !== "all" ? projectParam : null;
+    dashboardQuery.projectId === "all" ? null : dashboardQuery.projectId;
   const readModelRequest = {
-    projectId: null,
-    filters: DEFAULT_DASHBOARD_MARK_FILTERS,
-    pagination: {
-      enabled: false,
-      page: 1,
-      pageSize: DASHBOARD_PAGE_SIZE,
-    },
+    projectId: requestedProjectId,
+    filters: dashboardMarkFiltersFromQuery(dashboardQuery),
+    pagination: dashboardPaginationFromQuery(dashboardQuery),
   };
   const [readModel, pendingInvites] = await Promise.all([
     getDashboardReadModelForCurrentWorkspace(readModelRequest),

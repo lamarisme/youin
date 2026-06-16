@@ -121,7 +121,7 @@ export function MarkDescriptionEditor({
       <div
         className={cn(
           "rounded-md border border-rule/60 bg-paper-2",
-          "animate-pulse",
+          "motion-safe:animate-pulse",
           minHeightClassName,
           className,
         )}
