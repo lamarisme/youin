@@ -1,5 +1,5 @@
-import { AccountMainSkeleton } from "@/components/workspace-shell-skeleton";
+import { AccountSectionSkeleton } from "@/components/workspace-shell-skeleton";
 
 export default function AccountSectionLoading() {
-  return <AccountMainSkeleton id="Loading account settings" />;
+  return <AccountSectionSkeleton id="Loading account section" />;
 }

@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AccountClient } from "../account-client";
-import { AccountReadModelProvider } from "@/components/providers/workspace-read-model-provider";
 import { isAccountSection } from "@/lib/workspace/routes";
-import { getAccountReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
+
+import { IntegrationsTab } from "../tabs/integrations-tab";
+import { LabelsTab } from "../tabs/labels-tab";
+import { ProfileTab } from "../tabs/profile-tab";
+import { StatusesTab } from "../tabs/statuses-tab";
+import { TeamTab } from "../tabs/team-tab";
 
 const SECTION_TITLES: Record<string, string> = {
   team: "Team settings",
@@ -35,11 +38,11 @@ export default async function AccountSectionPage({
     notFound();
   }
 
-  const readModel = await getAccountReadModelForCurrentWorkspace();
+  if (section === "team") return <TeamTab />;
+  if (section === "integrations") return <IntegrationsTab />;
+  if (section === "labels") return <LabelsTab />;
+  if (section === "statuses") return <StatusesTab />;
+  if (section === "profile") return <ProfileTab />;
 
-  return (
-    <AccountReadModelProvider initialData={readModel}>
-      <AccountClient section={section} />
-    </AccountReadModelProvider>
-  );
+  notFound();
 }

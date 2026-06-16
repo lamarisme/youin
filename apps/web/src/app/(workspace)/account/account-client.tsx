@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSelectedLayoutSegment } from "next/navigation";
 import {
   BadgeCheck,
   Blocks,
@@ -10,6 +11,7 @@ import {
   Workflow,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
@@ -18,21 +20,15 @@ import { PageContainer } from "@/components/page-container";
 import { cn } from "@/lib/utils";
 import { accountHref, type AccountSection } from "@/lib/workspace/routes";
 
-import { OverviewTab } from "./tabs/overview-tab";
-import { ProfileTab } from "./tabs/profile-tab";
-import { LabelsTab } from "./tabs/labels-tab";
-import { IntegrationsTab } from "./tabs/integrations-tab";
-import { StatusesTab } from "./tabs/statuses-tab";
-import { TeamTab } from "./tabs/team-tab";
-
-export function AccountClient({ section = null }: { section?: string | null }) {
+export function AccountShell({ children }: { children: ReactNode }) {
   const { memberCount, labelCount, reviewLinkCount, statusCount } = useWorkspaceData((s) => ({
     memberCount: s.workspace.members.length,
     labelCount: s.workspace.labels.length,
     reviewLinkCount: s.workspace.reviewLinks.length,
     statusCount: s.workspace.workflowStatuses.length,
   }));
-  const activeSection = (section ?? "overview") as AccountSection;
+  const selectedSegment = useSelectedLayoutSegment();
+  const activeSection = (selectedSegment ?? "overview") as AccountSection;
 
   const sections: Array<{
     value: AccountSection;
@@ -159,12 +155,7 @@ export function AccountClient({ section = null }: { section?: string | null }) {
           aria-label={`${activeSectionMeta.label} settings`}
           className="min-w-0 lg:border-l lg:border-rule/70 lg:pl-8"
         >
-          {activeSection === "overview" ? <OverviewTab /> : null}
-          {activeSection === "team" ? <TeamTab /> : null}
-          {activeSection === "integrations" ? <IntegrationsTab /> : null}
-          {activeSection === "labels" ? <LabelsTab /> : null}
-          {activeSection === "statuses" ? <StatusesTab /> : null}
-          {activeSection === "profile" ? <ProfileTab /> : null}
+          {children}
         </section>
       </div>
     </PageContainer>

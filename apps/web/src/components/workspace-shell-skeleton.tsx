@@ -405,3 +405,25 @@ export function AccountMainSkeleton({ id }: { id?: string }) {
     </div>
   );
 }
+
+export function AccountSectionSkeleton({ id }: { id?: string }) {
+  return (
+    <div
+      className="min-w-0 space-y-4"
+      role="status"
+      aria-busy="true"
+      aria-label={id ?? "Loading account section"}
+      aria-live="polite"
+    >
+      <div aria-hidden="true" className="space-y-2">
+        <ShimmerBar className="h-5 w-32 rounded-sm" />
+        <ShimmerBar className="h-4 w-64 max-w-full rounded-sm" />
+      </div>
+      <div aria-hidden="true" className="space-y-2.5">
+        <ShimmerBar className="h-20 rounded-md" />
+        <ShimmerBar className="h-24 rounded-md" />
+        <ShimmerBar className="h-20 rounded-md" />
+      </div>
+    </div>
+  );
+}
