@@ -126,6 +126,47 @@ function computeLayout(
   return out
 }
 
+function markerTone(health: MarkHealth): {
+  borderClass: string
+  dotClass: string
+  haloClass: string
+} {
+  switch (health) {
+    case "attached":
+      return {
+        borderClass:
+          "border-[color:color-mix(in_oklch,var(--yi-mark)_48%,var(--yi-paper))]",
+        dotClass: "bg-[color:var(--yi-mark)]",
+        haloClass:
+          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
+      }
+    case "approximate":
+      return {
+        borderClass:
+          "border-[color:color-mix(in_oklch,var(--yi-warn)_48%,var(--yi-paper))]",
+        dotClass: "bg-[color:var(--yi-warn)]",
+        haloClass:
+          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-warn)_16%,transparent)]"
+      }
+    case "stale":
+      return {
+        borderClass:
+          "border-[color:color-mix(in_oklch,var(--yi-ink-3)_52%,var(--yi-paper))]",
+        dotClass: "bg-[color:var(--yi-ink-3)]",
+        haloClass:
+          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-ink-3)_13%,transparent)]"
+      }
+    default:
+      return {
+        borderClass:
+          "border-[color:color-mix(in_oklch,var(--yi-info)_52%,var(--yi-paper))]",
+        dotClass: "bg-[color:var(--yi-info)]",
+        haloClass:
+          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-info)_15%,transparent)]"
+      }
+  }
+}
+
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
   const [size, setSize] = useState<PageSize>({ width: 0, height: 0 })
@@ -202,45 +243,41 @@ const PinBadges = () => {
       className="pointer-events-none absolute left-0 top-0"
       style={{ zIndex: Z_BADGES, width: size.width, height: size.height }}>
       {items.map(
-        ({ mark, stackOrder, left, top, attached, health, healthLabel }) => (
-          <button
-            key={mark.id}
-            type="button"
-            aria-label={annotationLabel(mark, healthLabel)}
-            title={annotationLabel(mark, healthLabel)}
-            className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
-            style={{
-              left,
-              top,
-              width: HIT,
-              height: HIT,
-              zIndex: stackOrder
-            }}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              dispatchInternalEvent(EVENT_REVIEW_PAUSE)
-              dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
-                markId: mark.id,
-                pinId: mark.id,
-                attached
-              })
-            }}>
-            <span
-              className={`relative flex h-6 w-6 -rotate-45 select-none items-center justify-center rounded-[999px_999px_999px_6px] shadow-[0_8px_18px_-14px_oklch(18%_0.012_264_/_0.48),0_0_0_2px_color-mix(in_oklch,var(--yi-paper)_90%,transparent)] motion-safe:transition-transform motion-safe:hover:scale-105 motion-reduce:transition-none ${
-                health === "attached"
-                  ? "bg-[color:var(--yi-mark)]"
-                  : health === "approximate"
-                    ? "bg-[color:var(--yi-warn)]"
-                    : health === "stale"
-                      ? "bg-[color:var(--yi-ink-3)]"
-                      : "bg-[color:var(--yi-info)]"
-              }`}
-              aria-hidden>
-              <span className="h-1.5 w-1.5 rotate-45 rounded-full bg-[color:var(--yi-paper)]" />
-            </span>
-          </button>
-        )
+        ({ mark, stackOrder, left, top, attached, health, healthLabel }) => {
+          const tone = markerTone(health)
+
+          return (
+            <button
+              key={mark.id}
+              type="button"
+              aria-label={annotationLabel(mark, healthLabel)}
+              title={annotationLabel(mark, healthLabel)}
+              className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+              style={{
+                left,
+                top,
+                width: HIT,
+                height: HIT,
+                zIndex: stackOrder
+              }}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+                dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
+                  markId: mark.id,
+                  pinId: mark.id,
+                  attached
+                })
+              }}>
+              <span
+                className={`relative flex h-4 w-4 select-none items-center justify-center rounded-full border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
+                aria-hidden>
+                <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
+              </span>
+            </button>
+          )
+        }
       )}
     </div>
   )

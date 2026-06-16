@@ -58,7 +58,9 @@ async function workspaceIdForUser(userId: string): Promise<string | null> {
   return data.workspace_id as string
 }
 
-async function ensureActiveProjectForProjects(projects: Project[]): Promise<string> {
+async function ensureActiveProjectForProjects(
+  projects: Project[]
+): Promise<string> {
   const active = await getActiveProjectId()
   if (active && projects.some((project) => project.id === active)) {
     return active
@@ -145,14 +147,14 @@ export interface SyncPendingMarksResult {
   error?: string
 }
 
-interface RemoteComment {
+export interface RemoteComment {
   id: string
   body: string
   createdAt: string
   authorLabel: string
 }
 
-interface RemoteMark {
+export interface RemoteMark {
   id: string
   projectId: string
   spaceId?: string
@@ -478,7 +480,7 @@ function remoteThread(mark: RemoteMark): Mark["thread"] {
   }))
 }
 
-function pendingLocalCommentMessages(
+export function pendingLocalCommentMessages(
   local: Mark,
   remoteMessages: Mark["thread"]
 ): Mark["thread"] {
@@ -505,7 +507,7 @@ function pendingLocalCommentMessages(
   return pending
 }
 
-function mergeRemoteThread(
+export function mergeRemoteThread(
   local: Mark,
   remoteMessages: Mark["thread"],
   hasPendingEdit: boolean
@@ -579,7 +581,7 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
   }
 }
 
-function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
+export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
   const remoteUpdatedAt = new Date(mark.updatedAt).getTime() || Date.now()
   if (local.remoteUpdatedAt && remoteUpdatedAt <= local.remoteUpdatedAt) {
     return local
@@ -637,7 +639,9 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
       }
     }
     const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
-    const activeProjectId = await ensureActiveProjectForProjects(context.projects)
+    const activeProjectId = await ensureActiveProjectForProjects(
+      context.projects
+    )
     if (isUuidLike(activeProjectId)) {
       url.searchParams.set("projectId", activeProjectId)
     }

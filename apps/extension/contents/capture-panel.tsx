@@ -17,13 +17,15 @@ import {
   EVENT_REVIEW_OPEN_PIN_LEGACY,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
+  EVENT_REVIEW_START,
   EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
   MESSAGE_OPEN_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY,
   MESSAGE_TOGGLE_FEEDBACK_LIST,
   type OpenMarkDetail,
-  type ReviewCaptureDetail
+  type ReviewCaptureDetail,
+  type ReviewStartDetail
 } from "../lib/events"
 import {
   dispatchInternalEvent,
@@ -42,6 +44,7 @@ import {
   getMarks,
   getMarksForPage,
   getProjects,
+  getSyncStatus,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
@@ -49,6 +52,7 @@ import {
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
+  KEY_SYNC_STATUS,
   KEY_WIDGET_SETTINGS,
   makeMarkId,
   markSyncFailure,
@@ -62,7 +66,8 @@ import {
   type Mark,
   type MarkPriority,
   type MarkStatus,
-  type Project
+  type Project,
+  type SyncStatus
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
 import {
@@ -177,9 +182,17 @@ function markPreview(mark: Mark): string {
 }
 
 function markSyncLabel(mark: Mark): string {
-  if (mark.syncState === "failed") return "Sync failed"
-  if (mark.syncState === "pending") return "Pending"
-  return "Synced"
+  if (mark.syncState === "failed") return t("extension.panel.syncFailed")
+  if (mark.syncState === "pending") return t("extension.panel.pending")
+  return t("extension.popup.badgeSynced")
+}
+
+function markHealthLabel(label: string): string {
+  if (label === "Attached") return t("extension.panel.attached")
+  if (label === "Approximate") return t("extension.panel.approximate")
+  if (label === "Stale") return t("extension.panel.stale")
+  if (label === "Screenshot") return t("extension.panel.screenshotOnly")
+  return label
 }
 
 function makeThreadMessageId(): string {
@@ -364,6 +377,25 @@ function threadHealthBadgeClass(label: string): string {
   return "bg-[color:var(--yi-info-soft)] text-[color:var(--yi-info)]"
 }
 
+function SyncStatusNotice({ status }: { status: SyncStatus }) {
+  if (status.state !== "failed" && status.state !== "syncing") return null
+  const isFailed = status.state === "failed"
+  return (
+    <p
+      role={isFailed ? "alert" : "status"}
+      aria-live="polite"
+      className={`mx-4 mb-2 rounded-[var(--yi-radius-md)] border px-3 py-2 text-[11px] leading-snug ${
+        isFailed
+          ? "border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]"
+          : "border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]"
+      }`}>
+      {isFailed
+        ? status.lastError || t("extension.popup.syncFailed")
+        : t("extension.popup.syncingWorkspace")}
+    </p>
+  )
+}
+
 function CheckCircleIcon() {
   return (
     <svg
@@ -532,11 +564,13 @@ function PageFeedbackRow({
                   ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
                   : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
               }`}>
-              {closed ? "Closed" : "Open"}
+              {closed
+                ? t("extension.panel.resolved")
+                : t("extension.panel.open")}
             </span>
             <span
               className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-              {health.label}
+              {markHealthLabel(health.label)}
             </span>
             <span
               className={`${threadBadge} ${
@@ -1083,20 +1117,20 @@ function DomContextPreview({
             className="min-h-9 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-panel)] px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             onClick={() => void copySelector()}>
             {copyState === "copied"
-              ? "Copied"
+              ? t("extension.panel.selectorCopied")
               : copyState === "failed"
-                ? "Copy failed"
-                : "Copy selector"}
+                ? t("extension.panel.promptCopyFailed")
+                : t("extension.panel.copySelector")}
           </button>
           <button
             type="button"
             className="min-h-9 rounded-md border border-transparent bg-[color:var(--yi-ext-surface-panel)] px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
             onClick={highlightSelected}>
             {highlightState === "found"
-              ? "Highlighted"
+              ? t("extension.panel.highlighted")
               : highlightState === "missing"
-                ? "Not found"
-                : "Highlight"}
+                ? t("extension.panel.notFound")
+                : t("extension.panel.highlight")}
           </button>
         </div>
       </div>
@@ -1128,10 +1162,14 @@ const CapturePanel = () => {
   >("idle")
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [returnToList, setReturnToList] = useState(false)
+  const [reattachMarkId, setReattachMarkId] = useState<string | null>(null)
   const [pendingListDeleteMarkId, setPendingListDeleteMarkId] = useState<
     string | null
   >(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
+  const [syncStatus, setSyncStatusState] = useState<SyncStatus>({
+    state: "idle"
+  })
   const [fullImage, setFullImage] = useState<{
     src: string
     alt: string
@@ -1139,11 +1177,13 @@ const CapturePanel = () => {
 
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
+  const reattachMarkIdRef = useRef<string | null>(null)
   const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
 
   useEffect(() => {
+    void getSyncStatus().then(setSyncStatusState)
     void getSession().then((session) =>
       setIsSignedIn(Boolean(session?.user?.id))
     )
@@ -1155,6 +1195,9 @@ const CapturePanel = () => {
         void getSession().then((session) =>
           setIsSignedIn(Boolean(session?.user?.id))
         )
+      }
+      if (changes[KEY_SYNC_STATUS]) {
+        void getSyncStatus().then(setSyncStatusState)
       }
     }
     chrome.storage.onChanged.addListener(onStorage)
@@ -1249,6 +1292,8 @@ const CapturePanel = () => {
     setSaveWarning(null)
     setConfirmDelete(false)
     setReturnToList(false)
+    setReattachMarkId(null)
+    reattachMarkIdRef.current = null
     setPendingListDeleteMarkId(null)
     setFullImage(null)
     setPageMarks([])
@@ -1277,6 +1322,8 @@ const CapturePanel = () => {
     setSaveWarning(null)
     setConfirmDelete(false)
     setReturnToList(false)
+    setReattachMarkId(null)
+    reattachMarkIdRef.current = null
     setPendingListDeleteMarkId(null)
     previousFocusRef.current = document.activeElement as HTMLElement
     setOpen(true)
@@ -1284,6 +1331,39 @@ const CapturePanel = () => {
 
   useEffect(() => {
     const onCap = (detail: ReviewCaptureDetail) => {
+      const reattachId = reattachMarkIdRef.current
+      if (reattachId) {
+        void (async () => {
+          const now = Date.now()
+          await patchMark(reattachId, {
+            captureKind: detail.captureKind ?? "element",
+            url: normalizePageUrlForMatch(detail.url) || detail.url,
+            pageTitle: detail.pageTitle,
+            selector: detail.selector,
+            strategy: detail.strategy,
+            bbox: detail.bbox,
+            viewport: detail.viewport,
+            outerHTMLPreview:
+              typeof detail.outerHTML === "string"
+                ? detail.outerHTML.slice(0, STORAGE_LIMITS.outerHTMLPreview)
+                : "",
+            domSnapshot: detail.domSnapshot,
+            screenshotDataUrl: detail.elementScreenshotDataUrl,
+            updatedAt: now,
+            syncError: undefined
+          })
+          reattachMarkIdRef.current = null
+          setReattachMarkId(null)
+          await reloadMark(reattachId)
+          await reloadPageMarks(detail.url)
+          setCapture(null)
+          setMode("thread")
+          setOpen(true)
+          setSaveWarning(t("extension.panel.reattachedLocally"))
+          dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+        })()
+        return
+      }
       setCapture(detail)
       setMode("create")
       setViewingMark(null)
@@ -1291,6 +1371,8 @@ const CapturePanel = () => {
       setPriority("medium")
       setSaveError(null)
       setSaveWarning(null)
+      setReattachMarkId(null)
+      reattachMarkIdRef.current = null
       setReturnToList(false)
       setPendingListDeleteMarkId(null)
       void loadSpaces()
@@ -1300,7 +1382,7 @@ const CapturePanel = () => {
     }
     registerCaptureHandler(onCap)
     return () => registerCaptureHandler(null)
-  }, [loadSpaces, reloadPageMarks])
+  }, [loadSpaces, reloadMark, reloadPageMarks])
 
   useEffect(() => {
     registerCaptureUpdateHandler((patch) => {
@@ -1569,25 +1651,37 @@ const CapturePanel = () => {
     window.setTimeout(() => setPromptCopyState("idle"), 1600)
   }
 
+  const startReattachMark = (mark: Mark) => {
+    reattachMarkIdRef.current = mark.id
+    setReattachMarkId(mark.id)
+    setOpen(false)
+    setSaveError(null)
+    setSaveWarning(null)
+    dispatchInternalEvent(EVENT_REVIEW_RESUME)
+    dispatchInternalEvent(EVENT_REVIEW_START, {
+      mode: "inspect"
+    } satisfies ReviewStartDetail)
+  }
+
   const retryMarkSync = async () => {
     if (!viewingMark || saving) return
     setSaving(true)
     setSaveError(null)
     try {
-      const push = await pushMarkToWorkspace(viewingMark, {
-        screenshotDataUrl: viewingMark.screenshotDataUrl
-      })
-      if (!push.skipped && !push.ok) {
-        await syncPendingMarksToWorkspace()
-        await reloadMark(viewingMark.id)
-        const refreshed = (await getMarks()).find(
-          (p) => p.id === viewingMark.id
+      if (!viewingMark.remoteMarkId) {
+        await pushMarkToWorkspace(viewingMark, {
+          screenshotDataUrl: viewingMark.screenshotDataUrl
+        })
+      }
+      const result = await syncPendingMarksToWorkspace()
+      await reloadMark(viewingMark.id)
+      const refreshed = (await getMarks()).find((p) => p.id === viewingMark.id)
+      if (!result.ok || refreshed?.syncState === "failed") {
+        setSaveError(
+          refreshed?.syncError ??
+            result.error ??
+            t("extension.panel.syncFailed")
         )
-        if (refreshed?.syncState === "failed") {
-          setSaveError(refreshed.syncError ?? t("extension.panel.syncFailed"))
-        }
-      } else {
-        await reloadMark(viewingMark.id)
       }
     } finally {
       setSaving(false)
@@ -1789,10 +1883,10 @@ const CapturePanel = () => {
           className="font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
           onClick={() => void copyAiPrompt(undoAction.mark)}>
           {promptCopyState === "copied"
-            ? "Prompt copied"
+            ? t("extension.panel.promptCopied")
             : promptCopyState === "failed"
-              ? "Copy failed"
-              : "Copy prompt"}
+              ? t("extension.panel.promptCopyFailed")
+              : t("extension.panel.copyAiPrompt")}
         </button>
         <button
           type="button"
@@ -1880,6 +1974,7 @@ const CapturePanel = () => {
             <XIcon />
           </button>
         </header>
+        <SyncStatusNotice status={syncStatus} />
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
           {pageMarks.length === 0 ? (
@@ -1974,10 +2069,10 @@ const CapturePanel = () => {
               className="ms-2 font-semibold text-[color:var(--yi-ext-link)] underline underline-offset-2"
               onClick={() => void copyAiPrompt(undoAction.mark)}>
               {promptCopyState === "copied"
-                ? "Prompt copied"
+                ? t("extension.panel.promptCopied")
                 : promptCopyState === "failed"
-                  ? "Copy failed"
-                  : "Copy prompt"}
+                  ? t("extension.panel.promptCopyFailed")
+                  : t("extension.panel.copyAiPrompt")}
             </button>
             <button
               type="button"
@@ -2016,24 +2111,25 @@ const CapturePanel = () => {
               <h2
                 id="capture-panel-title"
                 className="text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-                Leave feedback
+                {t("extension.panel.leaveFeedback")}
               </h2>
               <p
                 id="capture-panel-desc"
                 className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
                 {isRegionCapture
-                  ? "This comment will stay attached to the selected area."
-                  : "This comment will stay attached to the selected element."}
+                  ? t("extension.panel.regionAttached")
+                  : t("extension.panel.elementAttached")}
               </p>
             </div>
             <button
               type="button"
               className={headerCloseBtn}
-              aria-label="Close"
+              aria-label={t("extension.panel.close")}
               onClick={resume}>
               <XIcon />
             </button>
           </header>
+          <SyncStatusNotice status={syncStatus} />
 
           <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
             <div className="flex flex-col gap-5 px-4 pb-6 pt-4">
@@ -2049,21 +2145,21 @@ const CapturePanel = () => {
                   <button
                     type="button"
                     className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
-                    aria-label="View full captured screenshot"
+                    aria-label={t("extension.panel.viewFullScreenshot")}
                     onClick={() =>
                       setFullImage({
                         src: capture.elementScreenshotDataUrl!,
                         alt: isRegionCapture
-                          ? "Captured area screenshot"
-                          : "Captured element screenshot"
+                          ? t("extension.panel.regionScreenshotAlt")
+                          : t("extension.panel.elementScreenshotAlt")
                       })
                     }>
                     <img
                       src={capture.elementScreenshotDataUrl}
                       alt={
                         isRegionCapture
-                          ? "Captured area screenshot"
-                          : "Captured element screenshot"
+                          ? t("extension.panel.regionScreenshotAlt")
+                          : t("extension.panel.elementScreenshotAlt")
                       }
                       className="max-h-44 w-full object-contain object-top"
                     />
@@ -2078,8 +2174,8 @@ const CapturePanel = () => {
                         setFullImage({
                           src: capture.elementScreenshotDataUrl!,
                           alt: isRegionCapture
-                            ? "Captured area screenshot"
-                            : "Captured element screenshot"
+                            ? t("extension.panel.regionScreenshotAlt")
+                            : t("extension.panel.elementScreenshotAlt")
                         })
                       }>
                       <MaximizeIcon />
@@ -2156,14 +2252,16 @@ const CapturePanel = () => {
 
               <details className="group rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)]">
                 <summary className="flex min-h-9 cursor-pointer select-none items-center justify-between rounded-[var(--yi-radius-lg)] px-3 text-[11px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] [&::-webkit-details-marker]:hidden">
-                  <span>Options</span>
+                  <span>{t("extension.panel.options")}</span>
                   <span className="text-[10px] font-medium text-[color:var(--yi-ext-text-placeholder)] group-open:hidden">
-                    Project, priority
+                    {t("extension.panel.optionsSummary")}
                   </span>
                 </summary>
                 <div className="flex flex-col gap-4 px-3 pb-3 pt-2">
                   <div>
-                    <span className={fieldLabel}>Project</span>
+                    <span className={fieldLabel}>
+                      {t("extension.panel.project")}
+                    </span>
                     <select
                       id="capture-project"
                       className={selectCls}
@@ -2178,7 +2276,9 @@ const CapturePanel = () => {
                   </div>
 
                   <div>
-                    <span className={fieldLabel}>Priority</span>
+                    <span className={fieldLabel}>
+                      {t("extension.panel.priority")}
+                    </span>
                     <select
                       id="capture-priority"
                       className={selectCls}
@@ -2186,10 +2286,18 @@ const CapturePanel = () => {
                       onChange={(e) =>
                         setPriority(e.target.value as MarkPriority)
                       }>
-                      <option value="low">Low</option>
-                      <option value="medium">Normal</option>
-                      <option value="high">High</option>
-                      <option value="critical">Urgent</option>
+                      <option value="low">
+                        {t("extension.panel.priorityLow")}
+                      </option>
+                      <option value="medium">
+                        {t("extension.panel.priorityNormal")}
+                      </option>
+                      <option value="high">
+                        {t("extension.panel.priorityHigh")}
+                      </option>
+                      <option value="critical">
+                        {t("extension.panel.priorityUrgent")}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -2288,7 +2396,7 @@ const CapturePanel = () => {
                 <h2
                   id="thread-panel-title"
                   className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight text-[color:var(--yi-ext-text-title)]">
-                  Feedback thread
+                  {t("extension.panel.threadTitle")}
                 </h2>
               </div>
               <div className="mt-2 flex max-w-full flex-wrap items-center gap-1.5">
@@ -2298,22 +2406,24 @@ const CapturePanel = () => {
                       ? "bg-[color:var(--yi-ok-soft)] text-[color:var(--yi-ok)]"
                       : "bg-[color:var(--yi-mark-soft)] text-[color:var(--yi-mark)]"
                   }`}>
-                  {viewingMark.status === "closed" ? "Closed" : "Open"}
+                  {viewingMark.status === "closed"
+                    ? t("extension.panel.resolved")
+                    : t("extension.panel.open")}
                 </span>
                 {viewingMark.syncState === "pending" ? (
                   <span
                     className={`${threadBadge} bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]`}>
-                    Pending
+                    {t("extension.panel.pending")}
                   </span>
                 ) : viewingMark.syncState === "failed" ? (
                   <span
                     className={`${threadBadge} bg-[color:var(--yi-ext-danger-bg)] text-[color:var(--yi-ext-danger-text)]`}>
-                    Sync failed
+                    {t("extension.panel.syncFailed")}
                   </span>
                 ) : null}
                 <span
                   className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-                  {health.label}
+                  {markHealthLabel(health.label)}
                 </span>
               </div>
               <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
@@ -2323,18 +2433,21 @@ const CapturePanel = () => {
             <button
               type="button"
               className={headerCloseBtn}
-              aria-label="Close"
+              aria-label={t("extension.panel.close")}
               onClick={resume}>
               <XIcon />
             </button>
           </header>
+          <SyncStatusNotice status={syncStatus} />
 
           <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-6 pt-4 [scrollbar-gutter:stable]">
             <div className="px-3">
               {editing ? (
                 <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] p-3">
                   <label className="block">
-                    <span className={fieldLabel}>Title</span>
+                    <span className={fieldLabel}>
+                      {t("extension.panel.title")}
+                    </span>
                     <input
                       value={editTitle}
                       maxLength={STORAGE_LIMITS.markTitle}
@@ -2345,11 +2458,11 @@ const CapturePanel = () => {
                   <div className="mt-3">
                     <CommentComposer
                       id="thread-edit-opening"
-                      label="Opening feedback"
+                      label={t("extension.panel.openingFeedback")}
                       value={editBody}
                       rows={4}
                       disabled={saving}
-                      placeholder="What should change?"
+                      placeholder={t("extension.panel.whatShouldChange")}
                       onChange={setEditBody}
                       onSubmit={() => void saveEdit()}
                     />
@@ -2363,14 +2476,14 @@ const CapturePanel = () => {
                         setEditTitle(viewingMark.title)
                         setEditBody(opener?.body ?? "")
                       }}>
-                      Cancel
+                      {t("extension.panel.cancel")}
                     </button>
                     <button
                       type="button"
                       disabled={saving || !editTitle.trim() || !editBody.trim()}
                       className={btnPrimary}
                       onClick={() => void saveEdit()}>
-                      Save edit
+                      {t("extension.panel.saveEdit")}
                     </button>
                   </div>
                 </div>
@@ -2380,9 +2493,41 @@ const CapturePanel = () => {
                 </div>
               )}
               {health.health !== "attached" ? (
-                <p className="mt-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                  {health.description}
-                </p>
+                <div className="mt-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
+                  <p>{health.description}</p>
+                  <p className="mt-1">
+                    {t("extension.panel.reattachLimitHint")}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {health.rect ? (
+                      <button
+                        type="button"
+                        className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                        onClick={() => scrollMarkIntoView(viewingMark)}>
+                        {t("extension.panel.scrollToSavedPosition")}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={reattachMarkId === viewingMark.id}
+                      className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
+                      onClick={() => startReattachMark(viewingMark)}>
+                      {reattachMarkId === viewingMark.id
+                        ? t("extension.panel.reattachWaiting")
+                        : t("extension.panel.reattachElement")}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
+                      onClick={() => void copyAiPrompt(viewingMark)}>
+                      {promptCopyState === "copied"
+                        ? t("extension.panel.promptCopied")
+                        : promptCopyState === "failed"
+                          ? t("extension.panel.promptCopyFailed")
+                          : t("extension.panel.copyAiPrompt")}
+                    </button>
+                  </div>
+                </div>
               ) : null}
               {viewingMark.syncState === "failed" ? (
                 <div className="mt-3 rounded-[var(--yi-radius-md)] border border-[color:var(--yi-ext-danger-border)] bg-[color:var(--yi-ext-danger-bg)] px-3 py-2">
@@ -2411,8 +2556,8 @@ const CapturePanel = () => {
                     <button
                       type="button"
                       className={rowIconBtn}
-                      aria-label="Edit"
-                      title="Edit"
+                      aria-label={t("extension.panel.edit")}
+                      title={t("extension.panel.edit")}
                       onClick={() => setEditing(true)}>
                       <PencilIcon />
                     </button>
@@ -2429,16 +2574,16 @@ const CapturePanel = () => {
                   <button
                     type="button"
                     className="block w-full cursor-zoom-in border-0 bg-transparent p-0"
-                    aria-label="View full saved screenshot"
+                    aria-label={t("extension.panel.viewFullSavedScreenshot")}
                     onClick={() =>
                       setFullImage({
                         src: screenshotSrc,
-                        alt: "Saved element screenshot"
+                        alt: t("extension.panel.savedElementScreenshotAlt")
                       })
                     }>
                     <img
                       src={screenshotSrc}
-                      alt="Saved element screenshot"
+                      alt={t("extension.panel.savedElementScreenshotAlt")}
                       className="max-h-48 w-full object-contain object-top"
                     />
                   </button>
@@ -2451,7 +2596,7 @@ const CapturePanel = () => {
                       onClick={() =>
                         setFullImage({
                           src: screenshotSrc,
-                          alt: "Saved element screenshot"
+                          alt: t("extension.panel.savedElementScreenshotAlt")
                         })
                       }>
                       <MaximizeIcon />
@@ -2495,11 +2640,11 @@ const CapturePanel = () => {
               <div className="mt-6">
                 <CommentComposer
                   id="thread-reply"
-                  label="Reply"
+                  label={t("extension.panel.reply")}
                   value={replyDraft}
                   rows={3}
                   disabled={saving}
-                  placeholder="Add a reply..."
+                  placeholder={t("extension.panel.addReply")}
                   onChange={setReplyDraft}
                   onSubmit={() => void sendReply()}
                 />
@@ -2511,26 +2656,28 @@ const CapturePanel = () => {
                   disabled={saving || !replyDraft.trim()}
                   className="rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-40"
                   onClick={() => void sendReply()}>
-                  Send reply
+                  {t("extension.panel.sendReply")}
                 </button>
               </div>
 
               <div className="mt-5">
-                <span className={fieldLabel}>Status</span>
+                <span className={fieldLabel}>
+                  {t("extension.panel.status")}
+                </span>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     disabled={saving || viewingMark.status === "open"}
                     className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ext-surface-stat)] disabled:text-[color:var(--yi-ext-text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                     onClick={() => void setMarkStatus("open" as MarkStatus)}>
-                    Open
+                    {t("extension.panel.open")}
                   </button>
                   <button
                     type="button"
                     disabled={saving || viewingMark.status === "closed"}
                     className="min-h-9 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12px] font-semibold text-[color:var(--yi-ext-text-muted)] outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] disabled:bg-[color:var(--yi-ok-soft)] disabled:text-[color:var(--yi-ok)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
                     onClick={() => void setMarkStatus("closed" as MarkStatus)}>
-                    Closed
+                    {t("extension.panel.resolved")}
                   </button>
                 </div>
               </div>
@@ -2541,10 +2688,10 @@ const CapturePanel = () => {
                   className={btnPrimary}
                   onClick={() => void copyAiPrompt(viewingMark)}>
                   {promptCopyState === "copied"
-                    ? "Prompt copied"
+                    ? t("extension.panel.promptCopied")
                     : promptCopyState === "failed"
-                      ? "Copy failed"
-                      : "Copy AI prompt"}
+                      ? t("extension.panel.promptCopyFailed")
+                      : t("extension.panel.copyAiPrompt")}
                 </button>
                 <a
                   href={`${WEB_APP_URL}/dashboard`}

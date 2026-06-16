@@ -29,6 +29,7 @@ import {
   getMarkStatusCountsForPage,
   getMarkSyncSummary,
   getProjects,
+  getSyncStatus,
   getWidgetSettings,
   hostForUrl,
   isHostDisabled,
@@ -37,10 +38,15 @@ import {
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SPACES,
+  KEY_SYNC_STATUS,
+  markSyncAttemptFailed,
+  markSyncAttemptStarted,
+  markSyncAttemptSucceeded,
   setActiveProjectId,
   setActiveSpaceId,
   setWidgetSettings,
   type Project,
+  type SyncStatus,
   type WidgetCorner
 } from "./lib/storage"
 import { WEB_APP_URL } from "./lib/supabase"
@@ -227,6 +233,9 @@ function IndexPopup() {
   const [failedSyncCount, setFailedSyncCount] = useState(0)
   const [syncingNow, setSyncingNow] = useState(false)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [syncStatus, setSyncStatusState] = useState<SyncStatus>({
+    state: "idle"
+  })
   const [syncActivity, setSyncActivity] = useState<SyncActivity>({
     syncing: false,
     migrating: false
@@ -298,6 +307,10 @@ function IndexPopup() {
     setFailedSyncCount(summary.failed)
   }, [])
 
+  const refreshSyncStatus = useCallback(async () => {
+    setSyncStatusState(await getSyncStatus())
+  }, [])
+
   useEffect(() => {
     const offAuth = onAuthChange((s) => {
       setSession(s)
@@ -321,6 +334,7 @@ function IndexPopup() {
     void refreshCounts()
     void refreshWidgetSettings()
     void refreshSyncSummary()
+    void refreshSyncStatus()
     const onStorage: Parameters<
       typeof chrome.storage.onChanged.addListener
     >[0] = (changes, area) => {
@@ -337,10 +351,17 @@ function IndexPopup() {
         void refreshCounts()
         void refreshSyncSummary()
       }
+      if (changes[KEY_SYNC_STATUS]) void refreshSyncStatus()
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [refreshSpaces, refreshCounts, refreshWidgetSettings, refreshSyncSummary])
+  }, [
+    refreshSpaces,
+    refreshCounts,
+    refreshWidgetSettings,
+    refreshSyncSummary,
+    refreshSyncStatus
+  ])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -437,19 +458,26 @@ function IndexPopup() {
   }
 
   const isSyncingBadge =
-    syncingNow || syncActivity.syncing || syncActivity.migrating
+    syncingNow ||
+    syncActivity.syncing ||
+    syncActivity.migrating ||
+    syncStatus.state === "syncing"
   const badgeLabel =
     view === "signedOut"
       ? t("extension.popup.badgeLocal")
-      : isSyncingBadge
-        ? t("extension.popup.badgeSyncing")
-        : t("extension.popup.badgeSynced")
+      : syncStatus.state === "failed"
+        ? t("extension.popup.badgeSyncFailed")
+        : isSyncingBadge
+          ? t("extension.popup.badgeSyncing")
+          : t("extension.popup.badgeSynced")
   const badgeAria =
     view === "signedOut"
       ? t("extension.popup.badgeLocalAria")
-      : isSyncingBadge
-        ? t("extension.popup.badgeSyncingAria")
-        : t("extension.popup.badgeSyncedAria")
+      : syncStatus.state === "failed"
+        ? t("extension.popup.badgeSyncFailedAria")
+        : isSyncingBadge
+          ? t("extension.popup.badgeSyncingAria")
+          : t("extension.popup.badgeSyncedAria")
   const syncButtonLabel = syncingNow
     ? t("extension.popup.syncing")
     : failedSyncCount > 0
@@ -470,20 +498,40 @@ function IndexPopup() {
           setSyncMsg(t("extension.popup.syncComplete"))
         }
       } catch {
-        const sessionNow = await getSession()
-        if (sessionNow?.user?.id) {
-          const workspace = await syncWorkspaceFromRemote(sessionNow.user.id)
-          const push = await syncPendingMarksToWorkspace()
-          const pull = await syncWorkspaceMarksFromRemote()
-          if (workspace.ok && push.ok && pull.ok) {
-            await markWorkspaceRemoteSyncComplete()
+        try {
+          const sessionNow = await getSession()
+          if (sessionNow?.user?.id) {
+            await markSyncAttemptStarted()
+            const workspace = await syncWorkspaceFromRemote(sessionNow.user.id)
+            const push = await syncPendingMarksToWorkspace()
+            const pull = await syncWorkspaceMarksFromRemote()
+            const error = workspace.error ?? push.error ?? pull.error
+            if (workspace.ok && push.ok && pull.ok) {
+              await markWorkspaceRemoteSyncComplete()
+              await markSyncAttemptSucceeded()
+              setSyncMsg(t("extension.popup.syncComplete"))
+            } else {
+              await markSyncAttemptFailed(
+                error ?? t("extension.popup.syncFailed")
+              )
+              setSyncMsg(error ?? t("extension.popup.syncFailed"))
+            }
+          } else {
+            setSyncMsg(t("extension.popup.syncLocalOnly"))
           }
-          setSyncMsg(t("extension.popup.syncComplete"))
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : t("extension.popup.syncFailed")
+          await markSyncAttemptFailed(message)
+          setSyncMsg(message)
         }
       } finally {
         await refreshSpaces()
         await refreshCounts()
         await refreshSyncSummary()
+        await refreshSyncStatus()
         setSyncingNow(false)
       }
     })()
@@ -906,14 +954,16 @@ function IndexPopup() {
                     ? t("extension.popup.syncFailedCount", {
                         count: failedSyncCount
                       })
-                    : pendingSyncCount
-                      ? t("extension.popup.syncPendingCount", {
-                          count: pendingSyncCount
-                        })
-                      : syncMsg ??
-                        (view === "signedIn"
-                          ? t("extension.popup.syncUpToDate")
-                          : t("extension.popup.syncLocalOnly"))}
+                    : syncStatus.state === "failed"
+                      ? syncStatus.lastError ?? t("extension.popup.syncFailed")
+                      : pendingSyncCount
+                        ? t("extension.popup.syncPendingCount", {
+                            count: pendingSyncCount
+                          })
+                        : syncMsg ??
+                          (view === "signedIn"
+                            ? t("extension.popup.syncUpToDate")
+                            : t("extension.popup.syncLocalOnly"))}
                 </p>
               </div>
               <button

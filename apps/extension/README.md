@@ -57,19 +57,19 @@ Run `build` before opening a PR that changes extension runtime code. Run `packag
 
 ## Structure
 
-| Path | Purpose |
-| --- | --- |
-| `popup.tsx` | Popup UI, auth states, and entry points into review mode. |
-| `background/index.ts` | Background service worker and OAuth bridge receiver. |
-| `contents/review-mode.ts` | Content-script review mode orchestration. |
-| `contents/widget.tsx` | Floating review widget. |
-| `contents/capture-panel.tsx` | Docked capture, feedback list, and thread UI. |
-| `contents/pin-badges.tsx` | Feedback badge rendering. |
-| `lib/auth.ts` | Extension auth helpers and cross-context session detection. |
-| `lib/supabase.ts` | Supabase client using Chrome storage. |
-| `lib/migrate.ts` | One-shot local data migration after sign-in. |
-| `lib/storage.ts` | Local persistence and workspace mirrors. |
-| `lib/sync.ts` | Sync queue behavior. |
+| Path                         | Purpose                                                     |
+| ---------------------------- | ----------------------------------------------------------- |
+| `popup.tsx`                  | Popup UI, auth states, and entry points into review mode.   |
+| `background/index.ts`        | Background service worker and OAuth bridge receiver.        |
+| `contents/review-mode.ts`    | Content-script review mode orchestration.                   |
+| `contents/widget.tsx`        | Floating review widget.                                     |
+| `contents/capture-panel.tsx` | Docked capture, feedback list, and thread UI.               |
+| `contents/pin-badges.tsx`    | Feedback badge rendering.                                   |
+| `lib/auth.ts`                | Extension auth helpers and cross-context session detection. |
+| `lib/supabase.ts`            | Supabase client using Chrome storage.                       |
+| `lib/migrate.ts`             | One-shot local data migration after sign-in.                |
+| `lib/storage.ts`             | Local persistence and workspace mirrors.                    |
+| `lib/sync.ts`                | Sync queue behavior.                                        |
 
 ## Permissions
 
@@ -93,7 +93,21 @@ Current limitation: review UI runs in the top frame only. Same-origin iframe, cr
 ## Review Checklist
 
 - Test popup sign-in and sign-out.
+- Test Google sign-in through the extension bridge.
 - Test review mode on at least one HTTP or HTTPS page.
-- Confirm captured marks sync to the web app workspace.
-- Confirm disabled screenshot or DOM-context settings are respected if those areas changed.
+- Capture both element feedback and area screenshot feedback.
+- Confirm captured marks sync to the web app workspace, then reopen the popup and confirm the sync state still reads correctly.
+- Force a failed sync, for example by stopping the web app or going offline, then confirm Retry sync reports the real error and recovers.
+- Confirm remote marks pull back into the extension after a manual sync.
+- Open a stale or approximate mark and verify scroll-to-saved-position, reattach element, and copy AI prompt actions.
+- Confirm the current-domain disable toggle hides the widget, badges, and drawer.
+- Confirm disabled screenshot and DOM-context settings are respected.
 - Reload the unpacked extension after manifest, background, or content-script changes.
+
+Automated checks:
+
+```bash
+pnpm --filter @youin/extension typecheck
+pnpm --filter @youin/extension test
+pnpm --filter @youin/extension build
+```

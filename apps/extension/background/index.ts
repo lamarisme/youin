@@ -3,6 +3,12 @@
 
 import { getSession, setSessionFromBridge } from "../lib/auth"
 import {
+  bridgeOriginsForWebApp,
+  isAllowedBridgeSender as isAllowedBridgeSenderUrl,
+  isBridgeMessage,
+  isExtensionPageSender as isExtensionPageSenderGuard
+} from "../lib/background-guards"
+import {
   MESSAGE_FORWARD_CAPTURE,
   MESSAGE_OPEN_CAPTURE_PANEL
 } from "../lib/events"
@@ -16,7 +22,12 @@ import {
   type EnsureReviewScriptsMessage,
   type EnsureReviewScriptsResponse
 } from "../lib/review-scripts"
-import { STORAGE_LIMITS } from "../lib/storage"
+import {
+  markSyncAttemptFailed,
+  markSyncAttemptStarted,
+  markSyncAttemptSucceeded,
+  STORAGE_LIMITS
+} from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
 import {
   markWorkspaceRemoteSyncComplete,
@@ -31,8 +42,6 @@ import {
 } from "../lib/tab-capture"
 
 const SYNC_NOW = "youin:sync-now"
-const BRIDGE_PATH = "/auth/extension-bridge"
-const MAX_BRIDGE_TOKEN_LENGTH = 8192
 const MAX_URL_LENGTH = 4096
 const MAX_SELECTOR_LENGTH = 2048
 const MAX_PAGE_TITLE_LENGTH = 280
@@ -40,62 +49,24 @@ const MAX_CAPTURE_PIXELS = 16000000
 const MAX_LAYOUT_COORDINATE = 10000000
 const MAX_VIEWPORT_SIZE = 100000
 const MAX_DPR = 10
-const ALLOWED_BRIDGE_ORIGINS = new Set([
-  new URL(WEB_APP_URL).origin,
-  "http://localhost:3000",
-  "https://youin.click",
-  "https://www.youin.click"
-])
+const ALLOWED_BRIDGE_ORIGINS = bridgeOriginsForWebApp(WEB_APP_URL)
 const ALLOWED_REVIEW_SCRIPT_MARKERS = new Set([
   REVIEW_MODE_SCRIPT.fileMarker,
   CAPTURE_PANEL_SCRIPT.fileMarker
 ])
 const REVIEW_CAPTURE_STRATEGIES = new Set(["test-id", "id", "aria", "path"])
 
-interface BridgeSessionMessage {
-  type: "youin:set-session"
-  access_token: string
-  refresh_token: string
-}
-
-interface BridgePingMessage {
-  type: "youin:ping"
-}
-
-type ExternalMessage = BridgeSessionMessage | BridgePingMessage
-
 interface SyncNowResponse {
   ok: boolean
   error?: string
 }
 
-function isBridgeMessage(msg: unknown): msg is ExternalMessage {
-  if (!msg || typeof msg !== "object") return false
-  const m = msg as Partial<BridgeSessionMessage | BridgePingMessage>
-  if (m.type === "youin:ping") return true
-  return (
-    m.type === "youin:set-session" &&
-    typeof m.access_token === "string" &&
-    typeof m.refresh_token === "string" &&
-    m.access_token.length > 0 &&
-    m.refresh_token.length > 0 &&
-    m.access_token.length <= MAX_BRIDGE_TOKEN_LENGTH &&
-    m.refresh_token.length <= MAX_BRIDGE_TOKEN_LENGTH
-  )
-}
-
 function isAllowedBridgeSender(sender: chrome.runtime.MessageSender): boolean {
-  const senderUrl = sender.url ?? sender.origin
-  if (!senderUrl) return false
-  try {
-    const url = new URL(senderUrl)
-    const normalizedPath = url.pathname.replace(/\/$/, "") || "/"
-    return (
-      normalizedPath === BRIDGE_PATH && ALLOWED_BRIDGE_ORIGINS.has(url.origin)
-    )
-  } catch {
-    return false
-  }
+  return isAllowedBridgeSenderUrl(
+    sender.url,
+    sender.origin,
+    ALLOWED_BRIDGE_ORIGINS
+  )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -253,8 +224,11 @@ function isTabCaptureCropMessage(
 }
 
 function isExtensionPageSender(sender: chrome.runtime.MessageSender): boolean {
-  if (sender.id !== chrome.runtime.id || sender.tab) return false
-  return Boolean(sender.url?.startsWith(chrome.runtime.getURL("")))
+  return isExtensionPageSenderGuard(
+    sender,
+    chrome.runtime.id,
+    chrome.runtime.getURL("")
+  )
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -287,18 +261,35 @@ function dataUrlToBlob(dataUrl: string): Blob {
 }
 
 async function runBackgroundSync(): Promise<SyncNowResponse> {
-  const session = await getSession()
-  if (!session?.user?.id) return { ok: true }
-  const workspace = await syncWorkspaceFromRemote(session.user.id)
-  if (!workspace.ok) return { ok: false, error: workspace.error }
-  const push = await syncPendingMarksToWorkspace()
-  const pull = await syncWorkspaceMarksFromRemote()
-  if (push.ok && pull.ok) {
-    await markWorkspaceRemoteSyncComplete()
-  }
-  return {
-    ok: push.ok && pull.ok,
-    error: push.error ?? pull.error
+  await markSyncAttemptStarted()
+  try {
+    const session = await getSession()
+    if (!session?.user?.id) {
+      await markSyncAttemptSucceeded()
+      return { ok: true }
+    }
+    const workspace = await syncWorkspaceFromRemote(session.user.id)
+    if (!workspace.ok) {
+      const error = workspace.error ?? "Could not sync workspace."
+      await markSyncAttemptFailed(error)
+      return { ok: false, error }
+    }
+    const push = await syncPendingMarksToWorkspace()
+    const pull = await syncWorkspaceMarksFromRemote()
+    if (push.ok && pull.ok) {
+      await markWorkspaceRemoteSyncComplete()
+      await markSyncAttemptSucceeded()
+    } else {
+      await markSyncAttemptFailed(push.error ?? pull.error ?? "Sync failed.")
+    }
+    return {
+      ok: push.ok && pull.ok,
+      error: push.error ?? pull.error
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Sync failed."
+    await markSyncAttemptFailed(message)
+    return { ok: false, error: message }
   }
 }
 

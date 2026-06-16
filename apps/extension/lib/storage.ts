@@ -21,6 +21,7 @@ export const KEY_ACTIVE_SPACE = "youin:active-space-id"
 // Backward compatibility: existing extension installs persist marks under the old pins key.
 export const KEY_MARKS = "youin:pins"
 export const KEY_WIDGET_SETTINGS = "youin:widget-settings"
+export const KEY_SYNC_STATUS = "youin:sync-status"
 
 export type WidgetCorner =
   | "bottom-right"
@@ -49,6 +50,10 @@ const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   disabledHosts: []
 }
 
+const DEFAULT_SYNC_STATUS: SyncStatus = {
+  state: "idle"
+}
+
 export interface Project {
   id: string
   name: string
@@ -73,6 +78,14 @@ export interface LocalThreadMessage {
 export type MarkStatus = DomainMarkStatus
 export type MarkPriority = DomainMarkPriority
 export type MarkSyncState = "synced" | "pending" | "failed"
+export type SyncStatusState = "idle" | "syncing" | "synced" | "failed"
+
+export interface SyncStatus {
+  state: SyncStatusState
+  lastAttemptAt?: number
+  lastSuccessAt?: number
+  lastError?: string
+}
 
 export type MarkSyncOperation =
   | {
@@ -274,6 +287,10 @@ function makeSyncOpId(): string {
 
 function isMarkSyncState(v: unknown): v is MarkSyncState {
   return v === "synced" || v === "pending" || v === "failed"
+}
+
+function isSyncStatusState(v: unknown): v is SyncStatusState {
+  return v === "idle" || v === "syncing" || v === "synced" || v === "failed"
 }
 
 function normalizeHost(value: string): string {
@@ -719,6 +736,88 @@ export async function setWidgetSettings(
   }
   const saved = await write(KEY_WIDGET_SETTINGS, merged)
   return { settings: merged, saved }
+}
+
+export async function getSyncStatus(): Promise<SyncStatus> {
+  const stored = await read<unknown>(KEY_SYNC_STATUS, null)
+  if (!stored || typeof stored !== "object") return DEFAULT_SYNC_STATUS
+  const row = stored as Record<string, unknown>
+  return {
+    state: isSyncStatusState(row.state) ? row.state : "idle",
+    lastAttemptAt:
+      typeof row.lastAttemptAt === "number" &&
+      Number.isFinite(row.lastAttemptAt)
+        ? finiteNumber(row.lastAttemptAt, 0, 0, Number.MAX_SAFE_INTEGER)
+        : undefined,
+    lastSuccessAt:
+      typeof row.lastSuccessAt === "number" &&
+      Number.isFinite(row.lastSuccessAt)
+        ? finiteNumber(row.lastSuccessAt, 0, 0, Number.MAX_SAFE_INTEGER)
+        : undefined,
+    lastError:
+      typeof row.lastError === "string" && row.lastError
+        ? row.lastError.slice(0, 300)
+        : undefined
+  }
+}
+
+export async function setSyncStatus(
+  patch: Partial<SyncStatus> & { state?: SyncStatusState }
+): Promise<SyncStatus> {
+  const prev = await getSyncStatus()
+  const next: SyncStatus = {
+    state: patch.state ?? prev.state,
+    lastAttemptAt:
+      patch.lastAttemptAt === undefined
+        ? prev.lastAttemptAt
+        : finiteNumber(
+            patch.lastAttemptAt,
+            Date.now(),
+            0,
+            Number.MAX_SAFE_INTEGER
+          ),
+    lastSuccessAt:
+      patch.lastSuccessAt === undefined
+        ? prev.lastSuccessAt
+        : finiteNumber(
+            patch.lastSuccessAt,
+            Date.now(),
+            0,
+            Number.MAX_SAFE_INTEGER
+          ),
+    lastError: !("lastError" in patch)
+      ? prev.lastError
+      : patch.lastError
+        ? patch.lastError.slice(0, 300)
+        : undefined
+  }
+  await write(KEY_SYNC_STATUS, next)
+  return next
+}
+
+export async function markSyncAttemptStarted(): Promise<SyncStatus> {
+  return setSyncStatus({
+    state: "syncing",
+    lastAttemptAt: Date.now(),
+    lastError: undefined
+  })
+}
+
+export async function markSyncAttemptSucceeded(): Promise<SyncStatus> {
+  return setSyncStatus({
+    state: "synced",
+    lastSuccessAt: Date.now(),
+    lastError: undefined
+  })
+}
+
+export async function markSyncAttemptFailed(
+  error: string
+): Promise<SyncStatus> {
+  return setSyncStatus({
+    state: "failed",
+    lastError: error || "Sync failed."
+  })
 }
 
 export function hostForUrl(url: string): string {
