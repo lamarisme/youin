@@ -53,7 +53,7 @@ export const workspaceInviteSourceEnum = pgEnum("workspace_invite_source", [
   "manual",
 ]);
 
-/** Application profile; `id` matches `auth.users.id` (`profiles_user_id_fkey` in Supabase extensions SQL). */
+/** Application profile; `id` matches the original `auth.users.id`, even after account deletion anonymizes the row. */
 export const profiles = pgTable(
   "profiles",
   {

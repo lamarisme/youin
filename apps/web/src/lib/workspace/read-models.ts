@@ -78,6 +78,7 @@ import type {
   DashboardReadModel,
   ViewDetailReadModel,
   ViewsIndexReadModel,
+  WorkspaceMembershipSummary,
   WorkspaceShell,
   WorkspaceShellBootstrap,
   WorkspaceShellProject,
@@ -319,6 +320,43 @@ async function loadMembers(workspaceId: string): Promise<TeamMember[]> {
   });
 }
 
+async function loadWorkspaceMemberships(
+  userId: string,
+): Promise<WorkspaceMembershipSummary[]> {
+  const db = getDb();
+  const membershipRows = await db
+    .select({
+      workspaceId: workspaceMembers.workspaceId,
+      role: workspaceMembers.role,
+      workspaceName: workspaces.name,
+    })
+    .from(workspaceMembers)
+    .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+    .where(eq(workspaceMembers.userId, userId))
+    .orderBy(asc(workspaceMembers.createdAt), asc(workspaces.name));
+  const workspaceIds = membershipRows.map((row) => row.workspaceId);
+  const countRows = workspaceIds.length
+    ? await db
+        .select({
+          workspaceId: workspaceMembers.workspaceId,
+          memberCount: sql<number>`count(*)::int`,
+        })
+        .from(workspaceMembers)
+        .where(inArray(workspaceMembers.workspaceId, workspaceIds))
+        .groupBy(workspaceMembers.workspaceId)
+    : [];
+  const memberCountByWorkspaceId = new Map(
+    countRows.map((row) => [row.workspaceId, Number(row.memberCount ?? 0)]),
+  );
+
+  return membershipRows.map((row) => ({
+    id: row.workspaceId,
+    name: row.workspaceName,
+    role: (row.role as TeamRole) ?? "member",
+    memberCount: memberCountByWorkspaceId.get(row.workspaceId) ?? 1,
+  }));
+}
+
 export async function loadWorkspaceShell(
   workspaceId: string,
 ): Promise<WorkspaceShell> {
@@ -342,8 +380,9 @@ export async function loadWorkspaceShellBootstrap(
   userId: string,
 ): Promise<WorkspaceShellBootstrap> {
   const db = getDb();
-  const [workspace, profile, inboxSnapshot] = await Promise.all([
+  const [workspace, workspaceMemberships, profile, inboxSnapshot] = await Promise.all([
     loadWorkspaceShell(workspaceId),
+    loadWorkspaceMemberships(userId),
     loadUserProfile(userId),
     loadInboxSnapshotForWorkspace({ db, workspaceId, userId }),
   ]);
@@ -351,6 +390,7 @@ export async function loadWorkspaceShellBootstrap(
     workspaceId,
     userId,
     workspace,
+    workspaceMemberships,
     profile,
     inboxLastReadAt: inboxSnapshot.lastReadAt,
     inboxSnapshot,

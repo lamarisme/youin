@@ -55,7 +55,10 @@ import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
-import { useCreateProjectMutation } from "@/lib/queries/use-workspace-mutations";
+import {
+  useCreateProjectMutation,
+  useSwitchWorkspaceMutation,
+} from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
@@ -627,14 +630,20 @@ function ProjectSwitcher({
   searchParams: { get: (name: string) => string | null; toString: () => string };
   onNavigate: (href: string) => void;
 }) {
-  const { projects, marks, workspaceName } = useWorkspaceData((s) => ({
+  const { projects, marks, workspaceName, workspaceId, workspaceMemberships } =
+    useWorkspaceData((s) => ({
       workspaceName: s.workspace.name,
+      workspaceId: s.workspaceId,
+      workspaceMemberships: s.workspaceMemberships,
       projects: s.workspace.projects,
       marks: s.workspace.marks,
     }));
   const { mutateAsync: createProject, isPending: isCreating } =
     useCreateProjectMutation();
+  const { mutate: switchWorkspace, isPending: isSwitchingWorkspace } =
+    useSwitchWorkspaceMutation();
   const [createOpen, setCreateOpen] = useState(false);
+  const [switchingWorkspaceId, setSwitchingWorkspaceId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -654,16 +663,15 @@ function ProjectSwitcher({
   const selectedProject =
     navigableProjects.find((project) => project.id === urlProjectId) ?? null;
   const selectedProjectId = selectedProject?.id ?? null;
-  const selectedStats = selectedProject ? projectStats.get(selectedProject.id) : null;
   const totalMarks = navigableProjects.reduce(
     (sum, project) => sum + (projectStats.get(project.id)?.marks ?? 0),
     0,
   );
-  const switcherLabel = selectedProject?.name ?? (navigableProjects.length ? "All projects" : "No project");
+  const switcherLabel = workspaceName || "Workspace";
   const switcherMeta = selectedProject
-    ? `${selectedStats?.marks ?? 0} mark${(selectedStats?.marks ?? 0) === 1 ? "" : "s"}`
+    ? selectedProject.name
     : navigableProjects.length
-      ? `${totalMarks} mark${totalMarks === 1 ? "" : "s"}`
+      ? "All projects"
       : "Create a project to start";
 
   function hrefForProject(projectId: string): string {
@@ -696,6 +704,14 @@ function ProjectSwitcher({
     onNavigate(hrefForAllProjects());
   }
 
+  function selectWorkspace(nextWorkspaceId: string) {
+    if (nextWorkspaceId === workspaceId || isSwitchingWorkspace) return;
+    setSwitchingWorkspaceId(nextWorkspaceId);
+    switchWorkspace(nextWorkspaceId, {
+      onSettled: () => setSwitchingWorkspaceId(null),
+    });
+  }
+
   async function handleCreateProject() {
     if (!name.trim() || isCreating) return;
     setError(null);
@@ -719,7 +735,7 @@ function ProjectSwitcher({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="Switch project"
+            aria-label="Switch workspace or project"
             className={cn(
               "group flex min-h-10 w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors",
               "hover:bg-paper-3/80",
@@ -755,8 +771,52 @@ function ProjectSwitcher({
           side={collapsed ? "right" : "bottom"}
           className="w-64"
         >
+          <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
+          {workspaceMemberships.map((workspace) => {
+            const active = workspace.id === workspaceId;
+            const switching =
+              isSwitchingWorkspace && switchingWorkspaceId === workspace.id;
+            return (
+              <DropdownMenuItem
+                key={workspace.id}
+                aria-current={active ? "true" : undefined}
+                disabled={!active && isSwitchingWorkspace}
+                onSelect={(event) => {
+                  if (active) {
+                    event.preventDefault();
+                    return;
+                  }
+                  selectWorkspace(workspace.id);
+                }}
+                className={cn(
+                  "items-start gap-2 py-1.5",
+                  active && "bg-paper-2 text-ink",
+                )}
+              >
+                {switching ? (
+                  <Loader2 className="mt-0.5 size-4 animate-spin" />
+                ) : (
+                  <Check
+                    className={cn(
+                      "mt-0.5 size-4",
+                      active ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate">{workspace.name}</p>
+                  <p className="text-ui-xs text-muted-foreground">
+                    {workspace.role === "owner" ? "Owner" : "Member"} ·{" "}
+                    {workspace.memberCount} member
+                    {workspace.memberCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+          <DropdownMenuSeparator />
           <DropdownMenuLabel className="truncate">
-            {workspaceName || "Workspace"}
+            Projects in {workspaceName || "workspace"}
           </DropdownMenuLabel>
           {navigableProjects.length ? (
             <DropdownMenuItem onClick={selectAllProjects}>

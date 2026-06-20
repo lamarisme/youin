@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { isAccountSection } from "@/lib/workspace/routes";
 
 import { IntegrationsTab } from "../tabs/integrations-tab";
+import { DangerTab } from "../tabs/danger-tab";
 import { LabelsTab } from "../tabs/labels-tab";
 import { ProfileTab } from "../tabs/profile-tab";
 import { StatusesTab } from "../tabs/statuses-tab";
@@ -15,6 +16,7 @@ const SECTION_TITLES: Record<string, string> = {
   labels: "Label settings",
   statuses: "Workflow status settings",
   profile: "Profile settings",
+  danger: "Danger Zone",
 };
 
 export async function generateMetadata({
@@ -43,6 +45,7 @@ export default async function AccountSectionPage({
   if (section === "labels") return <LabelsTab />;
   if (section === "statuses") return <StatusesTab />;
   if (section === "profile") return <ProfileTab />;
+  if (section === "danger") return <DangerTab />;
 
   notFound();
 }

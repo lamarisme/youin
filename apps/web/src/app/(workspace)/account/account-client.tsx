@@ -5,6 +5,7 @@ import { useSelectedLayoutSegment } from "next/navigation";
 import {
   BadgeCheck,
   Blocks,
+  ShieldAlert,
   Tags,
   UserRound,
   UsersRound,
@@ -76,6 +77,12 @@ export function AccountShell({ children }: { children: ReactNode }) {
       label: "Profile",
       detail: "Display identity",
       icon: UserRound,
+    },
+    {
+      value: "danger",
+      label: "Danger Zone",
+      detail: "Exit and deletion",
+      icon: ShieldAlert,
     },
   ];
   const activeSectionMeta =

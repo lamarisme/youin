@@ -143,6 +143,19 @@ function adjustProjectMarkCount(
 // Views
 // ---------------------------------------------------------------------------
 
+export function useSwitchWorkspaceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.switchWorkspaceAction,
+    onSuccess: () => {
+      queryClient.clear();
+      window.location.assign("/dashboard");
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't switch workspace.")),
+  });
+}
+
 export function useCreateWorkspaceViewMutation() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -1177,6 +1190,48 @@ export function useRemoveMemberMutation() {
       toast.error(actionErrorMessage(e, "Couldn't remove member."));
     },
     onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useLeaveWorkspaceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.leaveWorkspaceAction,
+    onSuccess: (result) => {
+      queryClient.clear();
+      toast.success("You left the workspace.");
+      window.location.assign(result.redirectTo);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't leave this workspace.")),
+  });
+}
+
+export function useDeleteWorkspaceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.deleteWorkspaceAction,
+    onSuccess: (result) => {
+      queryClient.clear();
+      toast.success("Workspace deleted.");
+      window.location.assign(result.redirectTo);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't delete this workspace.")),
+  });
+}
+
+export function useDeleteAccountMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ws.deleteAccountAction,
+    onSuccess: (result) => {
+      queryClient.clear();
+      toast.success("Account deleted.");
+      window.location.assign(result.redirectTo);
+    },
+    onError: (e) =>
+      toast.error(actionErrorMessage(e, "Couldn't delete your account.")),
   });
 }
 

@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type NoticeTone = "danger" | "success" | "info";
+type NoticeTone = "danger" | "success" | "info" | "warning";
 
 const TONE_CLASS: Record<NoticeTone, string> = {
   danger: "border-destructive/30 bg-destructive-soft text-destructive",
   success: "border-ok/25 bg-ok-soft text-ok",
   info: "border-rule bg-paper text-ink-2",
+  warning: "border-warn/30 bg-warn/10 text-ink-2",
 };
 
 interface NoticeProps {

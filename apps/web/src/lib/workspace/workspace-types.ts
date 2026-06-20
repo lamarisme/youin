@@ -21,6 +21,7 @@ export type WorkspaceBootstrap = {
   workspaceId: string;
   userId: string;
   workspace: Workspace;
+  workspaceMemberships: WorkspaceMembershipSummary[];
   profile: UserProfile;
   inboxLastReadAt: InboxSnapshot["lastReadAt"];
   inboxSnapshot: InboxSnapshot;
@@ -30,6 +31,13 @@ export type WorkspaceBootstrap = {
 
 export interface WorkspaceShellProject extends WorkspaceProject {
   markCount: number;
+}
+
+export interface WorkspaceMembershipSummary {
+  id: string;
+  name: string;
+  role: TeamMember["role"];
+  memberCount: number;
 }
 
 export interface WorkspaceShell {
@@ -44,6 +52,7 @@ export type WorkspaceShellBootstrap = {
   workspaceId: string;
   userId: string;
   workspace: WorkspaceShell;
+  workspaceMemberships: WorkspaceMembershipSummary[];
   profile: UserProfile;
   inboxLastReadAt: InboxSnapshot["lastReadAt"];
   inboxSnapshot: InboxSnapshot;

@@ -57,6 +57,31 @@ export async function updateWorkspaceAction(updates: {
   revalidateWorkspaceViews();
 }
 
+export async function switchWorkspaceAction(workspaceId: string): Promise<void> {
+  const ctx = await requireWorkspaceContext();
+  const targetWorkspaceId = workspaceId.trim();
+  if (!targetWorkspaceId) throw new Error("Workspace is required.");
+  if (targetWorkspaceId === ctx.workspaceId) return;
+
+  const [membership] = await ctx.db
+    .select({ workspaceId: workspaceMembers.workspaceId })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, targetWorkspaceId),
+        eq(workspaceMembers.userId, ctx.userId),
+      ),
+    )
+    .limit(1);
+  if (!membership) throw new Error("You do not have access to that workspace.");
+
+  await ctx.db
+    .update(profiles)
+    .set({ currentWorkspaceId: targetWorkspaceId, updatedAt: new Date() })
+    .where(eq(profiles.id, ctx.userId));
+  revalidateWorkspaceViews();
+}
+
 export async function updateMyWorkspaceUsernameAction(
   username: string,
 ): Promise<void> {

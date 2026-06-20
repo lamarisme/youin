@@ -48,6 +48,7 @@ export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
     workspaceId: "",
     userId: "",
     workspace: emptyWorkspace(),
+    workspaceMemberships: [],
     profile: emptyProfile(),
     inboxLastReadAt: "",
     inboxSnapshot: emptyInboxSnapshot(),
@@ -71,6 +72,7 @@ export function shellBootstrapToWorkspaceBootstrap(
   return {
     workspaceId: shell.workspaceId,
     userId: shell.userId,
+    workspaceMemberships: shell.workspaceMemberships,
     profile: shell.profile,
     inboxLastReadAt: shell.inboxLastReadAt,
     inboxSnapshot: shell.inboxSnapshot,
@@ -93,6 +95,7 @@ export function composeWorkspaceBootstrap(
 ): WorkspaceBootstrap {
   return {
     ...shellBootstrapToWorkspaceBootstrap(shell),
+    workspaceMemberships: shell.workspaceMemberships,
     loadedAt,
     workspace: {
       ...workspace,
@@ -116,6 +119,7 @@ export function mergeShellIntoWorkspaceBootstrap(
   return {
     ...current,
     userId: shell.userId,
+    workspaceMemberships: shell.workspaceMemberships,
     profile: shell.profile,
     inboxLastReadAt: shell.inboxSnapshot.lastReadAt || shell.inboxLastReadAt,
     inboxSnapshot: shell.inboxSnapshot,

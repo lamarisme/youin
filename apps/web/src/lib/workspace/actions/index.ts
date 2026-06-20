@@ -58,8 +58,16 @@ export {
   updateProfileAction,
   updateWorkspaceAction,
   updateMyWorkspaceUsernameAction,
+  switchWorkspaceAction,
   type ProfileUpdates,
 } from "./profile";
+
+export {
+  deleteAccountAction,
+  deleteWorkspaceAction,
+  leaveWorkspaceAction,
+  type DestructiveActionResult,
+} from "./danger";
 
 export {
   acceptWorkspaceInviteAction,
