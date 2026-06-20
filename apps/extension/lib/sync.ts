@@ -3,7 +3,6 @@
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
 import { getSession } from "./auth"
-import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
   getActiveProjectId,
@@ -335,7 +334,6 @@ export async function pushMarkToWorkspace(
     }
   }
 
-  const description = buildMarkDescription(mark)
   let res: Response
   try {
     res = await fetch(`${WEB_APP_URL}/api/extension/marks`, {
@@ -347,7 +345,7 @@ export async function pushMarkToWorkspace(
       body: JSON.stringify({
         projectId,
         title: mark.title.trim(),
-        description,
+        description: "",
         page: mark.url,
         status: normalizeMarkStatus(mark.status),
         priority: normalizeMarkPriority(mark.priority),

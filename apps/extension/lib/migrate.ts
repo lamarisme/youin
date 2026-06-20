@@ -4,7 +4,6 @@
 
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
-import { buildMarkDescription } from "./mark-description"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
   getMarks,
@@ -247,7 +246,6 @@ export async function migrateLocalDataToWorkspace(
       project.projectId
     if (!remoteProjectId) continue
 
-    const description = buildMarkDescription(localMark)
     const status = normalizeMarkStatus(localMark.status)
     const workflowStatusId = defaultStatusByLifecycle.get(status)
     if (!workflowStatusId) continue
@@ -258,7 +256,7 @@ export async function migrateLocalDataToWorkspace(
         project_id: remoteProjectId,
         workflow_status_id: workflowStatusId,
         title: localMark.title.trim() || "Untitled mark",
-        description,
+        description: "",
         page: localMark.url,
         status,
         priority: normalizeMarkPriority(localMark.priority),
