@@ -31,12 +31,13 @@ export function WorkspaceDataProvider({
   const queryClient = useQueryClient();
   const { data, isPending, isError, error, refetch, isFetching } =
     useWorkspaceShellQuery(bootstrap);
+  const activeShell = data ?? bootstrap;
   const shellSnapshot = useMemo(
-    () => (data ? shellBootstrapToWorkspaceBootstrap(data) : undefined),
-    [data],
+    () => shellBootstrapToWorkspaceBootstrap(activeShell),
+    [activeShell],
   );
   const snapshotQuery = useWorkspaceQuery(
-    shellSnapshot ?? shellBootstrapToWorkspaceBootstrap(bootstrap),
+    shellSnapshot,
   );
 
   useEffect(() => {
@@ -47,11 +48,11 @@ export function WorkspaceDataProvider({
     );
   }, [data, queryClient]);
 
-  if (isPending) {
+  if (isPending && !shellSnapshot) {
     return <WorkspaceMainSkeleton id={t("loadingAria")} />;
   }
 
-  if (isError) {
+  if (isError && !shellSnapshot) {
     return (
       <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center gap-5 px-4 py-[var(--page-y)]">
         <div className="max-w-sm text-center">

@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-function ShimmerBar({ className }: { className?: string }) {
+export function ShimmerBar({ className }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
