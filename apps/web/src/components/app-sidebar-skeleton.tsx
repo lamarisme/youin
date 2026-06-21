@@ -1,16 +1,16 @@
 import {
   CircleDashed,
   Inbox,
-  Plus,
   Search,
   User,
-  View,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { ShimmerBar } from "@/components/workspace-shell-skeleton";
+
+const VIEW_ROW_WIDTHS = ["w-28", "w-20", "w-24"];
 
 export function AppSidebarSkeleton() {
   return (
@@ -60,22 +60,15 @@ export function AppSidebarSkeleton() {
           <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
             Views
           </p>
-          <Link
-            href="/views"
-            aria-label="Create view"
-            className="flex size-7 items-center justify-center rounded-md text-ink-3"
-          >
-            <Plus className="size-4" aria-hidden />
-          </Link>
+          <ShimmerBar className="size-5 rounded-md" />
         </div>
-        <div className="space-y-0.5">
-          {Array.from({ length: 3 }).map((_, index) => (
+        <div className="space-y-0.5" aria-hidden="true">
+          {VIEW_ROW_WIDTHS.map((widthClass, index) => (
             <div
               key={index}
-              className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-ui-sm text-ink-2"
+              className="flex h-8 w-full items-center rounded-md px-2.5"
             >
-              <View className="size-[1.05rem] shrink-0 text-ink-3" aria-hidden />
-              <ShimmerBar className="h-3 w-24 rounded-sm" />
+              <ShimmerBar className={`${widthClass} h-3 rounded-sm`} />
             </div>
           ))}
         </div>
