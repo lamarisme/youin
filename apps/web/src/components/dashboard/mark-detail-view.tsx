@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { MarkItem, WorkspaceLabel } from "@/lib/collab-types";
+import { formatDateTime } from "@/lib/dates";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateLabelMutation,
@@ -401,6 +402,12 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                       {project.name}
                     </span>
                   ) : null}
+                  <time
+                    dateTime={mark.createdAt}
+                    className="font-mono text-ui-2xs tabular-nums text-ink-3"
+                  >
+                    {formatDateTime(mark.createdAt)}
+                  </time>
                   {!isPane ? (
                     <span className="font-mono text-ui-2xs tabular-nums text-ink-3">
                       {positionLabel}
