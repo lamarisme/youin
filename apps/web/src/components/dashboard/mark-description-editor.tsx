@@ -47,9 +47,9 @@ export function MarkDescriptionEditor({
       immediatelyRender: false,
       extensions: [
         StarterKit.configure({
-          heading: false,
-          codeBlock: false,
-          horizontalRule: false,
+          heading: {
+            levels: [1, 2, 3],
+          },
           link: {
             openOnClick: false,
             HTMLAttributes: {
@@ -82,9 +82,14 @@ export function MarkDescriptionEditor({
             "text-ui-sm leading-relaxed text-ink",
             "focus-visible:outline-none",
             "[&_blockquote]:my-2 [&_blockquote]:border-l [&_blockquote]:border-rule [&_blockquote]:pl-3",
+            "[&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-title-md [&_h1]:font-semibold [&_h1]:leading-snug",
+            "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-title-sm [&_h2]:font-semibold [&_h2]:leading-snug",
+            "[&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-ui-md [&_h3]:font-semibold [&_h3]:leading-snug",
+            "[&_hr]:my-3 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-rule",
             "[&_li]:my-0.5",
             "[&_ol]:my-2 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:pl-1",
             "[&_p]:mb-2 [&_p:last-child]:mb-0",
+            "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-paper-3 [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-ui-xs [&_pre]:leading-relaxed",
             "[&_ul]:my-2 [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:pl-1",
             minHeightClassName,
           ),
