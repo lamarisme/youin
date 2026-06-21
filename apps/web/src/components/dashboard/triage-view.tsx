@@ -378,9 +378,7 @@ export function TriageView() {
 
   return (
     <>
-      <div
-        className="space-y-3"
-      >
+      <div className="space-y-3">
         <section
           className="space-y-3"
         >
@@ -545,7 +543,6 @@ export function TriageView() {
             />
           ) : null}
         </section>
-
       </div>
 
       {selectedMarks.length > 0 ? (

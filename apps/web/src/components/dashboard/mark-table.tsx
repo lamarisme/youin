@@ -267,6 +267,7 @@ function MarkRow({
           <Link
             href={href}
             prefetch={false}
+            onPointerDown={prefetchDetail}
             onMouseEnter={prefetchDetail}
             onFocus={prefetchDetail}
             aria-label={openLabel}
