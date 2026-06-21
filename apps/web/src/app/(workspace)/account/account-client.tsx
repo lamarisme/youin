@@ -2,16 +2,6 @@
 
 import Link from "next/link";
 import { useSelectedLayoutSegment } from "next/navigation";
-import {
-  BadgeCheck,
-  Blocks,
-  ShieldAlert,
-  Tags,
-  UserRound,
-  UsersRound,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
@@ -20,9 +10,10 @@ import { AppHeader } from "@/components/app-header";
 import { PageContainer } from "@/components/page-container";
 import { cn } from "@/lib/utils";
 import { accountHref, type AccountSection } from "@/lib/workspace/routes";
+import { ACCOUNT_SECTION_CONFIG } from "./account-sections";
 
 export function AccountShell({ children }: { children: ReactNode }) {
-  const { memberCount, labelCount, reviewLinkCount, statusCount } = useWorkspaceData((s) => ({
+  const counts = useWorkspaceData((s) => ({
     memberCount: s.workspace.members.length,
     labelCount: s.workspace.labels.length,
     reviewLinkCount: s.workspace.reviewLinks.length,
@@ -30,61 +21,10 @@ export function AccountShell({ children }: { children: ReactNode }) {
   }));
   const selectedSegment = useSelectedLayoutSegment();
   const activeSection = (selectedSegment ?? "overview") as AccountSection;
-
-  const sections: Array<{
-    value: AccountSection;
-    label: string;
-    detail: string;
-    icon: LucideIcon;
-    count?: number;
-  }> = [
-    {
-      value: "overview",
-      label: "Overview",
-      detail: "Identity and defaults",
-      icon: BadgeCheck,
-    },
-    {
-      value: "team",
-      label: "Team",
-      detail: "Members and invites",
-      icon: UsersRound,
-      count: memberCount,
-    },
-    {
-      value: "integrations",
-      label: "Integrations",
-      detail: "Capture entry points",
-      icon: Blocks,
-      count: reviewLinkCount,
-    },
-    {
-      value: "labels",
-      label: "Labels",
-      detail: "Tag vocabulary",
-      icon: Tags,
-      count: labelCount,
-    },
-    {
-      value: "statuses",
-      label: "Statuses",
-      detail: "Workflow stages",
-      icon: Workflow,
-      count: statusCount,
-    },
-    {
-      value: "profile",
-      label: "Profile",
-      detail: "Display identity",
-      icon: UserRound,
-    },
-    {
-      value: "danger",
-      label: "Danger Zone",
-      detail: "Exit and deletion",
-      icon: ShieldAlert,
-    },
-  ];
+  const sections = ACCOUNT_SECTION_CONFIG.map((section) => ({
+    ...section,
+    count: section.countKey ? counts[section.countKey] : undefined,
+  }));
   const activeSectionMeta =
     sections.find((section) => section.value === activeSection) ?? sections[0];
 

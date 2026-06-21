@@ -1,12 +1,8 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Loader2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
-import { WorkspaceMainSkeleton } from "@/components/workspace-shell-skeleton";
 import {
   mergeShellIntoWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
@@ -27,18 +23,14 @@ export function WorkspaceDataProvider({
   bootstrap: WorkspaceShellBootstrap;
   children: React.ReactNode;
 }) {
-  const t = useTranslations("workspace.bootstrap");
   const queryClient = useQueryClient();
-  const { data, isPending, isError, error, refetch, isFetching } =
-    useWorkspaceShellQuery(bootstrap);
+  const { data } = useWorkspaceShellQuery(bootstrap);
   const activeShell = data ?? bootstrap;
   const shellSnapshot = useMemo(
     () => shellBootstrapToWorkspaceBootstrap(activeShell),
     [activeShell],
   );
-  const snapshotQuery = useWorkspaceQuery(
-    shellSnapshot,
-  );
+  const snapshotQuery = useWorkspaceQuery(shellSnapshot);
 
   useEffect(() => {
     if (!data) return;
@@ -47,44 +39,6 @@ export function WorkspaceDataProvider({
       (current) => mergeShellIntoWorkspaceBootstrap(current, data),
     );
   }, [data, queryClient]);
-
-  if (isPending && !shellSnapshot) {
-    return <WorkspaceMainSkeleton id={t("loadingAria")} />;
-  }
-
-  if (isError && !shellSnapshot) {
-    return (
-      <div className="flex min-h-[min(70vh,36rem)] w-full flex-col items-center justify-center gap-5 px-4 py-[var(--page-y)]">
-        <div className="max-w-sm text-center">
-          <p className="font-display text-lg font-semibold text-ink">{t("title")}</p>
-          <p className="mt-2 text-ui-sm text-ink-2">
-            {error instanceof Error ? error.message : t("bodyFallback")}
-          </p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button
-            type="button"
-            variant="mark"
-            className="h-9 gap-2"
-            disabled={isFetching}
-            onClick={() => void refetch()}
-          >
-            {isFetching ? (
-              <>
-                <Loader2 className="size-4 animate-spin" aria-hidden />
-                {t("retrying")}
-              </>
-            ) : (
-              t("tryAgain")
-            )}
-          </Button>
-          <Button type="button" variant="outline" className="h-9" onClick={() => window.location.reload()}>
-            {t("reloadPage")}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <WorkspaceSnapshotProvider value={snapshotQuery.data ?? shellSnapshot}>

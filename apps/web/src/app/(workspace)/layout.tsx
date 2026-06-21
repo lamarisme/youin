@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { WorkspaceDataProvider } from "@/components/providers/workspace-data-provider";
-import { getCurrentWorkspaceShellBootstrap } from "@/lib/workspace/server-read-models";
+import { WorkspaceFrameSkeleton } from "@/components/workspace-frame-skeleton";
+import {
+  getCurrentWorkspaceSession,
+  getWorkspaceShellBootstrapForSession,
+  type AuthenticatedWorkspaceSession,
+} from "@/lib/workspace/server-read-models";
 
 export const metadata: Metadata = {
   title: "Workspace dashboard",
@@ -12,15 +18,37 @@ export const metadata: Metadata = {
 const DEFAULT_AFTER_SIGN_IN = "/dashboard";
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
-  const bootstrapResult = await getCurrentWorkspaceShellBootstrap();
+  const sessionResult = await getCurrentWorkspaceSession();
 
-  if (bootstrapResult.status === "anonymous") {
+  if (sessionResult.status === "anonymous") {
     redirect(`/login?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
 
-  if (bootstrapResult.status === "unresolved") {
+  if (sessionResult.status === "unresolved") {
     redirect(`/onboarding?next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
   }
+
+  if (sessionResult.status === "incomplete") {
+    redirect(`/auth/error?reason=incomplete&next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);
+  }
+
+  return (
+    <Suspense fallback={<WorkspaceFrameSkeleton />}>
+      <WorkspaceShellData session={sessionResult.session}>
+        {children}
+      </WorkspaceShellData>
+    </Suspense>
+  );
+}
+
+async function WorkspaceShellData({
+  session,
+  children,
+}: {
+  session: AuthenticatedWorkspaceSession;
+  children: React.ReactNode;
+}) {
+  const bootstrapResult = await getWorkspaceShellBootstrapForSession(session);
 
   if (bootstrapResult.status === "incomplete") {
     redirect(`/auth/error?reason=incomplete&next=${encodeURIComponent(DEFAULT_AFTER_SIGN_IN)}`);

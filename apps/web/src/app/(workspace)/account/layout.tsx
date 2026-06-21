@@ -1,79 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import {
-  BadgeCheck,
-  Blocks,
-  ShieldAlert,
-  Tags,
-  UserRound,
-  UsersRound,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
 
 import { AppHeader } from "@/components/app-header";
 import { PageContainer } from "@/components/page-container";
 import { AccountReadModelProvider } from "@/components/providers/workspace-read-model-provider";
 import { ShimmerBar } from "@/components/workspace-shell-skeleton";
-import { accountHref, type AccountSection } from "@/lib/workspace/routes";
+import { accountHref } from "@/lib/workspace/routes";
 import { getAccountReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 
+import { ACCOUNT_SECTION_CONFIG } from "./account-sections";
 import { AccountShell } from "./account-client";
-
-const ACCOUNT_SECTIONS: Array<{
-  value: AccountSection;
-  label: string;
-  detail: string;
-  icon: LucideIcon;
-  count?: boolean;
-}> = [
-  {
-    value: "overview",
-    label: "Overview",
-    detail: "Identity and defaults",
-    icon: BadgeCheck,
-  },
-  {
-    value: "team",
-    label: "Team",
-    detail: "Members and invites",
-    icon: UsersRound,
-    count: true,
-  },
-  {
-    value: "integrations",
-    label: "Integrations",
-    detail: "Capture entry points",
-    icon: Blocks,
-    count: true,
-  },
-  {
-    value: "labels",
-    label: "Labels",
-    detail: "Tag vocabulary",
-    icon: Tags,
-    count: true,
-  },
-  {
-    value: "statuses",
-    label: "Statuses",
-    detail: "Workflow stages",
-    icon: Workflow,
-    count: true,
-  },
-  {
-    value: "profile",
-    label: "Profile",
-    detail: "Display identity",
-    icon: UserRound,
-  },
-  {
-    value: "danger",
-    label: "Danger Zone",
-    detail: "Exit and deletion",
-    icon: ShieldAlert,
-  },
-];
 
 export default function AccountLayout({
   children,
@@ -121,26 +57,22 @@ function AccountLayoutSkeleton() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:flex lg:min-w-0 lg:flex-col lg:gap-1.5">
-            {ACCOUNT_SECTIONS.map((section, index) => {
+            {ACCOUNT_SECTION_CONFIG.map((section) => {
               const Icon = section.icon;
-              const active = index === 0;
               return (
                 <Link
                   key={section.value}
                   href={accountHref(section.value)}
-                  aria-current={active ? "page" : undefined}
                   className={[
                     "group flex min-h-11 w-full shrink-0 items-center gap-2 rounded-md px-2.5 py-2 text-left transition-[background-color,color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
                     "lg:min-h-12 lg:px-2.5",
-                    active
-                      ? "bg-paper-elevated text-ink ring-1 ring-rule/60"
-                      : "text-ink-2 hover:bg-paper-2/80 hover:text-ink",
+                    "text-ink-2 hover:bg-paper-2/80 hover:text-ink",
                   ].join(" ")}
                 >
                   <span
                     className={[
                       "inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-paper-3 text-ink-3 transition-colors",
-                      active ? "bg-mark-soft/80 text-mark" : "group-hover:text-ink-2",
+                      "group-hover:text-ink-2",
                     ].join(" ")}
                     aria-hidden
                   >
@@ -154,7 +86,7 @@ function AccountLayoutSkeleton() {
                       {section.detail}
                     </span>
                   </span>
-                  {section.count ? <ShimmerBar className="h-4 w-5 rounded" /> : null}
+                  {section.countKey ? <ShimmerBar className="h-4 w-5 rounded" /> : null}
                 </Link>
               );
             })}

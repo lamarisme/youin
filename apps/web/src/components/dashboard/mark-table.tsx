@@ -15,7 +15,7 @@ import type {
   WorkspaceLabel,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
-import { formatDateShort } from "@/lib/dates";
+import { formatDashboardDate, formatDateTimeFull } from "@/lib/dates";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
@@ -450,15 +450,7 @@ function RowMeta({
           </Avatar>
         </span>
       ) : null}
-      <span
-        className={cn(
-          "hidden w-16 shrink-0 text-right text-ui-sm tabular-nums sm:inline",
-          density === "compact" && "text-ui-xs",
-        )}
-        title={mark.createdAt}
-      >
-        {formatDateShort(mark.createdAt)}
-      </span>
+      <CreatedAt value={mark.createdAt} density={density} />
       {mark.page.trim() ? (
         <MarkPageOpenButton
           page={mark.page}
@@ -470,6 +462,32 @@ function RowMeta({
         <span className="hidden size-7 lg:block" aria-hidden />
       )}
     </div>
+  );
+}
+
+function CreatedAt({
+  value,
+  density,
+}: {
+  value: string;
+  density: "default" | "compact";
+}) {
+  const fullTimestamp = formatDateTimeFull(value);
+  const label = formatDashboardDate(value);
+  const accessibleLabel = `Created ${fullTimestamp}`;
+
+  return (
+    <time
+      dateTime={value}
+      title={accessibleLabel}
+      aria-label={accessibleLabel}
+      className={cn(
+        "hidden w-20 shrink-0 text-right font-mono text-ui-xs tabular-nums text-ink-3 sm:inline-block",
+        density === "compact" && "text-ui-2xs",
+      )}
+    >
+      {label}
+    </time>
   );
 }
 

@@ -24,10 +24,25 @@ import type {
 } from "@/lib/workspace/workspace-types";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 
+export type AuthenticatedWorkspaceSession = {
+  userId: string;
+  workspaceId: string;
+};
+
+export type CurrentWorkspaceSessionResult =
+  | { status: "authenticated"; session: AuthenticatedWorkspaceSession }
+  | { status: "anonymous" }
+  | { status: "unresolved" }
+  | { status: "incomplete" };
+
 export type CurrentWorkspaceShellBootstrapResult =
   | { status: "authenticated"; bootstrap: WorkspaceShellBootstrap }
   | { status: "anonymous" }
   | { status: "unresolved" }
+  | { status: "incomplete" };
+
+export type WorkspaceShellBootstrapForSessionResult =
+  | { status: "authenticated"; bootstrap: WorkspaceShellBootstrap }
   | { status: "incomplete" };
 
 function logWorkspaceBootstrapError(error: unknown): void {
@@ -55,10 +70,34 @@ function isNextDynamicServerError(error: unknown): boolean {
 }
 
 export async function getCurrentWorkspaceShellBootstrap(): Promise<CurrentWorkspaceShellBootstrapResult> {
+  const sessionResult = await getCurrentWorkspaceSession();
+  if (sessionResult.status !== "authenticated") return sessionResult;
+  return getWorkspaceShellBootstrapForSession(sessionResult.session);
+}
+
+export async function getCurrentWorkspaceSession(): Promise<CurrentWorkspaceSessionResult> {
   try {
     const session = await getWorkspaceSessionResult();
     if (session.status === "anonymous") return { status: "anonymous" };
     if (session.status === "unresolved") return { status: "unresolved" };
+    return {
+      status: "authenticated",
+      session: {
+        userId: session.userId,
+        workspaceId: session.workspaceId,
+      },
+    };
+  } catch (error) {
+    if (isNextDynamicServerError(error)) throw error;
+    logWorkspaceBootstrapError(error);
+    return { status: "incomplete" };
+  }
+}
+
+export async function getWorkspaceShellBootstrapForSession(
+  session: AuthenticatedWorkspaceSession,
+): Promise<WorkspaceShellBootstrapForSessionResult> {
+  try {
     const bootstrap = await loadWorkspaceShellBootstrap(
       session.workspaceId,
       session.userId,

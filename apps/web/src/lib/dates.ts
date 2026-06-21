@@ -2,6 +2,7 @@ import {
   differenceInCalendarDays,
   format,
   formatDistanceToNow,
+  isSameYear,
   isThisYear,
 } from "date-fns";
 
@@ -33,6 +34,31 @@ export function formatDateShort(value: string | Date): string {
 export function formatDateTime(value: string | Date): string {
   const d = asDate(value);
   return isThisYear(d) ? format(d, "MMM d, HH:mm") : format(d, "MMM d, yyyy");
+}
+
+/** "May 8, 2026, 14:30" — full timestamp for tooltips and assistive labels. */
+export function formatDateTimeFull(value: string | Date): string {
+  return format(asDate(value), "MMM d, yyyy, HH:mm");
+}
+
+/**
+ * Compact dashboard date labels for mark rows.
+ *   - Today: "14:30"
+ *   - Yesterday: "Yesterday"
+ *   - Last week: "Mon"
+ *   - Older this year: "May 8"
+ *   - Prior years: "May 8, 2024"
+ */
+export function formatDashboardDate(
+  value: string | Date,
+  now: Date = new Date(),
+): string {
+  const d = asDate(value);
+  const daysAgo = differenceInCalendarDays(now, d);
+  if (daysAgo === 0) return format(d, "HH:mm");
+  if (daysAgo === 1) return "Yesterday";
+  if (daysAgo > 1 && daysAgo < 7) return format(d, "EEE");
+  return isSameYear(d, now) ? formatDateShort(d) : format(d, "MMM d, yyyy");
 }
 
 /**
