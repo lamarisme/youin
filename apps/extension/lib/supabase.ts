@@ -6,7 +6,14 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = process.env.PLASMO_PUBLIC_SUPABASE_URL
 const SUPABASE_KEY = process.env.PLASMO_PUBLIC_SUPABASE_KEY
-const DEFAULT_WEB_APP_URL = "http://localhost:3000"
+const LOCAL_WEB_APP_URL = "http://localhost:3000"
+const PRODUCTION_WEB_APP_URL = "https://youin.click"
+
+function defaultWebAppUrl(): string {
+  return process.env.NODE_ENV === "production"
+    ? PRODUCTION_WEB_APP_URL
+    : LOCAL_WEB_APP_URL
+}
 
 function webAppUrlProtocol(value: string): "http" | "https" {
   const host = value.split(/[/?#]/, 1)[0] ?? ""
@@ -22,8 +29,23 @@ function webAppUrlProtocol(value: string): "http" | "https" {
   return "https"
 }
 
-function normalizeWebAppUrl(value: string | undefined): string {
-  const trimmed = value?.trim() || DEFAULT_WEB_APP_URL
+function isLocalWebAppUrl(value: string): boolean {
+  try {
+    const { hostname } = new URL(value)
+    return (
+      hostname === "localhost" ||
+      hostname.startsWith("127.") ||
+      hostname === "::1" ||
+      hostname === "[::1]"
+    )
+  } catch {
+    return false
+  }
+}
+
+export function normalizeWebAppUrl(value: string | undefined): string {
+  const fallback = defaultWebAppUrl()
+  const trimmed = value?.trim() || fallback
   const withProtocol = /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)
     ? trimmed
     : `${webAppUrlProtocol(trimmed)}://${trimmed}`
@@ -32,9 +54,13 @@ function normalizeWebAppUrl(value: string | undefined): string {
     const url = new URL(withProtocol)
     url.hash = ""
     url.search = ""
-    return url.toString().replace(/\/$/, "")
+    const normalized = url.toString().replace(/\/$/, "")
+    if (process.env.NODE_ENV === "production" && isLocalWebAppUrl(normalized)) {
+      return PRODUCTION_WEB_APP_URL
+    }
+    return normalized
   } catch {
-    return DEFAULT_WEB_APP_URL
+    return fallback
   }
 }
 
