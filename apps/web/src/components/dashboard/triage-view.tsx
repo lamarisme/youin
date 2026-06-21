@@ -81,6 +81,7 @@ export function TriageView() {
   const {
     pagination,
     scopeCounts,
+    loadedAt,
     refreshErrorMessage,
     retryRefresh,
     isFetching,
@@ -506,6 +507,7 @@ export function TriageView() {
                 workflowStatusesById={workflowStatusesById}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
+                referenceTime={loadedAt}
                 density={rowFilters.density === "compact" ? "compact" : "default"}
                 selectedIds={scopedSelectedIds}
                 onSelectionChange={handleSelectionChange}
@@ -520,6 +522,7 @@ export function TriageView() {
                 workflowStatusesById={workflowStatusesById}
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
+                referenceTime={loadedAt}
                 sectionTitle={listSectionTitle({
                   filters: rowFilters,
                   selectedProjectName: rowSelectedProject?.name,
@@ -629,6 +632,7 @@ function GroupedMarkTables({
   workflowStatusesById,
   commentCountByMarkId,
   displayNamePreference,
+  referenceTime,
   activeMarkId,
   density,
   selectedIds,
@@ -642,6 +646,7 @@ function GroupedMarkTables({
   workflowStatusesById: Map<string, WorkspaceWorkflowStatus>;
   commentCountByMarkId: Map<string, number>;
   displayNamePreference: DisplayNamePreference;
+  referenceTime?: string | Date;
   activeMarkId?: string;
   density: "default" | "compact";
   selectedIds: Set<string>;
@@ -674,6 +679,7 @@ function GroupedMarkTables({
             workflowStatusesById={workflowStatusesById}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
+            referenceTime={referenceTime}
             showSectionHeader={false}
             activeMarkId={activeMarkId}
             density={density}

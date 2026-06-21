@@ -53,10 +53,11 @@ import type {
 const PAGE_SIZE = 8;
 
 export function ViewDetailClient({ viewId }: { viewId: string }) {
-  const { workspace, userId, displayNamePreference } = useWorkspaceData((s) => ({
+  const { workspace, userId, displayNamePreference, loadedAt } = useWorkspaceData((s) => ({
     workspace: s.workspace,
     userId: s.userId,
     displayNamePreference: s.profile.displayNamePreference,
+    loadedAt: s.loadedAt,
   }));
   const view = workspace.views.find((item) => item.id === viewId) ?? null;
 
@@ -71,6 +72,7 @@ export function ViewDetailClient({ viewId }: { viewId: string }) {
       workspace={workspace}
       userId={userId}
       displayNamePreference={displayNamePreference}
+      loadedAt={loadedAt}
     />
   );
 }
@@ -80,11 +82,13 @@ function ViewDetail({
   workspace,
   userId,
   displayNamePreference,
+  loadedAt,
 }: {
   view: WorkspaceView;
   workspace: Workspace;
   userId: string | null;
   displayNamePreference: DisplayNamePreference;
+  loadedAt: string;
 }) {
   const router = useRouter();
   const { mutateAsync: updateView, isPending: isSaving } =
@@ -226,6 +230,7 @@ function ViewDetail({
           marks={visibleMarks}
           workspace={workspace}
           displayNamePreference={displayNamePreference}
+          referenceTime={loadedAt}
           page={page}
           onPageChange={setPage}
           markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
@@ -239,6 +244,7 @@ function ViewList({
   marks,
   workspace,
   displayNamePreference,
+  referenceTime,
   page,
   onPageChange,
   markHrefFor,
@@ -246,6 +252,7 @@ function ViewList({
   marks: MarkItem[];
   workspace: Workspace;
   displayNamePreference: DisplayNamePreference;
+  referenceTime?: string | Date;
   page: number;
   onPageChange: (page: number) => void;
   markHrefFor: (mark: MarkItem) => string;
@@ -273,6 +280,7 @@ function ViewList({
             workflowStatusesById={workflowStatusesById}
             commentCountByMarkId={commentCountByMarkId}
             displayNamePreference={displayNamePreference}
+            referenceTime={referenceTime}
             markHrefFor={markHrefFor}
           />
         )}

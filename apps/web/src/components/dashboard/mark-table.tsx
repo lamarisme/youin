@@ -39,6 +39,7 @@ export interface MarkTableProps {
   density?: "default" | "compact";
   sectionTitle?: string;
   showSectionHeader?: boolean;
+  referenceTime?: string | Date;
 }
 
 export function MarkTable(props: MarkTableProps) {
@@ -58,6 +59,7 @@ export function MarkTable(props: MarkTableProps) {
     density = "default",
     sectionTitle = "Marks",
     showSectionHeader = true,
+    referenceTime,
   } = props;
   const selectable = Boolean(selectedIds && onSelectionChange);
   const selectableMarksCount = selectable
@@ -153,6 +155,7 @@ export function MarkTable(props: MarkTableProps) {
               hasSelection={selectedCount > 0}
               density={density}
               displayNamePreference={displayNamePreference}
+              referenceTime={referenceTime}
               href={markHrefFor?.(mark)}
               onSelect={onSelectMark ? () => onSelectMark(mark) : undefined}
               onToggleStatus={onToggleMarkStatus}
@@ -178,6 +181,7 @@ function MarkRow({
   hasSelection,
   density,
   displayNamePreference,
+  referenceTime,
   href,
   onSelect,
   onToggleStatus,
@@ -195,6 +199,7 @@ function MarkRow({
   hasSelection: boolean;
   density: "default" | "compact";
   displayNamePreference: DisplayNamePreference;
+  referenceTime?: string | Date;
   href?: string;
   onSelect?: () => void;
   onToggleStatus?: (mark: MarkItem) => void | Promise<void>;
@@ -312,6 +317,7 @@ function MarkRow({
           commentCount={commentCount}
           density={density}
           displayNamePreference={displayNamePreference}
+          referenceTime={referenceTime}
         />
       </div>
     </li>
@@ -414,12 +420,14 @@ function RowMeta({
   commentCount,
   density,
   displayNamePreference,
+  referenceTime,
 }: {
   mark: MarkItem;
   assignee?: TeamMember;
   commentCount: number;
   density: "default" | "compact";
   displayNamePreference: DisplayNamePreference;
+  referenceTime?: string | Date;
 }) {
   return (
     <div className="ml-1 flex min-w-0 shrink-0 items-center justify-end gap-1 text-ink-3 sm:ml-2 sm:gap-2">
@@ -450,7 +458,7 @@ function RowMeta({
           </Avatar>
         </span>
       ) : null}
-      <CreatedAt value={mark.createdAt} density={density} />
+      <CreatedAt value={mark.createdAt} density={density} referenceTime={referenceTime} />
       {mark.page.trim() ? (
         <MarkPageOpenButton
           page={mark.page}
@@ -468,12 +476,14 @@ function RowMeta({
 function CreatedAt({
   value,
   density,
+  referenceTime,
 }: {
   value: string;
   density: "default" | "compact";
+  referenceTime?: string | Date;
 }) {
   const fullTimestamp = formatDateTimeFull(value);
-  const label = formatDashboardDate(value);
+  const label = formatDashboardDate(value, referenceTime ? new Date(referenceTime) : undefined);
   const accessibleLabel = `Created ${fullTimestamp}`;
 
   return (

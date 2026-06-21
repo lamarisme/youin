@@ -1,5 +1,7 @@
 import {
   differenceInCalendarDays,
+  differenceInHours,
+  differenceInMinutes,
   format,
   formatDistanceToNow,
   isSameYear,
@@ -43,7 +45,9 @@ export function formatDateTimeFull(value: string | Date): string {
 
 /**
  * Compact dashboard date labels for mark rows.
- *   - Today: "14:30"
+ *   - Less than a minute: "Just now"
+ *   - Less than an hour: "5m ago"
+ *   - Less than a day: "2h ago"
  *   - Yesterday: "Yesterday"
  *   - Last week: "Mon"
  *   - Older this year: "May 8"
@@ -54,8 +58,12 @@ export function formatDashboardDate(
   now: Date = new Date(),
 ): string {
   const d = asDate(value);
+  const minutesAgo = Math.max(0, differenceInMinutes(now, d));
+  if (minutesAgo < 1) return "Just now";
+  if (minutesAgo < 60) return `${minutesAgo}m ago`;
+  if (minutesAgo < 24 * 60) return `${Math.max(1, differenceInHours(now, d))}h ago`;
+
   const daysAgo = differenceInCalendarDays(now, d);
-  if (daysAgo === 0) return format(d, "HH:mm");
   if (daysAgo === 1) return "Yesterday";
   if (daysAgo > 1 && daysAgo < 7) return format(d, "EEE");
   return isSameYear(d, now) ? formatDateShort(d) : format(d, "MMM d, yyyy");
