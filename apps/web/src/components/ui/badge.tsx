@@ -5,20 +5,24 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-pill border border-transparent px-2 py-0.5 text-ui-xs font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-ring/35 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-1.5 py-0.5 text-ui-xs font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-focus-ring/35 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:ring-destructive-token/20 [&>svg]:pointer-events-none [&>svg]:size-3!",
   {
     variants: {
       variant: {
-        default: "border-rule/50 bg-paper-3 text-ink [a]:hover:bg-paper-3/80",
+        default: "border-rule/55 bg-paper-2 text-ink-2 [a]:hover:bg-paper-3 [a]:hover:text-ink",
         secondary:
-          "border-rule/45 bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "border-rule/50 bg-paper-3 text-ink [a]:hover:bg-paper-3/80",
         destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+          "border-destructive-token/20 bg-destructive-soft text-destructive-token focus-visible:ring-destructive-token/20 [a]:hover:bg-destructive-soft/80",
         outline:
-          "border-rule/70 bg-paper-elevated text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+          "border-rule/70 bg-paper-elevated text-ink-2 [a]:hover:bg-paper-2 [a]:hover:text-ink",
         ghost:
-          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
-        link: "text-primary underline-offset-4 hover:underline",
+          "text-ink-2 hover:bg-paper-2 hover:text-ink",
+        link: "text-mark underline-offset-4 hover:text-mark-bright hover:underline",
+        mark: "border-mark/15 bg-mark-soft/75 text-mark [a]:hover:bg-mark-soft",
+        ok: "border-ok/15 bg-ok-soft/75 text-ok [a]:hover:bg-ok-soft",
+        warning: "border-warn/20 bg-warn-soft text-ink [a]:hover:bg-warn-soft/80",
+        info: "border-info/20 bg-info-soft text-info [a]:hover:bg-info-soft/80",
       },
     },
     defaultVariants: {

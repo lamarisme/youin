@@ -14,14 +14,14 @@ function Checkbox({
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "group/checkbox peer relative flex size-10 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-primary-foreground transition-colors outline-none group-has-disabled/field:opacity-50 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive/20 sm:size-4 sm:rounded-[4px] sm:border-input sm:data-[state=checked]:border-primary sm:data-[state=checked]:bg-primary dark:aria-invalid:ring-destructive/40",
+        "group/checkbox peer relative flex size-10 shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent text-paper transition-colors outline-none group-has-disabled/field:opacity-50 focus-visible:ring-3 focus-visible:ring-focus-ring/40 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive-token/20 sm:size-4 sm:rounded-[4px] sm:border-rule/70 sm:data-[state=checked]:border-mark sm:data-[state=checked]:bg-mark",
         className
       )}
       {...props}
     >
       <span
         aria-hidden="true"
-        className="pointer-events-none grid size-4 place-content-center rounded-[4px] border border-input bg-transparent text-current transition-colors group-data-[state=checked]/checkbox:border-primary group-data-[state=checked]/checkbox:bg-primary dark:bg-input/30"
+        className="pointer-events-none grid size-4 place-content-center rounded-[4px] border border-rule/70 bg-paper-2 text-current transition-colors group-data-[state=checked]/checkbox:border-mark group-data-[state=checked]/checkbox:bg-mark"
       >
         <CheckboxPrimitive.Indicator
           data-slot="checkbox-indicator"

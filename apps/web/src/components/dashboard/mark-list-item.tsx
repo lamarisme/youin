@@ -117,12 +117,13 @@ export function MarkListItem({
               const label = labelsById.get(lid);
               if (!label) return null;
               return (
-                <span
+                <Pill
                   key={lid}
-                  className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2"
+                  size="sm"
+                  className="max-w-[10rem] truncate"
                 >
                   {label.name}
-                </span>
+                </Pill>
               );
             })}
             {assignee ? (

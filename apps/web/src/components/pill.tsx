@@ -29,7 +29,7 @@ export const Pill = React.forwardRef<HTMLSpanElement, PillProps>(
       ref={ref}
       className={cn(
         "inline-flex items-center gap-1 rounded-md font-medium",
-        "border",
+        "max-w-full overflow-hidden border whitespace-nowrap",
         VARIANT_CLASS[variant],
         SIZE_CLASS[size],
         className,

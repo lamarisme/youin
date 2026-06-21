@@ -7,6 +7,7 @@ import { FilterSelect } from "@/components/filter-select";
 import { Notice } from "@/components/notice";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -17,7 +18,6 @@ import {
   useCreateWorkflowStatusMutation,
   useUpdateWorkflowStatusMutation,
 } from "@/lib/queries/use-workspace-mutations";
-import { cn } from "@/lib/utils";
 import { workflowStatusUsageFromMarks } from "@/lib/workspace/read-model-mappers";
 
 const LIFECYCLE_OPTIONS: ReadonlyArray<{ value: MarkStatus; label: string }> = [
@@ -211,20 +211,16 @@ export function StatusesTab() {
                       <CheckCircle2 className="size-3.5 text-ok" aria-hidden />
                     )}
                     <span className="text-ui-sm font-medium text-ink">{status.name}</span>
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 text-ui-2xs font-medium",
-                        status.lifecycleStatus === "open"
-                          ? "bg-mark-soft text-mark"
-                          : "bg-ok-soft text-ok",
-                      )}
+                    <Badge
+                      variant={status.lifecycleStatus === "open" ? "mark" : "ok"}
+                      className="text-ui-2xs"
                     >
                       {status.lifecycleStatus === "open" ? "Open" : "Closed"}
-                    </span>
+                    </Badge>
                     {isDefault ? (
-                      <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
+                      <Badge variant="default" className="text-ui-2xs">
                         Default
-                      </span>
+                      </Badge>
                     ) : null}
                     <span className="font-mono text-ui-xs text-ink-3 tabular-nums">
                       {count} mark{count === 1 ? "" : "s"}

@@ -398,7 +398,7 @@ export function MarkFilters({
                         key={f.key}
                         type="button"
                         onClick={f.reset}
-                        className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-pill border border-rule/70 bg-paper-elevated px-3 text-ui-xs text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink sm:min-h-7 sm:px-2"
+                        className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-md border border-rule/70 bg-paper-elevated px-3 text-ui-xs text-ink-2 transition-colors hover:bg-paper-2 hover:text-ink sm:min-h-7 sm:px-2"
                         aria-label={`Clear ${f.label} filter (${f.value})`}
                       >
                         <span className="truncate text-ink-3">{f.label}</span>

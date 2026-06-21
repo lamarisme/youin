@@ -6,7 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { ArrowRight, CircleDashed, MailCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
+import { formatDate } from "@/lib/dates";
 import { findMarkByRouteParam } from "@/lib/workspace/mark-display-id";
 import { dashboardHref } from "@/lib/workspace/routes";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
@@ -78,26 +80,38 @@ function WorkspaceInvitationReminder({
   return (
     <section
       aria-label="Pending workspace invitations"
-      className="mb-3 flex flex-col gap-3 rounded-md border border-info/25 bg-info-soft px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+      className="mb-3 grid gap-3 rounded-md border border-rule/70 bg-paper-elevated px-3 py-3 shadow-hairline sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-4"
     >
-      <div className="flex min-w-0 items-start gap-2.5">
-        <MailCheck className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
-        <div className="min-w-0">
-          <p className="text-ui-sm font-medium text-ink">
-            {firstInvite.invitedBy} invited you to {firstInvite.workspaceName}
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-rule/60 bg-paper-2 text-mark">
+          <MailCheck className="size-4" aria-hidden />
+        </span>
+        <div className="min-w-0 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">Workspace invite</Badge>
+            {additionalCount > 0 ? (
+              <Badge variant="default">+{additionalCount} more</Badge>
+            ) : null}
+          </div>
+          <p className="min-w-0 text-ui-sm font-medium text-ink">
+            <span className="text-ink-2">
+              {firstInvite.invitedBy} invited you to{" "}
+            </span>
+            <span className="font-semibold">{firstInvite.workspaceName}</span>
           </p>
-          <p className="mt-0.5 text-ui-xs text-ink-2">
-            Review and accept from Inbox
-            {additionalCount > 0
-              ? `, with ${additionalCount} more invitation${additionalCount === 1 ? "" : "s"} waiting`
-              : ""}
-            .
+          <p className="text-ui-xs text-ink-3">
+            Expires {formatDate(firstInvite.expiresAt)}. Accept it from Inbox.
           </p>
         </div>
       </div>
-      <Button asChild size="sm" variant="outline" className="h-8 shrink-0">
+      <Button
+        asChild
+        size="sm"
+        variant="mark"
+        className="h-9 w-full justify-between sm:h-8 sm:w-auto"
+      >
         <Link href="/inbox">
-          Review invite
+          Open Inbox
           <ArrowRight className="size-3.5" aria-hidden />
         </Link>
       </Button>

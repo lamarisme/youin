@@ -19,6 +19,7 @@ import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 
 import { PageContainer } from "@/components/page-container";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -267,9 +268,9 @@ function ViewRow({
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="truncate text-ui-sm font-medium text-ink">{view.name}</span>
-          <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
+          <Badge variant="default" className="text-ui-2xs">
             {saving ? "Saving" : viewLayoutLabel(view.layout)}
-          </span>
+          </Badge>
         </span>
         <span className="mt-0.5 block truncate text-ui-xs text-ink-3">
           {describeWorkspaceViewFilters(view.filters)} ·{" "}

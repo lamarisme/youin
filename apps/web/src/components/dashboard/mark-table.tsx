@@ -6,6 +6,7 @@ import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-reac
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Pill } from "@/components/pill";
 import type {
   DisplayNamePreference,
   MarkItem,
@@ -123,9 +124,9 @@ export function MarkTable(props: MarkTableProps) {
             <span className="shrink-0 font-mono text-ui-sm tabular-nums text-ink-3">{marks.length}</span>
           </div>
           {selectedCount > 0 ? (
-            <span className="justify-self-end rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3">
+            <Pill size="sm" className="justify-self-end font-mono tabular-nums">
               {selectedCount} selected
-            </span>
+            </Pill>
           ) : null}
         </div>
       ) : null}
@@ -391,12 +392,13 @@ function RowLabels({
   return (
     <span className="hidden min-w-0 shrink-0 items-center gap-1 lg:inline-flex">
       {visible.map((label) => (
-        <span
+        <Pill
           key={label.id}
-          className="max-w-24 truncate rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-3"
+          size="sm"
+          className="max-w-24 truncate"
         >
           {label.name}
-        </span>
+        </Pill>
       ))}
       {remaining > 0 ? (
         <span className="text-ui-2xs text-ink-3">+{remaining}</span>

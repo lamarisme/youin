@@ -19,6 +19,7 @@ import { useMarkTableModel } from "@/components/dashboard/use-mark-table-model";
 import { Pagination } from "@/components/pagination";
 import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/page-container";
@@ -351,9 +352,9 @@ function BoardColumn({
     <section className="min-h-[18rem] overflow-hidden rounded-md bg-paper-elevated">
       <div className="flex items-center justify-between border-b border-rule/70 bg-paper-2 px-3 py-2">
         <h2 className="text-ui-sm font-medium text-ink">{title}</h2>
-        <span className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium tabular-nums text-ink-3">
+        <Badge variant="default" className="font-mono text-ui-2xs tabular-nums">
           {marks.length}
-        </span>
+        </Badge>
       </div>
       {marks.length === 0 ? (
         <div className="px-3 py-8 text-center text-ui-sm text-ink-3">No marks here.</div>
@@ -375,9 +376,9 @@ function BoardColumn({
                   const label = labelsById.get(labelId);
                   if (!label) return null;
                   return (
-                    <span key={labelId} className="rounded bg-paper-3 px-1.5 py-0.5 text-ui-2xs font-medium text-ink-2">
+                    <Pill key={labelId} size="sm" className="max-w-[8rem] truncate">
                       {label.name}
-                    </span>
+                    </Pill>
                   );
                 })}
                 {mark.assigneeId ? (

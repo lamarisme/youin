@@ -5,7 +5,7 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent bg-clip-padding text-ui-sm font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/20 max-sm:min-h-10 max-sm:min-w-10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent bg-clip-padding text-ui-sm font-medium whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] outline-none select-none focus-visible:ring-2 focus-visible:ring-focus-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive-token/20 max-sm:min-h-10 max-sm:min-w-10 [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -16,12 +16,12 @@ const buttonVariants = cva(
         outline:
           "border-rule/80 bg-paper-elevated text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink aria-expanded:border-rule-strong/70 aria-expanded:bg-paper-2 aria-expanded:text-ink",
         secondary:
-          "border-rule/50 bg-paper-2 text-secondary-foreground hover:border-rule-strong/60 hover:bg-paper-3 aria-expanded:bg-paper-3 aria-expanded:text-secondary-foreground",
+          "border-rule/50 bg-paper-2 text-ink hover:border-rule-strong/60 hover:bg-paper-3 aria-expanded:bg-paper-3 aria-expanded:text-ink",
         ghost:
-          "text-ink-2 hover:bg-paper-2 hover:text-foreground aria-expanded:bg-paper-2 aria-expanded:text-foreground",
+          "text-ink-2 hover:bg-paper-2 hover:text-ink aria-expanded:bg-paper-2 aria-expanded:text-ink",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-destructive-soft text-destructive-token hover:bg-destructive-soft/80 focus-visible:border-destructive-token/40 focus-visible:ring-destructive-token/20",
+        link: "text-mark underline-offset-4 hover:text-mark-bright hover:underline",
       },
       size: {
         default:
