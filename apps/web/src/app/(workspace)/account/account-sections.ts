@@ -1,6 +1,7 @@
 import {
   BadgeCheck,
   Blocks,
+  Folder,
   ShieldAlert,
   Tags,
   UserRound,
@@ -13,6 +14,7 @@ import type { AccountSection } from "@/lib/workspace/routes";
 
 export type AccountSectionCountKey =
   | "memberCount"
+  | "projectCount"
   | "reviewLinkCount"
   | "labelCount"
   | "statusCount";
@@ -38,6 +40,13 @@ export const ACCOUNT_SECTION_CONFIG: AccountSectionConfig[] = [
     detail: "Members and invites",
     icon: UsersRound,
     countKey: "memberCount",
+  },
+  {
+    value: "projects",
+    label: "Projects",
+    detail: "Workspace scopes",
+    icon: Folder,
+    countKey: "projectCount",
   },
   {
     value: "integrations",

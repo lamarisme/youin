@@ -7,6 +7,7 @@ import {
   Check,
   ChevronsUpDown,
   CircleDashed,
+  Folder,
   Inbox as InboxIcon,
   Loader2,
   LogOut,
@@ -27,14 +28,6 @@ import { BrandLogo } from "@/components/brand-logo";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,21 +41,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Field } from "@/components/field";
-import { Input } from "@/components/ui/input";
 import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
-import {
-  useCreateProjectMutation,
-  useSwitchWorkspaceMutation,
-} from "@/lib/queries/use-workspace-mutations";
+import { useSwitchWorkspaceMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
+import { accountHref } from "@/lib/workspace/routes";
 
 const SIDEBAR_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
@@ -638,15 +627,9 @@ function ProjectSwitcher({
       projects: s.workspace.projects,
       marks: s.workspace.marks,
     }));
-  const { mutateAsync: createProject, isPending: isCreating } =
-    useCreateProjectMutation();
   const { mutate: switchWorkspace, isPending: isSwitchingWorkspace } =
     useSwitchWorkspaceMutation();
-  const [createOpen, setCreateOpen] = useState(false);
   const [switchingWorkspaceId, setSwitchingWorkspaceId] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState<string | null>(null);
 
   const projectStats = useMemo(() => {
     const counts = projectMarkCountsFromMarks(projects, marks);
@@ -672,7 +655,7 @@ function ProjectSwitcher({
     ? selectedProject.name
     : navigableProjects.length
       ? "All projects"
-      : "Create a project to start";
+      : "Set up projects";
 
   function hrefForProject(projectId: string): string {
     const params = new URLSearchParams(searchParams.toString());
@@ -710,23 +693,6 @@ function ProjectSwitcher({
     switchWorkspace(nextWorkspaceId, {
       onSettled: () => setSwitchingWorkspaceId(null),
     });
-  }
-
-  async function handleCreateProject() {
-    if (!name.trim() || isCreating) return;
-    setError(null);
-    try {
-      const project = await createProject({
-        name,
-        description,
-      });
-      setName("");
-      setDescription("");
-      setCreateOpen(false);
-      onNavigate(`/dashboard?project=${encodeURIComponent(project.id)}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't create this project.");
-    }
   }
 
   return (
@@ -857,94 +823,14 @@ function ProjectSwitcher({
             );
           })}
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={(event) => {
-              event.preventDefault();
-              setCreateOpen(true);
-            }}
-          >
-            <Plus className="size-4" />
-            New project
+          <DropdownMenuItem asChild>
+            <Link href={accountHref("projects")} prefetch={true}>
+              <Folder className="size-4" />
+              Manage projects
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog
-        open={createOpen}
-        onOpenChange={(open) => {
-          setCreateOpen(open);
-          if (!open) {
-            setName("");
-            setDescription("");
-            setError(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[min(90vh,30rem)] overflow-y-auto sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
-            <DialogDescription>
-              Group marks for one client, release, product area, or review stream.
-            </DialogDescription>
-          </DialogHeader>
-          <div
-            className="grid gap-4"
-            onKeyDown={(event) => {
-              if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                event.preventDefault();
-                void handleCreateProject();
-              }
-            }}
-          >
-            <Field id="sidebar-project-name" label="Name">
-              <Input
-                id="sidebar-project-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Website QA"
-                className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
-                autoFocus
-              />
-            </Field>
-            <Field id="sidebar-project-description" label="Description">
-              <Input
-                id="sidebar-project-description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="What this project is collecting"
-                className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
-              />
-            </Field>
-            {error ? (
-              <p
-                role="alert"
-                className="rounded-md border border-destructive-token/30 bg-destructive-soft px-3 py-2 text-ui-xs text-destructive-token"
-              >
-                {error}
-              </p>
-            ) : null}
-            <div className="flex justify-end gap-2 pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setCreateOpen(false)}
-                disabled={isCreating}
-                className="h-10 sm:h-8"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleCreateProject}
-                disabled={!name.trim() || isCreating}
-                className="h-10 sm:h-8"
-              >
-                {isCreating ? "Creating..." : "Create"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

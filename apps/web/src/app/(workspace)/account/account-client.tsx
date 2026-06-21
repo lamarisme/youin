@@ -15,6 +15,7 @@ import { ACCOUNT_SECTION_CONFIG } from "./account-sections";
 export function AccountShell({ children }: { children: ReactNode }) {
   const counts = useWorkspaceData((s) => ({
     memberCount: s.workspace.members.length,
+    projectCount: s.workspace.projects.length,
     labelCount: s.workspace.labels.length,
     reviewLinkCount: s.workspace.reviewLinks.length,
     statusCount: s.workspace.workflowStatuses.length,

@@ -19,7 +19,10 @@ export {
 
 export {
   createProjectAction,
+  deleteProjectAction,
+  updateProjectAction,
   type CreatedProject,
+  type UpdatedProject,
 } from "./projects";
 
 export {

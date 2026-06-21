@@ -327,6 +327,83 @@ export function useCreateProjectMutation() {
   });
 }
 
+export function useUpdateProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      name,
+      description,
+    }: {
+      projectId: string;
+      name: string;
+      description?: string;
+    }) => ws.updateProjectAction(projectId, { name, description }),
+    onMutate: async ({ projectId, name, description }) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const trimmed = name.trim().replace(/\s+/g, " ");
+      if (!trimmed) return context;
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        projects: workspace.projects.map((project) =>
+          project.id === projectId
+            ? {
+                ...project,
+                name: trimmed,
+                description: description?.trim() ?? "",
+              }
+            : project,
+        ),
+      }));
+      return context;
+    },
+    onSuccess: (project) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        projects: workspace.projects.map((item) =>
+          item.id === project.id
+            ? {
+                ...project,
+                markCount: item.markCount,
+              }
+            : item,
+        ),
+      }));
+      toast.success("Project saved.");
+    },
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't save this project."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
+export function useDeleteProjectMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId }: { projectId: string; name?: string }) =>
+      ws.deleteProjectAction(projectId),
+    onMutate: async ({ projectId }) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        projects: workspace.projects.filter((project) => project.id !== projectId),
+      }));
+      return context;
+    },
+    onSuccess: (_, vars) =>
+      toast.success(
+        vars.name ? `Deleted “${vars.name}”.` : "Project deleted.",
+      ),
+    onError: (e, _vars, context) => {
+      restoreWorkspace(queryClient, context);
+      toast.error(actionErrorMessage(e, "Couldn't delete this project."));
+    },
+    onSettled: () => invalidateWorkspace(queryClient),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Marks
 // ---------------------------------------------------------------------------

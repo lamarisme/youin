@@ -1,6 +1,7 @@
 const ACCOUNT_SECTIONS = [
   "overview",
   "team",
+  "projects",
   "integrations",
   "labels",
   "statuses",
