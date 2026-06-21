@@ -365,16 +365,9 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
               )}
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <time
-              dateTime={comment.createdAt}
-              title={formatDateTime(comment.createdAt)}
-              className="text-ui-2xs text-ink-3"
-            >
-              {formatRelative(comment.createdAt)}
-            </time>
+          <div className="flex shrink-0 items-center justify-end gap-1">
             {isOwn && !editing ? (
-              <span className="ml-1 inline-flex gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+              <span className="mr-1 inline-flex gap-0.5 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                 {comment.type === "text" ? (
                   <button
                     type="button"
@@ -398,6 +391,13 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 </button>
               </span>
             ) : null}
+            <time
+              dateTime={comment.createdAt}
+              title={formatDateTime(comment.createdAt)}
+              className="whitespace-nowrap text-right text-ui-2xs text-ink-3"
+            >
+              {formatRelative(comment.createdAt)}
+            </time>
           </div>
         </div>
         {editing && comment.type === "text" ? (
