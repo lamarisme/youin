@@ -238,12 +238,10 @@ function PreviewNav({
             <span className="shrink-0 rounded-md px-1.5 py-0.5 font-medium">Marks</span>
             <span className="text-ink-3">/</span>
             <span
-              className="block min-w-0 truncate rounded-md px-1.5 py-0.5 font-medium text-ink"
-              title={projectName ? `${projectName} / ${mark.displayKey} ${mark.title}` : `${mark.displayKey} ${mark.title}`}
+              className="block min-w-0 truncate rounded-md px-1.5 py-0.5 font-mono text-ui-xs font-medium text-ink"
+              title={projectName ? `${projectName} / ${mark.displayKey}` : mark.displayKey}
             >
-              <span className="font-mono text-ui-xs text-ink-2">{mark.displayKey}</span>
-              <span className="mx-1 text-ink-3"> </span>
-              {mark.title}
+              {mark.displayKey}
             </span>
           </div>
         </div>

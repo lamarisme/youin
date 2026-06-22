@@ -23,7 +23,6 @@ import { resolveMarkPageHref } from "@/lib/workspace/mark-page-url";
 
 interface MarkDetailNavProps {
   markLabel: string;
-  markTitle: string;
   page: string;
   pinned: boolean;
   positionLabel: string;
@@ -38,7 +37,6 @@ interface MarkDetailNavProps {
 
 export function MarkDetailNav({
   markLabel,
-  markTitle,
   page,
   pinned,
   positionLabel,
@@ -89,15 +87,13 @@ export function MarkDetailNav({
             <li aria-hidden className="text-ink-3">
               <ChevronRight className="size-3" />
             </li>
-            <li className="min-w-0 flex-1">
+            <li className="min-w-0">
               <span
-                className="block truncate rounded-md px-1.5 py-0.5 font-medium text-ink"
+                className="block truncate rounded-md px-1.5 py-0.5 font-mono text-ui-xs font-medium text-ink"
                 aria-current="page"
-                title={projectName ? `${projectName} / ${markLabel} ${markTitle}` : `${markLabel} ${markTitle}`}
+                title={projectName ? `${projectName} / ${markLabel}` : markLabel}
               >
-                <span className="font-mono text-ui-xs text-ink-2">{markLabel}</span>
-                <span className="mx-1 text-ink-3"> </span>
-                {markTitle}
+                {markLabel}
               </span>
             </li>
             <li className="ml-0.5 flex shrink-0 items-center gap-px">

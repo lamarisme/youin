@@ -355,7 +355,6 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
       {!isPane ? (
         <MarkDetailNav
           markLabel={mark.displayKey}
-          markTitle={mark.title}
           page={mark.page}
           pinned={mark.pinned}
           positionLabel={positionLabel}
