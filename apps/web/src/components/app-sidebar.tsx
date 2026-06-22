@@ -11,6 +11,7 @@ import {
   Inbox as InboxIcon,
   Loader2,
   LogOut,
+  MessagesSquare,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -124,6 +125,8 @@ export function AppSidebar() {
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
   const workspaceLabel = workspaceName || tCommon("workspaceFallback");
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
+  const reviewRoomsActive =
+    pathname === "/review-rooms" || pathname.startsWith("/review-rooms/");
   const myMarksHref = useMemo(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("assignee", "me");
@@ -278,6 +281,14 @@ export function AppSidebar() {
           active={myMarksActive}
           collapsed={collapsed}
           onNavigate={navigateFromSidebar}
+        />
+        <SidebarNavLink
+          href="/review-rooms"
+          label={tNav("reviewRooms")}
+          icon={MessagesSquare}
+          shortcut="R"
+          active={reviewRoomsActive}
+          collapsed={collapsed}
         />
       </nav>
 
