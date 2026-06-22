@@ -13,9 +13,7 @@ import {
   removeMarkSyncOp,
   saveMarks,
   setActiveProjectId,
-  setActiveSpaceId,
   setProjects,
-  setSpaces,
   type Mark,
   type MarkPriority,
   type Project
@@ -66,7 +64,6 @@ async function ensureActiveProjectForProjects(
   }
   const nextActive = projects[0]?.id ?? ""
   await setActiveProjectId(nextActive)
-  await setActiveSpaceId(nextActive)
   return nextActive
 }
 
@@ -74,7 +71,6 @@ export interface SyncWorkspaceResult {
   ok: boolean
   error?: string
   projectCount: number
-  spaceCount: number
 }
 
 /**
@@ -90,29 +86,18 @@ export async function syncWorkspaceFromRemote(
       ok: false,
       error:
         "No workspace found for this user. Use the web app once to finish setup.",
-      projectCount: 0,
-      spaceCount: 0
+      projectCount: 0
     }
   }
 
   const nextProjects = context.projects
   await setProjects(nextProjects)
-  await setSpaces(
-    nextProjects.map((project) => ({
-      id: project.id,
-      projectId: project.id,
-      name: project.name,
-      createdAt: project.createdAt
-    }))
-  )
 
   if (!nextProjects.length) {
     await setActiveProjectId("")
-    await setActiveSpaceId("")
     return {
       ok: true,
-      projectCount: 0,
-      spaceCount: 0
+      projectCount: 0
     }
   }
 
@@ -120,8 +105,7 @@ export async function syncWorkspaceFromRemote(
 
   return {
     ok: true,
-    projectCount: nextProjects.length,
-    spaceCount: nextProjects.length
+    projectCount: nextProjects.length
   }
 }
 
@@ -156,7 +140,6 @@ export interface RemoteComment {
 export interface RemoteMark {
   id: string
   projectId: string
-  spaceId?: string
   title: string
   page: string
   status: Mark["status"]
@@ -320,7 +303,7 @@ export async function pushMarkToWorkspace(
       error: "Mark needs a title before sync."
     }
   }
-  const projectId = mark.projectId || mark.spaceId
+  const projectId = mark.projectId
   if (!isUuidLike(projectId)) {
     await markSyncFailure(
       mark.id,
@@ -549,8 +532,7 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
   return {
     id: `remote_${mark.id}`,
     remoteMarkId: mark.id,
-    projectId: mark.projectId || mark.spaceId || "",
-    spaceId: mark.projectId || mark.spaceId || "",
+    projectId: mark.projectId || "",
     url: raw,
     origin,
     pathname,
@@ -598,8 +580,7 @@ export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
   return {
     ...local,
     title: hasPendingEdit ? local.title : mark.title || local.title,
-    projectId: mark.projectId || mark.spaceId || local.projectId,
-    spaceId: mark.projectId || mark.spaceId || local.spaceId,
+    projectId: mark.projectId || local.projectId,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
     screenshotUrl: mark.screenshotUrl || local.screenshotUrl,
@@ -717,7 +698,7 @@ export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksRes
   const pending = marks.filter(
     (mark) =>
       !mark.localHiddenAt &&
-      ((!mark.remoteMarkId && isUuidLike(mark.projectId || mark.spaceId)) ||
+      ((!mark.remoteMarkId && isUuidLike(mark.projectId)) ||
         Boolean(mark.remoteMarkId && mark.screenshotDataUrl) ||
         Boolean(mark.remoteMarkId && mark.pendingSyncOps?.length))
   )

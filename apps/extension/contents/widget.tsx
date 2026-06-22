@@ -19,15 +19,13 @@ import {
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import {
-  getActiveSpaceId,
+  getActiveProjectId,
   getMarksForPage,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
-  KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_SPACES,
   type WidgetCorner,
   type WidgetSettings
 } from "../lib/storage"
@@ -152,8 +150,8 @@ function Widget() {
   const [pinnedOpen, setPinnedOpen] = useState(false)
 
   const refreshCount = useCallback(async () => {
-    const spaceId = await getActiveSpaceId()
-    const marks = await getMarksForPage(spaceId, location.href)
+    const projectId = await getActiveProjectId()
+    const marks = await getMarksForPage(projectId, location.href)
     setOpenCount(marks.filter((p) => p.status !== "closed").length)
   }, [])
 
@@ -190,9 +188,7 @@ function Widget() {
       if (
         changes[KEY_MARKS] ||
         changes[KEY_PROJECTS] ||
-        changes[KEY_ACTIVE_PROJECT] ||
-        changes[KEY_ACTIVE_SPACE] ||
-        changes[KEY_SPACES]
+        changes[KEY_ACTIVE_PROJECT]
       ) {
         void refreshCount()
       }

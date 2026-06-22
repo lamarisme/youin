@@ -40,7 +40,6 @@ import {
   appendThreadComment,
   enqueueMarkSyncOp,
   getActiveProjectId,
-  getActiveSpaceId,
   getMarks,
   getMarksForPage,
   getProjects,
@@ -48,10 +47,8 @@ import {
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
-  KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_SPACES,
   KEY_SYNC_STATUS,
   KEY_WIDGET_SETTINGS,
   makeMarkId,
@@ -61,7 +58,6 @@ import {
   removeMarkSyncOp,
   restoreMark,
   setActiveProjectId,
-  setActiveSpaceId,
   STORAGE_LIMITS,
   type Mark,
   type MarkPriority,
@@ -228,7 +224,6 @@ function buildMarkFromCapture(
   return {
     id: makeMarkId(),
     projectId,
-    spaceId: projectId,
     url: href,
     pageTitle: detail.pageTitle,
     origin,
@@ -1146,7 +1141,6 @@ const CapturePanel = () => {
   const [pageMarks, setPageMarks] = useState<Mark[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
-  const [spaceId, setSpaceId] = useState<string>("")
   const [body, setBody] = useState("")
   const [priority, setPriority] = useState<MarkPriority>("medium")
   const [replyDraft, setReplyDraft] = useState("")
@@ -1216,9 +1210,9 @@ const CapturePanel = () => {
   }, [])
 
   const reloadPageMarks = useCallback(
-    async (pageUrl: string, sidOpt?: string) => {
-      const sid = sidOpt ?? (await getActiveSpaceId())
-      const marks = await getMarksForPage(sid, pageUrl)
+    async (pageUrl: string, projectIdOverride?: string) => {
+      const targetProjectId = projectIdOverride ?? (await getActiveProjectId())
+      const marks = await getMarksForPage(targetProjectId, pageUrl)
       setPageMarks(marks)
     },
     []
@@ -1235,41 +1229,33 @@ const CapturePanel = () => {
   }, [reloadPageMarks])
 
   const scheduleReloadPageMarks = useCallback(
-    (pageUrl: string, sidOpt?: string) => {
+    (pageUrl: string, projectIdOverride?: string) => {
       if (refreshMarksDebounceRef.current != null) {
         clearTimeout(refreshMarksDebounceRef.current)
       }
       refreshMarksDebounceRef.current = setTimeout(() => {
         refreshMarksDebounceRef.current = null
-        void reloadPageMarks(pageUrl, sidOpt)
+        void reloadPageMarks(pageUrl, projectIdOverride)
       }, 100)
     },
     [reloadPageMarks]
   )
 
-  const loadSpaces = useCallback(async () => {
-    const [projectRows, activeProject, activeSpace] = await Promise.all([
+  const loadProjects = useCallback(async () => {
+    const [projectRows, activeProject] = await Promise.all([
       getProjects(),
-      getActiveProjectId(),
-      getActiveSpaceId()
+      getActiveProjectId()
     ])
     const nextProjectId = projectRows.some(
       (project) => project.id === activeProject
     )
       ? activeProject
-      : projectRows.some((project) => project.id === activeSpace)
-        ? activeSpace
-        : projectRows[0]?.id || ""
-    const nextSpaceId = nextProjectId
+      : projectRows[0]?.id || ""
 
     setProjects(projectRows)
     setProjectId(nextProjectId)
-    setSpaceId(nextSpaceId)
     if (nextProjectId && nextProjectId !== activeProject) {
       void setActiveProjectId(nextProjectId)
-    }
-    if (nextSpaceId !== activeSpace) {
-      void setActiveSpaceId(nextSpaceId)
     }
   }, [])
 
@@ -1311,7 +1297,7 @@ const CapturePanel = () => {
     const canOpen = await refreshFeedbackList()
     if (!canOpen) return
 
-    await loadSpaces()
+    await loadProjects()
     setMode("list")
     setCapture(null)
     setViewingMark(null)
@@ -1327,7 +1313,7 @@ const CapturePanel = () => {
     setPendingListDeleteMarkId(null)
     previousFocusRef.current = document.activeElement as HTMLElement
     setOpen(true)
-  }, [loadSpaces, mode, open, refreshFeedbackList, resume])
+  }, [loadProjects, mode, open, refreshFeedbackList, resume])
 
   useEffect(() => {
     const onCap = (detail: ReviewCaptureDetail) => {
@@ -1375,14 +1361,14 @@ const CapturePanel = () => {
       reattachMarkIdRef.current = null
       setReturnToList(false)
       setPendingListDeleteMarkId(null)
-      void loadSpaces()
+      void loadProjects()
       previousFocusRef.current = document.activeElement as HTMLElement
       setOpen(true)
       void reloadPageMarks(detail.url)
     }
     registerCaptureHandler(onCap)
     return () => registerCaptureHandler(null)
-  }, [loadSpaces, reloadMark, reloadPageMarks])
+  }, [loadProjects, reloadMark, reloadPageMarks])
 
   useEffect(() => {
     registerCaptureUpdateHandler((patch) => {
@@ -1412,7 +1398,7 @@ const CapturePanel = () => {
       const markId = detail?.markId ?? detail?.pinId
       if (!markId) return
       void (async () => {
-        await loadSpaces()
+        await loadProjects()
         const marks = await getMarks()
         const mark = marks.find((p) => p.id === markId)
         if (!mark) return
@@ -1429,7 +1415,7 @@ const CapturePanel = () => {
         setPendingListDeleteMarkId(null)
         previousFocusRef.current = document.activeElement as HTMLElement
         setOpen(true)
-        void reloadPageMarks(mark.url, mark.spaceId)
+        void reloadPageMarks(mark.url, mark.projectId)
       })()
     }
     for (const eventName of OPEN_MARK_EVENTS) {
@@ -1440,7 +1426,7 @@ const CapturePanel = () => {
         window.removeEventListener(eventName, onOpen)
       }
     }
-  }, [loadSpaces, reloadPageMarks])
+  }, [loadProjects, reloadPageMarks])
 
   useEffect(() => {
     if (!open || !viewingMark) return
@@ -1450,20 +1436,18 @@ const CapturePanel = () => {
       if (area !== "local") return
       if (
         changes[KEY_PROJECTS] ||
-        changes[KEY_SPACES] ||
-        changes[KEY_ACTIVE_PROJECT] ||
-        changes[KEY_ACTIVE_SPACE]
+        changes[KEY_ACTIVE_PROJECT]
       ) {
-        void loadSpaces()
+        void loadProjects()
       }
       if (changes[KEY_MARKS]) {
         void reloadMark(viewingMark.id)
-        scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
+        scheduleReloadPageMarks(viewingMark.url, viewingMark.projectId)
       }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, viewingMark, loadSpaces, reloadMark, scheduleReloadPageMarks])
+  }, [open, viewingMark, loadProjects, reloadMark, scheduleReloadPageMarks])
 
   useEffect(() => {
     if (!open || mode !== "list") return
@@ -1473,16 +1457,13 @@ const CapturePanel = () => {
       if (area !== "local") return
       if (
         changes[KEY_PROJECTS] ||
-        changes[KEY_SPACES] ||
-        changes[KEY_ACTIVE_PROJECT] ||
-        changes[KEY_ACTIVE_SPACE]
+        changes[KEY_ACTIVE_PROJECT]
       ) {
-        void loadSpaces()
+        void loadProjects()
       }
       if (
         changes[KEY_MARKS] ||
-        changes[KEY_ACTIVE_SPACE] ||
-        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
         changes[KEY_WIDGET_SETTINGS]
       ) {
         void refreshFeedbackList()
@@ -1490,7 +1471,7 @@ const CapturePanel = () => {
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, mode, loadSpaces, refreshFeedbackList])
+  }, [open, mode, loadProjects, refreshFeedbackList])
 
   useEffect(() => {
     if (!open || !capture || mode !== "create") return
@@ -1500,17 +1481,15 @@ const CapturePanel = () => {
       if (area !== "local") return
       if (
         changes[KEY_PROJECTS] ||
-        changes[KEY_SPACES] ||
-        changes[KEY_ACTIVE_PROJECT] ||
-        changes[KEY_ACTIVE_SPACE]
+        changes[KEY_ACTIVE_PROJECT]
       ) {
-        void loadSpaces()
+        void loadProjects()
       }
       if (changes[KEY_MARKS]) scheduleReloadPageMarks(capture.url)
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
-  }, [open, capture, mode, loadSpaces, scheduleReloadPageMarks])
+  }, [open, capture, mode, loadProjects, scheduleReloadPageMarks])
 
   useEffect(() => {
     if (
@@ -1590,17 +1569,16 @@ const CapturePanel = () => {
       )
       return
     }
-    if (!spaceId) {
-      setSaveError(t("extension.panel.chooseSpaceFirst"))
+    if (!projectId) {
+      setSaveError(t("extension.panel.chooseProjectFirst"))
       return
     }
     setSaving(true)
     setSaveError(null)
     setSaveWarning(null)
     try {
-      await setActiveProjectId(spaceId)
-      await setActiveSpaceId(spaceId)
-      const mark = buildMarkFromCapture(capture, spaceId, body.trim(), priority)
+      await setActiveProjectId(projectId)
+      const mark = buildMarkFromCapture(capture, projectId, body.trim(), priority)
       const saved = await addMarkWithFallback(mark)
       if (!saved.ok || !saved.mark) {
         setSaveError(t("extension.panel.couldNotSave"))
@@ -1739,7 +1717,7 @@ const CapturePanel = () => {
         )
       }
       if (viewingMark?.id === mark.id) await reloadMark(mark.id)
-      await reloadPageMarks(mark.url, mark.spaceId)
+      await reloadPageMarks(mark.url, mark.projectId)
     } finally {
       setSaving(false)
     }
@@ -1766,7 +1744,7 @@ const CapturePanel = () => {
         message: t("extension.drawer.deleted")
       })
       setPendingListDeleteMarkId(null)
-      await reloadPageMarks(mark.url, mark.spaceId)
+      await reloadPageMarks(mark.url, mark.projectId)
     } finally {
       setSaving(false)
     }
@@ -1828,7 +1806,7 @@ const CapturePanel = () => {
       }
       setEditing(false)
       await reloadMark(viewingMark.id)
-      scheduleReloadPageMarks(viewingMark.url, viewingMark.spaceId)
+      scheduleReloadPageMarks(viewingMark.url, viewingMark.projectId)
     } finally {
       setSaving(false)
     }
@@ -1859,11 +1837,11 @@ const CapturePanel = () => {
       if (returnToList) {
         setMode("list")
         setReturnToList(false)
-        await reloadPageMarks(mark.url, mark.spaceId)
+        await reloadPageMarks(mark.url, mark.projectId)
         return
       }
       setOpen(false)
-      scheduleReloadPageMarks(mark.url, mark.spaceId)
+      scheduleReloadPageMarks(mark.url, mark.projectId)
       dispatchInternalEvent(EVENT_REVIEW_RESUME)
     } finally {
       setSaving(false)
@@ -1901,8 +1879,6 @@ const CapturePanel = () => {
   const selectProject = (id: string) => {
     setProjectId(id)
     void setActiveProjectId(id)
-    setSpaceId(id)
-    void setActiveSpaceId(id)
   }
 
   const openMarkFromList = (mark: Mark) => {
@@ -1920,7 +1896,7 @@ const CapturePanel = () => {
     setConfirmDelete(false)
     setReturnToList(true)
     setPendingListDeleteMarkId(null)
-    void reloadPageMarks(mark.url, mark.spaceId)
+    void reloadPageMarks(mark.url, mark.projectId)
   }
 
   const backToFeedbackList = () => {
@@ -2330,7 +2306,7 @@ const CapturePanel = () => {
                 <button
                   type="button"
                   disabled={
-                    saving || screenshotPending || !body.trim() || !spaceId
+                    saving || screenshotPending || !body.trim() || !projectId
                   }
                   aria-busy={saving}
                   className={btnPrimary}

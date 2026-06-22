@@ -7,10 +7,10 @@ import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
   getMarks,
-  getSpaces,
+  getProjects,
   saveMarks,
   type LocalThreadMessage,
-  type Space
+  type Project
 } from "./storage"
 import { getSupabase } from "./supabase"
 
@@ -18,8 +18,8 @@ const KEY_MIGRATION_DONE = "youin:migration:done-for-user"
 
 export interface MigrationResult {
   ok: boolean
-  spacesCreated: number
-  spacesMatched: number
+  projectsCreated: number
+  projectsMatched: number
   marksImported: number
   commentsImported: number
   error?: string
@@ -69,8 +69,8 @@ export async function migrateLocalDataToWorkspace(
   if (await isMigrationDoneForUser(userId)) {
     return {
       ok: true,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0
     }
@@ -87,8 +87,8 @@ export async function migrateLocalDataToWorkspace(
   if (memberErr) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error: memberErr.message
@@ -97,8 +97,8 @@ export async function migrateLocalDataToWorkspace(
   if (!membership) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error:
@@ -106,13 +106,16 @@ export async function migrateLocalDataToWorkspace(
     }
   }
   const workspaceId = membership.workspace_id as string
-  const [localProjects, localMarks] = await Promise.all([getSpaces(), getMarks()])
+  const [localProjects, localMarks] = await Promise.all([
+    getProjects(),
+    getMarks()
+  ])
   if (!localMarks.length) {
     await markMigrationDone(userId)
     return {
       ok: true,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0
     }
@@ -121,8 +124,8 @@ export async function migrateLocalDataToWorkspace(
   if (!project.projectId) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error:
@@ -138,8 +141,8 @@ export async function migrateLocalDataToWorkspace(
   if (projectErr) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error: projectErr.message
@@ -163,8 +166,8 @@ export async function migrateLocalDataToWorkspace(
   if (statusErr) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error: statusErr.message
@@ -186,8 +189,8 @@ export async function migrateLocalDataToWorkspace(
   if (!defaultStatusByLifecycle.has("open") || !defaultStatusByLifecycle.has("closed")) {
     return {
       ok: false,
-      spacesCreated: 0,
-      spacesMatched: 0,
+      projectsCreated: 0,
+      projectsMatched: 0,
       marksImported: 0,
       commentsImported: 0,
       error: "Workspace is missing a required open or closed workflow status."
@@ -195,20 +198,20 @@ export async function migrateLocalDataToWorkspace(
   }
 
   // Resolve a remote project id for every distinct local project referenced by marks.
-  const localProjectById = new Map<string, Space>()
+  const localProjectById = new Map<string, Project>()
   for (const project of localProjects) localProjectById.set(project.id, project)
   const usedLocalProjectIds = new Set(
-    localMarks.map((mark) => mark.projectId || mark.spaceId || project.projectId)
+    localMarks.map((mark) => mark.projectId || project.projectId)
   )
 
   const localToRemoteProjectId = new Map<string, string>()
-  const spacesCreated = 0
-  let spacesMatched = 0
+  const projectsCreated = 0
+  let projectsMatched = 0
 
   for (const localId of usedLocalProjectIds) {
     if (remoteIds.has(localId)) {
       localToRemoteProjectId.set(localId, localId)
-      spacesMatched++
+      projectsMatched++
       continue
     }
     const localProject = localProjectById.get(localId)
@@ -216,13 +219,13 @@ export async function migrateLocalDataToWorkspace(
     const existing = remoteByName.get(name.toLowerCase())
     if (existing) {
       localToRemoteProjectId.set(localId, existing)
-      spacesMatched++
+      projectsMatched++
       continue
     }
     return {
       ok: false,
-      spacesCreated,
-      spacesMatched,
+      projectsCreated,
+      projectsMatched,
       marksImported: 0,
       commentsImported: 0,
       error: `Create a "${name}" project from the dashboard, then try importing again.`
@@ -242,7 +245,7 @@ export async function migrateLocalDataToWorkspace(
 
   for (const localMark of localMarks) {
     const remoteProjectId =
-      localToRemoteProjectId.get(localMark.projectId || localMark.spaceId) ??
+      localToRemoteProjectId.get(localMark.projectId) ??
       project.projectId
     if (!remoteProjectId) continue
 
@@ -272,8 +275,8 @@ export async function migrateLocalDataToWorkspace(
     if (markErr || !createdMark) {
       return {
         ok: false,
-        spacesCreated,
-        spacesMatched,
+        projectsCreated,
+        projectsMatched,
         marksImported,
         commentsImported,
         error: markErr?.message ?? "Failed to import a mark."
@@ -315,8 +318,8 @@ export async function migrateLocalDataToWorkspace(
       if (cErr) {
         return {
           ok: false,
-          spacesCreated,
-          spacesMatched,
+          projectsCreated,
+          projectsMatched,
           marksImported,
           commentsImported,
           error: cErr.message
@@ -335,7 +338,6 @@ export async function migrateLocalDataToWorkspace(
       return {
         ...p,
         projectId: upd.projectId,
-        spaceId: upd.projectId,
         remoteMarkId: upd.remoteMarkId,
         screenshotDataUrl: upd.screenshotUploaded
           ? undefined
@@ -348,8 +350,8 @@ export async function migrateLocalDataToWorkspace(
   await markMigrationDone(userId)
   return {
     ok: true,
-    spacesCreated,
-    spacesMatched,
+    projectsCreated,
+    projectsMatched,
     marksImported,
     commentsImported
   }

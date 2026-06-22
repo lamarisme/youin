@@ -8,7 +8,7 @@ This is a pnpm monorepo.
 
 | Path                     | Purpose                                                                                                        |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `apps/web`               | Next.js app for auth, workspaces, dashboards, inbox, spaces, account settings, and the extension OAuth bridge. |
+| `apps/web`               | Next.js app for auth, workspaces, dashboards, inbox, projects, account settings, and the extension OAuth bridge. |
 | `apps/extension`         | Plasmo Chrome extension for review mode, capture, badges, sync, and local-to-Supabase migration.               |
 | `packages/design-tokens` | Shared design tokens consumed by the web app and extension.                                                    |
 | `packages/domain`        | Shared domain models, validation, and tests.                                                                   |

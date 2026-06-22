@@ -1,14 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  ExternalLink,
-  Link2,
-  Star,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Link2, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -19,11 +12,9 @@ import {
 } from "@/components/ui/tooltip";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
-import { resolveMarkPageHref } from "@/lib/workspace/mark-page-url";
 
 interface MarkDetailNavProps {
   markLabel: string;
-  page: string;
   pinned: boolean;
   positionLabel: string;
   projectName?: string;
@@ -37,7 +28,6 @@ interface MarkDetailNavProps {
 
 export function MarkDetailNav({
   markLabel,
-  page,
   pinned,
   positionLabel,
   projectName,
@@ -48,8 +38,6 @@ export function MarkDetailNav({
   onNext,
   onTogglePinned,
 }: MarkDetailNavProps) {
-  const pageHref = resolveMarkPageHref(page);
-
   async function copyCurrentLink() {
     try {
       const copied = await copyTextToClipboard(window.location.href);
@@ -125,28 +113,6 @@ export function MarkDetailNav({
           >
             <Copy className="size-3.5" aria-hidden />
           </HeaderIconButton>
-          {pageHref ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="icon-sm"
-                  variant="outline"
-                  asChild
-                  className="size-7 rounded-full bg-paper-elevated p-0 shadow-none"
-                >
-                  <a
-                    href={pageHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label="Open captured page"
-                  >
-                    <ExternalLink className="size-3.5" aria-hidden />
-                  </a>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Open captured page</TooltipContent>
-            </Tooltip>
-          ) : null}
           <div className="ml-0.5 inline-flex h-10 items-center overflow-hidden rounded-full border border-rule/80 bg-paper-elevated shadow-none sm:h-7">
             <button
               type="button"

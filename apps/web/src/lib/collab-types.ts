@@ -102,7 +102,7 @@ export interface MarkItem {
   seq: number;
   /** Human-friendly workspace-scoped id, e.g. `YIN-42`. */
   displayKey: string;
-  /** Previous space-scoped key, e.g. `WEB-42`, retained so old URLs resolve. */
+  /** Previous display key, e.g. `WEB-42`, retained so old URLs resolve. */
   legacyDisplayKey?: string;
   title: string;
   page: string;

@@ -25,7 +25,6 @@ import {
 } from "./lib/review-scripts"
 import {
   getActiveProjectId,
-  getActiveSpaceId,
   getMarkStatusCountsForPage,
   getMarkSyncSummary,
   getProjects,
@@ -34,16 +33,13 @@ import {
   hostForUrl,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
-  KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_SPACES,
   KEY_SYNC_STATUS,
   markSyncAttemptFailed,
   markSyncAttemptStarted,
   markSyncAttemptSucceeded,
   setActiveProjectId,
-  setActiveSpaceId,
   setWidgetSettings,
   type Project,
   type SyncStatus,
@@ -267,28 +263,23 @@ function IndexPopup() {
       setPageLabel("Current page")
       setCurrentHost("")
     }
-    const sid = await getActiveSpaceId()
-    const counts = await getMarkStatusCountsForPage(sid, url)
+    const activeProjectId = await getActiveProjectId()
+    const counts = await getMarkStatusCountsForPage(activeProjectId, url)
     setOpenCount(counts.open)
     setResolvedCount(counts.closed)
   }, [])
 
-  const refreshSpaces = useCallback(async () => {
-    const [projectRows, activeProject, activeSpace] = await Promise.all([
+  const refreshProjects = useCallback(async () => {
+    const [projectRows, activeProject] = await Promise.all([
       getProjects(),
-      getActiveProjectId(),
-      getActiveSpaceId()
+      getActiveProjectId()
     ])
     setProjects(projectRows)
     const nextProjectId = projectRows.some((x) => x.id === activeProject)
       ? activeProject
-      : projectRows.some((x) => x.id === activeSpace)
-        ? activeSpace
-        : projectRows[0]?.id ?? ""
+      : projectRows[0]?.id ?? ""
     setProjectId(nextProjectId)
-    const nextSpaceId = nextProjectId
     if (nextProjectId !== activeProject) void setActiveProjectId(nextProjectId)
-    if (nextSpaceId !== activeSpace) void setActiveSpaceId(nextSpaceId)
   }, [])
 
   const refreshWidgetSettings = useCallback(async () => {
@@ -330,7 +321,7 @@ function IndexPopup() {
   }, [])
 
   useEffect(() => {
-    void refreshSpaces()
+    void refreshProjects()
     void refreshCounts()
     void refreshWidgetSettings()
     void refreshSyncSummary()
@@ -342,12 +333,10 @@ function IndexPopup() {
       void refreshWidgetSettings()
       if (
         changes[KEY_PROJECTS] ||
-        changes[KEY_SPACES] ||
-        changes[KEY_ACTIVE_PROJECT] ||
-        changes[KEY_ACTIVE_SPACE]
+        changes[KEY_ACTIVE_PROJECT]
       )
-        void refreshSpaces()
-      if (changes[KEY_MARKS] || changes[KEY_ACTIVE_SPACE]) {
+        void refreshProjects()
+      if (changes[KEY_MARKS] || changes[KEY_ACTIVE_PROJECT]) {
         void refreshCounts()
         void refreshSyncSummary()
       }
@@ -356,7 +345,7 @@ function IndexPopup() {
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
   }, [
-    refreshSpaces,
+    refreshProjects,
     refreshCounts,
     refreshWidgetSettings,
     refreshSyncSummary,
@@ -528,7 +517,7 @@ function IndexPopup() {
           setSyncMsg(message)
         }
       } finally {
-        await refreshSpaces()
+        await refreshProjects()
         await refreshCounts()
         await refreshSyncSummary()
         await refreshSyncStatus()
@@ -555,7 +544,7 @@ function IndexPopup() {
     : !canReviewPage
       ? t("extension.popup.captureUnavailable")
       : !projectId
-        ? t("extension.popup.noSpaceSelected")
+        ? t("extension.popup.noProjectSelected")
         : floatingControl
           ? t("extension.popup.floatingReady")
           : t("extension.popup.floatingHidden")
@@ -563,7 +552,6 @@ function IndexPopup() {
   const selectProject = (id: string) => {
     setProjectId(id)
     void setActiveProjectId(id)
-    void setActiveSpaceId(id)
   }
 
   return (
@@ -884,10 +872,10 @@ function IndexPopup() {
         <div className="px-4 py-2">
           <div className="rounded-md bg-[color:var(--yi-paper-elevated)] px-3 py-2.5 ring-1 ring-[color:var(--yi-ext-border-hairline)]">
             <p className="text-[12px] font-semibold text-[color:var(--yi-ink)]">
-              {t("extension.popup.setupSpaceTitle")}
+              {t("extension.popup.setupProjectTitle")}
             </p>
             <p className="mt-0.5 text-[11px] text-[color:var(--yi-ext-text-muted)]">
-              {t("extension.popup.setupSpaceBody")}
+              {t("extension.popup.setupProjectBody")}
             </p>
             <a
               href={`${WEB_APP_URL}/dashboard`}
@@ -1376,21 +1364,21 @@ function MigrationBanner({
     )
   }
   const r = status as MigrationResult
-  if (r.marksImported === 0 && r.spacesCreated === 0 && r.spacesMatched === 0) {
+  if (r.marksImported === 0 && r.projectsCreated === 0 && r.projectsMatched === 0) {
     return null
   }
-  const spacesPart =
-    r.spacesCreated > 0
-      ? ` into ${r.spacesCreated} new project${r.spacesCreated === 1 ? "" : "s"}`
-      : r.spacesMatched > 0
-        ? ` into ${r.spacesMatched} existing project${r.spacesMatched === 1 ? "" : "s"}`
+  const projectsPart =
+    r.projectsCreated > 0
+      ? ` into ${r.projectsCreated} new project${r.projectsCreated === 1 ? "" : "s"}`
+      : r.projectsMatched > 0
+        ? ` into ${r.projectsMatched} existing project${r.projectsMatched === 1 ? "" : "s"}`
         : ""
   return (
     <div className="rounded-md border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ok-soft)] px-2.5 py-2 text-[11px] leading-snug text-[color:var(--yi-ok)]">
       {t("extension.popup.migrationSuccess", {
         count: r.marksImported,
         plural: r.marksImported === 1 ? "" : "s",
-        spaces: spacesPart
+        projects: projectsPart
       })}
       <button
         type="button"

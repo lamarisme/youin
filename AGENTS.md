@@ -58,7 +58,7 @@ S664 Add authentication to the Chrome extension using existing Supabase setup fr
 1531 " 🟣 @supabase/supabase-js 2.105.3 Installed in Chrome Extension
 1532 " 🟣 Supabase Client Created in Extension with chrome.storage.local Session Adapter
 1533 6:56p 🟣 Extension Auth Helper Library Created with OAuth Bridge Support and Cross-Context Session Detection
-1534 " 🔵 createPinAction Reveals Exact marks Insert Shape; Extension Must Supply workspace_id and space_id
+1534 " 🔵 createPinAction Reveals Exact marks Insert Shape; Extension Must Supply workspace_id and project_id
 1535 6:57p 🟣 One-Shot Local Data Migration Module Created to Import Pins into Supabase on First Sign-In
 1536 " 🟣 Background Service Worker Implemented as OAuth Session Bridge Receiver
 1537 " ✅ Extension Manifest Updated with externally_connectable for localhost OAuth Bridge

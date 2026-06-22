@@ -37,8 +37,6 @@ type ExtensionMarkInput = {
   description?: unknown;
   page?: unknown;
   projectId?: unknown;
-  /** Legacy extension payloads used spaceId. New captures should send projectId. */
-  spaceId?: unknown;
   status?: unknown;
   priority?: unknown;
   selector?: unknown;
@@ -463,7 +461,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     projectId = await resolveProjectId(
       supabase,
       workspaceId,
-      input.projectId ?? input.spaceId,
+      input.projectId,
     );
     workflowStatusId = await defaultWorkflowStatusId(
       supabase,

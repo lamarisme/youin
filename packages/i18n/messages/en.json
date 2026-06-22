@@ -17,7 +17,7 @@
     "triage": "Triage",
     "myMarks": "My marks",
     "inbox": "Inbox",
-    "spaces": "Projects",
+    "projects": "Projects",
     "views": "Views"
   },
   "sidebar": {
@@ -52,7 +52,7 @@
     "shortcutsTitle": "Operational shortcuts",
     "productOverview": "Product overview",
     "dashboardLink": "Dashboard",
-    "spacesLink": "Projects",
+    "projectsLink": "Projects",
     "accountSettingsLink": "Account settings",
     "footer": "youin — feedback on the live web",
     "signInInstead": "Sign in instead"
@@ -128,8 +128,8 @@
       "inboxSub": "Activity on marks you follow",
       "views": "Views",
       "viewsSub": "Saved lenses for backlog work",
-      "spaces": "Projects",
-      "spacesSub": "Projects in this workspace",
+      "projects": "Projects",
+      "projectsSub": "Projects in this workspace",
       "account": "Account settings",
       "accountSub": "Profile, team, integrations, and labels",
       "themeLight": "Switch to light mode",
@@ -277,7 +277,7 @@
       "inspectStartHint": "Pick an element",
       "screenshotStartHint": "Drag an area",
       "disabledOnSite": "YouIn is disabled on this site.",
-      "noSpaceSelected": "Choose a project before reviewing.",
+      "noProjectSelected": "Choose a project before reviewing.",
       "floatingCapture": "Floating capture",
       "floatingReady": "Ready on this page",
       "floatingHidden": "Hidden on pages",
@@ -294,9 +294,7 @@
       "dashboard": "Dashboard",
       "openWorkspaceDashboardAria": "Open {workspace} dashboard",
       "projectLabel": "Project",
-      "spaceLabel": "Project",
       "noProjectLabel": "No project",
-      "noSpaceLabel": "No project selected",
       "localFeedback": "Local feedback",
       "localFeedbackHint": "Saved on this device. Sign in to share it.",
       "signIn": "Sign in",
@@ -330,8 +328,8 @@
       "syncNow": "Sync now",
       "retrySync": "Retry sync",
       "syncing": "Syncing",
-      "setupSpaceTitle": "Set up a review project",
-      "setupSpaceBody": "Create a project from the dashboard to sync feedback with your team.",
+      "setupProjectTitle": "Set up a review project",
+      "setupProjectBody": "Create a project from the dashboard to sync feedback with your team.",
       "openWebApp": "Open dashboard",
       "noWorkspaceTitle": "Workspace not ready",
       "noWorkspaceBody": "Open the web app once to finish workspace setup, then reopen the popup.",
@@ -369,7 +367,7 @@
       "reviewMenuAria": "Youin review — hover for capture modes",
       "openFeedbackAria": "{count} open feedback item{plural}",
       "showPageFeedback": "Show page feedback",
-      "chooseSpace": "Choose a project",
+      "chooseProject": "Choose a project",
       "openYouinAria": "Open Youin",
       "closeMenuAria": "Close menu",
       "marksTitle": "Marks on this page"
@@ -393,8 +391,7 @@
       "options": "Options",
       "optionsSummary": "Project, priority, selector",
       "project": "Project",
-      "reviewSpace": "Review project",
-      "createSpaceInPopup": "Create a project from the extension popup.",
+      "reviewProject": "Review project",
       "priority": "Priority",
       "priorityLow": "Low",
       "priorityNormal": "Normal",
@@ -411,7 +408,7 @@
       "otherOnPage": "Other feedback on this page ({count})",
       "savedWithLimitations": "Saved with limitations.",
       "feedbackPosted": "Feedback posted.",
-      "chooseSpaceFirst": "Choose or create a review project first.",
+      "chooseProjectFirst": "Choose or create a review project first.",
       "couldNotSave": "Couldn't save. Try again.",
       "waitForScreenshot": "Wait for the screenshot to finish, then post.",
       "regionCaptureFailed": "Could not capture that area. Try the screenshot again.",
@@ -501,10 +498,10 @@
     },
     "sync": {
       "noWorkspace": "No workspace found for this user. Use the web app once to finish setup.",
-      "noSpaces": "No projects in your workspace yet. Create one from the dashboard, then reopen the popup.",
+      "noProjects": "No projects in your workspace yet. Create one from the dashboard, then reopen the popup.",
       "imported": "Imported",
       "markNeedsTitle": "Mark needs a title before sync.",
-      "spaceLocal": "Project is still local-only. Reload the popup after signing in to sync projects.",
+      "projectLocal": "Project is still local-only. Reload the popup after signing in to sync projects.",
       "noWorkspaceAccount": "No workspace for this account. Open youin once in the browser.",
       "syncFailed": "Could not sync mark."
     },
@@ -520,8 +517,6 @@
       "missingTokens": "Missing tokens from bridge."
     },
     "storage": {
-      "defaultSpaceName": "Default",
-      "designQaSpaceName": "Design QA",
       "untitledMark": "Untitled mark"
     }
   }

@@ -7,7 +7,6 @@ function mark(patch: Partial<Mark> = {}): Mark {
   return {
     id: "mark-1",
     projectId: "project-1",
-    spaceId: "project-1",
     url: "https://example.com/page",
     origin: "https://example.com",
     pathname: "/page",

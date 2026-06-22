@@ -17,13 +17,13 @@ import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
 import {
-  getActiveSpaceId,
+  getActiveProjectId,
   getMarksForPage,
   getWidgetSettings,
   isHostDisabled,
-  KEY_ACTIVE_SPACE,
+  KEY_ACTIVE_PROJECT,
   KEY_MARKS,
-  KEY_SPACES,
+  KEY_PROJECTS,
   KEY_WIDGET_SETTINGS,
   type Mark
 } from "../lib/storage"
@@ -182,8 +182,8 @@ const PinBadges = () => {
       setItems([])
       return
     }
-    const spaceId = await getActiveSpaceId()
-    const marks = await getMarksForPage(spaceId, location.href)
+    const projectId = await getActiveProjectId()
+    const marks = await getMarksForPage(projectId, location.href)
     const openMarks = marks.filter((p) => p.status !== "closed")
     const stackOrders = markStackOrderMap(openMarks)
     setItems(computeLayout(openMarks, stackOrders))
@@ -205,8 +205,8 @@ const PinBadges = () => {
       if (area !== "local") return
       if (
         changes[KEY_MARKS] ||
-        changes[KEY_ACTIVE_SPACE] ||
-        changes[KEY_SPACES] ||
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_PROJECTS] ||
         changes[KEY_WIDGET_SETTINGS]
       ) {
         void refresh()

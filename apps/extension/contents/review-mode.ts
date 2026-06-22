@@ -35,16 +35,13 @@ import {
 import { generateSelector } from "../lib/selector"
 import {
   getActiveProjectId,
-  getActiveSpaceId,
   getMarksForPage,
   getProjects,
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
-  KEY_ACTIVE_SPACE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_SPACES,
   KEY_WIDGET_SETTINGS
 } from "../lib/storage"
 import {
@@ -99,19 +96,13 @@ let pausedReviewMode: ReviewMode | null = null
 async function refreshToolbarLabels() {
   if (!toolbarNsEl || !toolbarCountEl) return
   try {
-    const [activeProjectId, projectId, projects] = await Promise.all([
+    const [activeProjectId, projects] = await Promise.all([
       getActiveProjectId(),
-      getActiveSpaceId(),
       getProjects()
     ])
-    const project = projects.find(
-      (p) => p.id === (projectId || activeProjectId)
-    )
+    const project = projects.find((p) => p.id === activeProjectId)
     toolbarNsEl.textContent = project?.name || "—"
-    const marks = await getMarksForPage(
-      projectId || activeProjectId,
-      location.href
-    )
+    const marks = await getMarksForPage(activeProjectId, location.href)
     const open = marks.filter((p) => p.status !== "closed").length
     toolbarCountEl.textContent = `${open} open`
   } catch {
@@ -128,9 +119,7 @@ function subscribeToolbarRefresh() {
     if (
       changes[KEY_MARKS] ||
       changes[KEY_PROJECTS] ||
-      changes[KEY_SPACES] ||
       changes[KEY_ACTIVE_PROJECT] ||
-      changes[KEY_ACTIVE_SPACE] ||
       changes[KEY_WIDGET_SETTINGS]
     ) {
       if (changes[KEY_WIDGET_SETTINGS]) {
