@@ -55,6 +55,7 @@ export function AccountShell({ children }: { children: ReactNode }) {
                 <Link
                   key={section.value}
                   href={accountHref(section.value)}
+                  prefetch={true}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "group flex min-h-11 w-full shrink-0 items-center gap-2 rounded-md px-2.5 py-2 text-left transition-[background-color,color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",

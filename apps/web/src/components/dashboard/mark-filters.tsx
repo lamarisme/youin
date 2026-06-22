@@ -48,6 +48,9 @@ interface MarkFiltersProps {
   lockedAssignee?: AssigneeFilter;
   isUpdating?: boolean;
   showAppliedFilters?: boolean;
+  className?: string;
+  controlsClassName?: string;
+  showControlDivider?: boolean;
   onChange: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
@@ -57,6 +60,9 @@ export function MarkFilters({
   lockedAssignee,
   isUpdating = false,
   showAppliedFilters = true,
+  className,
+  controlsClassName,
+  showControlDivider = true,
   onChange,
 }: MarkFiltersProps) {
   const { viewerId, workflowStatuses } = useWorkspaceData((s) => ({
@@ -218,10 +224,16 @@ export function MarkFilters({
 
   return (
     <div
-      className="w-full space-y-1.5"
+      className={cn("w-full space-y-1.5", className)}
       aria-busy={isUpdating || undefined}
     >
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 border-b border-rule/70 pb-2">
+      <div
+        className={cn(
+          "flex w-full min-w-0 flex-wrap items-center gap-1.5",
+          showControlDivider ? "border-b border-rule/70 pb-2" : null,
+          controlsClassName,
+        )}
+      >
         <div className="relative flex min-w-[min(100%,13rem)] flex-1 items-center sm:min-w-[220px] sm:flex-none sm:basis-[280px]">
           <Search aria-hidden className="pointer-events-none absolute left-2.5 size-3.5 text-ink-3" />
           <Input

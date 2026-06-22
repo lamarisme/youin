@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { actionErrorMessage } from "@/lib/action-error";
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import type {
   AiPromptTarget,
   MarkComment,
@@ -23,10 +24,7 @@ import type {
 } from "@/lib/collab-types";
 import { createOptimisticId } from "@/lib/optimistic-id";
 import { workspaceKeys } from "@/lib/queries/keys";
-import {
-  getWorkspaceQueryData,
-  setWorkspaceQueryData,
-} from "@/lib/queries/use-workspace";
+import { getWorkspaceQueryData } from "@/lib/queries/use-workspace";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -42,47 +40,125 @@ import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 type MutationContext = {
   previous?: WorkspaceBootstrap;
   optimisticId?: string;
+  mutationId?: string;
 };
 
+type DeleteMarkInput =
+  | string
+  | {
+      markId: string;
+      undoable?: boolean;
+      label?: string;
+    };
+
+type DeleteMarkResult = {
+  undone: boolean;
+};
+
+const MARK_DELETE_UNDO_DURATION_MS = 5000;
+
+function deleteMarkInputId(input: DeleteMarkInput): string {
+  return typeof input === "string" ? input : input.markId;
+}
+
+async function waitForMarkDeleteUndo(input: DeleteMarkInput): Promise<"commit" | "undo"> {
+  if (typeof input === "string" || !input.undoable) return "commit";
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let toastId: string | number | undefined = undefined;
+
+    const finish = (choice: "commit" | "undo") => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (choice === "undo" && toastId !== undefined) toast.dismiss(toastId);
+      resolve(choice);
+    };
+
+    const timer = setTimeout(() => finish("commit"), MARK_DELETE_UNDO_DURATION_MS);
+
+    toastId = toast(input.label ? `${input.label} deleted` : "Mark deleted", {
+      duration: MARK_DELETE_UNDO_DURATION_MS,
+      action: {
+        label: "Undo",
+        onClick: () => finish("undo"),
+      },
+    });
+  });
+}
+
 function invalidateWorkspace(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+  return queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
 }
 
 function restoreWorkspace(
-  queryClient: ReturnType<typeof useQueryClient>,
   context: MutationContext | undefined,
 ) {
-  if (context?.previous) {
-    queryClient.setQueryData(workspaceKeys.bootstrap(), context.previous);
-  }
+  useWorkspaceUiStore
+    .getState()
+    .setOptimisticWorkspace(context?.previous ?? null);
 }
 
-function updateWorkspace(
+function getWorkspaceMutationBase(
   queryClient: ReturnType<typeof useQueryClient>,
-  updater: (workspace: Workspace, bundle: WorkspaceBootstrap) => Workspace,
-) {
-  setWorkspaceQueryData(queryClient, (bundle) => ({
-    ...bundle,
-    workspace: updater(bundle.workspace, bundle),
-  }));
+): WorkspaceBootstrap | undefined {
+  return (
+    useWorkspaceUiStore.getState().optimisticWorkspace ??
+    getWorkspaceQueryData(queryClient)
+  );
 }
 
 function updateBundle(
   queryClient: ReturnType<typeof useQueryClient>,
   updater: (bundle: WorkspaceBootstrap) => WorkspaceBootstrap,
 ) {
-  setWorkspaceQueryData(queryClient, updater);
+  const current = getWorkspaceMutationBase(queryClient);
+  if (!current) return;
+  useWorkspaceUiStore.getState().setOptimisticWorkspace(updater(current));
+}
+
+function updateWorkspace(
+  queryClient: ReturnType<typeof useQueryClient>,
+  updater: (workspace: Workspace, bundle: WorkspaceBootstrap) => Workspace,
+) {
+  updateBundle(queryClient, (bundle) => ({
+    ...bundle,
+    workspace: updater(bundle.workspace, bundle),
+  }));
 }
 
 function snapshot(queryClient: ReturnType<typeof useQueryClient>): MutationContext {
-  return { previous: getWorkspaceQueryData(queryClient) };
+  return { previous: getWorkspaceMutationBase(queryClient) };
 }
 
 async function prepareOptimisticMutation(
   queryClient: ReturnType<typeof useQueryClient>,
 ): Promise<MutationContext> {
   await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
-  return snapshot(queryClient);
+  const context = snapshot(queryClient);
+  const mutationId = crypto.randomUUID();
+  context.mutationId = mutationId;
+  useWorkspaceUiStore.getState().beginOptimisticMutation(mutationId);
+  return context;
+}
+
+async function settleWorkspaceMutation(
+  queryClient: ReturnType<typeof useQueryClient>,
+  context: unknown,
+) {
+  await invalidateWorkspace(queryClient);
+
+  if (context && typeof context === "object" && "mutationId" in context) {
+    const mutationId = (context as MutationContext).mutationId;
+    if (mutationId) {
+      useWorkspaceUiStore.getState().finishOptimisticMutation(mutationId);
+    }
+  }
+
+  if (useWorkspaceUiStore.getState().pendingOptimisticMutationIds.length === 0) {
+    useWorkspaceUiStore.getState().clearOptimisticWorkspace();
+  }
 }
 
 function replaceOptimisticOrAppend<T extends { id: string }>(
@@ -195,13 +271,13 @@ export function useCreateWorkspaceViewMutation() {
           context?.optimisticId,
         ).items,
       }));
-      toast.success(`Created “${view.name}”.`);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create this view."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -241,13 +317,13 @@ export function useUpdateWorkspaceViewMutation() {
         ...workspace,
         views: workspace.views.map((item) => (item.id === view.id ? view : item)),
       }));
-      toast.success("View saved.");
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't save this view."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -264,13 +340,12 @@ export function useDeleteWorkspaceViewMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(vars.name ? `Deleted “${vars.name}”.` : "View deleted."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete this view."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -317,13 +392,13 @@ export function useCreateProjectMutation() {
           context?.optimisticId,
         ).items,
       }));
-      toast.success(`Created “${project.name}”.`);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create this project."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -369,13 +444,13 @@ export function useUpdateProjectMutation() {
             : item,
         ),
       }));
-      toast.success("Project saved.");
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't save this project."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -392,15 +467,12 @@ export function useDeleteProjectMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(
-        vars.name ? `Deleted “${vars.name}”.` : "Project deleted.",
-      ),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete this project."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -492,13 +564,13 @@ export function useCreateMarkMutation() {
           marks: result.items,
         };
       });
-      toast.success(`Created ${mark.displayKey}.`);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create this mark."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -526,10 +598,11 @@ export function useToggleMarkStatusMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update mark status."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -548,10 +621,11 @@ export function useToggleMarkPinnedMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update pinned state."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -576,19 +650,26 @@ export function useUpdateMarkPriorityMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update priority."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
 export function useDeleteMarkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ws.deleteMarkAction,
-    onMutate: async (markId) => {
+    mutationFn: async (input: DeleteMarkInput): Promise<DeleteMarkResult> => {
+      const choice = await waitForMarkDeleteUndo(input);
+      if (choice === "undo") return { undone: true };
+      await ws.deleteMarkAction(deleteMarkInputId(input));
+      return { undone: false };
+    },
+    onMutate: async (input) => {
       const context = await prepareOptimisticMutation(queryClient);
+      const markId = deleteMarkInputId(input);
       updateWorkspace(queryClient, (workspace) => {
         const deleted = workspace.marks.find((mark) => mark.id === markId);
         return {
@@ -603,12 +684,15 @@ export function useDeleteMarkMutation() {
       });
       return context;
     },
-    onSuccess: () => toast.success("Mark deleted."),
+    onSuccess: (result, _vars, context) => {
+      if (result.undone) restoreWorkspace(context);
+    },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete this mark."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -667,10 +751,11 @@ export function useUpdateMarkMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't save changes."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -695,10 +780,11 @@ export function useAssignMarkMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update assignee."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -719,10 +805,11 @@ export function useSetMarkLabelsMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update labels."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -759,10 +846,11 @@ export function useSetMarkWorkflowStatusMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update workflow status."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -783,6 +871,8 @@ export function useLogMarkPromptCopyMutation() {
         };
       });
     },
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -822,10 +912,11 @@ export function useAddCommentsMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't post your comment."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -845,10 +936,11 @@ export function useUpdateCommentMutation() {
       return context;
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update your comment."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -874,12 +966,12 @@ export function useDeleteCommentMutation() {
       }));
       return context;
     },
-    onSuccess: () => toast.success("Comment deleted."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete this comment."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -918,12 +1010,12 @@ export function useUpdateProfileMutation() {
       }));
       return context;
     },
-    onSuccess: () => toast.success("Profile saved."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't save profile."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -942,12 +1034,12 @@ export function useUpdateMyWorkspaceUsernameMutation() {
       }));
       return context;
     },
-    onSuccess: () => toast.success("Workspace username updated."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't update username."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -963,12 +1055,12 @@ export function useUpdateWorkspaceMutation() {
       }));
       return context;
     },
-    onSuccess: () => toast.success("Workspace renamed."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't rename workspace."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1014,13 +1106,13 @@ export function useCreateWorkflowStatusMutation() {
           context?.optimisticId,
         ).items,
       }));
-      toast.success(`Created “${status.name}”.`);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create this workflow status."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1064,13 +1156,13 @@ export function useUpdateWorkflowStatusMutation() {
           item.id === status.id ? status : item,
         ),
       }));
-      toast.success("Workflow status saved.");
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't save this workflow status."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1109,13 +1201,12 @@ export function useArchiveWorkflowStatusMutation() {
       });
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(vars.name ? `Archived “${vars.name}”.` : "Workflow status archived."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't archive this workflow status."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1151,13 +1242,12 @@ export function useInviteMemberMutation() {
       }));
       return context;
     },
-    onSuccess: (_, email) =>
-      toast.success(`Invitation created for ${email.trim()}.`),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create invitation."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1176,17 +1266,12 @@ export function useCancelInviteMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(
-        vars.email
-          ? `Revoked invite for ${vars.email}.`
-          : "Invite revoked.",
-      ),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't revoke invite."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1201,11 +1286,11 @@ export function useCreateReviewLinkMutation() {
           ? workspace.reviewLinks
           : [link, ...workspace.reviewLinks],
       }));
-      toast.success(`Created review link for ${link.targetOrigin}.`);
     },
     onError: (e) =>
       toast.error(actionErrorMessage(e, "Couldn't create review link.")),
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1226,13 +1311,12 @@ export function useRevokeReviewLinkMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(vars.name ? `Revoked ${vars.name}.` : "Review link revoked."),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't revoke review link."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1256,17 +1340,12 @@ export function useRemoveMemberMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(
-        vars.name
-          ? `Removed ${vars.name} from the workspace.`
-          : "Member removed.",
-      ),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't remove member."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1276,7 +1355,6 @@ export function useLeaveWorkspaceMutation() {
     mutationFn: ws.leaveWorkspaceAction,
     onSuccess: (result) => {
       queryClient.clear();
-      toast.success("You left the workspace.");
       window.location.assign(result.redirectTo);
     },
     onError: (e) =>
@@ -1290,7 +1368,6 @@ export function useDeleteWorkspaceMutation() {
     mutationFn: ws.deleteWorkspaceAction,
     onSuccess: (result) => {
       queryClient.clear();
-      toast.success("Workspace deleted.");
       window.location.assign(result.redirectTo);
     },
     onError: (e) =>
@@ -1304,7 +1381,6 @@ export function useDeleteAccountMutation() {
     mutationFn: ws.deleteAccountAction,
     onSuccess: (result) => {
       queryClient.clear();
-      toast.success("Account deleted.");
       window.location.assign(result.redirectTo);
     },
     onError: (e) =>
@@ -1349,13 +1425,13 @@ export function useCreateLabelMutation() {
           context?.optimisticId,
         ).items,
       }));
-      toast.success(`Created label “${name.trim()}”.`);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't create this label."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -1377,14 +1453,11 @@ export function useDeleteLabelMutation() {
       }));
       return context;
     },
-    onSuccess: (_, vars) =>
-      toast.success(
-        vars.name ? `Deleted label “${vars.name}”.` : "Label deleted.",
-      ),
     onError: (e, _vars, context) => {
-      restoreWorkspace(queryClient, context);
+      restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete label."));
     },
-    onSettled: () => invalidateWorkspace(queryClient),
+    onSettled: (_data, _error, _vars, context) =>
+      settleWorkspaceMutation(queryClient, context),
   });
 }

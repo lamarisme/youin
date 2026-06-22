@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
-import { DashboardPageDataSkeleton } from "@/components/workspace-data-skeletons";
 import {
   pageSearchParamsToUrlSearchParams,
   type PageSearchParams,
@@ -22,19 +20,7 @@ export const metadata: Metadata = {
   title: "Triage",
 };
 
-export default function DashboardPage({
-  searchParams,
-}: {
-  searchParams: Promise<PageSearchParams>;
-}) {
-  return (
-    <Suspense fallback={<DashboardPageDataSkeleton />}>
-      <DashboardPageData searchParams={searchParams} />
-    </Suspense>
-  );
-}
-
-async function DashboardPageData({
+export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<PageSearchParams>;

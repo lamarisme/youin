@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { PriorityBadge } from "@/components/priority-badge";
-import { ShimmerBar } from "@/components/workspace-shell-skeleton";
+import { ShimmerBar } from "@/components/shimmer-bar";
 import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
 import type { MarkItem } from "@/lib/collab-types";
 import { formatDateTime } from "@/lib/dates";

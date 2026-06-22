@@ -6,12 +6,21 @@ import type { WorkspaceShellBootstrap } from "./workspace/workspace-types.ts";
 import {
   composeWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
+  selectRouteWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 } from "./workspace/snapshot.ts";
 
 const shell: WorkspaceShellBootstrap = {
   workspaceId: "workspace-a",
   userId: "user-a",
+  workspaceMemberships: [
+    {
+      id: "workspace-a",
+      name: "Youin",
+      role: "owner",
+      memberCount: 1,
+    },
+  ],
   profile: {
     id: "user-a",
     name: "Ada",
@@ -128,4 +137,36 @@ test("shell refresh updates navigation while keeping route payload arrays", () =
   assert.equal(next.workspace.name, "Youin renamed");
   assert.equal(next.workspace.marks.length, 1);
   assert.equal(next.workspace.projects[0]?.markCount, 3);
+});
+
+test("route snapshots win over same-timestamp shell snapshots", () => {
+  const current = shellBootstrapToWorkspaceBootstrap(shell);
+  const routeSnapshot = composeWorkspaceBootstrap(
+    shell,
+    routeWorkspace({
+      marks: [
+        {
+          id: "mark-a",
+          projectId: "project-a",
+          seq: 1,
+          displayKey: "YIN-1",
+          title: "Fix CTA",
+          page: "https://example.com",
+          description: "",
+          status: "open",
+          workflowStatusId: "status-open",
+          priority: "medium",
+          pinned: false,
+          labelIds: [],
+          createdAt: "2026-05-01T00:00:00.000Z",
+        },
+      ],
+    }),
+    current.loadedAt,
+  );
+
+  const selected = selectRouteWorkspaceBootstrap(current, routeSnapshot);
+
+  assert.equal(selected?.loadedAt, current.loadedAt);
+  assert.equal(selected?.workspace.marks[0]?.displayKey, "YIN-1");
 });

@@ -13,7 +13,6 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
@@ -129,7 +128,6 @@ export function ViewsClient() {
       }
       safeLocalStorageRemove(`${LOCAL_SAVED_VIEWS_PREFIX}${workspaceId}`);
       dismissImport();
-      toast.success("Imported saved views.");
     } catch {
       // Mutation already shows the specific failure.
     }

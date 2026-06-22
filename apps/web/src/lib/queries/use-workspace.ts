@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { getWorkspaceShellBootstrap } from "@/lib/workspace/actions";
@@ -16,6 +17,7 @@ import {
   composeWorkspaceBootstrap,
   emptyWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
+  selectRouteWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 } from "@/lib/workspace/snapshot";
 import type {
@@ -78,6 +80,7 @@ export {
   composeWorkspaceBootstrap,
   emptyWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
+  selectRouteWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 };
 
@@ -96,22 +99,20 @@ export function useWorkspaceData<T>(
   selector: (bundle: WorkspaceBootstrap) => T,
 ): T {
   const snapshot = useContext(WorkspaceSnapshotContext);
+  const optimisticWorkspace = useWorkspaceUiStore(
+    (state) => state.optimisticWorkspace,
+  );
   const { data } = useWorkspaceQuery();
-  return selector(snapshot ?? data ?? emptyWorkspaceBootstrap());
+  const canonical = snapshot ?? data ?? emptyWorkspaceBootstrap();
+  const workspace =
+    optimisticWorkspace?.workspaceId === canonical.workspaceId
+      ? optimisticWorkspace
+      : canonical;
+  return selector(workspace);
 }
 
 export function getWorkspaceQueryData(
   queryClient: QueryClient,
 ): WorkspaceBootstrap | undefined {
   return queryClient.getQueryData<WorkspaceBootstrap>(workspaceKeys.bootstrap());
-}
-
-export function setWorkspaceQueryData(
-  queryClient: QueryClient,
-  updater: (current: WorkspaceBootstrap) => WorkspaceBootstrap,
-): void {
-  queryClient.setQueryData<WorkspaceBootstrap>(
-    workspaceKeys.bootstrap(),
-    (current) => (current ? updater(current) : current),
-  );
 }

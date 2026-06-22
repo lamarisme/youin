@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Save, Settings2, SlidersHorizontal } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { MARK_SORT_OPTIONS } from "@/components/select-options";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 import type {
   DashboardFilterPatch,
@@ -41,6 +43,9 @@ interface DashboardViewOptionsMenuProps {
   filters: DashboardFilters;
   canSaveView?: boolean;
   onSaveView?: () => void;
+  triggerLabel?: string;
+  triggerIcon?: ReactNode;
+  triggerClassName?: string;
   onApply: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
@@ -48,6 +53,9 @@ export function DashboardViewOptionsMenu({
   filters,
   canSaveView = false,
   onSaveView,
+  triggerLabel = "View",
+  triggerIcon,
+  triggerClassName,
   onApply,
 }: DashboardViewOptionsMenuProps) {
   const activeCount =
@@ -64,13 +72,16 @@ export function DashboardViewOptionsMenu({
           variant="ghost"
           aria-label={
             activeCount > 0
-              ? `Open view options (${activeCount} changed)`
+              ? `Open ${triggerLabel.toLowerCase()} options (${activeCount} changed)`
               : "Open view options"
           }
-          className="h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink"
+          className={cn(
+            "h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink",
+            triggerClassName,
+          )}
         >
-          <SlidersHorizontal className="size-3" aria-hidden />
-          <span>View</span>
+          {triggerIcon ?? <SlidersHorizontal className="size-3" aria-hidden />}
+          <span>{triggerLabel}</span>
           {activeCount > 0 ? (
             <span className="font-mono text-ui-2xs tabular-nums text-mark">
               {activeCount}

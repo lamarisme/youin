@@ -383,7 +383,54 @@ CREATE POLICY inbox_read_states_update_own ON public.inbox_read_states
     AND public.user_workspace_member(workspace_id)
   );
 
--- ── 4. Storage bucket + policies ────────────────────────────────────────────
+-- ── 4. Realtime publication ─────────────────────────────────────────────────
+DO $$
+DECLARE
+  realtime_table text;
+  realtime_tables text[] := ARRAY[
+    'profiles',
+    'workspaces',
+    'workspace_members',
+    'workspace_invites',
+    'projects',
+    'mark_labels',
+    'mark_workflow_statuses',
+    'marks',
+    'mark_events',
+    'inbox_read_states',
+    'workspace_views',
+    'workspace_review_links'
+  ];
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_publication
+    WHERE pubname = 'supabase_realtime'
+  ) THEN
+    RETURN;
+  END IF;
+
+  FOREACH realtime_table IN ARRAY realtime_tables LOOP
+    IF to_regclass(format('public.%I', realtime_table)) IS NULL THEN
+      CONTINUE;
+    END IF;
+
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime'
+        AND schemaname = 'public'
+        AND tablename = realtime_table
+    ) THEN
+      EXECUTE format(
+        'ALTER PUBLICATION supabase_realtime ADD TABLE public.%I',
+        realtime_table
+      );
+    END IF;
+  END LOOP;
+END $$;
+
+-- ── 5. Storage bucket + policies ────────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('mark-images', 'mark-images', false)
 ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
@@ -439,5 +486,5 @@ CREATE POLICY mark_images_delete_owner ON storage.objects
     AND public.user_workspace_member((storage.foldername(name))[1]::uuid)
   );
 
--- ── 5. Onboarding RPCs ──────────────────────────────────────────────────────
+-- ── 6. Onboarding RPCs ──────────────────────────────────────────────────────
 -- Run apps/web/supabase/onboarding-rpcs.sql next (bootstrap_workspace, attach_user_via_invite).

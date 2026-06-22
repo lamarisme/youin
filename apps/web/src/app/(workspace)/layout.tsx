@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { WorkspaceDataProvider } from "@/components/providers/workspace-data-provider";
-import { WorkspaceFrameSkeleton } from "@/components/workspace-frame-skeleton";
 import {
   getCurrentWorkspaceSession,
   getWorkspaceShellBootstrapForSession,
@@ -33,11 +31,9 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   }
 
   return (
-    <Suspense fallback={<WorkspaceFrameSkeleton />}>
-      <WorkspaceShellData session={sessionResult.session}>
-        {children}
-      </WorkspaceShellData>
-    </Suspense>
+    <WorkspaceShellData session={sessionResult.session}>
+      {children}
+    </WorkspaceShellData>
   );
 }
 

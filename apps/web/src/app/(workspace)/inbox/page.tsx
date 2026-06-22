@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 
-import { InboxPageDataSkeleton } from "@/components/workspace-data-skeletons";
 import { discoverPendingWorkspaceInvitesAction } from "@/lib/workspace/actions";
 import { getInboxReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 import { InboxView } from "./inbox-view";
@@ -10,15 +8,7 @@ export const metadata: Metadata = {
   title: "Inbox",
 };
 
-export default function InboxPage() {
-  return (
-    <Suspense fallback={<InboxPageDataSkeleton />}>
-      <InboxPageData />
-    </Suspense>
-  );
-}
-
-async function InboxPageData() {
+export default async function InboxPage() {
   const [initialData, inviteDiscovery] = await Promise.all([
     getInboxReadModelForCurrentWorkspace(),
     discoverPendingWorkspaceInvitesAction()

@@ -122,7 +122,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
   const { mutate: setMarkLabels } = useSetMarkLabelsMutation();
   const { mutateAsync: createLabel } = useCreateLabelMutation();
-  const { mutateAsync: deleteMark, isPending: isDeleting } = useDeleteMarkMutation();
+  const { mutate: deleteMark, isPending: isDeleting } = useDeleteMarkMutation();
   const { mutateAsync: updateMark, isPending: isSavingEdit } = useUpdateMarkMutation();
   const { filters } = useDashboardFilters();
   const visibleMarks = useVisibleDashboardMarks({
@@ -288,15 +288,11 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const normalizedEditPage = normalizeMarkPageUrl(editPage);
   const pageInvalid = !isValidMarkPageUrl(normalizedEditPage);
 
-  async function handleDelete() {
+  function handleDelete() {
     if (isDeleting) return;
-    try {
-      await deleteMark(mark.id);
-      setConfirmDelete(false);
-      router.push(backHref);
-    } catch {
-      // toast handled by the mutation
-    }
+    deleteMark({ markId: mark.id, undoable: true, label: mark.displayKey });
+    setConfirmDelete(false);
+    router.push(backHref);
   }
 
   function goAdjacent(direction: "prev" | "next") {
@@ -691,7 +687,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
             <DialogTitle>Delete this mark?</DialogTitle>
             <DialogDescription>
               <span className="font-medium text-ink">{mark.title}</span> and all its comments and
-              history will be permanently deleted. This can&apos;t be undone.
+              history will be removed. You can undo for a few seconds.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-2 pt-2">

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 
-import { MarkDetailLoadingPreview } from "@/components/dashboard/mark-detail-loading-preview";
 import { WorkspaceDashboard } from "@/components/dashboard/workspace-dashboard";
 import { DashboardReadModelProvider } from "@/components/providers/workspace-read-model-provider";
 import {
@@ -29,20 +27,6 @@ export default async function DashboardMarkPage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const { mark } = await params;
-  return (
-    <Suspense fallback={<MarkDetailLoadingPreview markParam={mark} />}>
-      <DashboardMarkPageData mark={mark} searchParams={searchParams} />
-    </Suspense>
-  );
-}
-
-async function DashboardMarkPageData({
-  mark,
-  searchParams,
-}: {
-  mark: string;
-  searchParams: Promise<PageSearchParams>;
-}) {
   const urlParams = pageSearchParamsToUrlSearchParams(await searchParams);
   const dashboardQuery = dashboardQueryFromSearchParams(urlParams);
   const requestedProjectId =

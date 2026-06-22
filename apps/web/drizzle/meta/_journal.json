@@ -169,6 +169,13 @@
       "when": 1781978400000,
       "tag": "0023_account_deletion_profile_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782129600000,
+      "tag": "0024_realtime_workspace_publication",
+      "breakpoints": true
     }
   ]
 }

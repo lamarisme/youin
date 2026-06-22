@@ -8,6 +8,7 @@ import { workspaceKeys } from "@/lib/queries/keys";
 import {
   composeWorkspaceBootstrap,
   seedWorkspaceBootstrap,
+  selectRouteWorkspaceBootstrap,
   useWorkspaceQuery,
   WorkspaceSnapshotProvider,
   useWorkspaceShellQuery,
@@ -25,7 +26,6 @@ import type {
   DashboardReadModel,
   DashboardReadModelRequest,
   ViewDetailReadModel,
-  WorkspaceBootstrap,
   ViewsIndexReadModel,
 } from "@/lib/workspace/workspace-types";
 
@@ -76,16 +76,6 @@ function completeWorkspace(
 
 function readModelUpdatedAt(loadedAt: string): number | undefined {
   return updatedAtFromIso(loadedAt);
-}
-
-function selectDashboardWorkspaceSnapshot(
-  current: WorkspaceBootstrap | undefined,
-  snapshot: WorkspaceBootstrap | undefined,
-): WorkspaceBootstrap | undefined {
-  if (!snapshot) return current;
-  if (!current || current.workspaceId !== snapshot.workspaceId) return snapshot;
-  if (current.loadedAt === snapshot.loadedAt) return current;
-  return snapshot;
 }
 
 function useSeedReadModelWorkspace(
@@ -143,7 +133,7 @@ export function DashboardReadModelProvider({
     dashboardData?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
-  const workspaceSnapshot = selectDashboardWorkspaceSnapshot(current.data, snapshot);
+  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
   const dashboardState = useMemo(
     () => ({
       selectedProjectId: dashboardData?.selectedProjectId ?? initialData.selectedProjectId,

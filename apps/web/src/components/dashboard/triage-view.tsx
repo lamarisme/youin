@@ -42,6 +42,7 @@ import type {
   WorkspaceProject,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
@@ -98,7 +99,20 @@ export function TriageView() {
   const hasNewMarkParam = searchParams.get("new") === "1";
   const searchParamString = searchParams.toString();
   const [showNew, setShowNew] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const selectedMarkIds = useWorkspaceUiStore((state) => state.selectedMarkIds);
+  const setSelectedMarkIds = useWorkspaceUiStore(
+    (state) => state.setSelectedMarkIds,
+  );
+  const clearSelectedMarks = useWorkspaceUiStore(
+    (state) => state.clearSelectedMarks,
+  );
+  const pruneSelectedMarkIds = useWorkspaceUiStore(
+    (state) => state.pruneSelectedMarkIds,
+  );
+  const selectedIds = useMemo(
+    () => new Set(selectedMarkIds),
+    [selectedMarkIds],
+  );
   const newMarkDialogOpen = showNew || hasNewMarkParam;
 
   const selectedProject = useMemo(() => {
@@ -125,6 +139,10 @@ export function TriageView() {
     isFilterTransitionPending || isFetching || isPlaceholderData;
   const rowFilters = filters;
   const visibleMarks = currentVisibleMarks;
+  const visibleMarkIds = useMemo(
+    () => visibleMarks.map((mark) => mark.id),
+    [visibleMarks],
+  );
   const rowPagination = pagination;
   const rowSelectedProject = useMemo(() => {
     if (rowFilters.projectId === "all") return null;
@@ -139,16 +157,20 @@ export function TriageView() {
 
   const updateDashboardFilters: typeof update = useCallback(
     (patch, options) => {
-      setSelectedIds(new Set());
+      clearSelectedMarks();
       update(patch, options);
     },
-    [update],
+    [clearSelectedMarks, update],
   );
 
   const scopedSelectedIds = useMemo(
     () => pruneSelectedIds(selectedIds, visibleMarks),
     [selectedIds, visibleMarks],
   );
+
+  useEffect(() => {
+    pruneSelectedMarkIds(visibleMarkIds);
+  }, [pruneSelectedMarkIds, visibleMarkIds]);
 
   const selectedMarks = useMemo(
     () => visibleMarks.filter((p) => scopedSelectedIds.has(p.id)),
@@ -255,13 +277,13 @@ export function TriageView() {
 
   /** Receives the full new selection set from MarkTable. */
   function handleSelectionChange(ids: Set<string>) {
-    setSelectedIds(ids);
+    setSelectedMarkIds(ids);
   }
 
   async function handleBulkSetStatus(target: "open" | "closed") {
     const targets = selectedMarks.filter((p) => p.status !== target);
     if (targets.length === 0) {
-      setSelectedIds(new Set());
+      clearSelectedMarks();
       return;
     }
     const results = await Promise.allSettled(
@@ -269,16 +291,12 @@ export function TriageView() {
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     const succeeded = targets.length - failed;
-    setSelectedIds(new Set());
-    if (failed === 0) {
-      toast.success(
-        `${formatMarkCount(targets.length)} ${target === "closed" ? "closed" : "reopened"}.`,
-      );
-    } else if (succeeded > 0) {
+    clearSelectedMarks();
+    if (succeeded > 0 && failed > 0) {
       toast.error(
         `${formatMarkCount(succeeded)} ${target === "closed" ? "closed" : "reopened"}; ${formatMarkCount(failed)} failed.`,
       );
-    } else {
+    } else if (failed > 0) {
       toast.error(
         `Couldn't ${target === "closed" ? "close" : "reopen"} ${formatMarkCount(failed)}.`,
       );
@@ -288,7 +306,6 @@ export function TriageView() {
   async function handleBulkSetPriority(priority: MarkPriority) {
     const targets = selectedMarks.filter((p) => p.priority !== priority);
     if (targets.length === 0) {
-      toast.success("Already set.");
       return;
     }
     const results = await Promise.allSettled(
@@ -296,14 +313,12 @@ export function TriageView() {
     );
     const failed = results.filter((r) => r.status === "rejected").length;
     const succeeded = targets.length - failed;
-    setSelectedIds(new Set());
-    if (failed === 0) {
-      toast.success(`${formatMarkCount(targets.length)} updated.`);
-    } else if (succeeded > 0) {
+    clearSelectedMarks();
+    if (succeeded > 0 && failed > 0) {
       toast.error(
         `${formatMarkCount(succeeded)} updated; ${formatMarkCount(failed)} failed.`,
       );
-    } else {
+    } else if (failed > 0) {
       toast.error(`Couldn't update priority for ${formatMarkCount(failed)}.`);
     }
   }
@@ -314,14 +329,12 @@ export function TriageView() {
     const results = await Promise.allSettled(ids.map((id) => deleteMark(id)));
     const failed = results.filter((r) => r.status === "rejected").length;
     const succeeded = ids.length - failed;
-    setSelectedIds(new Set());
-    if (failed === 0) {
-      toast.success(`${formatMarkCount(ids.length)} deleted.`);
-    } else if (succeeded > 0) {
+    clearSelectedMarks();
+    if (succeeded > 0 && failed > 0) {
       toast.error(
         `${formatMarkCount(succeeded)} deleted; ${formatMarkCount(failed)} failed.`,
       );
-    } else {
+    } else if (failed > 0) {
       toast.error(`Couldn't delete ${formatMarkCount(failed)}.`);
     }
   }
@@ -556,7 +569,7 @@ export function TriageView() {
           onSetPriority={handleBulkSetPriority}
           onCopyPrompt={handleBulkCopyPrompt}
           onDelete={handleBulkDelete}
-          onClear={() => setSelectedIds(new Set())}
+          onClear={clearSelectedMarks}
         />
       ) : null}
 

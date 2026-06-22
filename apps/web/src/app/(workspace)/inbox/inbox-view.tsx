@@ -177,9 +177,7 @@ export function InboxView({
           }
           className="mt-1"
         />
-      ) : inbox.isPending ? (
-        <InboxLoadingRows />
-      ) : !hasInboxGroups && !hasInvitationCards ? (
+      ) : inbox.isPending ? null : !hasInboxGroups && !hasInvitationCards ? (
         <EmptyState
           icon={Inbox}
           title={userId ? "Inbox empty." : "Sign in to see your inbox."}
@@ -439,23 +437,4 @@ function formatDate(iso: string): string {
 
 function formatCount(count: number): string {
   return count > 99 ? "99+" : String(count);
-}
-
-function InboxLoadingRows() {
-  return (
-    <ProductList
-      aria-label="Loading inbox"
-    >
-      {Array.from({ length: 4 }).map((_, index) => (
-        <ProductListItem key={index} interactive={false} className="flex items-start gap-3 px-4 py-3">
-          <span className="mt-2 size-2 shrink-0 rounded-full bg-paper-3" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-3.5 w-2/3 rounded-sm bg-paper-3" />
-            <div className="h-3 w-5/6 rounded-sm bg-paper-2" />
-          </div>
-          <div className="mt-1 h-3 w-14 rounded-sm bg-paper-2" />
-        </ProductListItem>
-      ))}
-    </ProductList>
-  );
 }

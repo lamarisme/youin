@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   CircleDashed,
+  MoreHorizontal,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -21,6 +22,12 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/page-container";
 import type {
@@ -159,47 +166,20 @@ function ViewDetail({
           { label: "Saved views", href: "/views" },
           { label: view.name, current: true },
         ]}
-        actions={
-          <>
-            {dirty ? (
-              <Button type="button" size="sm" className="h-7 rounded-md px-2" onClick={saveChanges} disabled={isSaving || !name.trim()}>
-                {isSaving ? "Saving..." : "Save changes"}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              className="size-7 text-ink-3 hover:text-mark"
-              onClick={removeView}
-              disabled={isDeleting}
-              aria-label="Delete view"
-            >
-              <Trash2 className="size-3.5" aria-hidden />
-            </Button>
-          </>
-        }
       />
 
-      <section className="space-y-3 rounded-md bg-paper-2 p-2.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-paper text-ink-3">
-              <ViewLayoutIcon layout={view.layout} className="size-4" />
-            </span>
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-label="View name"
-              maxLength={80}
-              className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-8 sm:text-ui-sm"
-            />
-          </div>
-          <span className="self-start rounded bg-paper-3 px-2 py-1 text-ui-xs font-medium text-ink-3 sm:self-auto">
-            {viewLayoutLabel(view.layout)}
-          </span>
+      <header className="flex flex-col gap-2 border-b border-rule/70 pb-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            aria-label="View name"
+            maxLength={80}
+            className="-ml-1 h-9 max-w-[min(100%,28rem)] border-transparent bg-transparent px-1 text-ui-lg font-semibold shadow-none hover:border-rule/70 hover:bg-paper-2 focus-visible:bg-paper-elevated sm:h-8"
+          />
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+
+        <div className="flex flex-wrap items-center gap-1.5">
           <ViewScopeFields
             workspace={workspace}
             filters={filters}
@@ -208,14 +188,35 @@ function ViewDetail({
           <DashboardViewOptionsMenu
             filters={dashboardFilters}
             onApply={updateDashboardViewOptions}
+            triggerLabel={viewLayoutLabel(view.layout)}
+            triggerIcon={<ViewLayoutIcon layout={view.layout} className="size-3" />}
+            triggerClassName="h-8 border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink"
+          />
+          {dirty ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-md px-2"
+              onClick={saveChanges}
+              disabled={isSaving || !name.trim()}
+            >
+              {isSaving ? "Saving..." : "Save changes"}
+            </Button>
+          ) : null}
+          <ViewActionsMenu
+            viewName={view.name}
+            isDeleting={isDeleting}
+            onDelete={() => void removeView()}
           />
         </div>
-      </section>
+      </header>
 
       <MarkFilters
         filters={dashboardFilters}
         labels={workspace.labels}
         onChange={updateDashboardViewOptions}
+        showControlDivider={false}
+        className="border-b border-rule/70 pb-2"
       />
 
       {view.layout === "board" ? (
@@ -294,6 +295,38 @@ function ViewList({
         />
       ) : null}
     </>
+  );
+}
+
+function ViewActionsMenu({
+  viewName,
+  isDeleting,
+  onDelete,
+}: {
+  viewName: string;
+  isDeleting: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label={`Manage ${viewName}`}
+          className="h-8 w-8 text-ink-3 hover:text-ink"
+        >
+          <MoreHorizontal className="size-3.5" aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem variant="destructive" disabled={isDeleting} onSelect={onDelete}>
+          <Trash2 className="size-4" aria-hidden />
+          Delete view
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

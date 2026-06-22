@@ -133,3 +133,14 @@ export function mergeShellIntoWorkspaceBootstrap(
     },
   };
 }
+
+export function selectRouteWorkspaceBootstrap(
+  current: WorkspaceBootstrap | undefined,
+  routeSnapshot: WorkspaceBootstrap | undefined,
+): WorkspaceBootstrap | undefined {
+  if (!routeSnapshot) return current;
+  if (!current || current.workspaceId !== routeSnapshot.workspaceId) {
+    return routeSnapshot;
+  }
+  return routeSnapshot;
+}
