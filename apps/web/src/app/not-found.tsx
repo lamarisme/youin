@@ -5,7 +5,6 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import Link from "next/link";
 import { BrandLockup } from "@/components/brand-lockup";
-import { FadeIn } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -32,7 +31,7 @@ export default function NotFound() {
         </div>
       </header>
 
-      <FadeIn as="main" delay={0.08} className="shell grid flex-1 gap-[var(--space-3xl)] py-[var(--page-y-loose)] pb-[var(--space-4xl)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-center lg:gap-[var(--space-4xl)]">
+      <main className="shell grid flex-1 gap-[var(--space-3xl)] py-[var(--page-y-loose)] pb-[var(--space-4xl)] lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-center lg:gap-[var(--space-4xl)]">
         <div className="section-block lg:justify-self-start">
           <p className="text-eyebrow">{t("sectionRouting")}</p>
           <p className="font-mono text-ui-xs text-ink-2">{t("status404")}</p>
@@ -89,7 +88,7 @@ export default function NotFound() {
             </div>
           </div>
         </div>
-      </FadeIn>
+      </main>
 
       <footer className="mt-auto border-t border-rule bg-paper-2/40">
         <div className="shell flex flex-wrap items-center justify-between gap-[var(--space-sm)] py-[var(--space-md)] font-mono text-ui-xs text-ink-3">

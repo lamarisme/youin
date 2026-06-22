@@ -149,7 +149,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "group/sidebar flex flex-col bg-paper-2/95 px-2.5 py-2.5 transition-[background-color,width,padding] duration-200 ease-[var(--ease-out-quart)]",
+        "group/sidebar flex flex-col bg-paper-2/95 px-2.5 py-2.5 transition-colors duration-200 ease-[var(--ease-out-quart)]",
         "lg:sticky lg:top-0 lg:z-10 lg:h-screen lg:bg-paper-2",
         collapsed ? "lg:w-[3.25rem] lg:px-2 lg:py-3" : "lg:w-60 lg:px-2.5 lg:py-3",
       )}
