@@ -54,7 +54,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
 
 function BreadcrumbContent({ item }: { item: BreadcrumbItem }) {
   const className = cn(
-    "max-w-[16rem] truncate rounded-md px-1.5 py-0.5 transition-colors",
+    "inline-flex min-h-10 max-w-[16rem] items-center truncate rounded-md px-1.5 py-0.5 transition-colors sm:min-h-8",
     item.current
       ? "font-medium text-ink"
       : "text-ink-3 hover:bg-paper-2 hover:text-ink",

@@ -20,6 +20,7 @@ interface MarkDescriptionEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  ariaLabel?: string;
   className?: string;
   minHeightClassName?: string;
   maxLength?: number;
@@ -32,6 +33,7 @@ export function MarkDescriptionEditor({
   value,
   onChange,
   placeholder = "Add detail… Type / for formatting",
+  ariaLabel,
   className,
   minHeightClassName = "min-h-[120px]",
   maxLength = MARK_DESCRIPTION_MAX_LENGTH,
@@ -77,6 +79,9 @@ export function MarkDescriptionEditor({
       editorProps: {
         attributes: {
           id: id ?? "",
+          role: "textbox",
+          "aria-label": ariaLabel ?? placeholder,
+          "aria-multiline": "true",
           class: cn(
             "max-h-[min(40vh,20rem)] max-w-none overflow-y-auto px-3 py-2 outline-none",
             "text-ui-sm leading-relaxed text-ink",
@@ -101,7 +106,7 @@ export function MarkDescriptionEditor({
         onChange(draft);
       },
     },
-    [placeholder, minHeightClassName, maxLength, autoFocus],
+    [placeholder, ariaLabel, minHeightClassName, maxLength, autoFocus],
   );
 
   useEffect(() => {

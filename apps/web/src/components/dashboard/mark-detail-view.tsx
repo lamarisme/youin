@@ -97,16 +97,14 @@ function clampDetailSidebarWidth(
   return Math.min(Math.max(width, min), max);
 }
 
-function initialDetailSidebarWidth() {
-  if (typeof window === "undefined") return DETAIL_SIDEBAR_DEFAULT_WIDTH;
+function readStoredDetailSidebarWidth() {
   const storedWidth = Number(safeLocalStorageGet(DETAIL_SIDEBAR_WIDTH_KEY));
   return Number.isFinite(storedWidth)
     ? clampDetailSidebarWidth(storedWidth)
     : DETAIL_SIDEBAR_DEFAULT_WIDTH;
 }
 
-function initialDetailSidebarCollapsed() {
-  if (typeof window === "undefined") return false;
+function readStoredDetailSidebarCollapsed() {
   return safeLocalStorageGet(DETAIL_SIDEBAR_COLLAPSED_KEY) === "true";
 }
 
@@ -187,25 +185,34 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const [editDescription, setEditDescription] = useState(mark.description);
   const [editPage, setEditPage] = useState(mark.page);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(initialDetailSidebarWidth);
-  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(
-    initialDetailSidebarCollapsed,
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(
+    DETAIL_SIDEBAR_DEFAULT_WIDTH,
   );
+  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
+  const [sidebarPreferencesLoaded, setSidebarPreferencesLoaded] = useState(false);
   const isPane = variant === "pane";
 
   useEffect(() => {
+    setRightSidebarWidth(readStoredDetailSidebarWidth());
+    setRightSidebarCollapsed(readStoredDetailSidebarCollapsed());
+    setSidebarPreferencesLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!sidebarPreferencesLoaded) return;
     safeLocalStorageSet(
       DETAIL_SIDEBAR_WIDTH_KEY,
       String(Math.round(rightSidebarWidth)),
     );
-  }, [rightSidebarWidth]);
+  }, [rightSidebarWidth, sidebarPreferencesLoaded]);
 
   useEffect(() => {
+    if (!sidebarPreferencesLoaded) return;
     safeLocalStorageSet(
       DETAIL_SIDEBAR_COLLAPSED_KEY,
       String(rightSidebarCollapsed),
     );
-  }, [rightSidebarCollapsed]);
+  }, [rightSidebarCollapsed, sidebarPreferencesLoaded]);
 
   function startEdit(field: EditingField = "title") {
     setEditTitle(mark.title);
@@ -359,6 +366,12 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   return (
     <>
       {!isPane ? (
+        <h1 className="sr-only">
+          {mark.displayKey}: {mark.title}
+        </h1>
+      ) : null}
+
+      {!isPane ? (
         <MarkDetailNav
           markLabel={mark.displayKey}
           markTitle={mark.title}
@@ -445,6 +458,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     placeholder="What needs attention?"
                     maxLength={180}
                     autoFocus
+                    aria-label="Mark title"
                     aria-invalid={titleInvalid || undefined}
                     className="h-9 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 text-title-lg font-semibold leading-tight shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0 sm:h-8"
                   />
@@ -457,18 +471,22 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   />
                 </div>
               ) : (
-                <h1 className="mt-2 text-title-lg font-semibold leading-tight text-ink">
+                <div
+                  className="mt-2 text-title-lg font-semibold leading-tight text-ink"
+                  role={isPane ? "heading" : undefined}
+                  aria-level={isPane ? 2 : undefined}
+                >
                   <button
                     type="button"
                     onClick={() => startEdit("title")}
-                    className="group -mx-1 flex max-w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20"
+                    className="group -mx-1 flex min-h-10 max-w-full items-start gap-1.5 rounded-md px-1 py-1 text-left outline-none transition-colors hover:bg-paper-2 focus-visible:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-0 sm:py-0.5"
                   >
                     <span className="break-words">{mark.title}</span>
                     <span className="mt-0.5 hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline-flex">
                       <Pencil className="size-3.5" aria-hidden />
                     </span>
                   </button>
-                </h1>
+                </div>
               )}
 
               <MarkDetailActions
@@ -497,6 +515,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
               action={
                 <MarkPageOpenButton
                   page={mark.page}
+                  markTitle={mark.title}
                   appearance="icon"
                   className="size-8 shrink-0 border-transparent bg-transparent hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/20"
                 />
@@ -506,6 +525,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <div className="flex min-w-0 items-start gap-1 rounded-md bg-paper-2/70 px-2 py-1 ring-1 ring-rule/40">
                   <Input
                     value={editPage}
+                    type="url"
                     onChange={(e) => setEditPage(e.target.value)}
                     onBlur={(e) => {
                       const normalized = normalizeMarkPageUrl(e.target.value);
@@ -515,6 +535,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     placeholder="https://app.example.com/pricing"
                     maxLength={300}
                     autoFocus
+                    aria-label="Page URL"
                     aria-invalid={pageInvalid || undefined}
                     className="h-8 rounded-none border-0 border-b border-rule/55 bg-transparent px-0 py-0 font-mono text-ui-sm shadow-none hover:border-rule-strong/65 hover:bg-transparent focus-visible:border-mark/45 focus-visible:bg-transparent focus-visible:ring-0"
                   />
@@ -530,7 +551,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <button
                   type="button"
                   onClick={() => startEdit("page")}
-                  className="group flex min-h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
+                  className="group flex min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
                 >
                   <span className="min-w-0 truncate font-mono text-ui-xs text-ink-2">
                     {mark.page}
@@ -579,6 +600,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                     value={editDescription}
                     onChange={setEditDescription}
                     placeholder="Describe what should change..."
+                    ariaLabel="Mark notes"
                     disabled={isSavingEdit}
                     autoFocus
                     className="rounded-md border-rule/45 bg-paper shadow-none hover:border-rule/70 hover:bg-paper focus-within:border-rule-strong/70 focus-within:bg-paper focus-within:ring-0"
@@ -592,7 +614,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                 <button
                   type="button"
                   onClick={() => startEdit("description")}
-                  className="flex min-h-9 w-full items-center justify-between rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left text-ui-sm text-ink-3 ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
+                  className="flex min-h-10 w-full items-center justify-between rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left text-ui-sm text-ink-3 ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
                 >
                   <span>Add notes</span>
                   <Pencil className="size-3.5" aria-hidden />

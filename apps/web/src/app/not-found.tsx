@@ -1,14 +1,18 @@
-"use client";
-
-import { useTranslations } from "next-intl";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import Link from "next/link";
 import { BrandLockup } from "@/components/brand-lockup";
 import { Button } from "@/components/ui/button";
 
-export default function NotFound() {
-  const t = useTranslations("notFound");
+export const metadata: Metadata = {
+  title: "Page not found",
+  description: "This youin page does not exist. Return to the product overview or your workspace.",
+};
+
+export default async function NotFound() {
+  const t = await getTranslations("notFound");
 
   return (
     <div className="flex min-h-screen flex-col bg-paper bg-paper-grain text-ink">
@@ -18,10 +22,10 @@ export default function NotFound() {
             <BrandLockup />
           </Link>
           <nav className="flex items-center gap-2 md:gap-3">
-            <Button variant="ghost" size="sm" asChild className="h-9 text-ui-sm text-ink-2 hover:text-ink">
+            <Button variant="ghost" size="sm" asChild className="h-10 text-ui-sm text-ink-2 hover:text-ink">
               <Link href="/login">{t("signIn")}</Link>
             </Button>
-            <Button variant="mark" size="sm" asChild className="h-9">
+            <Button variant="mark" size="sm" asChild className="h-10">
               <Link href="/signup" className="inline-flex items-center gap-1.5">
                 {t("createAccount")}
                 <ArrowRight className="size-3 opacity-90" aria-hidden />
@@ -66,21 +70,21 @@ export default function NotFound() {
             <div className="border-t border-rule pt-[var(--space-lg)]">
               <p className="text-ui-sm font-medium text-ink">{t("shortcutsTitle")}</p>
               <ul className="mt-[var(--space-sm)] grid gap-[var(--space-xs)] font-mono text-ui-xs text-ink-3 sm:grid-cols-2">
-                <li className="flex items-baseline gap-2">
+                <li className="flex items-center gap-2">
                   <span className="text-mark">/</span>
-                  <Link href="/" className="text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline">
+                  <Link href="/" className="inline-flex min-h-10 items-center rounded-md px-1 text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
                     {t("productOverview")}
                   </Link>
                 </li>
-                <li className="flex items-baseline gap-2">
+                <li className="flex items-center gap-2">
                   <span className="text-mark">/</span>
-                  <Link href="/dashboard" className="text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline">
+                  <Link href="/dashboard" className="inline-flex min-h-10 items-center rounded-md px-1 text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
                     {t("dashboardLink")}
                   </Link>
                 </li>
-                <li className="flex items-baseline gap-2">
+                <li className="flex items-center gap-2">
                   <span className="text-mark">/</span>
-                  <Link href="/account" className="text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline">
+                  <Link href="/account" className="inline-flex min-h-10 items-center rounded-md px-1 text-ink-2 underline-offset-[3px] transition-colors hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
                     {t("accountSettingsLink")}
                   </Link>
                 </li>
@@ -93,7 +97,10 @@ export default function NotFound() {
       <footer className="mt-auto border-t border-rule bg-paper-2/40">
         <div className="shell flex flex-wrap items-center justify-between gap-[var(--space-sm)] py-[var(--space-md)] font-mono text-ui-xs text-ink-3">
           <p>{t("footer")}</p>
-          <Link href="/login" className="text-ink-2 underline-offset-2 hover:text-ink hover:underline">
+          <Link
+            href="/login"
+            className="inline-flex min-h-10 items-center rounded-md px-2 text-ink-2 underline-offset-2 hover:text-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
             {t("signInInstead")}
           </Link>
         </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CircleDashed,
@@ -22,6 +22,15 @@ import { Pill } from "@/components/pill";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +67,10 @@ import type {
 } from "@/components/dashboard/use-dashboard-filters";
 
 const PAGE_SIZE = 8;
+const DELETED_VIEW_REDIRECT_KEY = "youin:deleted-view-redirect";
 
 export function ViewDetailClient({ viewId }: { viewId: string }) {
+  const router = useRouter();
   const { workspace, userId, displayNamePreference, loadedAt } = useWorkspaceData((s) => ({
     workspace: s.workspace,
     userId: s.userId,
@@ -67,8 +78,20 @@ export function ViewDetailClient({ viewId }: { viewId: string }) {
     loadedAt: s.loadedAt,
   }));
   const view = workspace.views.find((item) => item.id === viewId) ?? null;
+  const [redirectingDeletedView, setRedirectingDeletedView] = useState(() =>
+    deletedViewRedirectMatches(viewId),
+  );
+
+  useEffect(() => {
+    if (view || !redirectingDeletedView) return;
+    clearDeletedViewRedirect();
+    router.replace("/views");
+  }, [redirectingDeletedView, router, view]);
 
   if (!view) {
+    if (redirectingDeletedView) {
+      return <ViewDeleteRedirecting />;
+    }
     return <ViewNotFound />;
   }
 
@@ -106,6 +129,7 @@ function ViewDetail({
   const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
   const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
   const [page, setPage] = useState(1);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const visibleMarks = useMemo(
     () =>
@@ -152,92 +176,134 @@ function ViewDetail({
 
   async function removeView() {
     if (isDeleting) return;
-    if (!window.confirm(`Delete “${view.name}”?`)) return;
-    await deleteView({ viewId: view.id, name: view.name });
-    router.push("/views");
+    setConfirmDeleteOpen(false);
+    rememberDeletedViewRedirect(view.id);
+    router.replace("/views");
+    try {
+      await deleteView({ viewId: view.id, name: view.name, optimistic: false });
+    } catch {
+      // Mutation toast handles the failure and restores the view in the list.
+    }
   }
 
   const dashboardFilters = toDashboardFilters(filters, page, config);
 
   return (
-    <PageContainer>
-      <BreadcrumbHeader
-        items={[
-          { label: "Saved views", href: "/views" },
-          { label: view.name, current: true },
-        ]}
-      />
+    <>
+      <PageContainer>
+        <h1 className="sr-only">{view.name}</h1>
+        <BreadcrumbHeader
+          items={[
+            { label: "Saved views", href: "/views" },
+            { label: view.name, current: true },
+          ]}
+        />
 
-      <header className="flex flex-col gap-2 border-b border-rule/70 pb-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <Input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            aria-label="View name"
-            maxLength={80}
-            className="-ml-1 h-9 max-w-[min(100%,28rem)] border-transparent bg-transparent px-1 text-ui-lg font-semibold shadow-none hover:border-rule/70 hover:bg-paper-2 focus-visible:bg-paper-elevated sm:h-8"
-          />
-        </div>
+        <header className="flex flex-col gap-2 border-b border-rule/70 pb-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              aria-label="View name"
+              maxLength={80}
+              className="-ml-1 h-9 max-w-[min(100%,28rem)] border-transparent bg-transparent px-1 text-ui-lg font-semibold shadow-none hover:border-rule/70 hover:bg-paper-2 focus-visible:bg-paper-elevated sm:h-8"
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          <ViewScopeFields
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ViewScopeFields
+              workspace={workspace}
+              filters={filters}
+              onChange={updateFilters}
+            />
+            <DashboardViewOptionsMenu
+              filters={dashboardFilters}
+              onApply={updateDashboardViewOptions}
+              activeCountDescription={(count) =>
+                `${count} view option${count === 1 ? "" : "s"}`
+              }
+              triggerLabel={viewLayoutLabel(view.layout)}
+              triggerIcon={<ViewLayoutIcon layout={view.layout} className="size-3" />}
+              triggerClassName="h-8 border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink"
+            />
+            {dirty ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-md px-2"
+                onClick={saveChanges}
+                disabled={isSaving || !name.trim()}
+              >
+                {isSaving ? "Saving..." : "Save changes"}
+              </Button>
+            ) : null}
+            <ViewActionsMenu
+              viewName={view.name}
+              isDeleting={isDeleting}
+              onDelete={() => setConfirmDeleteOpen(true)}
+            />
+          </div>
+        </header>
+
+        <MarkFilters
+          filters={dashboardFilters}
+          labels={workspace.labels}
+          onChange={updateDashboardViewOptions}
+          showControlDivider={false}
+          className="border-b border-rule/70 pb-2"
+        />
+
+        {view.layout === "board" ? (
+          <StatusBoard
+            marks={visibleMarks}
             workspace={workspace}
-            filters={filters}
-            onChange={updateFilters}
+            displayNamePreference={displayNamePreference}
+            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
           />
-          <DashboardViewOptionsMenu
-            filters={dashboardFilters}
-            onApply={updateDashboardViewOptions}
-            triggerLabel={viewLayoutLabel(view.layout)}
-            triggerIcon={<ViewLayoutIcon layout={view.layout} className="size-3" />}
-            triggerClassName="h-8 border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink"
+        ) : (
+          <ViewList
+            marks={visibleMarks}
+            workspace={workspace}
+            displayNamePreference={displayNamePreference}
+            referenceTime={loadedAt}
+            page={page}
+            onPageChange={setPage}
+            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
           />
-          {dirty ? (
+        )}
+      </PageContainer>
+
+      <Dialog
+        open={confirmDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setConfirmDeleteOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete saved view?</DialogTitle>
+            <DialogDescription>
+              This removes &quot;{view.name}&quot; for everyone in this workspace. Marks and comments stay untouched.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" disabled={isDeleting}>
+                Cancel
+              </Button>
+            </DialogClose>
             <Button
               type="button"
-              size="sm"
-              className="h-8 rounded-md px-2"
-              onClick={saveChanges}
-              disabled={isSaving || !name.trim()}
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={() => void removeView()}
             >
-              {isSaving ? "Saving..." : "Save changes"}
+              {isDeleting ? "Deleting..." : "Delete view"}
             </Button>
-          ) : null}
-          <ViewActionsMenu
-            viewName={view.name}
-            isDeleting={isDeleting}
-            onDelete={() => void removeView()}
-          />
-        </div>
-      </header>
-
-      <MarkFilters
-        filters={dashboardFilters}
-        labels={workspace.labels}
-        onChange={updateDashboardViewOptions}
-        showControlDivider={false}
-        className="border-b border-rule/70 pb-2"
-      />
-
-      {view.layout === "board" ? (
-        <StatusBoard
-          marks={visibleMarks}
-          workspace={workspace}
-          displayNamePreference={displayNamePreference}
-          markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
-        />
-      ) : (
-        <ViewList
-          marks={visibleMarks}
-          workspace={workspace}
-          displayNamePreference={displayNamePreference}
-          referenceTime={loadedAt}
-          page={page}
-          onPageChange={setPage}
-          markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
-        />
-      )}
-    </PageContainer>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -439,19 +505,34 @@ function BoardColumn({
 function ViewNotFound() {
   return (
     <PageContainer>
+      <h1 className="sr-only">View not found</h1>
       <BreadcrumbHeader items={[{ label: "Saved views", href: "/views" }, { label: "Missing view", current: true }]} />
       <EmptyState
         icon={CircleDashed}
         title="View not found."
         description="The view may have been deleted, or the link points to another workspace."
         action={
-          <Button asChild variant="outline" size="sm" className="h-9">
+          <Button asChild variant="outline" size="sm" className="h-10">
             <Link href="/views">
               <ArrowLeft className="size-3.5" aria-hidden />
               Back to saved views
             </Link>
           </Button>
         }
+      />
+    </PageContainer>
+  );
+}
+
+function ViewDeleteRedirecting() {
+  return (
+    <PageContainer>
+      <h1 className="sr-only">Deleting saved view</h1>
+      <BreadcrumbHeader items={[{ label: "Saved views", href: "/views" }, { label: "Deleting view", current: true }]} />
+      <EmptyState
+        icon={CircleDashed}
+        title="Deleting saved view."
+        description="Returning to saved views."
       />
     </PageContainer>
   );
@@ -548,4 +629,28 @@ function viewSignature(input: {
       boardGroupBy: "status",
     },
   });
+}
+
+function rememberDeletedViewRedirect(viewId: string) {
+  try {
+    window.sessionStorage.setItem(DELETED_VIEW_REDIRECT_KEY, viewId);
+  } catch {
+    // A blocked sessionStorage write should not block the delete action.
+  }
+}
+
+function deletedViewRedirectMatches(viewId: string): boolean {
+  try {
+    return window.sessionStorage.getItem(DELETED_VIEW_REDIRECT_KEY) === viewId;
+  } catch {
+    return false;
+  }
+}
+
+function clearDeletedViewRedirect() {
+  try {
+    window.sessionStorage.removeItem(DELETED_VIEW_REDIRECT_KEY);
+  } catch {
+    // Ignore storage cleanup failures; the key is only a redirect hint.
+  }
 }

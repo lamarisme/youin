@@ -205,40 +205,48 @@ export function DashboardViewsBar({
     <div
       role="toolbar"
       aria-label="Dashboard views"
-      className="flex min-w-0 items-center gap-1.5 overflow-x-auto border-b border-rule/70 pb-2 [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden"
+      className="flex min-w-0 items-center gap-1.5 border-b border-rule/70 pb-2 sm:gap-1"
     >
-      {visibleBuiltIns.map((view) => (
-        <ViewChip
-          key={view.id}
-          label={view.name}
-          count={view.count}
-          title={view.disabled ? "Sign in to filter by your marks." : undefined}
-          icon={view.icon}
-          active={builtInMatches(view, filters)}
-          disabled={view.disabled}
-          onClick={() => applyBuiltIn(view)}
-        />
-      ))}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
+        {visibleBuiltIns.map((view) => (
+          <ViewChip
+            key={view.id}
+            label={view.name}
+            count={view.count}
+            title={view.disabled ? "Sign in to filter by your marks." : undefined}
+            icon={view.icon}
+            active={builtInMatches(view, filters)}
+            disabled={view.disabled}
+            onClick={() => applyBuiltIn(view)}
+          />
+        ))}
 
-      {views.length > 0 ? <span className="mx-0.5 h-4 w-px bg-rule" aria-hidden /> : null}
+        {views.length > 0 ? <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" aria-hidden /> : null}
 
-      {views.slice(0, 5).map((view) => (
-        <ViewChip
-          key={view.id}
-          label={view.name}
-          title={
-            isOptimisticId(view.id)
-              ? "Saving view"
-              : describeWorkspaceViewFilters(view.filters)
-          }
-          icon={View}
-          active={activeWorkspaceViewId === view.id}
-          disabled={isOptimisticId(view.id)}
-          onClick={() => applyWorkspaceView(view)}
-        />
-      ))}
+        {views.slice(0, 5).map((view) => (
+          <ViewChip
+            key={view.id}
+            label={view.name}
+            title={
+              isOptimisticId(view.id)
+                ? "Saving view"
+                : describeWorkspaceViewFilters(view.filters)
+            }
+            icon={View}
+            active={activeWorkspaceViewId === view.id}
+            disabled={isOptimisticId(view.id)}
+            onClick={() => applyWorkspaceView(view)}
+          />
+        ))}
+      </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-1">
+      <div
+        className={cn(
+          "ml-1 flex shrink-0 items-center gap-1.5",
+          "border-l border-rule/70 bg-paper pl-1",
+          "sm:ml-auto sm:border-l-0 sm:bg-transparent sm:pl-0",
+        )}
+      >
         {saving ? (
           <span className="inline-flex min-h-10 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65 sm:min-h-7">
             <input

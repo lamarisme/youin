@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="surface-elevated mx-auto w-full max-w-[calc(100vw-2rem)] rounded-lg p-6 sm:p-7">
       <div className="mb-6">
-        <h2 className="font-display text-xl font-semibold text-ink">Reset your password</h2>
+        <h1 className="font-display text-xl font-semibold text-ink">Reset your password</h1>
         <p className="mt-1 text-ui-sm text-ink-2">
           {sent
             ? "Check your inbox for a link to set a new password. The link expires in one hour."
@@ -126,7 +126,10 @@ export default function ForgotPasswordPage() {
 
       <p className="mt-7 text-center text-ui-sm text-ink-2">
         Remembered it?{" "}
-        <Link href="/login" className="font-medium text-ink hover:text-mark">
+        <Link
+          href="/login"
+          className="inline-flex min-h-10 items-center font-medium text-ink hover:text-mark"
+        >
           Back to sign in
         </Link>
       </p>

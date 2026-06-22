@@ -18,6 +18,7 @@ import type {
   WorkspaceProject,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { useLogMarkPromptCopyMutation } from "@/lib/queries/use-workspace-mutations";
 import {
   buildMarkAiPrompt,
@@ -65,7 +66,8 @@ export function MarkAiPromptActions({
       target: "generic",
     });
     try {
-      await navigator.clipboard.writeText(prompt);
+      const copied = await copyTextToClipboard(prompt);
+      if (!copied) throw new Error("Clipboard copy failed");
       logPromptCopy({ markIds: [mark.id], target: "generic" });
       setCopyState("copied");
     } catch {

@@ -8,7 +8,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import {
@@ -29,7 +29,7 @@ import {
 import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
-import { DialogTitle } from "@/components/ui/dialog";
+import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
@@ -52,24 +52,33 @@ interface PaletteCommand {
 }
 
 export function useOpenCommandPalette() {
-  return useWorkspaceUiStore((state) => state.openCommandPalette);
+  const setOpen = useWorkspaceUiStore((state) => state.setCommandPaletteOpen);
+
+  return useCallback(() => {
+    closeTransientOverlays();
+    window.requestAnimationFrame(() => setOpen(true));
+  }, [setOpen]);
 }
 
 export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   const open = useWorkspaceUiStore((state) => state.commandPaletteOpen);
   const setOpen = useWorkspaceUiStore((state) => state.setCommandPaletteOpen);
-  const toggleOpen = useWorkspaceUiStore((state) => state.toggleCommandPalette);
+  const openCommandPalette = useOpenCommandPalette();
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
-        toggleOpen();
+        if (open) {
+          setOpen(false);
+        } else {
+          openCommandPalette();
+        }
       }
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [toggleOpen]);
+  }, [open, openCommandPalette, setOpen]);
 
   return (
     <>
@@ -77,6 +86,24 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
       <CommandPaletteDialog open={open} onOpenChange={setOpen} />
     </>
   );
+}
+
+function closeTransientOverlays() {
+  if (typeof document === "undefined") return;
+
+  const target =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : document.body;
+  const eventInit = {
+    bubbles: true,
+    cancelable: true,
+    code: "Escape",
+    key: "Escape",
+  };
+
+  target?.dispatchEvent(new KeyboardEvent("keydown", eventInit));
+  document.dispatchEvent(new KeyboardEvent("keydown", eventInit));
 }
 
 function CommandPaletteDialog({
@@ -89,6 +116,7 @@ function CommandPaletteDialog({
   const t = useTranslations("commandPalette");
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -181,10 +209,13 @@ function CommandPaletteDialog({
 
   const allCommands = useMemo<PaletteCommand[]>(() => {
     const openNewMark = () => {
-      if (pathname.startsWith("/dashboard")) {
+      if (pathname === "/dashboard") {
         window.dispatchEvent(new CustomEvent("youin:new-mark"));
       } else {
-        router.push("/dashboard?new=1");
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("new", "1");
+        params.delete("page");
+        router.push(`/dashboard?${params.toString()}`);
       }
     };
     const base: PaletteCommand[] = [
@@ -300,7 +331,7 @@ function CommandPaletteDialog({
       run: () => router.push(markHref(mark.displayKey, new URLSearchParams())),
     }));
     return [...base, ...markCommands, ...viewCommands, ...projectCommands];
-  }, [router, pathname, theme, toggleTheme, projects, views, marks, inbox.unreadCount, t]);
+  }, [router, pathname, searchParams, theme, toggleTheme, projects, views, marks, inbox.unreadCount, t]);
 
   const onSelect = useCallback(
     (id: string) => {
@@ -324,13 +355,16 @@ function CommandPaletteDialog({
       )}
     >
       <DialogTitle className="sr-only">{t("label")}</DialogTitle>
+      <DialogDescription className="sr-only">
+        {t("description")}
+      </DialogDescription>
       <div className="flex items-center gap-2 px-3.5 py-2.5">
         <Search className="size-4 shrink-0 text-ink-3" aria-hidden />
         <Command.Input
           ref={inputRef}
           autoFocus
           placeholder={t("placeholder")}
-          className="flex-1 bg-transparent text-ui-md text-ink outline-none placeholder:text-ink-3"
+          className="min-h-10 flex-1 bg-transparent text-ui-md text-ink outline-none placeholder:text-ink-3 sm:min-h-0"
         />
         <Kbd>
           esc

@@ -640,6 +640,13 @@ function ProjectSwitcher({
       ]),
     );
   }, [marks, projects]);
+  const workspaceNameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const workspace of workspaceMemberships) {
+      counts.set(workspace.name, (counts.get(workspace.name) ?? 0) + 1);
+    }
+    return counts;
+  }, [workspaceMemberships]);
 
   const navigableProjects = projects.filter((project) => !isOptimisticId(project.id));
   const urlProjectId = searchParams.get("project");
@@ -695,6 +702,26 @@ function ProjectSwitcher({
     });
   }
 
+  function workspaceMeta(
+    workspace: (typeof workspaceMemberships)[number],
+    active: boolean,
+  ) {
+    const hasDuplicateName = (workspaceNameCounts.get(workspace.name) ?? 0) > 1;
+    const memberLabel = `${workspace.memberCount} member${
+      workspace.memberCount === 1 ? "" : "s"
+    }`;
+    const parts = [workspace.role === "owner" ? "Owner" : "Member"];
+
+    if (!hasDuplicateName) parts.push(memberLabel);
+
+    if (active) parts.push("Current");
+    if (hasDuplicateName) {
+      parts.push(`ID ${workspace.id.slice(0, 8)}`);
+    }
+
+    return parts.join(" · ");
+  }
+
   return (
     <div className={cn("min-w-0 flex-1", collapsed && "lg:flex-none")}>
       <DropdownMenu>
@@ -742,6 +769,7 @@ function ProjectSwitcher({
             const active = workspace.id === workspaceId;
             const switching =
               isSwitchingWorkspace && switchingWorkspaceId === workspace.id;
+            const meta = workspaceMeta(workspace, active);
             return (
               <DropdownMenuItem
                 key={workspace.id}
@@ -772,9 +800,7 @@ function ProjectSwitcher({
                 <div className="min-w-0 flex-1">
                   <p className="truncate">{workspace.name}</p>
                   <p className="text-ui-xs text-muted-foreground">
-                    {workspace.role === "owner" ? "Owner" : "Member"} ·{" "}
-                    {workspace.memberCount} member
-                    {workspace.memberCount === 1 ? "" : "s"}
+                    {meta}
                   </p>
                 </div>
               </DropdownMenuItem>

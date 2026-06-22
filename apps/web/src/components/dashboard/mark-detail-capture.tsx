@@ -62,6 +62,7 @@ export function MarkDetailCapture({
         {mark.page.trim() ? (
           <MarkPageOpenButton
             page={mark.page}
+            markTitle={mark.title}
             appearance="labeled"
             className="h-7 px-2 text-ui-xs"
           />
@@ -86,6 +87,7 @@ export function MarkDetailCapture({
           {isHero && mark.page.trim() ? (
             <MarkPageOpenButton
               page={mark.page}
+              markTitle={mark.title}
               appearance="icon"
               className="size-7 border-transparent bg-transparent hover:bg-paper-3"
             />
@@ -118,7 +120,12 @@ export function MarkDetailCapture({
                 No capture snapshot saved. Open the page to inspect this mark in context.
               </p>
               {mark.page.trim() ? (
-                <MarkPageOpenButton page={mark.page} appearance="labeled" className="mx-auto h-8" />
+                <MarkPageOpenButton
+                  page={mark.page}
+                  markTitle={mark.title}
+                  appearance="labeled"
+                  className="mx-auto h-8"
+                />
               ) : null}
             </div>
           )}

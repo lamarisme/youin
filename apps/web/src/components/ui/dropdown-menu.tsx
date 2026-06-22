@@ -73,7 +73,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink not-data-[variant=destructive]:focus:**:text-ink data-inset:pl-7 data-[variant=destructive]:text-destructive-token data-[variant=destructive]:focus:bg-destructive-soft data-[variant=destructive]:focus:text-destructive-token data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive-token",
+        "group/dropdown-menu-item relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink not-data-[variant=destructive]:focus:**:text-ink data-inset:pl-7 data-[variant=destructive]:text-destructive-token data-[variant=destructive]:focus:bg-destructive-soft data-[variant=destructive]:focus:text-destructive-token data-disabled:pointer-events-none data-disabled:opacity-50 max-sm:min-h-10 [@media(pointer:coarse)]:min-h-10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive-token",
         className
       )}
       {...props}
@@ -95,7 +95,7 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-2 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink focus:**:text-ink data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-2 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink focus:**:text-ink data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 max-sm:min-h-10 [@media(pointer:coarse)]:min-h-10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       checked={checked}
@@ -139,7 +139,7 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-2 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink focus:**:text-ink data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-2 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink focus:**:text-ink data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 max-sm:min-h-10 [@media(pointer:coarse)]:min-h-10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -226,7 +226,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink not-data-[variant=destructive]:focus:**:text-ink data-inset:pl-7 data-open:bg-paper-2 data-open:text-ink [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex min-h-8 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-ui-sm text-ink-2 outline-hidden select-none focus:bg-paper-2 focus:text-ink not-data-[variant=destructive]:focus:**:text-ink data-inset:pl-7 data-open:bg-paper-2 data-open:text-ink max-sm:min-h-10 [@media(pointer:coarse)]:min-h-10 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}

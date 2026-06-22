@@ -16,6 +16,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,11 +29,14 @@ import { useDashboardReadModel } from "@/components/providers/workspace-read-mod
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   DisplayNamePreference,
   MarkItem,
@@ -43,6 +47,7 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
@@ -99,6 +104,8 @@ export function TriageView() {
   const hasNewMarkParam = searchParams.get("new") === "1";
   const searchParamString = searchParams.toString();
   const [showNew, setShowNew] = useState(false);
+  const [manualCopyPrompt, setManualCopyPrompt] = useState<string | null>(null);
+  const manualCopyTextareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedMarkIds = useWorkspaceUiStore((state) => state.selectedMarkIds);
   const setSelectedMarkIds = useWorkspaceUiStore(
     (state) => state.setSelectedMarkIds,
@@ -228,6 +235,15 @@ export function TriageView() {
     return () => window.removeEventListener("youin:new-mark", openNewMark);
   }, [setNewMarkDialogOpen]);
 
+  useEffect(() => {
+    if (!manualCopyPrompt) return;
+    const timer = window.setTimeout(() => {
+      manualCopyTextareaRef.current?.focus();
+      manualCopyTextareaRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [manualCopyPrompt]);
+
   const totalPages = rowPagination.enabled
     ? rowPagination.totalPages
     : Math.max(1, Math.ceil(visibleMarks.length / rowPagination.pageSize));
@@ -348,13 +364,15 @@ export function TriageView() {
       workflowStatusesById,
     });
     try {
-      await navigator.clipboard.writeText(prompt);
+      const copied = await copyTextToClipboard(prompt);
+      if (!copied) throw new Error("Clipboard copy failed");
       logPromptCopy({ markIds: selectedMarks.map((mark) => mark.id), target: "bulk" });
       toast.success(
         `Copied AI prompt for ${formatMarkCount(selectedMarks.length)}.`,
       );
     } catch {
-      toast.error("Couldn't copy the prompt.");
+      setManualCopyPrompt(prompt);
+      toast.error("Couldn't copy automatically.");
     }
   }
 
@@ -466,6 +484,47 @@ export function TriageView() {
             </DialogContent>
           </Dialog>
 
+          <Dialog
+            open={manualCopyPrompt !== null}
+            onOpenChange={(open) => {
+              if (!open) setManualCopyPrompt(null);
+            }}
+          >
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Copy AI prompt</DialogTitle>
+                <DialogDescription>
+                  Automatic clipboard access is blocked. Select the prompt below and copy it manually.
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea
+                ref={manualCopyTextareaRef}
+                readOnly
+                value={manualCopyPrompt ?? ""}
+                aria-label="AI prompt text"
+                className="min-h-80 resize-y font-mono text-ui-xs leading-relaxed"
+                onFocus={(event) => event.currentTarget.select()}
+              />
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    manualCopyTextareaRef.current?.focus();
+                    manualCopyTextareaRef.current?.select();
+                  }}
+                >
+                  Select prompt
+                </Button>
+                <DialogClose asChild>
+                  <Button type="button" variant="mark">
+                    Done
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <div
             className={cn(
               "relative overflow-hidden rounded-lg bg-paper-elevated ring-1 ring-rule/60",
@@ -499,7 +558,7 @@ export function TriageView() {
                     </Button>
                   ) : !newMarkProject ? (
                     <Button asChild variant="mark" size="sm" className="h-9">
-                      <Link href="/spaces">
+                      <Link href="/account/projects">
                         <Folder className="size-3.5" aria-hidden />
                         Create project
                       </Link>

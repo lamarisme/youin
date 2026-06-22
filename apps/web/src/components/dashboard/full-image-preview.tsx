@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -54,6 +55,9 @@ export function FullImagePreview({
         <DialogContent className="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] gap-3 bg-paper p-3 sm:max-w-6xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{buttonLabel}</DialogTitle>
+            <DialogDescription>
+              Expanded image preview for {alt}.
+            </DialogDescription>
           </DialogHeader>
           {/* Arbitrary capture URLs can be signed, external, or data-backed, so keep a native image. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import { resolveMarkPageHref } from "@/lib/workspace/mark-page-url";
 
@@ -53,7 +54,8 @@ export function MarkDetailNav({
 
   async function copyCurrentLink() {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      const copied = await copyTextToClipboard(window.location.href);
+      if (!copied) throw new Error("Clipboard copy failed");
       toast.success("Mark link copied.");
     } catch {
       toast.error("Couldn't copy the mark link.");
@@ -62,7 +64,8 @@ export function MarkDetailNav({
 
   async function copyDisplayKey() {
     try {
-      await navigator.clipboard.writeText(markLabel);
+      const copied = await copyTextToClipboard(markLabel);
+      if (!copied) throw new Error("Clipboard copy failed");
       toast.success(`${markLabel} copied.`);
     } catch {
       toast.error("Couldn't copy the mark ID.");

@@ -9,6 +9,14 @@ import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { MarkStatus, WorkspaceWorkflowStatus } from "@/lib/collab-types";
@@ -37,13 +45,15 @@ export function StatusesTab() {
     useCreateWorkflowStatusMutation();
   const { mutateAsync: updateStatus, isPending: isUpdating } =
     useUpdateWorkflowStatusMutation();
-  const { mutateAsync: archiveStatus, isPending: isArchiving } =
+  const { mutateAsync: archiveWorkflowStatus, isPending: isArchiving } =
     useArchiveWorkflowStatusMutation();
 
   const [name, setName] = useState("");
   const [lifecycleStatus, setLifecycleStatus] = useState<MarkStatus>("open");
   const [editing, setEditing] = useState<WorkspaceWorkflowStatus | null>(null);
   const [editName, setEditName] = useState("");
+  const [archiveTarget, setArchiveTarget] =
+    useState<WorkspaceWorkflowStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const usageById = useMemo(
@@ -96,11 +106,23 @@ export function StatusesTab() {
     }
   }
 
-  async function handleArchive(status: WorkspaceWorkflowStatus) {
-    if (!isOwner || isArchiving || status.isDefaultOpen || status.isDefaultClosed) return;
+  async function confirmArchive() {
+    if (
+      !archiveTarget ||
+      !isOwner ||
+      isArchiving ||
+      archiveTarget.isDefaultOpen ||
+      archiveTarget.isDefaultClosed
+    ) {
+      return;
+    }
     setError(null);
     try {
-      await archiveStatus({ statusId: status.id, name: status.name });
+      await archiveWorkflowStatus({
+        statusId: archiveTarget.id,
+        name: archiveTarget.name,
+      });
+      setArchiveTarget(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't archive this workflow status.");
     }
@@ -176,6 +198,7 @@ export function StatusesTab() {
                       onChange={(event) => setEditName(event.target.value)}
                       maxLength={40}
                       autoFocus
+                      aria-label={`Workflow status name for ${status.name}`}
                       className="h-10 bg-paper-2 sm:h-8"
                     />
                     <Button
@@ -258,7 +281,10 @@ export function StatusesTab() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    onClick={() => handleArchive(status)}
+                    onClick={() => {
+                      setArchiveTarget(status);
+                      setError(null);
+                    }}
                     disabled={!isOwner || isDefault || isArchiving}
                     className="size-10 text-ink-3 hover:text-destructive-token sm:size-8"
                     aria-label={`Archive ${status.name}`}
@@ -271,6 +297,52 @@ export function StatusesTab() {
           );
         })}
       </ProductList>
+
+      <Dialog
+        open={Boolean(archiveTarget)}
+        onOpenChange={(open) => {
+          if (!open && !isArchiving) setArchiveTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Archive workflow status?</DialogTitle>
+            <DialogDescription>
+              {archiveTarget ? (
+                <>
+                  <span className="font-medium text-ink">{archiveTarget.name}</span>{" "}
+                  will be removed from the workflow.{" "}
+                  <span className="font-medium text-ink">
+                    {usageById.get(archiveTarget.id) ?? 0} mark
+                    {(usageById.get(archiveTarget.id) ?? 0) === 1 ? "" : "s"}
+                  </span>{" "}
+                  using it will move to the default{" "}
+                  {archiveTarget.lifecycleStatus === "open" ? "open" : "closed"} status.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isArchiving}
+              onClick={() => setArchiveTarget(null)}
+            >
+              Cancel
+            </Button>
+            <SubmitButton
+              type="button"
+              variant="destructive"
+              loading={isArchiving}
+              loadingText="Archiving..."
+              onClick={confirmArchive}
+            >
+              Archive status
+            </SubmitButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

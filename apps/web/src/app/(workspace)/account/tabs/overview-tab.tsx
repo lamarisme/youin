@@ -24,19 +24,13 @@ export function OverviewTab() {
     useUpdateWorkspaceMutation();
 
   const [renaming, setRenaming] = useState(false);
-  const [draft, setDraft] = useState(workspaceName);
-  const [lastWorkspaceName, setLastWorkspaceName] = useState(workspaceName);
-
-  if (!renaming && workspaceName !== lastWorkspaceName) {
-    setLastWorkspaceName(workspaceName);
-    setDraft(workspaceName);
-  }
+  const [draft, setDraft] = useState("");
 
   async function save() {
     const trimmed = draft.trim();
     if (!trimmed || trimmed === workspaceName) {
       setRenaming(false);
-      setDraft(workspaceName);
+      setDraft("");
       return;
     }
     try {
@@ -62,7 +56,7 @@ export function OverviewTab() {
                 if (e.key === "Enter") void save();
                 if (e.key === "Escape") {
                   setRenaming(false);
-                  setDraft(workspaceName);
+                  setDraft("");
                 }
               }}
             />
@@ -82,7 +76,7 @@ export function OverviewTab() {
               variant="ghost"
               onClick={() => {
                 setRenaming(false);
-                setDraft(workspaceName);
+                setDraft("");
               }}
               className="size-8 px-0"
               aria-label="Cancel rename"
@@ -100,7 +94,7 @@ export function OverviewTab() {
                     setRenaming(true);
                     setDraft(workspaceName);
                   }}
-                  className="group inline-flex max-w-full items-center gap-1.5 rounded-md text-left transition-colors hover:bg-paper-3"
+                  className="group -mx-1.5 inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-md px-1.5 text-left transition-colors hover:bg-paper-3 sm:mx-0 sm:min-h-0 sm:px-0"
                   aria-label="Rename workspace"
                 >
                   <span className="min-w-0 truncate text-ink">{workspaceName || "Workspace"}</span>

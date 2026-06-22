@@ -163,7 +163,7 @@ export function LabelPicker({
           aria-autocomplete="list"
           aria-controls={listboxId}
           aria-expanded={showOptions}
-          className="min-h-9 min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-ui-sm text-ink placeholder:text-ink-3 focus:outline-none sm:min-h-6"
+          className="min-h-10 min-w-[8ch] flex-1 bg-transparent px-1 py-1 text-ui-sm text-ink placeholder:text-ink-3 focus:outline-none sm:min-h-6"
         />
       </div>
 

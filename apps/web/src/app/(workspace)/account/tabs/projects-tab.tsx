@@ -220,7 +220,10 @@ export function ProjectsTab() {
                     variant="outline"
                     className="h-9 gap-1.5 sm:h-8"
                   >
-                    <Link href={`/dashboard?project=${encodeURIComponent(project.id)}`}>
+                    <Link
+                      href={`/dashboard?project=${encodeURIComponent(project.id)}`}
+                      aria-label={`Open ${project.name} project marks`}
+                    >
                       Open
                       <ArrowRight className="size-3.5" aria-hidden />
                     </Link>
@@ -239,8 +242,7 @@ export function ProjectsTab() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuItem
-                        onSelect={(event) => {
-                          event.preventDefault();
+                        onSelect={() => {
                           openEditProject(project);
                         }}
                       >
@@ -250,8 +252,7 @@ export function ProjectsTab() {
                       <DropdownMenuItem
                         variant="destructive"
                         disabled={count > 0}
-                        onSelect={(event) => {
-                          event.preventDefault();
+                        onSelect={() => {
                           setDeleteTarget(project);
                           setDeleteError(null);
                         }}

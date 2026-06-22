@@ -26,9 +26,9 @@ export async function AuthShellLayout({ children }: { children: ReactNode }) {
         <section className="section-block order-2 min-w-0 md:order-1">
           <div className="min-w-0">
             <p className="text-eyebrow mb-2">{t("eyebrow")}</p>
-            <h1 className="text-editorial-md max-w-[12ch] text-wrap text-ink sm:max-w-[15ch]">
+            <p className="text-editorial-md max-w-[12ch] text-wrap text-ink sm:max-w-[15ch]">
               {t("headline")}
-            </h1>
+            </p>
           </div>
 
           <p className="max-w-[46ch] text-ui-lg leading-relaxed text-ink-2">{t("lead")}</p>

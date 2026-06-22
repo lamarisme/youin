@@ -40,6 +40,10 @@ export function BulkActionBar({
 }: BulkActionBarProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const selectedCountLabel = `${count} mark${count === 1 ? "" : "s"} selected`;
+  const statusActionLabel = allClosed
+    ? `Reopen ${count === 1 ? "mark" : "marks"}`
+    : `Close ${count === 1 ? "mark" : "marks"}`;
 
   async function run(fn: () => Promise<void> | void) {
     if (busy) return;
@@ -57,11 +61,11 @@ export function BulkActionBar({
     <>
       <div
         role="region"
-        aria-label={`${count} marks selected`}
+        aria-label={selectedCountLabel}
         className="sticky bottom-2 z-20 mx-auto mt-2 flex w-[calc(100%-1rem)] max-w-full flex-wrap items-center justify-center gap-1.5 rounded-md bg-paper-elevated px-2 py-1.5 ring-1 ring-rule-strong/60 sm:bottom-4 sm:w-fit sm:gap-1 sm:px-1.5 sm:py-1"
       >
         <span className="sr-only" aria-live="polite">
-          {busy ? "Updating selected marks." : `${count} marks selected.`}
+          {busy ? "Updating selected marks." : `${selectedCountLabel}.`}
         </span>
         <span className="flex h-10 items-center gap-1.5 px-1.5 text-ui-xs font-medium tabular-nums text-ink sm:h-7 sm:text-ui-2xs">
           <span className="text-mark">{count}</span> selected
@@ -86,15 +90,16 @@ export function BulkActionBar({
           variant="ghost"
           disabled={busy}
           onClick={() => run(() => onSetStatus(allClosed ? "open" : "closed"))}
+          aria-label={statusActionLabel}
           className="h-10 gap-1.5 px-2.5 text-ui-xs text-ink-2 hover:text-ink sm:h-7 sm:px-2"
         >
           {allClosed ? (
             <>
-              <CircleDashed className="size-3" /> Reopen
+              <CircleDashed className="size-3" /> {statusActionLabel}
             </>
           ) : (
             <>
-              <CheckCircle2 className="size-3" /> Close
+              <CheckCircle2 className="size-3" /> {statusActionLabel}
             </>
           )}
         </Button>
@@ -164,7 +169,7 @@ export function BulkActionBar({
                 await run(onDelete);
                 setConfirmDelete(false);
               }}
-              variant="mark"
+              variant="destructive"
             >
               {`Delete ${count === 1 ? "mark" : `${count} marks`}`}
             </SubmitButton>

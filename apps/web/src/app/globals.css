@@ -471,6 +471,21 @@
     }
   }
 
+  .detail-reveal {
+    animation: detail-reveal 280ms var(--ease-out-expo) both;
+  }
+
+  @keyframes detail-reveal {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .section-block {
     display: grid;
     gap: var(--block-gap);
@@ -642,6 +657,12 @@
     }
 
     .section-reveal {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+
+    .detail-reveal {
       opacity: 1;
       transform: none;
       animation: none;

@@ -146,7 +146,7 @@ export function LabelsTab() {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              variant="mark"
+              variant="destructive"
               className="h-9"
             >
               Delete label

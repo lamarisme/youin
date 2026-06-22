@@ -11,7 +11,7 @@ import {
 } from "@/lib/workspace/actions";
 import { resolveWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
-import { OnboardingClient } from "./onboarding-client";
+import { OnboardedWorkspaceRedirect, OnboardingClient } from "./onboarding-client";
 
 function workspaceNameFromEmail(email: string): string {
   const domain = email.split("@")[1]?.split(".")[0] ?? "";
@@ -62,7 +62,7 @@ export default async function OnboardingPage({
 
   const workspaceId = await resolveWorkspaceForUser(supabase, user);
   if (workspaceId) {
-    redirect(nextPath);
+    return <OnboardedWorkspaceRedirect nextPath={nextPath} />;
   }
 
   const invites = await discoverPendingWorkspaceInvitesAction();

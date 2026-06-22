@@ -35,7 +35,7 @@ export function WorkspaceDashboard({
 
   if (markParam) {
     return (
-      <PageContainer>
+      <PageContainer className="detail-reveal">
         {selectedMark ? (
           <MarkDetailView
             mark={selectedMark}
@@ -43,16 +43,19 @@ export function WorkspaceDashboard({
             variant="page"
           />
         ) : (
-          <EmptyState
-            icon={CircleDashed}
-            title="Mark not found."
-            description={`${markParam} may have been deleted, moved, or hidden from this workspace.`}
-            action={
-              <Button asChild variant="outline" size="sm" className="h-9">
-                <Link href={dashboardHref(searchParams)}>Back to marks</Link>
-              </Button>
-            }
-          />
+          <>
+            <h1 className="sr-only">Mark not found</h1>
+            <EmptyState
+              icon={CircleDashed}
+              title="Mark not found."
+              description={`${markParam} may have been deleted, moved, or hidden from this workspace.`}
+              action={
+                <Button asChild variant="outline" size="sm" className="h-10">
+                  <Link href={dashboardHref(searchParams)}>Back to marks</Link>
+                </Button>
+              }
+            />
+          </>
         )}
       </PageContainer>
     );
@@ -60,6 +63,7 @@ export function WorkspaceDashboard({
 
   return (
     <PageContainer>
+      <h1 className="sr-only">Dashboard</h1>
       {pendingInvites.length > 0 ? (
         <WorkspaceInvitationReminder invites={pendingInvites} />
       ) : null}

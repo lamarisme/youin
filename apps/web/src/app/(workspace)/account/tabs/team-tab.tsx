@@ -1,18 +1,27 @@
 "use client";
 
 import { Copy, Link2, Trash2, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
 import { Notice } from "@/components/notice";
 import { SubmitButton } from "@/components/ui/submit-button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import { ProductSectionHeader } from "@/components/product-section";
 import type {
+  TeamMember,
   TeamInvite,
   TeamInviteStatus,
   WorkspaceReviewLink,
@@ -29,11 +38,22 @@ import {
   useUpdateMyWorkspaceUsernameMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { effectiveInviteStatus } from "@/lib/workspace/invite-state";
+import { reviewLinkTargetOriginError } from "@/lib/workspace/review-link-origin";
 import { assertValidWorkspaceUsername } from "@/lib/workspace/workspace-username";
 import { memberDisplayParts, memberPickerLabel } from "@/lib/workspace/member-label";
 import { cn } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type UsernameDraftState = {
+  base: string;
+  value: string;
+};
+
+type UsernameErrorState = {
+  base: string;
+  message: string;
+};
 
 function reviewScriptUrl(token: string, appOrigin: string): string {
   const path = `/api/review-links/${encodeURIComponent(token)}/script`;
@@ -42,6 +62,18 @@ function reviewScriptUrl(token: string, appOrigin: string): string {
 
 function reviewScriptSnippet(token: string, appOrigin: string): string {
   return `<script async src="${reviewScriptUrl(token, appOrigin)}"></script>`;
+}
+
+function subscribeAppOrigin() {
+  return () => {};
+}
+
+function getAppOriginSnapshot() {
+  return window.location.origin;
+}
+
+function getServerAppOriginSnapshot() {
+  return "";
 }
 
 function reviewLinkState(link: WorkspaceReviewLink): "active" | "expired" | "revoked" {
@@ -93,25 +125,41 @@ export function TeamTab() {
     useUpdateMyWorkspaceUsernameMutation();
   const { mutateAsync: inviteMember, isPending: isInviting } =
     useInviteMemberMutation();
-  const { mutate: cancelInvite } = useCancelInviteMutation();
+  const { mutate: cancelInvite, isPending: isCancelingInvite } =
+    useCancelInviteMutation();
   const { mutateAsync: createReviewLink, isPending: isCreatingReviewLink } =
     useCreateReviewLinkMutation();
-  const { mutate: revokeReviewLink } = useRevokeReviewLinkMutation();
-  const { mutate: removeMember } = useRemoveMemberMutation();
+  const { mutate: revokeReviewLink, isPending: isRevokingReviewLink } =
+    useRevokeReviewLinkMutation();
+  const { mutate: removeMember, isPending: isRemovingMember } =
+    useRemoveMemberMutation();
+  const appOrigin = useSyncExternalStore(
+    subscribeAppOrigin,
+    getAppOriginSnapshot,
+    getServerAppOriginSnapshot,
+  );
 
   const me = members.find((m) => m.id === userId);
   const canonicalUsername = me?.username ?? "";
-  const [usernameDraft, setUsernameDraft] = useState(canonicalUsername);
-  const [usernameError, setUsernameError] = useState<string | null>(null);
-  const [lastCanonicalUsername, setLastCanonicalUsername] = useState(canonicalUsername);
-  if (canonicalUsername !== lastCanonicalUsername) {
-    setLastCanonicalUsername(canonicalUsername);
-    setUsernameDraft(canonicalUsername);
-    setUsernameError(null);
-  }
+  const [usernameDraftState, setUsernameDraftState] = useState<UsernameDraftState>({
+    base: canonicalUsername,
+    value: canonicalUsername,
+  });
+  const [usernameErrorState, setUsernameErrorState] =
+    useState<UsernameErrorState | null>(null);
+  const usernameDraft =
+    usernameDraftState.base === canonicalUsername
+      ? usernameDraftState.value
+      : canonicalUsername;
+  const usernameError =
+    usernameErrorState?.base === canonicalUsername
+      ? usernameErrorState.message
+      : null;
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [cancelInviteTarget, setCancelInviteTarget] = useState<TeamInvite | null>(null);
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<TeamMember | null>(null);
   const inviteEmailTrimmed = inviteEmail.trim();
   const inviteIsValid = EMAIL_RE.test(inviteEmailTrimmed);
   const inviteFieldError =
@@ -137,33 +185,43 @@ export function TeamTab() {
   const [reviewProjectId, setReviewProjectId] = useState(defaultReviewProjectId);
   const [reviewLinkError, setReviewLinkError] = useState<string | null>(null);
   const [copiedReviewLinkId, setCopiedReviewLinkId] = useState<string | null>(null);
-  const [appOrigin, setAppOrigin] = useState("");
-  if (!appOrigin && typeof window !== "undefined") {
-    setAppOrigin(window.location.origin);
-  }
-  if (!reviewProjectId && defaultReviewProjectId) {
-    setReviewProjectId(defaultReviewProjectId);
-  }
-  const reviewTargetReady = reviewTargetOrigin.trim().length > 0;
+  const [revokeReviewTarget, setRevokeReviewTarget] =
+    useState<WorkspaceReviewLink | null>(null);
+  const selectedReviewProjectId =
+    reviewProjectId && reviewProjects.some((project) => project.id === reviewProjectId)
+      ? reviewProjectId
+      : defaultReviewProjectId;
+  const reviewTargetOriginTrimmed = reviewTargetOrigin.trim();
+  const reviewTargetOriginError =
+    reviewTargetOriginTrimmed.length > 0
+      ? reviewLinkTargetOriginError(reviewTargetOriginTrimmed)
+      : null;
+  const reviewTargetReady =
+    reviewTargetOriginTrimmed.length > 0 && !reviewTargetOriginError;
   const canCreateReviewLink =
-    isOwner && reviewTargetReady && Boolean(reviewProjectId) && !isCreatingReviewLink;
+    isOwner && reviewTargetReady && Boolean(selectedReviewProjectId) && !isCreatingReviewLink;
 
   async function handleSaveUsername() {
     if (!me || isSavingUsername) return;
-    setUsernameError(null);
+    setUsernameErrorState(null);
     try {
       assertValidWorkspaceUsername(usernameDraft);
     } catch (e) {
-      setUsernameError(e instanceof Error ? e.message : "Invalid username.");
+      setUsernameErrorState({
+        base: canonicalUsername,
+        message: e instanceof Error ? e.message : "Invalid username.",
+      });
       return;
     }
     if (trimmedUsername === me.username) return;
     try {
       await updateMyWorkspaceUsername(usernameDraft);
     } catch (e) {
-      setUsernameError(
-        e instanceof Error ? e.message : "Couldn't save your username. Try again.",
-      );
+      setUsernameErrorState({
+        base: canonicalUsername,
+        message:
+          e instanceof Error ? e.message : "Couldn't save your username. Try again.",
+      });
     }
   }
 
@@ -181,13 +239,49 @@ export function TeamTab() {
     }
   }
 
-  function handleCancel(inviteId: string, email: string) {
-    cancelInvite({ inviteId, email });
+  function handleCancelInvite(invite: TeamInvite) {
+    if (!isOwner || effectiveInviteStatus(invite) !== "pending") return;
+    setCancelInviteTarget(invite);
+    setInviteError(null);
   }
 
-  function handleRemove(memberUserId: string, name: string) {
+  function confirmCancelInvite() {
+    if (
+      !cancelInviteTarget ||
+      !isOwner ||
+      isCancelingInvite ||
+      effectiveInviteStatus(cancelInviteTarget) !== "pending"
+    ) {
+      return;
+    }
+    const invite = cancelInviteTarget;
+    setCancelInviteTarget(null);
+    cancelInvite({ inviteId: invite.id, email: invite.email });
+  }
+
+  function handleRemove(memberUserId: string) {
     if (!isOwner || memberUserId === userId) return;
-    removeMember({ memberUserId, name });
+    const member = members.find((item) => item.id === memberUserId);
+    if (!member) return;
+    setRemoveMemberTarget(member);
+  }
+
+  function confirmRemoveMember() {
+    if (
+      !removeMemberTarget ||
+      !isOwner ||
+      isRemovingMember ||
+      removeMemberTarget.id === userId ||
+      removeMemberTarget.role === "owner"
+    ) {
+      return;
+    }
+    const member = removeMemberTarget;
+    setRemoveMemberTarget(null);
+    removeMember({
+      memberUserId: member.id,
+      name: memberPickerLabel(member, displayNamePreference),
+    });
   }
 
   async function handleCreateReviewLink() {
@@ -197,7 +291,7 @@ export function TeamTab() {
       await createReviewLink({
         name: reviewLinkName,
         targetOrigin: reviewTargetOrigin,
-        projectId: reviewProjectId,
+        projectId: selectedReviewProjectId,
       });
       setReviewLinkName("");
       setReviewTargetOrigin("");
@@ -210,7 +304,9 @@ export function TeamTab() {
 
   async function handleCopyReviewSnippet(link: WorkspaceReviewLink) {
     try {
-      await navigator.clipboard.writeText(reviewScriptSnippet(link.token, appOrigin));
+      await navigator.clipboard.writeText(
+        reviewScriptSnippet(link.token, appOrigin || window.location.origin),
+      );
       setCopiedReviewLinkId(link.id);
       window.setTimeout(() => setCopiedReviewLinkId(null), 1600);
     } catch {
@@ -220,6 +316,21 @@ export function TeamTab() {
 
   function handleRevokeReviewLink(link: WorkspaceReviewLink) {
     if (!isOwner || reviewLinkState(link) !== "active") return;
+    setRevokeReviewTarget(link);
+    setReviewLinkError(null);
+  }
+
+  function confirmRevokeReviewLink() {
+    if (
+      !revokeReviewTarget ||
+      !isOwner ||
+      isRevokingReviewLink ||
+      reviewLinkState(revokeReviewTarget) !== "active"
+    ) {
+      return;
+    }
+    const link = revokeReviewTarget;
+    setRevokeReviewTarget(null);
     revokeReviewLink({ linkId: link.id, name: link.name });
   }
 
@@ -257,13 +368,17 @@ export function TeamTab() {
                   id="workspace-username"
                   value={usernameDraft}
                   onChange={(e) => {
-                    setUsernameError(null);
-                    setUsernameDraft(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                    setUsernameErrorState(null);
+                    setUsernameDraftState({
+                      base: canonicalUsername,
+                      value: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                    });
                   }}
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}
                   maxLength={32}
+                  aria-label="Workspace username"
                   aria-invalid={Boolean(usernameFieldError) || undefined}
                   aria-describedby={usernameFieldError ? "workspace-username-error" : undefined}
                   className="h-10 rounded-none border-transparent bg-transparent pl-7 font-mono text-ui-md shadow-none focus-visible:border-transparent focus-visible:ring-0 sm:h-8 sm:text-ui-sm"
@@ -347,7 +462,7 @@ export function TeamTab() {
         ) : null}
       </section>
 
-      <section className="space-y-4">
+      <section id="guest-review-links" className="scroll-mt-6 space-y-4">
         <ProductSectionHeader
           title="Guest review links"
           description="Embed a tiny script on a staging or client site so reviewers can mark UI without a YouIn account or Chrome extension."
@@ -362,12 +477,18 @@ export function TeamTab() {
                 </Label>
                 <Input
                   id="review-origin"
+                  type="url"
+                  inputMode="url"
                   value={reviewTargetOrigin}
                   onChange={(e) => {
                     setReviewLinkError(null);
                     setReviewTargetOrigin(e.target.value);
                   }}
                   placeholder="https://staging.client.com"
+                  aria-invalid={Boolean(reviewTargetOriginError) || undefined}
+                  aria-describedby={
+                    reviewTargetOriginError || reviewLinkError ? "review-link-error" : undefined
+                  }
                   className="mt-1 h-10 rounded-md border-transparent bg-paper-elevated text-ui-sm shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0"
                 />
               </div>
@@ -377,7 +498,7 @@ export function TeamTab() {
                 </Label>
                 <select
                   id="review-project"
-                  value={reviewProjectId}
+                  value={selectedReviewProjectId}
                   onChange={(e) => setReviewProjectId(e.target.value)}
                   className="mt-1 h-10 w-full rounded-md border-0 bg-paper-2 px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper focus:ring-1 focus:ring-mark/25 focus-visible:outline-none"
                 >
@@ -395,6 +516,7 @@ export function TeamTab() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
+                aria-label="Review link label"
                 value={reviewLinkName}
                 onChange={(e) => setReviewLinkName(e.target.value)}
                 placeholder="Optional label, like Client review"
@@ -412,9 +534,13 @@ export function TeamTab() {
                 Create link
               </SubmitButton>
             </div>
-            {reviewLinkError ? (
-              <p role="alert" className="text-ui-xs text-destructive-token">
-                {reviewLinkError}
+            {reviewTargetOriginError || reviewLinkError ? (
+              <p
+                id="review-link-error"
+                role="alert"
+                className="text-ui-xs text-destructive-token"
+              >
+                {reviewTargetOriginError ?? reviewLinkError}
               </p>
             ) : null}
           </div>
@@ -461,7 +587,7 @@ export function TeamTab() {
                         <button
                           type="button"
                           onClick={() => handleRevokeReviewLink(link)}
-                          disabled={state !== "active"}
+                          disabled={state !== "active" || isRevokingReviewLink}
                           className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label={`Revoke review link ${link.name}`}
                         >
@@ -493,6 +619,49 @@ export function TeamTab() {
           />
         )}
       </section>
+
+      <Dialog
+        open={Boolean(revokeReviewTarget)}
+        onOpenChange={(open) => {
+          if (!open) setRevokeReviewTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revoke guest review link?</DialogTitle>
+            <DialogDescription>
+              {revokeReviewTarget ? (
+                <>
+                  <span className="font-medium text-ink">{revokeReviewTarget.name}</span>{" "}
+                  will stop accepting guest marks from{" "}
+                  <span className="font-medium text-ink">
+                    {revokeReviewTarget.targetOrigin}
+                  </span>
+                  . Embedded scripts using this token will no longer connect.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRevokeReviewTarget(null)}
+              className="inline-flex h-8 items-center justify-center rounded-md border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm font-medium text-ink-2 transition-colors hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper max-sm:min-h-10 max-sm:min-w-10"
+            >
+              Cancel
+            </button>
+            <SubmitButton
+              type="button"
+              variant="destructive"
+              loading={isRevokingReviewLink}
+              loadingText="Revoking..."
+              onClick={confirmRevokeReviewLink}
+            >
+              Revoke link
+            </SubmitButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <section>
         <ProductSectionHeader
@@ -549,11 +718,10 @@ export function TeamTab() {
                   {isOwner && member.id !== userId && member.role !== "owner" ? (
                     <button
                       type="button"
-                      onClick={() =>
-                        handleRemove(member.id, memberPickerLabel(member, displayNamePreference))
-                      }
+                      onClick={() => handleRemove(member.id)}
+                      disabled={isRemovingMember}
                       aria-label={`Remove ${memberPickerLabel(member, displayNamePreference)} from workspace`}
-                      className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
+                      className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-8 sm:min-w-8"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -594,9 +762,10 @@ export function TeamTab() {
                   {isOwner && status === "pending" ? (
                     <button
                       type="button"
-                      onClick={() => handleCancel(invite.id, invite.email)}
+                      onClick={() => handleCancelInvite(invite)}
+                      disabled={isCancelingInvite}
                       aria-label={`Revoke invite for ${invite.email}`}
-                      className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:min-h-8 sm:min-w-8"
+                      className="inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-8 sm:min-w-8"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -607,6 +776,87 @@ export function TeamTab() {
           </ProductList>
         ) : null}
       </section>
+
+      <Dialog
+        open={Boolean(removeMemberTarget)}
+        onOpenChange={(open) => {
+          if (!open) setRemoveMemberTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove workspace member?</DialogTitle>
+            <DialogDescription>
+              {removeMemberTarget ? (
+                <>
+                  <span className="font-medium text-ink">
+                    {memberPickerLabel(removeMemberTarget, displayNamePreference)}
+                  </span>{" "}
+                  will lose access to this workspace. Marks they created stay in place,
+                  and any marks assigned to them become unassigned.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setRemoveMemberTarget(null)}
+              className="inline-flex h-8 items-center justify-center rounded-md border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm font-medium text-ink-2 transition-colors hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper max-sm:min-h-10 max-sm:min-w-10"
+            >
+              Cancel
+            </button>
+            <SubmitButton
+              type="button"
+              variant="destructive"
+              loading={isRemovingMember}
+              loadingText="Removing..."
+              onClick={confirmRemoveMember}
+            >
+              Remove member
+            </SubmitButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(cancelInviteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setCancelInviteTarget(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revoke invitation?</DialogTitle>
+            <DialogDescription>
+              {cancelInviteTarget ? (
+                <>
+                  <span className="font-medium text-ink">{cancelInviteTarget.email}</span>{" "}
+                  will no longer be able to join this workspace from the pending invite.
+                </>
+              ) : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setCancelInviteTarget(null)}
+              className="inline-flex h-8 items-center justify-center rounded-md border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm font-medium text-ink-2 transition-colors hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring/45 focus-visible:ring-offset-2 focus-visible:ring-offset-paper max-sm:min-h-10 max-sm:min-w-10"
+            >
+              Cancel
+            </button>
+            <SubmitButton
+              type="button"
+              variant="destructive"
+              loading={isCancelingInvite}
+              loadingText="Revoking..."
+              onClick={confirmCancelInvite}
+            >
+              Revoke invite
+            </SubmitButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

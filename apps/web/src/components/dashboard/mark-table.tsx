@@ -462,6 +462,7 @@ function RowMeta({
       {mark.page.trim() ? (
         <MarkPageOpenButton
           page={mark.page}
+          markTitle={mark.title}
           appearance="icon"
           stopPropagation
           className="size-9 border-transparent bg-transparent shadow-none transition-opacity hover:bg-paper-3 lg:size-7 lg:opacity-0 lg:group-hover/mark-row:opacity-100 lg:group-focus-within/mark-row:opacity-100"

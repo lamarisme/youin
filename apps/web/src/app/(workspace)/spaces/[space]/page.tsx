@@ -5,6 +5,11 @@ export const metadata: Metadata = {
   title: "Project marks",
 };
 
-export default function SpacePage() {
-  redirect("/dashboard");
+export default async function SpacePage({
+  params,
+}: {
+  params: Promise<{ space: string }>;
+}) {
+  const { space } = await params;
+  redirect(`/dashboard?project=${encodeURIComponent(space)}`);
 }

@@ -6,5 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function ProfilePage() {
-  redirect("/account");
+  redirect("/account/profile");
 }

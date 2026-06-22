@@ -43,6 +43,7 @@ interface DashboardViewOptionsMenuProps {
   filters: DashboardFilters;
   canSaveView?: boolean;
   onSaveView?: () => void;
+  activeCountDescription?: (count: number) => string;
   triggerLabel?: string;
   triggerIcon?: ReactNode;
   triggerClassName?: string;
@@ -53,6 +54,7 @@ export function DashboardViewOptionsMenu({
   filters,
   canSaveView = false,
   onSaveView,
+  activeCountDescription = (count) => `${count} changed`,
   triggerLabel = "View",
   triggerIcon,
   triggerClassName,
@@ -72,7 +74,7 @@ export function DashboardViewOptionsMenu({
           variant="ghost"
           aria-label={
             activeCount > 0
-              ? `Open ${triggerLabel.toLowerCase()} options (${activeCount} changed)`
+              ? `Open ${triggerLabel.toLowerCase()} options (${activeCountDescription(activeCount)})`
               : "Open view options"
           }
           className={cn(
@@ -90,6 +92,23 @@ export function DashboardViewOptionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem
+          disabled={!canSaveView}
+          onSelect={() => {
+            if (canSaveView) onSaveView?.();
+          }}
+        >
+          <Save className="size-3.5" aria-hidden />
+          Save view
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/views">
+            <Settings2 className="size-3.5" aria-hidden />
+            Manage views
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
         <DropdownMenuLabel>Sort</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={filters.sort}
@@ -133,23 +152,6 @@ export function DashboardViewOptionsMenu({
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={!canSaveView}
-          onSelect={() => {
-            if (canSaveView) onSaveView?.();
-          }}
-        >
-          <Save className="size-3.5" aria-hidden />
-          Save view
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/views">
-            <Settings2 className="size-3.5" aria-hidden />
-            Manage views
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

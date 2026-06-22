@@ -330,10 +330,11 @@ export function useUpdateWorkspaceViewMutation() {
 export function useDeleteWorkspaceViewMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ viewId }: { viewId: string; name?: string }) =>
+    mutationFn: ({ viewId }: { viewId: string; name?: string; optimistic?: boolean }) =>
       ws.deleteWorkspaceViewAction(viewId),
-    onMutate: async ({ viewId }) => {
+    onMutate: async ({ viewId, optimistic = true }) => {
       const context = await prepareOptimisticMutation(queryClient);
+      if (!optimistic) return context;
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         views: workspace.views.filter((view) => view.id !== viewId),
@@ -343,6 +344,12 @@ export function useDeleteWorkspaceViewMutation() {
     onError: (e, _vars, context) => {
       restoreWorkspace(context);
       toast.error(actionErrorMessage(e, "Couldn't delete this view."));
+    },
+    onSuccess: (_data, { viewId }) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        views: workspace.views.filter((view) => view.id !== viewId),
+      }));
     },
     onSettled: (_data, _error, _vars, context) =>
       settleWorkspaceMutation(queryClient, context),

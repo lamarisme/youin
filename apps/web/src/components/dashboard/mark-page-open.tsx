@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { cn } from "@/lib/utils";
 import {
   NON_ABSOLUTE_MARK_PAGE_HINT,
@@ -20,6 +21,7 @@ export { absoluteHrefForMarkPage, resolveMarkPageHref } from "@/lib/workspace/ma
 
 interface MarkPageOpenButtonProps {
   page: string;
+  markTitle?: string;
   /** Icon-only (lists) vs labeled (detail toolbar). */
   appearance?: "icon" | "labeled";
   className?: string;
@@ -29,6 +31,7 @@ interface MarkPageOpenButtonProps {
 
 export function MarkPageOpenButton({
   page,
+  markTitle,
   appearance = "icon",
   className,
   stopPropagation,
@@ -36,11 +39,18 @@ export function MarkPageOpenButton({
   const href = resolveMarkPageHref(page);
   const trimmed = page.trim();
   const copyHintId = useId();
+  const openLabel = markTitle
+    ? `Open page for ${markTitle} in new tab`
+    : "Open page in new tab";
+  const copyLabel = markTitle
+    ? `Copy page URL for ${markTitle}`
+    : "Copy page URL";
 
   async function copyPath(ev: MouseEvent) {
     if (stopPropagation) ev.stopPropagation();
     try {
-      await navigator.clipboard.writeText(trimmed);
+      const copied = await copyTextToClipboard(trimmed);
+      if (!copied) throw new Error("Clipboard copy failed");
       toast.success("Page URL copied to clipboard.");
     } catch {
       toast.error("Couldn't copy. Select and copy the URL manually.");
@@ -64,7 +74,7 @@ export function MarkPageOpenButton({
           href={href}
           target="_blank"
           rel="noreferrer"
-          aria-label="Open page in new tab"
+          aria-label={openLabel}
           className={cn(
             "inline-flex items-center justify-center",
             appearance === "labeled" && "gap-1.5",
@@ -98,7 +108,7 @@ export function MarkPageOpenButton({
           type="button"
           size="sm"
           variant="outline"
-          aria-label="Copy page URL"
+          aria-label={copyLabel}
           aria-describedby={copyHintId}
           className={cn(
             "inline-flex items-center justify-center",

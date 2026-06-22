@@ -73,11 +73,11 @@ export function IntegrationsTab() {
       icon: Code2,
       action: (
         <Link
-          href={accountHref("team")}
+          href={`${accountHref("team")}#guest-review-links`}
           className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 text-ui-sm font-medium text-mark transition-colors hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <Code2 className="size-3.5" />
-          Manage
+          Manage links
         </Link>
       ),
     },

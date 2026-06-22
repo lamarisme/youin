@@ -669,7 +669,7 @@ function dashboardMarkWhereClause(
       or lower(${marks.description}) like ${query}
       or lower(${marks.page}) like ${query}
       or lower(coalesce(${marks.legacyDisplayKey}, '')) like ${query}
-      or lower(concat(${WORKSPACE_MARK_PREFIX}, '-', ${marks.seq}::text)) like ${query}
+      or lower((${WORKSPACE_MARK_PREFIX})::text || '-' || ${marks.seq}::text) like ${query}
       or ${marks.id}::text like ${query}
     )`);
   }

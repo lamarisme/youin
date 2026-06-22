@@ -75,6 +75,7 @@ export function MarkListItem({
       {mark.page.trim() ? (
         <MarkPageOpenButton
           page={mark.page}
+          markTitle={mark.title}
           appearance="icon"
           stopPropagation
           className="mt-0.5 border-transparent bg-transparent opacity-100 shadow-none hover:bg-paper-3 sm:opacity-0 sm:group-hover/row:opacity-100"

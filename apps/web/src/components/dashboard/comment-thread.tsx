@@ -208,15 +208,13 @@ export function CommentThread({
       </div>
 
       <div className="mt-3 rounded-md bg-paper-2/70 p-2 ring-1 ring-rule/35">
-        <label htmlFor="comment-composer" className="sr-only">
-          Add a comment
-        </label>
         <div>
           <MarkDescriptionEditor
             id="comment-composer"
             value={text}
             onChange={(value) => dispatch({ type: "set_text", value })}
             placeholder="Comment…"
+            ariaLabel="Add a comment"
             maxLength={MARK_COMMENT_MAX_LENGTH}
             disabled={submitting}
             minHeightClassName="min-h-[76px] sm:min-h-[52px]"
@@ -375,7 +373,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                       setDraft(comment.body ?? "");
                       setEditing(true);
                     }}
-                    className="rounded p-1 text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink"
+                    className="inline-flex size-8 items-center justify-center rounded text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink sm:size-6"
                     aria-label="Edit comment"
                   >
                     <Pencil className="size-3" aria-hidden />
@@ -384,7 +382,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(true)}
-                  className="rounded p-1 text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token"
+                  className="inline-flex size-8 items-center justify-center rounded text-ink-3 transition-colors hover:bg-destructive-soft hover:text-destructive-token sm:size-6"
                   aria-label="Delete comment"
                 >
                   <Trash2 className="size-3" aria-hidden />
@@ -419,6 +417,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 value={draft}
                 onChange={setDraft}
                 placeholder="Edit comment… Type / for formatting"
+                ariaLabel="Edit comment"
                 maxLength={MARK_COMMENT_MAX_LENGTH}
                 minHeightClassName="min-h-[60px]"
                 disabled={isSaving}
@@ -499,7 +498,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
               onClick={handleDelete}
               loading={isDeleting}
               loadingText="Deleting…"
-              variant="mark"
+              variant="destructive"
               className="h-9"
             >
               Delete

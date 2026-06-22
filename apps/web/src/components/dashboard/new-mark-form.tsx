@@ -117,6 +117,10 @@ export function NewMarkForm({
     [state.page],
   );
   const pageOk = isValidMarkPageUrl(normalizedPage);
+  const pageError =
+    state.page.trim() && !pageOk
+      ? "Use a full http(s) URL or a domain like example.com/page."
+      : null;
   const canSubmit = Boolean(state.title.trim() && pageOk);
 
   const assigneeOptions = useMemo(
@@ -183,7 +187,7 @@ export function NewMarkForm({
           autoFocus
         />
       </Field>
-      <Field id="new-mark-page" label="Page URL">
+      <Field id="new-mark-page" label="Page URL" error={pageError}>
         <Input
           id="new-mark-page"
           value={state.page}
@@ -195,6 +199,8 @@ export function NewMarkForm({
           }}
           placeholder="https://app.example.com/pricing"
           maxLength={300}
+          aria-invalid={Boolean(pageError) || undefined}
+          aria-describedby={pageError ? "new-mark-page-error" : undefined}
           className="h-10 bg-paper-elevated text-ui-md sm:h-8 sm:text-ui-sm"
         />
       </Field>
@@ -206,6 +212,7 @@ export function NewMarkForm({
             value={state.description}
             onChange={(html) => dispatch({ type: "set_description", value: html })}
             placeholder="What should change?"
+            ariaLabel="Description"
             disabled={submitting}
             minHeightClassName="min-h-[72px]"
           />

@@ -9,6 +9,7 @@ export const NON_ABSOLUTE_MARK_PAGE_HINT =
 export function normalizeMarkPageUrl(value: string): string {
   const t = value.trim();
   if (!t) return "";
+  if (/\s/.test(t)) return t;
   if (/^https?:\/\//i.test(t)) return t;
   if (t.startsWith("//")) {
     try {
@@ -28,9 +29,10 @@ export function normalizeMarkPageUrl(value: string): string {
 }
 
 export function isValidMarkPageUrl(normalized: string): boolean {
-  if (!normalized.trim()) return false;
+  const trimmed = normalized.trim();
+  if (!trimmed || /\s/.test(trimmed)) return false;
   try {
-    const u = new URL(normalized);
+    const u = new URL(trimmed);
     return u.protocol === "http:" || u.protocol === "https:";
   } catch {
     return false;

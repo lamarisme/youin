@@ -21,7 +21,7 @@ export default function ContactPage() {
           </Link>
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-ui-sm text-ink-2 hover:text-ink"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2 text-ui-sm text-ink-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <ArrowLeft className="size-3.5" />
             Back to landing
@@ -70,7 +70,10 @@ export default function ContactPage() {
       <footer className="border-t border-rule bg-paper py-6">
         <div className="shell flex items-center justify-between">
           <p className="font-mono text-ui-xs text-ink-3">&copy; 2026 youin</p>
-          <Link href="/" className="text-ui-xs text-ink-3 hover:text-ink">
+          <Link
+            href="/"
+            className="inline-flex min-h-10 items-center rounded-md px-2 text-ui-xs text-ink-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
             Home
           </Link>
         </div>

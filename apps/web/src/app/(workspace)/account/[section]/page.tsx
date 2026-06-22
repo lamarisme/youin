@@ -6,12 +6,14 @@ import { isAccountSection } from "@/lib/workspace/routes";
 import { IntegrationsTab } from "../tabs/integrations-tab";
 import { DangerTab } from "../tabs/danger-tab";
 import { LabelsTab } from "../tabs/labels-tab";
+import { OverviewTab } from "../tabs/overview-tab";
 import { ProfileTab } from "../tabs/profile-tab";
 import { ProjectsTab } from "../tabs/projects-tab";
 import { StatusesTab } from "../tabs/statuses-tab";
 import { TeamTab } from "../tabs/team-tab";
 
 const SECTION_TITLES: Record<string, string> = {
+  overview: "Account settings",
   team: "Team settings",
   projects: "Project settings",
   integrations: "Integration settings",
@@ -27,8 +29,14 @@ export async function generateMetadata({
   params: Promise<{ section: string }>;
 }): Promise<Metadata> {
   const { section } = await params;
+  if (!isAccountSection(section)) {
+    return {
+      title: "Page not found",
+    };
+  }
+
   return {
-    title: SECTION_TITLES[section] ?? "Account settings",
+    title: SECTION_TITLES[section],
   };
 }
 
@@ -38,10 +46,11 @@ export default async function AccountSectionPage({
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
-  if (!isAccountSection(section) || section === "overview") {
+  if (!isAccountSection(section)) {
     notFound();
   }
 
+  if (section === "overview") return <OverviewTab />;
   if (section === "team") return <TeamTab />;
   if (section === "projects") return <ProjectsTab />;
   if (section === "integrations") return <IntegrationsTab />;

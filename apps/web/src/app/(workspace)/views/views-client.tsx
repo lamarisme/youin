@@ -22,8 +22,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -75,6 +77,8 @@ export function ViewsClient() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createInitialLayout, setCreateInitialLayout] =
     useState<WorkspaceViewLayout>("list");
+  const [deleteCandidate, setDeleteCandidate] =
+    useState<WorkspaceView | null>(null);
   const importDismissKey = workspaceId
     ? `${LOCAL_IMPORT_DISMISSED_PREFIX}${workspaceId}`
     : "";
@@ -157,6 +161,7 @@ export function ViewsClient() {
     if (isDeleting) return;
     try {
       await deleteView({ viewId: view.id, name: view.name });
+      setDeleteCandidate(null);
     } catch {
       // Mutation toast handles the failure.
     }
@@ -164,6 +169,7 @@ export function ViewsClient() {
 
   return (
     <PageContainer>
+      <h1 className="sr-only">Saved views</h1>
       <BreadcrumbHeader
         items={[{ label: "Saved views", current: true }]}
         actions={
@@ -200,7 +206,11 @@ export function ViewsClient() {
         {workspace.views.length > 0 ? (
           <div className="divide-y divide-rule/70">
             {workspace.views.map((view) => (
-              <ViewRow key={view.id} view={view} onDelete={() => handleDelete(view)} />
+              <ViewRow
+                key={view.id}
+                view={view}
+                onDelete={() => setDeleteCandidate(view)}
+              />
             ))}
           </div>
         ) : (
@@ -246,6 +256,41 @@ export function ViewsClient() {
           onCreate={handleCreate}
         />
       ) : null}
+
+      <Dialog
+        open={Boolean(deleteCandidate)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteCandidate(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete saved view?</DialogTitle>
+            <DialogDescription>
+              {deleteCandidate
+                ? `This removes "${deleteCandidate.name}" for everyone in this workspace. Marks and comments stay untouched.`
+                : "This saved view will be removed from the workspace."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteCandidate || isDeleting}
+              onClick={() => {
+                if (deleteCandidate) void handleDelete(deleteCandidate);
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Delete view"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
@@ -284,7 +329,10 @@ function ViewRow({
           {content}
         </div>
       ) : (
-        <Link href={`/views/${view.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+        <Link
+          href={`/views/${view.id}`}
+          className="flex min-h-10 min-w-0 flex-1 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        >
           {content}
         </Link>
       )}

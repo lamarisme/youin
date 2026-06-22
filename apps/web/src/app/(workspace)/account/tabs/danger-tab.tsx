@@ -40,6 +40,21 @@ export function DangerTab() {
     deleteWorkspace.isPending ||
     deleteAccount.isPending;
 
+  function closeConfirmation() {
+    setMode(null);
+    setWorkspaceConfirmation("");
+    setAccountConfirmation("");
+    setLeaveConfirmation("");
+  }
+
+  function toggleMode(nextMode: Exclude<DangerMode, null>) {
+    if (mode === nextMode) {
+      closeConfirmation();
+      return;
+    }
+    setMode(nextMode);
+  }
+
   return (
     <div className="space-y-6">
       <ProductSectionHeader
@@ -67,9 +82,9 @@ export function DangerTab() {
               variant="outline"
               size="sm"
               disabled={isOwner || busy}
-              onClick={() => setMode(mode === "leave" ? null : "leave")}
+              onClick={() => toggleMode("leave")}
             >
-              Leave
+              Leave workspace
             </Button>
           }
         >
@@ -84,6 +99,7 @@ export function DangerTab() {
               danger
               disabled={busy}
               loading={leaveWorkspace.isPending}
+              onCancel={closeConfirmation}
               onSubmit={() => leaveWorkspace.mutate()}
             />
           ) : null}
@@ -99,9 +115,9 @@ export function DangerTab() {
               variant="outline"
               size="sm"
               disabled={!isOwner || busy}
-              onClick={() => setMode(mode === "workspace" ? null : "workspace")}
+              onClick={() => toggleMode("workspace")}
             >
-              Delete
+              Delete workspace
             </Button>
           }
         >
@@ -121,6 +137,7 @@ export function DangerTab() {
               danger
               disabled={busy}
               loading={deleteWorkspace.isPending}
+              onCancel={closeConfirmation}
               onSubmit={() =>
                 deleteWorkspace.mutate({
                   confirmationName: workspaceConfirmation,
@@ -140,7 +157,7 @@ export function DangerTab() {
               variant="destructive"
               size="sm"
               disabled={busy || !email}
-              onClick={() => setMode(mode === "account" ? null : "account")}
+              onClick={() => toggleMode("account")}
             >
               Delete account
             </Button>
@@ -158,6 +175,7 @@ export function DangerTab() {
               danger
               disabled={busy}
               loading={deleteAccount.isPending}
+              onCancel={closeConfirmation}
               onSubmit={() =>
                 deleteAccount.mutate({
                   confirmationEmail: accountConfirmation,
@@ -216,6 +234,7 @@ function ConfirmationPanel({
   danger = false,
   disabled,
   loading,
+  onCancel,
   onSubmit,
 }: {
   label: string;
@@ -228,6 +247,7 @@ function ConfirmationPanel({
   danger?: boolean;
   disabled?: boolean;
   loading?: boolean;
+  onCancel: () => void;
   onSubmit: () => void;
 }) {
   const confirmed = value.trim() === expected;
@@ -249,6 +269,15 @@ function ConfirmationPanel({
           spellCheck={false}
           className="h-10 flex-1 rounded-md border-transparent bg-paper-elevated font-mono text-ui-sm shadow-none hover:bg-paper-3 focus-visible:border-transparent focus-visible:bg-paper-3 focus-visible:ring-0"
         />
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={loading}
+          onClick={onCancel}
+          className="h-10 shrink-0 sm:px-4"
+        >
+          Cancel
+        </Button>
         <SubmitButton
           type="button"
           variant={danger ? "destructive" : "default"}

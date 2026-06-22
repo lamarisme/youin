@@ -132,6 +132,7 @@ export function InboxView({
           </>
         )}
       />
+      <h1 className="sr-only">Inbox</h1>
 
       {invitationDiscoveryFailed ? (
         <div

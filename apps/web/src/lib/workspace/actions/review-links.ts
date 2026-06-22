@@ -5,6 +5,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { projects, workspaceReviewLinks } from "@/db/schema";
 import type { WorkspaceReviewLink } from "@/lib/collab-types";
 import { assertWorkspaceOwner } from "@/lib/workspace/authz";
+import { normalizeReviewLinkTargetOrigin } from "@/lib/workspace/review-link-origin";
 
 import { requireWorkspaceContext, revalidateWorkspaceViews } from "./session";
 
@@ -19,25 +20,6 @@ function token(): string {
   return `${crypto.randomUUID().replace(/-/g, "")}${crypto
     .randomUUID()
     .replace(/-/g, "")}`;
-}
-
-function normalizeTargetOrigin(raw: string): string {
-  const trimmed = raw.trim();
-  if (!trimmed) throw new Error("Enter the site origin for this review link.");
-
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  let url: URL;
-  try {
-    url = new URL(withProtocol);
-  } catch {
-    throw new Error("Enter a valid site URL, like https://staging.example.com.");
-  }
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error("Review links only support http and https sites.");
-  }
-  return url.origin;
 }
 
 function fallbackNameForOrigin(origin: string): string {
@@ -70,7 +52,7 @@ export async function createReviewLinkAction(input: {
   const ctx = await requireWorkspaceContext();
   assertWorkspaceOwner(ctx);
 
-  const targetOrigin = normalizeTargetOrigin(input.targetOrigin);
+  const targetOrigin = normalizeReviewLinkTargetOrigin(input.targetOrigin);
   const name = input.name?.trim() || fallbackNameForOrigin(targetOrigin);
   if (name.length > 80) throw new Error("Review link name is too long.");
 

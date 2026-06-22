@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -32,6 +33,32 @@ interface OnboardingClientProps {
   defaultWorkspaceName: string;
   defaultProjectName: string;
   nextPath: string;
+}
+
+export function OnboardedWorkspaceRedirect({ nextPath }: { nextPath: string }) {
+  useEffect(() => {
+    window.location.replace(nextPath);
+  }, [nextPath]);
+
+  return (
+    <div className="rounded-lg border border-rule bg-paper-2 p-4 shadow-[0_24px_60px_-40px_oklch(18.4%_0.018_62_/_0.36)]">
+      <p className="text-eyebrow">Workspace ready</p>
+      <h1 className="mt-2 text-[1.25rem] font-semibold leading-tight text-ink sm:text-[1.5rem]">
+        Opening your workspace
+      </h1>
+      <p className="mt-1.5 max-w-[44ch] text-ui-sm leading-relaxed text-ink-2">
+        Your account already has workspace access.
+      </p>
+      <div className="mt-5 flex justify-end border-t border-rule pt-3.5">
+        <Button asChild className="h-10 min-w-[164px]">
+          <Link href={nextPath}>
+            Continue
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function formatDate(value: string): string {

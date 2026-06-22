@@ -37,15 +37,6 @@ export function ProfileTab() {
   const [draft, setDraft] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const profileSig = `${profile.name}${profile.title}${profile.about}${profile.avatarUrl}${profile.displayNamePreference}`;
-  const [lastProfileSig, setLastProfileSig] = useState(profileSig);
-  if (profileSig !== lastProfileSig) {
-    setLastProfileSig(profileSig);
-    setEditing(null);
-    setDraft("");
-    setSaveError(null);
-  }
-
   function beginEdit(field: ProfileField) {
     setEditing(field);
     setDraft(profile[field]);
