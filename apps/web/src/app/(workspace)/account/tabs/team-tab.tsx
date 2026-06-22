@@ -379,7 +379,7 @@ export function TeamTab() {
                   id="review-project"
                   value={reviewProjectId}
                   onChange={(e) => setReviewProjectId(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-md border-0 bg-paper-elevated px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper-3 focus:ring-2 focus:ring-mark/20"
+                  className="mt-1 h-10 w-full rounded-md border-0 bg-paper-2 px-3 text-ui-sm text-ink shadow-none outline-none transition-colors hover:bg-paper-3 focus:bg-paper focus:ring-1 focus:ring-mark/25 focus-visible:outline-none"
                 >
                   {reviewProjects.length > 0 ? (
                     reviewProjects.map((project) => (
