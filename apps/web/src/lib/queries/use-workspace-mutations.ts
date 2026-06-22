@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { actionErrorMessage } from "@/lib/action-error";
-import { useWorkspaceUiStore } from "@/lib/collab-store";
 import type {
   AiPromptTarget,
   MarkComment,
@@ -12,7 +11,6 @@ import type {
   MarkItem,
   MarkPriority,
   MarkStatus,
-  Workspace,
   WorkspaceLabel,
   WorkspaceProject,
   WorkspaceReviewLink,
@@ -23,8 +21,14 @@ import type {
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { createOptimisticId } from "@/lib/optimistic-id";
-import { workspaceKeys } from "@/lib/queries/keys";
-import { getWorkspaceQueryData } from "@/lib/queries/use-workspace";
+import {
+  prepareOptimisticMutation,
+  restoreWorkspace,
+  settleWorkspaceMutation,
+  updateBundle,
+  updateWorkspace,
+  workspaceMutationHandlers,
+} from "@/lib/queries/workspace-optimistic";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -35,13 +39,6 @@ import {
 import { workspaceViewPayload } from "@/lib/workspace/views";
 import * as ws from "@/lib/workspace/actions";
 import type { ProfileUpdates } from "@/lib/workspace/actions";
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
-
-type MutationContext = {
-  previous?: WorkspaceBootstrap;
-  optimisticId?: string;
-  mutationId?: string;
-};
 
 type DeleteMarkInput =
   | string
@@ -86,79 +83,6 @@ async function waitForMarkDeleteUndo(input: DeleteMarkInput): Promise<"commit" |
       },
     });
   });
-}
-
-function invalidateWorkspace(queryClient: ReturnType<typeof useQueryClient>) {
-  return queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
-}
-
-function restoreWorkspace(
-  context: MutationContext | undefined,
-) {
-  useWorkspaceUiStore
-    .getState()
-    .setOptimisticWorkspace(context?.previous ?? null);
-}
-
-function getWorkspaceMutationBase(
-  queryClient: ReturnType<typeof useQueryClient>,
-): WorkspaceBootstrap | undefined {
-  return (
-    useWorkspaceUiStore.getState().optimisticWorkspace ??
-    getWorkspaceQueryData(queryClient)
-  );
-}
-
-function updateBundle(
-  queryClient: ReturnType<typeof useQueryClient>,
-  updater: (bundle: WorkspaceBootstrap) => WorkspaceBootstrap,
-) {
-  const current = getWorkspaceMutationBase(queryClient);
-  if (!current) return;
-  useWorkspaceUiStore.getState().setOptimisticWorkspace(updater(current));
-}
-
-function updateWorkspace(
-  queryClient: ReturnType<typeof useQueryClient>,
-  updater: (workspace: Workspace, bundle: WorkspaceBootstrap) => Workspace,
-) {
-  updateBundle(queryClient, (bundle) => ({
-    ...bundle,
-    workspace: updater(bundle.workspace, bundle),
-  }));
-}
-
-function snapshot(queryClient: ReturnType<typeof useQueryClient>): MutationContext {
-  return { previous: getWorkspaceMutationBase(queryClient) };
-}
-
-async function prepareOptimisticMutation(
-  queryClient: ReturnType<typeof useQueryClient>,
-): Promise<MutationContext> {
-  await queryClient.cancelQueries({ queryKey: workspaceKeys.all });
-  const context = snapshot(queryClient);
-  const mutationId = crypto.randomUUID();
-  context.mutationId = mutationId;
-  useWorkspaceUiStore.getState().beginOptimisticMutation(mutationId);
-  return context;
-}
-
-async function settleWorkspaceMutation(
-  queryClient: ReturnType<typeof useQueryClient>,
-  context: unknown,
-) {
-  await invalidateWorkspace(queryClient);
-
-  if (context && typeof context === "object" && "mutationId" in context) {
-    const mutationId = (context as MutationContext).mutationId;
-    if (mutationId) {
-      useWorkspaceUiStore.getState().finishOptimisticMutation(mutationId);
-    }
-  }
-
-  if (useWorkspaceUiStore.getState().pendingOptimisticMutationIds.length === 0) {
-    useWorkspaceUiStore.getState().clearOptimisticWorkspace();
-  }
 }
 
 function replaceOptimisticOrAppend<T extends { id: string }>(
@@ -272,12 +196,7 @@ export function useCreateWorkspaceViewMutation() {
         ).items,
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create this view."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create this view."),
   });
 }
 
@@ -318,12 +237,7 @@ export function useUpdateWorkspaceViewMutation() {
         views: workspace.views.map((item) => (item.id === view.id ? view : item)),
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't save this view."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't save this view."),
   });
 }
 
@@ -341,18 +255,13 @@ export function useDeleteWorkspaceViewMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't delete this view."));
-    },
+    ...workspaceMutationHandlers(queryClient, "Couldn't delete this view."),
     onSuccess: (_data, { viewId }) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
         views: workspace.views.filter((view) => view.id !== viewId),
       }));
     },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
   });
 }
 
@@ -400,12 +309,7 @@ export function useCreateProjectMutation() {
         ).items,
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create this project."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create this project."),
   });
 }
 
@@ -452,12 +356,7 @@ export function useUpdateProjectMutation() {
         ),
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't save this project."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't save this project."),
   });
 }
 
@@ -474,12 +373,7 @@ export function useDeleteProjectMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't delete this project."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't delete this project."),
   });
 }
 
@@ -572,12 +466,7 @@ export function useCreateMarkMutation() {
         };
       });
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create this mark."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create this mark."),
   });
 }
 
@@ -604,12 +493,7 @@ export function useToggleMarkStatusMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update mark status."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update mark status."),
   });
 }
 
@@ -627,12 +511,7 @@ export function useToggleMarkPinnedMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update pinned state."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update pinned state."),
   });
 }
 
@@ -656,12 +535,7 @@ export function useUpdateMarkPriorityMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update priority."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update priority."),
   });
 }
 
@@ -757,12 +631,7 @@ export function useUpdateMarkMutation() {
       });
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't save changes."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't save changes."),
   });
 }
 
@@ -786,12 +655,7 @@ export function useAssignMarkMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update assignee."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update assignee."),
   });
 }
 
@@ -811,12 +675,7 @@ export function useSetMarkLabelsMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update labels."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update labels."),
   });
 }
 
@@ -852,12 +711,7 @@ export function useSetMarkWorkflowStatusMutation() {
       });
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update workflow status."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update workflow status."),
   });
 }
 
@@ -918,12 +772,7 @@ export function useAddCommentsMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't post your comment."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't post your comment."),
   });
 }
 
@@ -942,12 +791,7 @@ export function useUpdateCommentMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update your comment."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update your comment."),
   });
 }
 
@@ -973,12 +817,7 @@ export function useDeleteCommentMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't delete this comment."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't delete this comment."),
   });
 }
 
@@ -1017,12 +856,7 @@ export function useUpdateProfileMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't save profile."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't save profile."),
   });
 }
 
@@ -1041,12 +875,7 @@ export function useUpdateMyWorkspaceUsernameMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't update username."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't update username."),
   });
 }
 
@@ -1062,12 +891,7 @@ export function useUpdateWorkspaceMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't rename workspace."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't rename workspace."),
   });
 }
 
@@ -1114,12 +938,7 @@ export function useCreateWorkflowStatusMutation() {
         ).items,
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create this workflow status."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create this workflow status."),
   });
 }
 
@@ -1164,12 +983,7 @@ export function useUpdateWorkflowStatusMutation() {
         ),
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't save this workflow status."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't save this workflow status."),
   });
 }
 
@@ -1208,12 +1022,7 @@ export function useArchiveWorkflowStatusMutation() {
       });
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't archive this workflow status."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't archive this workflow status."),
   });
 }
 
@@ -1249,12 +1058,7 @@ export function useInviteMemberMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create invitation."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create invitation."),
   });
 }
 
@@ -1273,12 +1077,7 @@ export function useCancelInviteMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't revoke invite."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't revoke invite."),
   });
 }
 
@@ -1318,12 +1117,7 @@ export function useRevokeReviewLinkMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't revoke review link."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't revoke review link."),
   });
 }
 
@@ -1347,12 +1141,7 @@ export function useRemoveMemberMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't remove member."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't remove member."),
   });
 }
 
@@ -1433,12 +1222,7 @@ export function useCreateLabelMutation() {
         ).items,
       }));
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't create this label."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't create this label."),
   });
 }
 
@@ -1460,11 +1244,6 @@ export function useDeleteLabelMutation() {
       }));
       return context;
     },
-    onError: (e, _vars, context) => {
-      restoreWorkspace(context);
-      toast.error(actionErrorMessage(e, "Couldn't delete label."));
-    },
-    onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+    ...workspaceMutationHandlers(queryClient, "Couldn't delete label."),
   });
 }

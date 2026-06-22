@@ -5,7 +5,6 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -52,11 +51,7 @@ import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
-import {
-  safeLocalStorageGet,
-  safeLocalStorageSet,
-} from "@/lib/safe-local-storage";
-
+import { useLocalStorageState } from "@/lib/use-local-storage-state";
 
 import { useDashboardReadModel } from "@/components/providers/workspace-read-model-provider";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -97,15 +92,29 @@ function clampDetailSidebarWidth(
   return Math.min(Math.max(width, min), max);
 }
 
-function readStoredDetailSidebarWidth() {
-  const storedWidth = Number(safeLocalStorageGet(DETAIL_SIDEBAR_WIDTH_KEY));
-  return Number.isFinite(storedWidth)
-    ? clampDetailSidebarWidth(storedWidth)
+function normalizeDetailSidebarWidth(width: number) {
+  return Number.isFinite(width)
+    ? clampDetailSidebarWidth(width)
     : DETAIL_SIDEBAR_DEFAULT_WIDTH;
 }
 
-function readStoredDetailSidebarCollapsed() {
-  return safeLocalStorageGet(DETAIL_SIDEBAR_COLLAPSED_KEY) === "true";
+function useMarkDetailSidebarPreferences() {
+  const [storedWidth, setWidth] = useLocalStorageState(
+    DETAIL_SIDEBAR_WIDTH_KEY,
+    DETAIL_SIDEBAR_DEFAULT_WIDTH,
+  );
+  const [collapsed, setCollapsed] = useLocalStorageState(
+    DETAIL_SIDEBAR_COLLAPSED_KEY,
+    false,
+  );
+
+  return {
+    collapsed,
+    setCollapsed,
+    setWidth,
+    toggleCollapsed: () => setCollapsed((current) => !current),
+    width: normalizeDetailSidebarWidth(storedWidth),
+  };
 }
 
 export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
@@ -185,34 +194,8 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   const [editDescription, setEditDescription] = useState(mark.description);
   const [editPage, setEditPage] = useState(mark.page);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(
-    DETAIL_SIDEBAR_DEFAULT_WIDTH,
-  );
-  const [rightSidebarCollapsed, setRightSidebarCollapsed] = useState(false);
-  const [sidebarPreferencesLoaded, setSidebarPreferencesLoaded] = useState(false);
+  const sidebarPreferences = useMarkDetailSidebarPreferences();
   const isPane = variant === "pane";
-
-  useEffect(() => {
-    setRightSidebarWidth(readStoredDetailSidebarWidth());
-    setRightSidebarCollapsed(readStoredDetailSidebarCollapsed());
-    setSidebarPreferencesLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (!sidebarPreferencesLoaded) return;
-    safeLocalStorageSet(
-      DETAIL_SIDEBAR_WIDTH_KEY,
-      String(Math.round(rightSidebarWidth)),
-    );
-  }, [rightSidebarWidth, sidebarPreferencesLoaded]);
-
-  useEffect(() => {
-    if (!sidebarPreferencesLoaded) return;
-    safeLocalStorageSet(
-      DETAIL_SIDEBAR_COLLAPSED_KEY,
-      String(rightSidebarCollapsed),
-    );
-  }, [rightSidebarCollapsed, sidebarPreferencesLoaded]);
 
   function startEdit(field: EditingField = "title") {
     setEditTitle(mark.title);
@@ -307,14 +290,10 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     if (displayKey) router.push(markHref(displayKey, searchParams));
   }
 
-  function toggleRightSidebar() {
-    setRightSidebarCollapsed((collapsed) => !collapsed);
-  }
-
   function handleRightSidebarResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {
     if (isPane) return;
     event.preventDefault();
-    setRightSidebarCollapsed(false);
+    sidebarPreferences.setCollapsed(false);
 
     const layout = event.currentTarget.closest("[data-mark-detail-layout]") as HTMLElement | null;
     const rect = layout?.getBoundingClientRect();
@@ -326,7 +305,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
     );
 
     const updateWidth = (clientX: number) => {
-      setRightSidebarWidth(
+      sidebarPreferences.setWidth(
         clampDetailSidebarWidth(rect.right - clientX, DETAIL_SIDEBAR_MIN_WIDTH, maxWidth),
       );
     };
@@ -351,16 +330,18 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
   function handleRightSidebarResizeKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
-    setRightSidebarCollapsed(false);
-    setRightSidebarWidth((width) =>
-      clampDetailSidebarWidth(width + (event.key === "ArrowLeft" ? 24 : -24)),
+    sidebarPreferences.setCollapsed(false);
+    sidebarPreferences.setWidth((width) =>
+      clampDetailSidebarWidth(
+        normalizeDetailSidebarWidth(width) + (event.key === "ArrowLeft" ? 24 : -24),
+      ),
     );
   }
 
   const detailLayoutStyle = {
-    "--mark-detail-sidebar-width": rightSidebarCollapsed
+    "--mark-detail-sidebar-width": sidebarPreferences.collapsed
       ? "2.75rem"
-      : `${rightSidebarWidth}px`,
+      : `${sidebarPreferences.width}px`,
   } as CSSProperties;
 
   return (
@@ -650,11 +631,11 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
 
         <DetailSidebar
           isPane={isPane}
-          collapsed={rightSidebarCollapsed}
-          width={rightSidebarWidth}
+          collapsed={sidebarPreferences.collapsed}
+          width={sidebarPreferences.width}
           minWidth={DETAIL_SIDEBAR_MIN_WIDTH}
           maxWidth={DETAIL_SIDEBAR_MAX_WIDTH}
-          onToggleCollapsed={toggleRightSidebar}
+          onToggleCollapsed={sidebarPreferences.toggleCollapsed}
           onResizeStart={handleRightSidebarResizeStart}
           onResizeKeyDown={handleRightSidebarResizeKeyDown}
         >
@@ -668,7 +649,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
                   type="button"
                   size="icon-sm"
                   variant="ghost"
-                  onClick={toggleRightSidebar}
+                  onClick={sidebarPreferences.toggleCollapsed}
                   aria-label="Collapse details sidebar"
                   title="Collapse details sidebar"
                   className="hidden text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20 lg:inline-flex"

@@ -78,7 +78,7 @@ export function ViewDetailClient({ viewId }: { viewId: string }) {
     loadedAt: s.loadedAt,
   }));
   const view = workspace.views.find((item) => item.id === viewId) ?? null;
-  const [redirectingDeletedView, setRedirectingDeletedView] = useState(() =>
+  const [redirectingDeletedView] = useState(() =>
     deletedViewRedirectMatches(viewId),
   );
 

@@ -1,7 +1,18 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  type PropsWithChildren,
+} from "react";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
@@ -78,6 +89,29 @@ function readModelUpdatedAt(loadedAt: string): number | undefined {
   return updatedAtFromIso(loadedAt);
 }
 
+function useWorkspaceReadModelQuery<TReadModel extends { loadedAt: string }>({
+  queryKey,
+  queryFn,
+  initialData,
+}: {
+  queryKey: QueryKey;
+  queryFn: () => Promise<TReadModel>;
+  initialData: TReadModel;
+}) {
+  return useQuery({
+    queryKey,
+    queryFn,
+    initialData,
+    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    placeholderData: keepPreviousData,
+    staleTime: QUERY_CACHE.readModelStaleMs,
+    gcTime: QUERY_CACHE.gcMs,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
+  });
+}
+
 function useSeedReadModelWorkspace(
   workspace: Workspace | undefined,
   loadedAt: string | undefined,
@@ -102,23 +136,14 @@ export function DashboardReadModelProvider({
   initialData,
   request,
   children,
-}: {
+}: PropsWithChildren<{
   initialData: DashboardReadModel;
   request: DashboardReadModelRequest;
-  children: React.ReactNode;
-}) {
-  // TODO: migrate queryFn from server action to route handler (server actions are designed for mutations, not reads)
-  const query = useQuery({
+}>) {
+  const query = useWorkspaceReadModelQuery({
     queryKey: workspaceKeys.dashboard(request),
     queryFn: () => getDashboardReadModelAction(request),
     initialData,
-    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
-    placeholderData: keepPreviousData,
-    staleTime: QUERY_CACHE.readModelStaleMs,
-    gcTime: QUERY_CACHE.gcMs,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
   });
   const {
     data: dashboardData,
@@ -183,22 +208,13 @@ export function DashboardReadModelProvider({
 export function AccountReadModelProvider({
   initialData,
   children,
-}: {
+}: PropsWithChildren<{
   initialData: AccountReadModel;
-  children: React.ReactNode;
-}) {
-  // TODO: migrate queryFn from server action to route handler
-  const query = useQuery({
+}>) {
+  const query = useWorkspaceReadModelQuery({
     queryKey: workspaceKeys.account(),
     queryFn: getAccountReadModelAction,
     initialData,
-    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
-    placeholderData: keepPreviousData,
-    staleTime: QUERY_CACHE.readModelStaleMs,
-    gcTime: QUERY_CACHE.gcMs,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
   });
   const snapshot = useSeedReadModelWorkspace(
     query.data?.workspace,
@@ -215,22 +231,13 @@ export function AccountReadModelProvider({
 export function ViewsIndexReadModelProvider({
   initialData,
   children,
-}: {
+}: PropsWithChildren<{
   initialData: ViewsIndexReadModel;
-  children: React.ReactNode;
-}) {
-  // TODO: migrate queryFn from server action to route handler
-  const query = useQuery({
+}>) {
+  const query = useWorkspaceReadModelQuery({
     queryKey: workspaceKeys.viewsIndex(),
     queryFn: getViewsIndexReadModelAction,
     initialData,
-    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
-    placeholderData: keepPreviousData,
-    staleTime: QUERY_CACHE.readModelStaleMs,
-    gcTime: QUERY_CACHE.gcMs,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
   });
   const workspace = useMemo(
     () => (query.data ? completeWorkspace(query.data.workspace) : undefined),
@@ -249,23 +256,14 @@ export function ViewDetailReadModelProvider({
   viewId,
   initialData,
   children,
-}: {
+}: PropsWithChildren<{
   viewId: string;
   initialData: ViewDetailReadModel;
-  children: React.ReactNode;
-}) {
-  // TODO: migrate queryFn from server action to route handler
-  const query = useQuery({
+}>) {
+  const query = useWorkspaceReadModelQuery({
     queryKey: workspaceKeys.viewDetail(viewId),
     queryFn: getViewDetailReadModelAction,
     initialData,
-    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
-    placeholderData: keepPreviousData,
-    staleTime: QUERY_CACHE.readModelStaleMs,
-    gcTime: QUERY_CACHE.gcMs,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
   });
   const snapshot = useSeedReadModelWorkspace(
     query.data?.workspace,

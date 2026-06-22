@@ -18,6 +18,11 @@ const subscribe = (callback: () => void) => {
 };
 
 export function useLocalStorageState<T>(key: string, initialValue: T) {
+  const initialValueJson = useMemo(
+    () => JSON.stringify(initialValue),
+    [initialValue],
+  );
+
   const getSnapshot = useCallback(() => {
     try {
       const fromStorage = safeLocalStorageGet(key);
@@ -27,12 +32,12 @@ export function useLocalStorageState<T>(key: string, initialValue: T) {
     } catch {
       // Ignore malformed localStorage values
     }
-    return JSON.stringify(initialValue);
-  }, [key, initialValue]);
+    return initialValueJson;
+  }, [key, initialValueJson]);
 
   const getServerSnapshot = useCallback(() => {
-    return JSON.stringify(initialValue);
-  }, [initialValue]);
+    return initialValueJson;
+  }, [initialValueJson]);
 
   const rawValue = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
@@ -72,4 +77,3 @@ export function useLocalStorageState<T>(key: string, initialValue: T) {
 
   return [parsedValue, setValue] as const;
 }
-
