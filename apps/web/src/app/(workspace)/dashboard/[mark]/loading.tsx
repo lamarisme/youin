@@ -1,5 +1,5 @@
-import { MarkDetailMainSkeleton } from "@/components/workspace-shell-skeleton";
+import { MarkDetailLoadingPreview } from "@/components/dashboard/mark-detail-loading-preview";
 
 export default function DashboardMarkLoading() {
-  return <MarkDetailMainSkeleton id="Loading mark" />;
+  return <MarkDetailLoadingPreview id="Loading mark" />;
 }
