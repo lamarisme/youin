@@ -38,7 +38,7 @@ import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
 import { getCommandPaletteIndexReadModelAction } from "@/lib/workspace/actions";
-import { markHref } from "@/lib/workspace/routes";
+import { dashboardHref, markHref } from "@/lib/workspace/routes";
 
 interface PaletteCommand {
   id: string;
@@ -104,6 +104,23 @@ function closeTransientOverlays() {
 
   target?.dispatchEvent(new KeyboardEvent("keydown", eventInit));
   document.dispatchEvent(new KeyboardEvent("keydown", eventInit));
+}
+
+function dashboardListPathFor(pathname: string): string | null {
+  if (pathname === "/dashboard" || pathname === "/dashboard/mine") {
+    return pathname;
+  }
+  if (pathname.startsWith("/dashboard/mine/")) {
+    return "/dashboard/mine";
+  }
+  const projectMatch = pathname.match(/^\/dashboard\/projects\/([^/]+)/);
+  if (projectMatch?.[1]) {
+    return `/dashboard/projects/${projectMatch[1]}`;
+  }
+  if (pathname.startsWith("/dashboard/")) {
+    return "/dashboard";
+  }
+  return null;
 }
 
 function CommandPaletteDialog({
@@ -181,7 +198,7 @@ function CommandPaletteDialog({
       }
       const navMap: Record<string, string> = {
         i: "/inbox",
-        m: "/dashboard?assignee=me",
+        m: "/dashboard/mine",
         v: "/views",
         c: "/account",
       };
@@ -209,13 +226,18 @@ function CommandPaletteDialog({
 
   const allCommands = useMemo<PaletteCommand[]>(() => {
     const openNewMark = () => {
-      if (pathname === "/dashboard") {
+      const dashboardListPath = dashboardListPathFor(pathname);
+      if (dashboardListPath === pathname) {
         window.dispatchEvent(new CustomEvent("youin:new-mark"));
       } else {
         const params = new URLSearchParams(searchParams.toString());
         params.set("new", "1");
         params.delete("page");
-        router.push(`/dashboard?${params.toString()}`);
+        router.push(
+          dashboardListPath
+            ? `${dashboardListPath}?${params.toString()}`
+            : `/dashboard?${params.toString()}`,
+        );
       }
     };
     const base: PaletteCommand[] = [
@@ -258,7 +280,7 @@ function CommandPaletteDialog({
         group: "navigate",
         shortcut: "G M",
         icon: CircleDashed,
-        run: () => router.push("/dashboard?assignee=me"),
+        run: () => router.push("/dashboard/mine"),
       },
       {
         id: "nav-inbox",
@@ -308,7 +330,13 @@ function CommandPaletteDialog({
         group: "projects" as const,
         keywords: ["project", "jump"],
         icon: Hash,
-        run: () => router.push(`/dashboard?project=${project.id}`),
+        run: () =>
+          router.push(
+            dashboardHref(new URLSearchParams(), {
+              kind: "project",
+              projectId: project.id,
+            }),
+          ),
       }));
     const viewCommands: PaletteCommand[] = views
       .filter((view) => !isOptimisticId(view.id))

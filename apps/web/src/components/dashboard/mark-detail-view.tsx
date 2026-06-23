@@ -65,13 +65,14 @@ import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
-import { markHref } from "@/lib/workspace/routes";
+import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
 interface MarkDetailViewProps {
   mark: MarkItem;
   backHref: string;
+  routeScope?: DashboardRouteScope;
   variant?: "page" | "pane";
 }
 
@@ -117,7 +118,12 @@ function useMarkDetailSidebarPreferences() {
   };
 }
 
-export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailViewProps) {
+export function MarkDetailView({
+  mark,
+  backHref,
+  routeScope = { kind: "all" },
+  variant = "page",
+}: MarkDetailViewProps) {
   const { workspace, userId, displayNamePreference } = useWorkspaceData((s) => ({
     workspace: s.workspace,
     userId: s.userId,
@@ -287,7 +293,7 @@ export function MarkDetailView({ mark, backHref, variant = "page" }: MarkDetailV
 
   function goAdjacent(direction: "prev" | "next") {
     const displayKey = direction === "prev" ? previousDisplayKey : nextDisplayKey;
-    if (displayKey) router.push(markHref(displayKey, searchParams));
+    if (displayKey) router.push(markHref(displayKey, searchParams, routeScope));
   }
 
   function handleRightSidebarResizeStart(event: ReactPointerEvent<HTMLButtonElement>) {

@@ -45,7 +45,6 @@ export type DashboardDensity = (typeof DASHBOARD_DENSITIES)[number];
 
 export interface DashboardFilters {
   projectId: string;
-  markId: string | null;
   status: StatusFilter;
   workflowStatus: string;
   priority: PriorityFilter;
@@ -145,7 +144,6 @@ export function dashboardQueryFromSearchParams(
 ): DashboardFilters {
   return {
     projectId: stringParam(params, "project", "all"),
-    markId: firstParam(params, "mark"),
     status: literalParam(params, "status", DASHBOARD_STATUS_FILTERS, "all"),
     workflowStatus: stringParam(params, "workflowStatus", "all"),
     priority: literalParam(

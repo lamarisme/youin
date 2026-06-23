@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   CircleDashed,
@@ -59,7 +59,7 @@ import {
 } from "@/lib/queries/use-workspace-mutations";
 import { buildBulkMarksAiPrompt } from "@/lib/workspace/mark-ai-prompt";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
-import { markHref } from "@/lib/workspace/routes";
+import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { cn } from "@/lib/utils";
 
 import { BulkActionBar } from "./bulk-action-bar";
@@ -72,7 +72,11 @@ import { useDashboardFilters, type DashboardFilters } from "./use-dashboard-filt
 import { useMarkTableModel } from "./use-mark-table-model";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
 
-export function TriageView() {
+export function TriageView({
+  routeScope = { kind: "all" },
+}: {
+  routeScope?: DashboardRouteScope;
+}) {
   const { workspace, userId, displayNamePreference } =
     useWorkspaceData((s) => ({
       workspace: s.workspace,
@@ -94,13 +98,13 @@ export function TriageView() {
     isPlaceholderData,
   } = useDashboardReadModel();
   const {
-    filters,
+    filters: urlFilters,
     update,
     isPending: isFilterTransitionPending,
   } = useDashboardFilters();
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const routeProjectId = searchParams.get("project");
   const hasNewMarkParam = searchParams.get("new") === "1";
   const searchParamString = searchParams.toString();
   const [showNew, setShowNew] = useState(false);
@@ -121,15 +125,24 @@ export function TriageView() {
     [selectedMarkIds],
   );
   const newMarkDialogOpen = showNew || hasNewMarkParam;
+  const filters = useMemo(
+    () => ({
+      ...urlFilters,
+      projectId:
+        routeScope.kind === "project" ? routeScope.projectId : urlFilters.projectId,
+      assignee: routeScope.kind === "mine" ? "me" : urlFilters.assignee,
+    }),
+    [routeScope, urlFilters],
+  );
 
   const selectedProject = useMemo(() => {
-    if (!routeProjectId) return null;
+    if (filters.projectId === "all") return null;
     return (
       workspace.projects.find(
-        (project) => project.id === routeProjectId && !isOptimisticId(project.id),
+        (project) => project.id === filters.projectId && !isOptimisticId(project.id),
       ) ?? null
     );
-  }, [routeProjectId, workspace.projects]);
+  }, [filters.projectId, workspace.projects]);
 
   const newMarkProject =
     selectedProject ??
@@ -165,9 +178,12 @@ export function TriageView() {
   const updateDashboardFilters: typeof update = useCallback(
     (patch, options) => {
       clearSelectedMarks();
-      update(patch, options);
+      const nextPatch = { ...patch };
+      if (routeScope.kind === "project") delete nextPatch.projectId;
+      if (routeScope.kind === "mine") delete nextPatch.assignee;
+      update(nextPatch, options);
     },
-    [clearSelectedMarks, update],
+    [clearSelectedMarks, routeScope.kind, update],
   );
 
   const scopedSelectedIds = useMemo(
@@ -224,8 +240,8 @@ export function TriageView() {
 
     const next = new URLSearchParams(searchParamString);
     next.delete("new");
-    router.replace(next.size ? `/dashboard?${next.toString()}` : "/dashboard");
-  }, [hasNewMarkParam, router, searchParamString]);
+    router.replace(next.size ? `${pathname}?${next.toString()}` : pathname);
+  }, [hasNewMarkParam, pathname, router, searchParamString]);
 
   useEffect(() => {
     function openNewMark() {
@@ -399,9 +415,12 @@ export function TriageView() {
         priority: input.priority,
       });
       const params = new URLSearchParams(searchParamString);
-      params.set("project", newMarkProject.id);
       params.delete("new");
-      router.push(markHref(created.displayKey, params));
+      const nextScope =
+        routeScope.kind === "project"
+          ? routeScope
+          : { kind: "project", projectId: newMarkProject.id } satisfies DashboardRouteScope;
+      router.push(markHref(created.displayKey, params, nextScope));
       setShowNew(false);
     } catch {
       // toast handled by the mutation
@@ -583,7 +602,7 @@ export function TriageView() {
                 density={rowFilters.density === "compact" ? "compact" : "default"}
                 selectedIds={scopedSelectedIds}
                 onSelectionChange={handleSelectionChange}
-                markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
+                markHrefFor={(mark) => markHref(mark.displayKey, searchParams, routeScope)}
                 onToggleMarkStatus={handleRowToggleStatus}
               />
             ) : (
@@ -601,7 +620,7 @@ export function TriageView() {
                   isMyMarksPage: rowIsMyMarksPage,
                 })}
                 density={rowFilters.density === "compact" ? "compact" : "default"}
-                markHrefFor={(mark) => markHref(mark.displayKey, searchParams)}
+                markHrefFor={(mark) => markHref(mark.displayKey, searchParams, routeScope)}
                 onToggleMarkStatus={handleRowToggleStatus}
                 selectedIds={scopedSelectedIds}
                 onSelectionChange={handleSelectionChange}

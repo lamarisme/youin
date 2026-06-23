@@ -39,16 +39,12 @@ const assigneeParser = parseAsStringLiteral(DASHBOARD_ASSIGNEE_FILTERS).withDefa
 const groupByParser = parseAsStringLiteral(DASHBOARD_GROUP_BY).withDefault("none").withOptions({ clearOnDefault: true });
 const densityParser = parseAsStringLiteral(DASHBOARD_DENSITIES).withDefault("comfortable").withOptions({ clearOnDefault: true });
 
-const projectParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
-const markParser = parseAsString;
 const workflowStatusParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const labelParser = parseAsString.withDefault("all").withOptions({ clearOnDefault: true });
 const queryParser = parseAsString.withDefault("").withOptions({ clearOnDefault: true });
 const pageParser = parseAsInteger.withDefault(1).withOptions({ clearOnDefault: true });
 
 const dashboardFilterParsers = {
-  projectId: projectParser,
-  markId: markParser,
   status: statusParser,
   workflowStatus: workflowStatusParser,
   priority: priorityParser,
@@ -66,8 +62,6 @@ export function useDashboardFilters() {
   const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useQueryStates(dashboardFilterParsers, {
     urlKeys: {
-      projectId: "project",
-      markId: "mark",
       groupBy: "group",
     },
     shallow: false,
@@ -79,13 +73,15 @@ export function useDashboardFilters() {
       patch: DashboardFilterPatch,
       options?: { resetPage?: boolean },
     ) => {
+      const queryPatch = { ...patch };
+      delete queryPatch.projectId;
       void setFilters({
-        ...patch,
+        ...queryPatch,
         ...(options?.resetPage ? { page: 1 } : {}),
       });
     },
     [setFilters],
   );
 
-  return { filters, update, isPending };
+  return { filters: { projectId: "all", ...filters }, update, isPending };
 }

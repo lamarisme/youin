@@ -565,7 +565,6 @@ function toDashboardFilters(
 ): DashboardFilters {
   return {
     projectId: filters.projectId,
-    markId: null,
     status: filters.status,
     workflowStatus: filters.workflowStatus,
     priority: filters.priority,

@@ -8,66 +8,72 @@ import { ArrowRight, CircleDashed, MailCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/empty-state";
+import { PageContainer } from "@/components/page-container";
 import { formatDate } from "@/lib/dates";
 import { findMarkByRouteParam } from "@/lib/workspace/mark-display-id";
-import { dashboardHref } from "@/lib/workspace/routes";
+import { dashboardHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import type { PendingWorkspaceInvite } from "@/lib/workspace/invitations";
 
 import { MarkDetailView } from "./mark-detail-view";
 import { TriageView } from "./triage-view";
-import { PageContainer } from "@/components/page-container";
 
-export function WorkspaceDashboard({
-  markParam = null,
+export function DashboardIndexView({
   pendingInvites = [],
+  routeScope = { kind: "all" },
 }: {
-  markParam?: string | null;
   pendingInvites?: PendingWorkspaceInvite[];
+  routeScope?: DashboardRouteScope;
 }) {
-  const marks = useWorkspaceData((s) => s.workspace.marks);
-  const searchParams = useSearchParams();
-
-  const selectedMark = useMemo(() => {
-    if (!markParam) return null;
-    return findMarkByRouteParam(markParam, marks) ?? null;
-  }, [markParam, marks]);
-
-  if (markParam) {
-    return (
-      <PageContainer className="detail-reveal">
-        {selectedMark ? (
-          <MarkDetailView
-            mark={selectedMark}
-            backHref={dashboardHref(searchParams)}
-            variant="page"
-          />
-        ) : (
-          <>
-            <h1 className="sr-only">Mark not found</h1>
-            <EmptyState
-              icon={CircleDashed}
-              title="Mark not found."
-              description={`${markParam} may have been deleted, moved, or hidden from this workspace.`}
-              action={
-                <Button asChild variant="outline" size="sm" className="h-10">
-                  <Link href={dashboardHref(searchParams)}>Back to marks</Link>
-                </Button>
-              }
-            />
-          </>
-        )}
-      </PageContainer>
-    );
-  }
-
   return (
     <PageContainer>
       <h1 className="sr-only">Dashboard</h1>
       {pendingInvites.length > 0 ? (
         <WorkspaceInvitationReminder invites={pendingInvites} />
       ) : null}
-      <TriageView />
+      <TriageView routeScope={routeScope} />
+    </PageContainer>
+  );
+}
+
+export function DashboardMarkDetailView({
+  markParam,
+  routeScope = { kind: "all" },
+}: {
+  markParam: string;
+  routeScope?: DashboardRouteScope;
+}) {
+  const marks = useWorkspaceData((s) => s.workspace.marks);
+  const searchParams = useSearchParams();
+
+  const selectedMark = useMemo(() => {
+    return findMarkByRouteParam(markParam, marks) ?? null;
+  }, [markParam, marks]);
+
+  return (
+    <PageContainer className="detail-reveal">
+      {selectedMark ? (
+        <MarkDetailView
+          mark={selectedMark}
+          backHref={dashboardHref(searchParams, routeScope)}
+          routeScope={routeScope}
+          variant="page"
+        />
+      ) : (
+        <>
+          <h1 className="sr-only">Mark not found</h1>
+          <EmptyState
+            icon={CircleDashed}
+            title="Mark not found."
+            description={`${markParam} may have been deleted, moved, or hidden from this workspace.`}
+            action={
+              <Button asChild variant="outline" size="sm" className="h-10">
+                <Link href={dashboardHref(searchParams, routeScope)}>Back to marks</Link>
+              </Button>
+            }
+          />
+        </>
+      )}
     </PageContainer>
   );
 }

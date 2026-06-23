@@ -41,6 +41,7 @@ import {
   useDeleteProjectMutation,
   useUpdateProjectMutation,
 } from "@/lib/queries/use-workspace-mutations";
+import { dashboardHref } from "@/lib/workspace/routes";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
 
 type ProjectEditorState =
@@ -221,7 +222,10 @@ export function ProjectsTab() {
                     className="h-9 gap-1.5 sm:h-8"
                   >
                     <Link
-                      href={`/dashboard?project=${encodeURIComponent(project.id)}`}
+                      href={dashboardHref(new URLSearchParams(), {
+                        kind: "project",
+                        projectId: project.id,
+                      })}
                       aria-label={`Open ${project.name} project marks`}
                     >
                       Open

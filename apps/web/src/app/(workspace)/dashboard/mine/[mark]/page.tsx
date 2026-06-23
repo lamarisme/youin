@@ -5,7 +5,9 @@ import type { PageSearchParams } from "@/lib/page-search-params";
 import {
   getDashboardMarkMetadata,
   renderDashboardMarkPage,
-} from "../dashboard-page";
+} from "../../dashboard-page";
+
+const MINE_SCOPE = { kind: "mine" } as const;
 
 export async function generateMetadata({
   params,
@@ -15,10 +17,10 @@ export async function generateMetadata({
   searchParams: Promise<PageSearchParams>;
 }): Promise<Metadata> {
   const { mark } = await params;
-  return getDashboardMarkMetadata(mark, await searchParams);
+  return getDashboardMarkMetadata(mark, await searchParams, MINE_SCOPE);
 }
 
-export default async function DashboardMarkPage({
+export default async function DashboardMineMarkPage({
   params,
   searchParams,
 }: {
@@ -29,5 +31,6 @@ export default async function DashboardMarkPage({
   return renderDashboardMarkPage({
     mark,
     searchParams: await searchParams,
+    scope: MINE_SCOPE,
   });
 }

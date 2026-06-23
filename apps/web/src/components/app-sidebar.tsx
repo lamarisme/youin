@@ -51,7 +51,11 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
-import { accountHref } from "@/lib/workspace/routes";
+import {
+  accountHref,
+  dashboardHref,
+  dashboardScopeFromPathname,
+} from "@/lib/workspace/routes";
 
 const SIDEBAR_FOCUS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
@@ -125,14 +129,9 @@ export function AppSidebar() {
   const workspaceLabel = workspaceName || tCommon("workspaceFallback");
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
   const myMarksHref = useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("assignee", "me");
-    params.delete("mark");
-    params.delete("page");
-    const query = params.toString();
-    return query ? `/dashboard?${query}` : "/dashboard?assignee=me";
+    return dashboardHref(searchParams, { kind: "mine" }, { resetPage: true });
   }, [searchParams]);
-  const myMarksActive = pathname.startsWith("/dashboard") && searchParams.get("assignee") === "me";
+  const myMarksActive = pathname === "/dashboard/mine" || pathname.startsWith("/dashboard/mine/");
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -649,7 +648,8 @@ function ProjectSwitcher({
   }, [workspaceMemberships]);
 
   const navigableProjects = projects.filter((project) => !isOptimisticId(project.id));
-  const urlProjectId = searchParams.get("project");
+  const routeScope = dashboardScopeFromPathname(pathname);
+  const urlProjectId = routeScope.kind === "project" ? routeScope.projectId : null;
   const selectedProject =
     navigableProjects.find((project) => project.id === urlProjectId) ?? null;
   const selectedProjectId = selectedProject?.id ?? null;
@@ -665,25 +665,11 @@ function ProjectSwitcher({
       : "Set up projects";
 
   function hrefForProject(projectId: string): string {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("project", projectId);
-    params.delete("mark");
-    params.delete("page");
-
-    const base = pathname === "/dashboard" ? pathname : "/dashboard";
-    const query = params.toString();
-    return query ? `${base}?${query}` : base;
+    return dashboardHref(searchParams, { kind: "project", projectId }, { resetPage: true });
   }
 
   function hrefForAllProjects(): string {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("project");
-    params.delete("mark");
-    params.delete("page");
-
-    const base = pathname === "/dashboard" ? pathname : "/dashboard";
-    const query = params.toString();
-    return query ? `${base}?${query}` : base;
+    return dashboardHref(searchParams, { kind: "all" }, { resetPage: true });
   }
 
   function selectProject(projectId: string) {

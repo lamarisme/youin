@@ -3,7 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { safeLocalRedirectPath } from "@/lib/safe-redirect";
 import { getSupabaseEnv } from "@/lib/supabase/env";
-import { accountHref, isAccountSection, markHref } from "@/lib/workspace/routes";
+import {
+  accountHref,
+  dashboardHref,
+  isAccountSection,
+  markHref,
+} from "@/lib/workspace/routes";
 
 function cleanWorkspacePath(path: string, searchParams: URLSearchParams) {
   const params = new URLSearchParams(searchParams.toString());
@@ -11,6 +16,10 @@ function cleanWorkspacePath(path: string, searchParams: URLSearchParams) {
   if (path === "/dashboard") {
     const mark = params.get("mark");
     if (mark) return markHref(mark, params);
+    const projectId = params.get("project")?.trim();
+    if ((projectId && projectId !== "all") || params.get("assignee") === "me") {
+      return dashboardHref(params);
+    }
   }
 
   if (path === "/account") {
