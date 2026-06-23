@@ -14,7 +14,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { MarkDescriptionEditor } from "@/components/dashboard/mark-description-editor";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
-import type { MarkPriority, TeamMember, WorkspaceLabel } from "@/lib/collab-types";
+import type {
+  MarkPriority,
+  TeamMember,
+  WorkspaceLabel,
+  WorkspaceProject,
+  WorkspaceWorkflowStatus,
+} from "@/lib/collab-types";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   isValidMarkPageUrl,
@@ -30,6 +36,8 @@ interface NewMarkFormState {
   title: string;
   page: string;
   description: string;
+  projectId: string;
+  workflowStatusId: string;
   labelIds: string[];
   priority: MarkPriority;
   assigneeId: string;
@@ -40,19 +48,31 @@ type Action =
   | { type: "set_title"; value: string }
   | { type: "set_page"; value: string }
   | { type: "set_description"; value: string }
+  | { type: "set_project"; value: string }
+  | { type: "set_workflow_status"; value: string }
   | { type: "set_label_ids"; value: string[] }
   | { type: "set_priority"; value: MarkPriority }
   | { type: "set_assignee"; value: string }
-  | { type: "reset"; assigneeDefault: string };
+  | { type: "reset"; defaults: NewMarkInitialValues };
 
-function makeInitial(assigneeDefault: string): NewMarkFormState {
+interface NewMarkInitialValues {
+  assigneeId: string;
+  labelIds: string[];
+  priority: MarkPriority;
+  projectId: string;
+  workflowStatusId: string;
+}
+
+function makeInitial(defaults: NewMarkInitialValues): NewMarkFormState {
   return {
     title: "",
     page: "",
     description: "",
-    labelIds: [],
-    priority: "medium",
-    assigneeId: assigneeDefault,
+    projectId: defaults.projectId,
+    workflowStatusId: defaults.workflowStatusId,
+    labelIds: defaults.labelIds,
+    priority: defaults.priority,
+    assigneeId: defaults.assigneeId,
     descriptionEditorKey: 0,
   };
 }
@@ -65,6 +85,10 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
       return { ...state, page: action.value };
     case "set_description":
       return { ...state, description: action.value };
+    case "set_project":
+      return { ...state, projectId: action.value };
+    case "set_workflow_status":
+      return { ...state, workflowStatusId: action.value };
     case "set_label_ids":
       return { ...state, labelIds: action.value };
     case "set_priority":
@@ -73,18 +97,38 @@ function reducer(state: NewMarkFormState, action: Action): NewMarkFormState {
       return { ...state, assigneeId: action.value };
     case "reset":
       return {
-        ...makeInitial(action.assigneeDefault),
+        ...makeInitial(action.defaults),
         descriptionEditorKey: state.descriptionEditorKey + 1,
       };
   }
 }
 
+interface NewMarkDefaultValues {
+  projectId?: string;
+  workflowStatusId?: string;
+  labelIds?: string[];
+  priority?: MarkPriority;
+  assigneeId?: string;
+}
+
 interface NewMarkFormProps {
   labels: WorkspaceLabel[];
   members: TeamMember[];
+  projects?: WorkspaceProject[];
+  workflowStatuses?: WorkspaceWorkflowStatus[];
+  defaultValues?: NewMarkDefaultValues;
   /** Default assignee, usually the current user's id. Pass empty string to start unassigned. */
   defaultAssigneeId?: string;
-  onSubmit: (input: { title: string; page: string; description: string; labelIds: string[]; priority: MarkPriority; assigneeId: string | null }) => void | Promise<void>;
+  onSubmit: (input: {
+    title: string;
+    page: string;
+    description: string;
+    projectId?: string;
+    workflowStatusId?: string;
+    labelIds: string[];
+    priority: MarkPriority;
+    assigneeId: string | null;
+  }) => void | Promise<void>;
   onCancel?: () => void;
   /** When `false`, clears fields (e.g. dialog closed). Omit if not controlled by a dialog. */
   open?: boolean;
@@ -95,6 +139,9 @@ interface NewMarkFormProps {
 export function NewMarkForm({
   labels,
   members,
+  projects,
+  workflowStatuses,
+  defaultValues,
   defaultAssigneeId,
   onSubmit,
   onCancel,
@@ -103,15 +150,53 @@ export function NewMarkForm({
 }: NewMarkFormProps) {
   const { mutateAsync: createLabel } = useCreateLabelMutation();
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
-  const assigneeDefault = defaultAssigneeId && members.some((m) => m.id === defaultAssigneeId)
-    ? defaultAssigneeId
+  const requestedAssigneeDefault = defaultValues?.assigneeId ?? defaultAssigneeId;
+  const assigneeDefault = requestedAssigneeDefault && members.some((m) => m.id === requestedAssigneeDefault)
+    ? requestedAssigneeDefault
     : UNASSIGNED;
-  const [state, dispatch] = useReducer(reducer, makeInitial(assigneeDefault));
+  const projectOptions = useMemo(
+    () => projects?.map((project) => ({ value: project.id, label: project.name })) ?? [],
+    [projects],
+  );
+  const workflowStatusOptions = useMemo(
+    () =>
+      workflowStatuses?.map((status) => ({
+        value: status.id,
+        label: `${status.name} (${status.lifecycleStatus === "closed" ? "Closed" : "Open"})`,
+      })) ?? [],
+    [workflowStatuses],
+  );
+  const initialValues = useMemo<NewMarkInitialValues>(() => {
+    const labelIds = new Set(labels.map((label) => label.id));
+    const projectId =
+      defaultValues?.projectId && projectOptions.some((option) => option.value === defaultValues.projectId)
+        ? defaultValues.projectId
+        : projectOptions[0]?.value ?? "";
+    const workflowStatusId =
+      defaultValues?.workflowStatusId &&
+      workflowStatusOptions.some((option) => option.value === defaultValues.workflowStatusId)
+        ? defaultValues.workflowStatusId
+        : workflowStatusOptions[0]?.value ?? "";
+    return {
+      assigneeId: assigneeDefault,
+      labelIds: Array.from(new Set(defaultValues?.labelIds ?? [])).filter((id) => labelIds.has(id)),
+      priority: defaultValues?.priority ?? "medium",
+      projectId,
+      workflowStatusId,
+    };
+  }, [
+    assigneeDefault,
+    defaultValues,
+    labels,
+    projectOptions,
+    workflowStatusOptions,
+  ]);
+  const [state, dispatch] = useReducer(reducer, initialValues, makeInitial);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open === false) dispatch({ type: "reset", assigneeDefault });
-  }, [open, assigneeDefault]);
+    if (open === false) dispatch({ type: "reset", defaults: initialValues });
+  }, [open, initialValues]);
   const normalizedPage = useMemo(
     () => normalizeMarkPageUrl(state.page),
     [state.page],
@@ -151,11 +236,13 @@ export function NewMarkForm({
         title: state.title,
         page: pageNorm,
         description: descriptionNorm,
+        projectId: state.projectId || undefined,
+        workflowStatusId: state.workflowStatusId || undefined,
         labelIds: state.labelIds,
         priority: state.priority,
         assigneeId: state.assigneeId === UNASSIGNED ? null : state.assigneeId,
       });
-      dispatch({ type: "reset", assigneeDefault });
+      dispatch({ type: "reset", defaults: initialValues });
     } finally {
       setSubmitting(false);
     }
@@ -218,6 +305,32 @@ export function NewMarkForm({
           />
         </Field>
       </div>
+      {projectOptions.length > 0 ? (
+        <div className="space-y-1.5">
+          <Label className="block text-ui-xs font-medium text-ink-2">Project</Label>
+          <FilterSelect
+            value={state.projectId}
+            onValueChange={(v) => dispatch({ type: "set_project", value: v })}
+            options={projectOptions}
+            ariaLabel="Choose project"
+            size="sm"
+            triggerClassName="h-10 sm:h-8"
+          />
+        </div>
+      ) : null}
+      {workflowStatusOptions.length > 0 ? (
+        <div className="space-y-1.5">
+          <Label className="block text-ui-xs font-medium text-ink-2">Stage</Label>
+          <FilterSelect
+            value={state.workflowStatusId}
+            onValueChange={(v) => dispatch({ type: "set_workflow_status", value: v })}
+            options={workflowStatusOptions}
+            ariaLabel="Choose stage"
+            size="sm"
+            triggerClassName="h-10 sm:h-8"
+          />
+        </div>
+      ) : null}
       <div className="space-y-1.5 sm:col-span-2">
         <Label className="block text-ui-xs font-medium text-ink-2">Labels</Label>
         <LabelPicker

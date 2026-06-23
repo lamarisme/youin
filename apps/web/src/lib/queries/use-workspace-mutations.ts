@@ -389,6 +389,7 @@ export interface CreateMarkInput {
   labelIds: string[];
   assigneeId?: string | null;
   priority?: MarkPriority;
+  workflowStatusId?: string;
 }
 
 export function useCreateMarkMutation() {
@@ -404,7 +405,7 @@ export function useCreateMarkMutation() {
         title: input.title.trim(),
         page: normalizeMarkPageUrl(input.page),
         description: input.description || "",
-        status: "open",
+        status: created.status,
         workflowStatusId: created.workflowStatusId,
         priority: input.priority ?? "medium",
         pinned: false,
@@ -422,6 +423,9 @@ export function useCreateMarkMutation() {
       context.optimisticId = optimisticId;
       updateWorkspace(queryClient, (workspace) => {
         const workflowStatus =
+          workspace.workflowStatuses.find(
+            (status) => status.id === input.workflowStatusId,
+          ) ??
           defaultWorkflowStatusForLifecycle(workspace.workflowStatuses, "open") ??
           workspace.workflowStatuses.find((status) => status.lifecycleStatus === "open") ??
           workspace.workflowStatuses[0];
@@ -433,7 +437,7 @@ export function useCreateMarkMutation() {
           title,
           page: normalizeMarkPageUrl(input.page),
           description: input.description || "",
-          status: "open",
+          status: workflowStatus?.lifecycleStatus ?? "open",
           workflowStatusId: workflowStatus?.id ?? "",
           priority: input.priority ?? "medium",
           pinned: false,

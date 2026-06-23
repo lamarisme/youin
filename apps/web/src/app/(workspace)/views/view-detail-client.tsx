@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/empty-state";
 import { MarkFilters } from "@/components/dashboard/mark-filters";
 import { MarkTable } from "@/components/dashboard/mark-table";
 import { DashboardViewOptionsMenu } from "@/components/dashboard/dashboard-view-options-menu";
+import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { useMarkTableModel } from "@/components/dashboard/use-mark-table-model";
 import { Pagination } from "@/components/pagination";
 import { Pill } from "@/components/pill";
@@ -42,21 +43,26 @@ import { PageContainer } from "@/components/page-container";
 import type {
   DisplayNamePreference,
   MarkItem,
+  MarkPriority,
   Workspace,
   WorkspaceView,
   WorkspaceViewConfig,
   WorkspaceViewFilters,
 } from "@/lib/collab-types";
 import {
+  useCreateMarkMutation,
   useDeleteWorkspaceViewMutation,
   useUpdateWorkspaceViewMutation,
 } from "@/lib/queries/use-workspace-mutations";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { markHref } from "@/lib/workspace/routes";
 import {
   DEFAULT_WORKSPACE_VIEW_CONFIG,
   filterMarksForWorkspaceView,
 } from "@/lib/workspace/views";
+import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-statuses";
+import { toast } from "sonner";
 
 import { ViewScopeFields } from "./view-filter-fields";
 import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
@@ -121,6 +127,7 @@ function ViewDetail({
   loadedAt: string;
 }) {
   const router = useRouter();
+  const { mutateAsync: createMark } = useCreateMarkMutation();
   const { mutateAsync: updateView, isPending: isSaving } =
     useUpdateWorkspaceViewMutation();
   const { mutateAsync: deleteView, isPending: isDeleting } =
@@ -129,6 +136,7 @@ function ViewDetail({
   const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
   const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
   const [page, setPage] = useState(1);
+  const [newMarkOpen, setNewMarkOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const visibleMarks = useMemo(
@@ -137,6 +145,20 @@ function ViewDetail({
         viewerId: userId,
       }),
     [filters, userId, workspace.marks],
+  );
+  const creatableProjects = useMemo(
+    () => workspace.projects.filter((project) => !isOptimisticId(project.id)),
+    [workspace.projects],
+  );
+  const newMarkDefaults = useMemo(
+    () =>
+      newMarkDefaultsFromViewFilters({
+        filters,
+        projects: creatableProjects,
+        workflowStatuses: workspace.workflowStatuses,
+        userId,
+      }),
+    [creatableProjects, filters, userId, workspace.workflowStatuses],
   );
 
   const dirty = viewSignature({
@@ -186,6 +208,38 @@ function ViewDetail({
     }
   }
 
+  async function handleCreateMark(input: {
+    title: string;
+    page: string;
+    description: string;
+    projectId?: string;
+    workflowStatusId?: string;
+    labelIds: string[];
+    priority: MarkPriority;
+    assigneeId: string | null;
+  }) {
+    const projectId = input.projectId || newMarkDefaults.projectId;
+    if (!projectId) {
+      toast.error("Create a project before adding marks.");
+      return;
+    }
+    try {
+      await createMark({
+        title: input.title,
+        description: input.description,
+        page: input.page,
+        projectId,
+        workflowStatusId: input.workflowStatusId,
+        labelIds: input.labelIds,
+        assigneeId: input.assigneeId ?? undefined,
+        priority: input.priority,
+      });
+      setNewMarkOpen(false);
+    } catch {
+      // Mutation toast handles the failure and rolls back optimistic state.
+    }
+  }
+
   const dashboardFilters = toDashboardFilters(filters, page, config);
 
   return (
@@ -211,6 +265,16 @@ function ViewDetail({
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              variant="mark"
+              className="h-8 rounded-md px-2"
+              onClick={() => setNewMarkOpen(true)}
+            >
+              <Plus className="size-3.5" aria-hidden />
+              New mark
+            </Button>
             <ViewScopeFields
               workspace={workspace}
               filters={filters}
@@ -268,10 +332,36 @@ function ViewDetail({
             referenceTime={loadedAt}
             page={page}
             onPageChange={setPage}
+            onNewMark={() => setNewMarkOpen(true)}
             markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
           />
         )}
       </PageContainer>
+
+      <Dialog open={newMarkOpen} onOpenChange={setNewMarkOpen}>
+        <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+          <DialogHeader className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
+            <DialogTitle>New mark</DialogTitle>
+            <DialogDescription>
+              Create a mark in {view.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[min(78vh,38rem)] overflow-y-auto p-4">
+            <NewMarkForm
+              labels={workspace.labels}
+              members={workspace.members}
+              projects={creatableProjects}
+              workflowStatuses={workspace.workflowStatuses}
+              defaultAssigneeId={newMarkDefaults.assigneeId}
+              defaultValues={newMarkDefaults}
+              open={newMarkOpen}
+              variant="plain"
+              onSubmit={handleCreateMark}
+              onCancel={() => setNewMarkOpen(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={confirmDeleteOpen}
@@ -314,6 +404,7 @@ function ViewList({
   referenceTime,
   page,
   onPageChange,
+  onNewMark,
   markHrefFor,
 }: {
   marks: MarkItem[];
@@ -322,6 +413,7 @@ function ViewList({
   referenceTime?: string | Date;
   page: number;
   onPageChange: (page: number) => void;
+  onNewMark: () => void;
   markHrefFor: (mark: MarkItem) => string;
 }) {
   const {
@@ -338,7 +430,7 @@ function ViewList({
     <>
       <div className="overflow-hidden rounded-md bg-paper-elevated">
         {marks.length === 0 ? (
-          <ViewEmptyState />
+          <ViewEmptyState onNewMark={onNewMark} />
         ) : (
           <MarkTable
             marks={paginatedMarks}
@@ -538,7 +630,7 @@ function ViewDeleteRedirecting() {
   );
 }
 
-function ViewEmptyState() {
+function ViewEmptyState({ onNewMark }: { onNewMark: () => void }) {
   return (
     <EmptyState
       variant="plain"
@@ -547,15 +639,54 @@ function ViewEmptyState() {
       title="No marks match this saved view."
       description="Broaden the filters or capture a new mark in the matching project."
       action={
-        <Button asChild variant="outline" size="sm" className="h-9">
-          <Link href="/dashboard">
+        <Button type="button" variant="outline" size="sm" className="h-9" onClick={onNewMark}>
             <Plus className="size-3.5" aria-hidden />
             New mark
-          </Link>
         </Button>
       }
     />
   );
+}
+
+function newMarkDefaultsFromViewFilters({
+  filters,
+  projects,
+  workflowStatuses,
+  userId,
+}: {
+  filters: WorkspaceViewFilters;
+  projects: Workspace["projects"];
+  workflowStatuses: Workspace["workflowStatuses"];
+  userId: string | null;
+}): {
+  projectId?: string;
+  workflowStatusId?: string;
+  labelIds: string[];
+  priority?: MarkPriority;
+  assigneeId?: string;
+} {
+  const projectId =
+    filters.projectId !== "all" && projects.some((project) => project.id === filters.projectId)
+      ? filters.projectId
+      : projects[0]?.id;
+  const workflowStatus =
+    filters.workflowStatus !== "all"
+      ? workflowStatuses.find((status) => status.id === filters.workflowStatus)
+      : filters.status !== "all"
+        ? defaultWorkflowStatusForLifecycle(workflowStatuses, filters.status)
+        : defaultWorkflowStatusForLifecycle(workflowStatuses, "open");
+  return {
+    projectId,
+    workflowStatusId: workflowStatus?.id,
+    labelIds: filters.label !== "all" ? [filters.label] : [],
+    priority: filters.priority !== "all" ? filters.priority : undefined,
+    assigneeId:
+      filters.assignee === "me"
+        ? userId ?? undefined
+        : filters.assignee === "unassigned"
+          ? ""
+          : undefined,
+  };
 }
 
 function toDashboardFilters(

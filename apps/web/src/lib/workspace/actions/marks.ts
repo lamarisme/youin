@@ -1,6 +1,6 @@
 "use server";
 
-import { normalizeMarkPriority } from "@youin/domain";
+import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import {
@@ -12,7 +12,7 @@ import {
   projects,
   workspaceMembers,
 } from "@/db/schema";
-import type { MarkPriority } from "@/lib/collab-types";
+import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
 import { normalizeDescriptionForStorage } from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
 
@@ -30,6 +30,7 @@ export interface CreatedMark {
   id: string;
   /** Workspace-level sequence assigned by the set_mark_seq trigger. */
   seq: number;
+  status: MarkStatus;
   workflowStatusId: string;
   createdAt: string;
 }
@@ -78,13 +79,37 @@ async function assertAssigneeInWorkspace(
   if (!member) throw new Error("Assignee is not a member of this workspace.");
 }
 
-async function defaultOpenWorkflowStatusId(
+async function workflowStatusForCreate(
   db: ReturnType<typeof import("@/db/client").getDb>,
   workspaceId: string,
-): Promise<string> {
+  workflowStatusId?: string,
+): Promise<{ id: string; lifecycleStatus: MarkStatus }> {
+  if (workflowStatusId) {
+    const [status] = await db
+      .select({
+        id: markWorkflowStatuses.id,
+        lifecycleStatus: markWorkflowStatuses.lifecycleStatus,
+      })
+      .from(markWorkflowStatuses)
+      .where(
+        and(
+          eq(markWorkflowStatuses.id, workflowStatusId),
+          eq(markWorkflowStatuses.workspaceId, workspaceId),
+          isNull(markWorkflowStatuses.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!status) throw new Error("Workflow status not found.");
+    return {
+      id: status.id,
+      lifecycleStatus: normalizeMarkStatus(status.lifecycleStatus),
+    };
+  }
+
   const rows = await db
     .select({
       id: markWorkflowStatuses.id,
+      lifecycleStatus: markWorkflowStatuses.lifecycleStatus,
       isDefaultOpen: markWorkflowStatuses.isDefaultOpen,
     })
     .from(markWorkflowStatuses)
@@ -98,7 +123,10 @@ async function defaultOpenWorkflowStatusId(
     .orderBy(asc(markWorkflowStatuses.position), asc(markWorkflowStatuses.createdAt));
   const status = rows.find((row) => row.isDefaultOpen) ?? rows[0];
   if (!status) throw new Error("Workspace is missing an open workflow status.");
-  return status.id;
+  return {
+    id: status.id,
+    lifecycleStatus: normalizeMarkStatus(status.lifecycleStatus),
+  };
 }
 
 export async function createMarkAction(input: {
@@ -109,6 +137,7 @@ export async function createMarkAction(input: {
   labelIds: string[];
   assigneeId?: string | null;
   priority?: MarkPriority;
+  workflowStatusId?: string;
 }): Promise<CreatedMark> {
   const ctx = await requireWorkspaceContext();
   const title = input.title.trim();
@@ -127,7 +156,11 @@ export async function createMarkAction(input: {
   const labelIds = Array.from(new Set(input.labelIds));
   await assertLabelsInWorkspace(ctx.db, ctx.workspaceId, labelIds);
   await assertAssigneeInWorkspace(ctx.db, ctx.workspaceId, input.assigneeId);
-  const workflowStatusId = await defaultOpenWorkflowStatusId(ctx.db, ctx.workspaceId);
+  const workflowStatus = await workflowStatusForCreate(
+    ctx.db,
+    ctx.workspaceId,
+    input.workflowStatusId,
+  );
 
   const mk = await withWorkspaceActor(ctx, async (tx) => {
     const [created] = await tx
@@ -138,8 +171,8 @@ export async function createMarkAction(input: {
         title,
         description: normalizeDescriptionForStorage(input.description),
         page: pageNormalized,
-        status: "open",
-        workflowStatusId,
+        status: workflowStatus.lifecycleStatus,
+        workflowStatusId: workflowStatus.id,
         priority: normalizeMarkPriority(input.priority),
         pinned: false,
         createdByUserId: ctx.userId,
@@ -148,6 +181,7 @@ export async function createMarkAction(input: {
       .returning({
         id: marks.id,
         seq: marks.seq,
+        status: marks.status,
         workflowStatusId: marks.workflowStatusId,
         createdAt: marks.createdAt,
       });
@@ -167,6 +201,7 @@ export async function createMarkAction(input: {
   return {
     id: mk.id,
     seq: Number(mk.seq ?? 0),
+    status: normalizeMarkStatus(mk.status),
     workflowStatusId: mk.workflowStatusId,
     createdAt: toIso(mk.createdAt),
   };
