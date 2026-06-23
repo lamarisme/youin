@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatDistance } from "date-fns";
 import { Bookmark, CheckCircle2, CircleDashed, MessageCircle } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,7 +16,7 @@ import type {
   WorkspaceLabel,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
-import { formatDashboardDate, formatDateTimeFull } from "@/lib/dates";
+import { formatDateTimeFull } from "@/lib/dates";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
@@ -484,7 +485,9 @@ function CreatedAt({
   referenceTime?: string | Date;
 }) {
   const fullTimestamp = formatDateTimeFull(value);
-  const label = formatDashboardDate(value, referenceTime ? new Date(referenceTime) : undefined);
+  const label = formatDistance(new Date(value), referenceTime ? new Date(referenceTime) : new Date(), {
+    addSuffix: true,
+  });
   const accessibleLabel = `Created ${fullTimestamp}`;
 
   return (
@@ -493,7 +496,7 @@ function CreatedAt({
       title={accessibleLabel}
       aria-label={accessibleLabel}
       className={cn(
-        "hidden w-20 shrink-0 text-right font-mono text-ui-xs tabular-nums text-ink-3 sm:inline-block",
+        "hidden w-28 shrink-0 text-right text-ui-xs text-ink-3 sm:inline-block",
         density === "compact" && "text-ui-2xs",
       )}
     >

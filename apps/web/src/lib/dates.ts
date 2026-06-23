@@ -1,10 +1,7 @@
 import {
   differenceInCalendarDays,
-  differenceInHours,
-  differenceInMinutes,
   format,
   formatDistanceToNow,
-  isSameYear,
   isThisYear,
 } from "date-fns";
 
@@ -41,32 +38,6 @@ export function formatDateTime(value: string | Date): string {
 /** "May 8, 2026, 14:30" — full timestamp for tooltips and assistive labels. */
 export function formatDateTimeFull(value: string | Date): string {
   return format(asDate(value), "MMM d, yyyy, HH:mm");
-}
-
-/**
- * Compact dashboard date labels for mark rows.
- *   - Less than a minute: "Just now"
- *   - Less than an hour: "5m ago"
- *   - Less than a day: "2h ago"
- *   - Yesterday: "Yesterday"
- *   - Last week: "Mon"
- *   - Older this year: "May 8"
- *   - Prior years: "May 8, 2024"
- */
-export function formatDashboardDate(
-  value: string | Date,
-  now: Date = new Date(),
-): string {
-  const d = asDate(value);
-  const minutesAgo = Math.max(0, differenceInMinutes(now, d));
-  if (minutesAgo < 1) return "Just now";
-  if (minutesAgo < 60) return `${minutesAgo}m ago`;
-  if (minutesAgo < 24 * 60) return `${Math.max(1, differenceInHours(now, d))}h ago`;
-
-  const daysAgo = differenceInCalendarDays(now, d);
-  if (daysAgo === 1) return "Yesterday";
-  if (daysAgo > 1 && daysAgo < 7) return format(d, "EEE");
-  return isSameYear(d, now) ? formatDateShort(d) : format(d, "MMM d, yyyy");
 }
 
 /**

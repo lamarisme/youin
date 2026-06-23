@@ -2,6 +2,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import { useParams } from "next/navigation";
+import { formatDistance } from "date-fns";
 import {
   FileText,
   History,
@@ -14,7 +15,7 @@ import { PriorityBadge } from "@/components/priority-badge";
 import { ShimmerBar } from "@/components/shimmer-bar";
 import { MarkDescriptionRead } from "@/components/dashboard/mark-description-read";
 import type { MarkItem } from "@/lib/collab-types";
-import { formatDateTime } from "@/lib/dates";
+import { formatDateTimeFull } from "@/lib/dates";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { cn } from "@/lib/utils";
 import {
@@ -90,9 +91,13 @@ export function MarkDetailLoadingPreview({
                 ) : null}
                 <time
                   dateTime={mark.createdAt}
-                  className="font-mono text-ui-2xs tabular-nums text-ink-3"
+                  title={formatDateTimeFull(mark.createdAt)}
+                  aria-label={`Created ${formatDateTimeFull(mark.createdAt)}`}
+                  className="text-ui-2xs text-ink-3"
                 >
-                  {formatDateTime(mark.createdAt)}
+                  {formatDistance(new Date(mark.createdAt), new Date(), {
+                    addSuffix: true,
+                  })}
                 </time>
               </div>
 

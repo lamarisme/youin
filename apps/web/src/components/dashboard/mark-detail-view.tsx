@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { formatDistance } from "date-fns";
 import {
   Check,
   ChevronDown,
@@ -37,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { MarkItem, WorkspaceLabel } from "@/lib/collab-types";
-import { formatDateTime } from "@/lib/dates";
+import { formatDateTimeFull } from "@/lib/dates";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useCreateLabelMutation,
@@ -398,9 +399,13 @@ export function MarkDetailView({
                   ) : null}
                   <time
                     dateTime={mark.createdAt}
-                    className="font-mono text-ui-2xs tabular-nums text-ink-3"
+                    title={formatDateTimeFull(mark.createdAt)}
+                    aria-label={`Created ${formatDateTimeFull(mark.createdAt)}`}
+                    className="text-ui-2xs text-ink-3"
                   >
-                    {formatDateTime(mark.createdAt)}
+                    {formatDistance(new Date(mark.createdAt), new Date(), {
+                      addSuffix: true,
+                    })}
                   </time>
                   {!isPane ? (
                     <span className="font-mono text-ui-2xs tabular-nums text-ink-3">
