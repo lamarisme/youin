@@ -41,6 +41,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
@@ -220,9 +221,7 @@ export function AppSidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">
               {tSide("searchShortcut")}
-              <kbd className="ml-1.5 rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs">
-                ⌘K
-              </kbd>
+              <Kbd className="ml-1.5">Ctrl/Cmd K</Kbd>
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -239,12 +238,7 @@ export function AppSidebar() {
             <Search className="size-[1rem] shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-ui-sm lg:text-ui-xs">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
-              <kbd className="rounded-[4px] bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
-                ⌘
-              </kbd>
-              <kbd className="rounded-[4px] bg-paper-3 px-1.5 py-0.5 font-mono text-ui-2xs text-ink-3">
-                K
-              </kbd>
+              <Kbd>Ctrl/Cmd K</Kbd>
             </span>
           </button>
         )}
@@ -383,9 +377,7 @@ function SidebarNavLink({
         <TooltipContent side="right" className="flex items-center gap-1.5">
           {label}
           {shortcut ? (
-            <kbd className="rounded bg-paper-3 px-1 py-0.5 font-mono text-ui-2xs text-ink-3">
-              G {shortcut}
-            </kbd>
+            <Kbd>G {shortcut}</Kbd>
           ) : null}
         </TooltipContent>
       </Tooltip>
@@ -415,9 +407,9 @@ function SidebarNavLink({
       {showBadge ? (
         <SidebarBadge count={badgeCount} label={badgeLabel} />
       ) : shortcut ? (
-        <kbd className="hidden rounded-[4px] bg-paper-3/70 px-1 py-0.5 font-mono text-ui-2xs text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 lg:inline">
+        <Kbd className="hidden bg-paper-3/70 px-1 opacity-0 transition-opacity group-hover:opacity-100 lg:inline-flex">
           G {shortcut}
-        </kbd>
+        </Kbd>
       ) : null}
     </Link>
   );

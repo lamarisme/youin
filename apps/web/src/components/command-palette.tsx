@@ -459,7 +459,7 @@ function CommandPaletteDialog({
           {t("footerRun")}
         </span>
         <span className="flex items-center gap-1.5">
-          <Kbd>⌘K</Kbd>
+          <Kbd>Ctrl/Cmd K</Kbd>
           {t("footerToggle")}
         </span>
       </div>
