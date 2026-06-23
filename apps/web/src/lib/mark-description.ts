@@ -220,12 +220,83 @@ function legacyPlainToEditorHtml(plain: string): string {
   return `<p>${escaped.replace(/\n/g, "<br>")}</p>`;
 }
 
+function decodeBasicHtmlEntities(s: string): string {
+  const decodeEntity = (value: number, fallback: string) =>
+    Number.isFinite(value) && value >= 0 && value <= 0x10ffff
+      ? String.fromCodePoint(value)
+      : fallback;
+
+  return s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (match, code: string) =>
+      decodeEntity(Number(code), match),
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (match, code: string) =>
+      decodeEntity(Number.parseInt(code, 16), match),
+    );
+}
+
+function markdownBlockKind(
+  s: string,
+): "ordered" | "quote" | "unordered" | null {
+  if (/^ {0,3}[-*+]\s+\S/.test(s)) return "unordered";
+  if (/^ {0,3}\d+[.)]\s+\S/.test(s)) return "ordered";
+  if (/^ {0,3}>\s?/.test(s)) return "quote";
+  return null;
+}
+
+function joinEditorMarkdownBlocks(blocks: string[]): string {
+  return blocks.reduce((out, block) => {
+    if (!out) return block;
+    const lines = out.split("\n");
+    const previous = lines[lines.length - 1] ?? "";
+    const previousKind = markdownBlockKind(previous);
+    const nextKind = markdownBlockKind(block);
+    const separator =
+      previousKind && previousKind === nextKind ? "\n" : "\n\n";
+    return `${out}${separator}${block}`;
+  }, "");
+}
+
+function plainEditorHtmlToMarkdownSource(html: string): string | null {
+  const paragraphRe = /<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi;
+  const blocks: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = paragraphRe.exec(html))) {
+    if (html.slice(lastIndex, match.index).trim()) return null;
+    const inner = match[1].replace(/<br\s*\/?>/gi, "\n");
+    if (looksLikeRichHtml(inner)) return null;
+    blocks.push(decodeBasicHtmlEntities(inner).trim());
+    lastIndex = paragraphRe.lastIndex;
+  }
+
+  if (blocks.length) {
+    if (html.slice(lastIndex).trim()) return null;
+    return joinEditorMarkdownBlocks(blocks);
+  }
+
+  const lineBreakText = html.replace(/<br\s*\/?>/gi, "\n");
+  if (looksLikeRichHtml(lineBreakText)) return null;
+  return decodeBasicHtmlEntities(lineBreakText).trim();
+}
+
 /** Load DB / API string into TipTap (supports legacy plain text and stored HTML). */
 export function storedDescriptionToEditorHtml(stored: string): string {
   const t = stored ?? "";
   if (!t.trim()) return "<p></p>";
   if (looksLikeRichHtml(t)) {
     const sanitized = sanitizeMarkDescriptionHtml(t);
+    const markdownSource = plainEditorHtmlToMarkdownSource(sanitized);
+    if (markdownSource && looksLikeMarkdown(markdownSource)) {
+      return sanitizeMarkDescriptionHtml(markdownToHtml(markdownSource));
+    }
     if (!looksLikeRichHtml(sanitized) && looksLikeMarkdown(sanitized)) {
       return sanitizeMarkDescriptionHtml(markdownToHtml(sanitized));
     }
