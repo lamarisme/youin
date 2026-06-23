@@ -7,15 +7,14 @@ import {
   ArrowLeft,
   CircleDashed,
   MoreHorizontal,
+  Pencil,
   Plus,
   Trash2,
 } from "lucide-react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
-import { MarkFilters } from "@/components/dashboard/mark-filters";
 import { MarkTable } from "@/components/dashboard/mark-table";
-import { DashboardViewOptionsMenu } from "@/components/dashboard/dashboard-view-options-menu";
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { useMarkTableModel } from "@/components/dashboard/use-mark-table-model";
 import { Pagination } from "@/components/pagination";
@@ -38,7 +37,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { PageContainer } from "@/components/page-container";
 import type {
   DisplayNamePreference,
@@ -46,31 +44,23 @@ import type {
   MarkPriority,
   Workspace,
   WorkspaceView,
-  WorkspaceViewConfig,
   WorkspaceViewFilters,
 } from "@/lib/collab-types";
+import { formatRelative } from "@/lib/dates";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import {
   useCreateMarkMutation,
   useDeleteWorkspaceViewMutation,
   useUpdateWorkspaceViewMutation,
 } from "@/lib/queries/use-workspace-mutations";
-import { isOptimisticId } from "@/lib/optimistic-id";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { markHref } from "@/lib/workspace/routes";
-import {
-  DEFAULT_WORKSPACE_VIEW_CONFIG,
-  filterMarksForWorkspaceView,
-} from "@/lib/workspace/views";
+import { filterMarksForWorkspaceView } from "@/lib/workspace/views";
 import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-statuses";
 import { toast } from "sonner";
 
-import { ViewScopeFields } from "./view-filter-fields";
+import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
 import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
-
-import type {
-  DashboardFilterPatch,
-  DashboardFilters,
-} from "@/components/dashboard/use-dashboard-filters";
 
 const PAGE_SIZE = 8;
 const DELETED_VIEW_REDIRECT_KEY = "youin:deleted-view-redirect";
@@ -132,19 +122,17 @@ function ViewDetail({
     useUpdateWorkspaceViewMutation();
   const { mutateAsync: deleteView, isPending: isDeleting } =
     useDeleteWorkspaceViewMutation();
-  const [name, setName] = useState(view.name);
-  const [filters, setFilters] = useState<WorkspaceViewFilters>(view.filters);
-  const [config, setConfig] = useState<WorkspaceViewConfig>(view.config);
-  const [page, setPage] = useState(1);
+  const [editOpen, setEditOpen] = useState(false);
   const [newMarkOpen, setNewMarkOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const visibleMarks = useMemo(
     () =>
-      filterMarksForWorkspaceView(workspace.marks, filters, {
+      filterMarksForWorkspaceView(workspace.marks, view.filters, {
         viewerId: userId,
       }),
-    [filters, userId, workspace.marks],
+    [userId, view.filters, workspace.marks],
   );
   const creatableProjects = useMemo(
     () => workspace.projects.filter((project) => !isOptimisticId(project.id)),
@@ -153,47 +141,29 @@ function ViewDetail({
   const newMarkDefaults = useMemo(
     () =>
       newMarkDefaultsFromViewFilters({
-        filters,
+        filters: view.filters,
         projects: creatableProjects,
         workflowStatuses: workspace.workflowStatuses,
         userId,
       }),
-    [creatableProjects, filters, userId, workspace.workflowStatuses],
+    [creatableProjects, userId, view.filters, workspace.workflowStatuses],
   );
 
-  const dirty = viewSignature({
-    name,
-    filters,
-    config,
-  }) !== viewSignature({
-    name: view.name,
-    filters: view.filters,
-    config: view.config,
-  });
-
-  function updateFilters(patch: Partial<WorkspaceViewFilters>) {
-    setFilters((current) => ({ ...current, ...patch }));
+  async function saveChanges(input: ViewEditorValue) {
+    if (isSaving) return;
     setPage(1);
-  }
-
-  function updateDashboardViewOptions(patch: DashboardFilterPatch) {
-    const filterPatch = dashboardPatchToViewPatch(patch);
-    if (Object.keys(filterPatch).length > 0) updateFilters(filterPatch);
-    const configPatch = dashboardPatchToConfigPatch(patch);
-    if (Object.keys(configPatch).length > 0) {
-      setConfig((current) => ({ ...current, ...configPatch }));
-      setPage(1);
+    try {
+      await updateView({
+        viewId: view.id,
+        name: input.name,
+        layout: input.layout,
+        filters: input.filters,
+        config: input.config,
+      });
+      setEditOpen(false);
+    } catch {
+      // Mutation toast handles the failure and the dialog stays open.
     }
-  }
-
-  async function saveChanges() {
-    if (!dirty || isSaving) return;
-    await updateView({
-      viewId: view.id,
-      name,
-      filters,
-      config,
-    });
   }
 
   async function removeView() {
@@ -223,6 +193,7 @@ function ViewDetail({
       toast.error("Create a project before adding marks.");
       return;
     }
+
     try {
       await createMark({
         title: input.title,
@@ -240,8 +211,6 @@ function ViewDetail({
     }
   }
 
-  const dashboardFilters = toDashboardFilters(filters, page, config);
-
   return (
     <>
       <PageContainer>
@@ -253,15 +222,22 @@ function ViewDetail({
           ]}
         />
 
-        <header className="flex flex-col gap-2 border-b border-rule/70 pb-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              aria-label="View name"
-              maxLength={80}
-              className="-ml-1 h-9 max-w-[min(100%,28rem)] border-transparent bg-transparent px-1 text-ui-lg font-semibold shadow-none hover:border-rule/70 hover:bg-paper-2 focus-visible:bg-paper-elevated sm:h-8"
-            />
+        <header className="flex flex-col gap-2 border-b border-rule/70 pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3">
+              <ViewLayoutIcon layout={view.layout} className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <h2 className="truncate text-ui-lg font-semibold text-ink">{view.name}</h2>
+                <Badge variant="default" className="text-ui-2xs">
+                  {viewLayoutLabel(view.layout)}
+                </Badge>
+              </div>
+              <p className="mt-0.5 text-ui-xs text-ink-3">
+                Updated {formatRelative(view.updatedAt)}
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -269,38 +245,22 @@ function ViewDetail({
               type="button"
               size="sm"
               variant="mark"
-              className="h-8 rounded-md px-2"
+              className="h-8 gap-1.5 rounded-md px-2.5"
               onClick={() => setNewMarkOpen(true)}
             >
               <Plus className="size-3.5" aria-hidden />
               New mark
             </Button>
-            <ViewScopeFields
-              workspace={workspace}
-              filters={filters}
-              onChange={updateFilters}
-            />
-            <DashboardViewOptionsMenu
-              filters={dashboardFilters}
-              onApply={updateDashboardViewOptions}
-              activeCountDescription={(count) =>
-                `${count} view option${count === 1 ? "" : "s"}`
-              }
-              triggerLabel={viewLayoutLabel(view.layout)}
-              triggerIcon={<ViewLayoutIcon layout={view.layout} className="size-3" />}
-              triggerClassName="h-8 border border-rule/80 bg-paper-elevated px-2.5 text-ui-sm text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink"
-            />
-            {dirty ? (
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 rounded-md px-2"
-                onClick={saveChanges}
-                disabled={isSaving || !name.trim()}
-              >
-                {isSaving ? "Saving..." : "Save changes"}
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1.5 rounded-md px-2.5"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="size-3.5" aria-hidden />
+              Edit view
+            </Button>
             <ViewActionsMenu
               viewName={view.name}
               isDeleting={isDeleting}
@@ -309,20 +269,19 @@ function ViewDetail({
           </div>
         </header>
 
-        <MarkFilters
-          filters={dashboardFilters}
-          labels={workspace.labels}
-          onChange={updateDashboardViewOptions}
-          showControlDivider={false}
-          className="border-b border-rule/70 pb-2"
-        />
-
-        {view.layout === "board" ? (
+        {visibleMarks.length === 0 ? (
+          <div className="overflow-hidden rounded-md bg-paper-elevated">
+            <ViewEmptyState
+              onEdit={() => setEditOpen(true)}
+              onNewMark={() => setNewMarkOpen(true)}
+            />
+          </div>
+        ) : view.layout === "board" ? (
           <StatusBoard
             marks={visibleMarks}
             workspace={workspace}
             displayNamePreference={displayNamePreference}
-            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
+            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(view.filters))}
           />
         ) : (
           <ViewList
@@ -332,11 +291,29 @@ function ViewDetail({
             referenceTime={loadedAt}
             page={page}
             onPageChange={setPage}
+            onEdit={() => setEditOpen(true)}
             onNewMark={() => setNewMarkOpen(true)}
-            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(filters))}
+            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(view.filters))}
           />
         )}
       </PageContainer>
+
+      {editOpen ? (
+        <ViewEditorDialog
+          open={editOpen}
+          mode="edit"
+          workspace={workspace}
+          initialValue={{
+            name: view.name,
+            layout: view.layout,
+            filters: view.filters,
+            config: view.config,
+          }}
+          isSaving={isSaving}
+          onOpenChange={setEditOpen}
+          onSubmit={saveChanges}
+        />
+      ) : null}
 
       <Dialog open={newMarkOpen} onOpenChange={setNewMarkOpen}>
         <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
@@ -404,6 +381,7 @@ function ViewList({
   referenceTime,
   page,
   onPageChange,
+  onEdit,
   onNewMark,
   markHrefFor,
 }: {
@@ -413,6 +391,7 @@ function ViewList({
   referenceTime?: string | Date;
   page: number;
   onPageChange: (page: number) => void;
+  onEdit: () => void;
   onNewMark: () => void;
   markHrefFor: (mark: MarkItem) => string;
 }) {
@@ -430,7 +409,7 @@ function ViewList({
     <>
       <div className="overflow-hidden rounded-md bg-paper-elevated">
         {marks.length === 0 ? (
-          <ViewEmptyState onNewMark={onNewMark} />
+          <ViewEmptyState onEdit={onEdit} onNewMark={onNewMark} />
         ) : (
           <MarkTable
             marks={paginatedMarks}
@@ -630,19 +609,31 @@ function ViewDeleteRedirecting() {
   );
 }
 
-function ViewEmptyState({ onNewMark }: { onNewMark: () => void }) {
+function ViewEmptyState({
+  onEdit,
+  onNewMark,
+}: {
+  onEdit: () => void;
+  onNewMark: () => void;
+}) {
   return (
     <EmptyState
       variant="plain"
       className="rounded-none border-0 px-6 py-16"
       icon={CircleDashed}
       title="No marks match this saved view."
-      description="Broaden the filters or capture a new mark in the matching project."
+      description="Adjust the saved scope, or capture a new mark that belongs here."
       action={
-        <Button type="button" variant="outline" size="sm" className="h-9" onClick={onNewMark}>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" variant="mark" size="sm" className="h-9" onClick={onNewMark}>
             <Plus className="size-3.5" aria-hidden />
             New mark
-        </Button>
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="h-9" onClick={onEdit}>
+            <Pencil className="size-3.5" aria-hidden />
+            Edit view
+          </Button>
+        </div>
       }
     />
   );
@@ -689,52 +680,6 @@ function newMarkDefaultsFromViewFilters({
   };
 }
 
-function toDashboardFilters(
-  filters: WorkspaceViewFilters,
-  page: number,
-  config?: WorkspaceViewConfig,
-): DashboardFilters {
-  return {
-    projectId: filters.projectId,
-    status: filters.status,
-    workflowStatus: filters.workflowStatus,
-    priority: filters.priority,
-    pinned: filters.pinned,
-    label: filters.label,
-    assignee: filters.assignee,
-    q: filters.q,
-    sort: filters.sort,
-    groupBy: config?.dashboardGroupBy ?? "none",
-    density: config?.dashboardDensity ?? "comfortable",
-    page,
-  };
-}
-
-function dashboardPatchToViewPatch(patch: DashboardFilterPatch): Partial<WorkspaceViewFilters> {
-  const out: Partial<WorkspaceViewFilters> = {};
-  if (typeof patch.projectId === "string") out.projectId = patch.projectId;
-  if (typeof patch.status === "string") out.status = patch.status as WorkspaceViewFilters["status"];
-  if (typeof patch.workflowStatus === "string") out.workflowStatus = patch.workflowStatus;
-  if (typeof patch.priority === "string") out.priority = patch.priority as WorkspaceViewFilters["priority"];
-  if (typeof patch.pinned === "string") out.pinned = patch.pinned as WorkspaceViewFilters["pinned"];
-  if (typeof patch.label === "string") out.label = patch.label;
-  if (typeof patch.assignee === "string") out.assignee = patch.assignee as WorkspaceViewFilters["assignee"];
-  if (patch.q !== undefined) out.q = typeof patch.q === "string" ? patch.q : "";
-  if (typeof patch.sort === "string") out.sort = patch.sort as WorkspaceViewFilters["sort"];
-  return out;
-}
-
-function dashboardPatchToConfigPatch(patch: DashboardFilterPatch): Partial<WorkspaceViewConfig> {
-  const out: Partial<WorkspaceViewConfig> = {};
-  if (typeof patch.groupBy === "string") {
-    out.dashboardGroupBy = patch.groupBy as WorkspaceViewConfig["dashboardGroupBy"];
-  }
-  if (typeof patch.density === "string") {
-    out.dashboardDensity = patch.density as WorkspaceViewConfig["dashboardDensity"];
-  }
-  return out;
-}
-
 function searchParamsFromFilters(filters: WorkspaceViewFilters): URLSearchParams {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
@@ -743,22 +688,6 @@ function searchParamsFromFilters(filters: WorkspaceViewFilters): URLSearchParams
     }
   }
   return params;
-}
-
-function viewSignature(input: {
-  name: string;
-  filters: WorkspaceViewFilters;
-  config: WorkspaceViewConfig;
-}): string {
-  return JSON.stringify({
-    name: input.name.trim(),
-    filters: input.filters,
-    config: {
-      ...DEFAULT_WORKSPACE_VIEW_CONFIG,
-      ...input.config,
-      boardGroupBy: "status",
-    },
-  });
 }
 
 function rememberDeletedViewRedirect(viewId: string) {

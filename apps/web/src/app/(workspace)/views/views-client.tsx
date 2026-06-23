@@ -3,16 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
-  Check,
   CircleDashed,
   Import,
-  Loader2,
   Plus,
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
@@ -29,15 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Field } from "@/components/field";
-import { Input } from "@/components/ui/input";
-import type {
-  Workspace,
-  WorkspaceView,
-  WorkspaceViewConfig,
-  WorkspaceViewFilters,
-  WorkspaceViewLayout,
-} from "@/lib/collab-types";
+import type { WorkspaceView } from "@/lib/collab-types";
 import { formatRelative } from "@/lib/dates";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
@@ -45,7 +34,6 @@ import {
   useDeleteWorkspaceViewMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
-import { cn } from "@/lib/utils";
 import {
   safeLocalStorageGet,
   safeLocalStorageRemove,
@@ -54,16 +42,11 @@ import {
 import {
   DEFAULT_WORKSPACE_VIEW_CONFIG,
   DEFAULT_WORKSPACE_VIEW_FILTERS,
-  describeWorkspaceViewFilters,
 } from "@/lib/workspace/views";
 import { useSavedViews } from "@/components/dashboard/use-saved-views";
 
-import { ViewScopeFields } from "./view-filter-fields";
-import {
-  VIEW_TEMPLATES,
-  ViewLayoutIcon,
-  viewLayoutLabel,
-} from "./view-ui";
+import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
+import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
 
 const LOCAL_SAVED_VIEWS_PREFIX = "youin:saved-views:";
 const LOCAL_IMPORT_DISMISSED_PREFIX = "youin:views-import-dismissed:";
@@ -75,8 +58,6 @@ export function ViewsClient() {
   }));
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
-  const [createInitialLayout, setCreateInitialLayout] =
-    useState<WorkspaceViewLayout>("list");
   const [deleteCandidate, setDeleteCandidate] =
     useState<WorkspaceView | null>(null);
   const importDismissKey = workspaceId
@@ -137,12 +118,7 @@ export function ViewsClient() {
     }
   }
 
-  async function handleCreate(input: {
-    name: string;
-    layout: WorkspaceViewLayout;
-    filters: WorkspaceViewFilters;
-    config: WorkspaceViewConfig;
-  }) {
+  async function handleCreate(input: ViewEditorValue) {
     try {
       const view = await createView(input);
       setCreateOpen(false);
@@ -150,11 +126,6 @@ export function ViewsClient() {
     } catch {
       // Mutation toast handles the failure.
     }
-  }
-
-  function openCreate(layout: WorkspaceViewLayout = "list") {
-    setCreateInitialLayout(layout);
-    setCreateOpen(true);
   }
 
   async function handleDelete(view: WorkspaceView) {
@@ -173,7 +144,7 @@ export function ViewsClient() {
       <BreadcrumbHeader
         items={[{ label: "Saved views", current: true }]}
         actions={
-          <Button type="button" size="sm" className="h-7 gap-1.5 rounded-md px-2" onClick={() => openCreate()}>
+          <Button type="button" size="sm" className="h-7 gap-1.5 rounded-md px-2" onClick={() => setCreateOpen(true)}>
             <Plus className="size-3.5" aria-hidden />
             New view
           </Button>
@@ -214,46 +185,24 @@ export function ViewsClient() {
             ))}
           </div>
         ) : (
-          <EmptyViews onCreate={() => openCreate()} />
+          <EmptyViews onCreate={() => setCreateOpen(true)} />
         )}
       </div>
 
-      <section className="overflow-hidden rounded-md bg-paper-elevated">
-        <div className="border-b border-rule/70 px-3 py-2">
-          <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
-            View templates
-          </p>
-        </div>
-        <div className="divide-y divide-rule/70">
-          {VIEW_TEMPLATES.map((template) => (
-            <button
-              key={template.layout}
-              type="button"
-              onClick={() => openCreate(template.layout)}
-              className="flex min-h-16 w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-paper-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset"
-            >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3">
-                <template.icon className="size-4" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-ui-sm font-medium text-ink">{template.label}</span>
-                <span className="mt-0.5 block text-ui-xs text-ink-3">{template.description}</span>
-              </span>
-              <ArrowRight className="size-4 shrink-0 text-ink-3" aria-hidden />
-            </button>
-          ))}
-        </div>
-      </section>
-
       {createOpen ? (
-        <CreateViewDialog
-          key={createInitialLayout}
+        <ViewEditorDialog
           open={createOpen}
-          initialLayout={createInitialLayout}
+          mode="create"
           workspace={workspace}
-          isCreating={isCreating}
+          isSaving={isCreating}
+          initialValue={{
+            name: "All marks",
+            layout: "list",
+            filters: DEFAULT_WORKSPACE_VIEW_FILTERS,
+            config: DEFAULT_WORKSPACE_VIEW_CONFIG,
+          }}
           onOpenChange={setCreateOpen}
-          onCreate={handleCreate}
+          onSubmit={handleCreate}
         />
       ) : null}
 
@@ -316,7 +265,6 @@ function ViewRow({
           </Badge>
         </span>
         <span className="mt-0.5 block truncate text-ui-xs text-ink-3">
-          {describeWorkspaceViewFilters(view.filters)} ·{" "}
           {saving ? "Saving now" : `Updated ${formatRelative(view.updatedAt)}`}
         </span>
       </span>
@@ -367,191 +315,6 @@ function EmptyViews({ onCreate }: { onCreate: () => void }) {
       }
     />
   );
-}
-
-function CreateViewDialog({
-  open,
-  initialLayout,
-  workspace,
-  isCreating,
-  onOpenChange,
-  onCreate,
-}: {
-  open: boolean;
-  initialLayout: WorkspaceViewLayout;
-  workspace: Workspace;
-  isCreating: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreate: (input: {
-    name: string;
-    layout: WorkspaceViewLayout;
-    filters: WorkspaceViewFilters;
-    config: WorkspaceViewConfig;
-  }) => void;
-}) {
-  const [layout, setLayout] = useState<WorkspaceViewLayout>(initialLayout);
-  const initialTemplate = VIEW_TEMPLATES.find((item) => item.layout === initialLayout) ?? VIEW_TEMPLATES[0];
-  const [name, setName] = useState(initialTemplate.defaultName);
-  const [filters, setFilters] = useState<WorkspaceViewFilters>(DEFAULT_WORKSPACE_VIEW_FILTERS);
-  const [config] = useState<WorkspaceViewConfig>(DEFAULT_WORKSPACE_VIEW_CONFIG);
-
-  const selectedTemplate = useMemo(
-    () => VIEW_TEMPLATES.find((template) => template.layout === layout) ?? VIEW_TEMPLATES[0],
-    [layout],
-  );
-  const scopeSummary = useMemo(
-    () => describeCreateViewScope(workspace, filters),
-    [filters, workspace],
-  );
-
-  function selectLayout(next: WorkspaceViewLayout) {
-    setLayout(next);
-    const template = VIEW_TEMPLATES.find((item) => item.layout === next);
-    if (template && (!name.trim() || VIEW_TEMPLATES.some((item) => item.defaultName === name))) {
-      setName(template.defaultName);
-    }
-  }
-
-  function submit() {
-    if (!name.trim() || isCreating) return;
-    onCreate({
-      name,
-      layout,
-      filters,
-      config: {
-        ...config,
-        boardGroupBy: "status",
-      },
-    });
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-    >
-      <DialogContent className="flex max-h-[min(90vh,42rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
-        <DialogHeader className="shrink-0 border-b border-rule/70 px-4 py-3 pr-12">
-          <DialogTitle>Create a saved view</DialogTitle>
-          <DialogDescription>
-            Save a reusable lens for the marks your team checks often.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-4 overflow-y-auto px-4 py-4">
-          <Field id="view-name" label="View name">
-            <Input
-              id="view-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={selectedTemplate.defaultName}
-              maxLength={80}
-              className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-9 sm:text-ui-sm"
-            />
-          </Field>
-
-          <div className="space-y-2">
-            <p className="text-ui-xs font-medium text-ink-2">Layout</p>
-            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="View layout">
-              {VIEW_TEMPLATES.map((template) => {
-                const active = layout === template.layout;
-                return (
-                  <button
-                    key={template.layout}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => selectLayout(template.layout)}
-                    className={cn(
-                      "group flex min-h-14 items-start gap-2.5 rounded-md border border-rule/70 bg-paper-2 p-2.5 text-left transition-[background-color,border-color,box-shadow]",
-                      "hover:border-rule-strong/70 hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-                      active && "border-mark/45 bg-mark-soft ring-2 ring-mark/10",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-paper text-ink-3 transition-colors",
-                        active && "bg-paper-elevated text-mark",
-                      )}
-                    >
-                      <template.icon className="size-3.5" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="text-ui-sm font-medium text-ink">{template.label}</span>
-                        {active ? <Check className="size-4 shrink-0 text-mark" aria-hidden /> : null}
-                      </span>
-                      <span className="mt-0.5 block text-ui-xs leading-snug text-ink-3">
-                        {template.description}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <section className="overflow-hidden rounded-md border border-rule/70 bg-paper-2/70">
-            <div className="border-b border-rule/70 px-3 py-2">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-ui-xs font-medium text-ink-2">Initial scope</p>
-                <p className="hidden max-w-[16rem] truncate text-ui-xs text-ink-3 sm:block">
-                  {scopeSummary}
-                </p>
-              </div>
-            </div>
-            <div className="p-3">
-              <ViewScopeFields
-                workspace={workspace}
-                filters={filters}
-                includeAdvanced
-                labeled
-                onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
-              />
-            </div>
-          </section>
-        </div>
-
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-rule/70 bg-paper-2/70 p-3 sm:flex-row sm:justify-end">
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isCreating}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={submit} disabled={!name.trim() || isCreating} aria-busy={isCreating || undefined}>
-            {isCreating ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
-            {isCreating ? "Creating" : `Create ${selectedTemplate.label.toLowerCase()} view`}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function describeCreateViewScope(workspace: Workspace, filters: WorkspaceViewFilters): string {
-  const parts: string[] = [];
-  if (filters.projectId !== "all") {
-    parts.push(findWorkspaceName(workspace.projects, filters.projectId) ?? "Selected project");
-  }
-  if (filters.status !== "all") parts.push(filters.status === "open" ? "Open marks" : "Closed marks");
-  if (filters.workflowStatus !== "all") {
-    parts.push(findWorkspaceName(workspace.workflowStatuses, filters.workflowStatus) ?? "Selected stage");
-  }
-  if (filters.priority !== "all") parts.push(`${capitalize(filters.priority)} priority`);
-  if (filters.label !== "all") {
-    parts.push(findWorkspaceName(workspace.labels, filters.label) ?? "Selected label");
-  }
-  if (filters.pinned === "pinned") parts.push("Pinned marks");
-  if (filters.pinned === "unpinned") parts.push("Unpinned marks");
-  if (filters.assignee === "me") parts.push("Assigned to me");
-  if (filters.assignee === "unassigned") parts.push("Unassigned");
-  return parts.join(" · ") || "All marks in this workspace";
-}
-
-function findWorkspaceName(items: ReadonlyArray<{ id: string; name: string }>, id: string): string | null {
-  return items.find((item) => item.id === id)?.name ?? null;
-}
-
-function capitalize(value: string): string {
-  return value ? `${value[0].toUpperCase()}${value.slice(1)}` : value;
 }
 
 function uniqueViewName(name: string, usedNames: Set<string>): string {
