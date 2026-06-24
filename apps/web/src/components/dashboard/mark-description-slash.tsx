@@ -4,13 +4,21 @@ import { Extension } from "@tiptap/core";
 import type { Editor, Range } from "@tiptap/core";
 import {
   Bold,
+  Code,
+  CodeXml,
+  Eraser,
+  Heading1,
+  Heading2,
+  Heading3,
   Italic,
   Link as LinkIcon,
   List,
   ListOrdered,
+  Pilcrow,
   type LucideIcon,
   Quote,
   Redo,
+  SeparatorHorizontal,
   Strikethrough,
   Underline,
   Undo,
@@ -60,6 +68,42 @@ function promptAndSetLink(editor: Editor) {
 function slashMenuItems(): SlashCommandItem[] {
   return [
     {
+      title: "Text",
+      subtext: "Plain paragraph",
+      keywords: "text paragraph normal plain p",
+      icon: Pilcrow,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setParagraph().run();
+      },
+    },
+    {
+      title: "Heading 1",
+      subtext: "Large section heading",
+      keywords: "heading h1 title large",
+      icon: Heading1,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleHeading({ level: 1 }).run();
+      },
+    },
+    {
+      title: "Heading 2",
+      subtext: "Medium section heading",
+      keywords: "heading h2 subtitle medium",
+      icon: Heading2,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleHeading({ level: 2 }).run();
+      },
+    },
+    {
+      title: "Heading 3",
+      subtext: "Small section heading",
+      keywords: "heading h3 small",
+      icon: Heading3,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleHeading({ level: 3 }).run();
+      },
+    },
+    {
       title: "Bold",
       subtext: "Strong emphasis",
       keywords: "bold strong b",
@@ -96,6 +140,24 @@ function slashMenuItems(): SlashCommandItem[] {
       },
     },
     {
+      title: "Inline code",
+      subtext: "Code within a sentence",
+      keywords: "inline code monospace",
+      icon: Code,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleCode().run();
+      },
+    },
+    {
+      title: "Code block",
+      subtext: "Multi-line code",
+      keywords: "code block pre snippet",
+      icon: CodeXml,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
+      },
+    },
+    {
       title: "Bullet list",
       subtext: "Unordered list",
       keywords: "bullet list ul",
@@ -120,6 +182,30 @@ function slashMenuItems(): SlashCommandItem[] {
       icon: Quote,
       run: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).toggleBlockquote().run();
+      },
+    },
+    {
+      title: "Divider",
+      subtext: "Horizontal rule",
+      keywords: "divider separator horizontal rule hr line",
+      icon: SeparatorHorizontal,
+      run: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).setHorizontalRule().run();
+      },
+    },
+    {
+      title: "Clear formatting",
+      subtext: "Reset selection to plain text",
+      keywords: "clear remove reset formatting plain",
+      icon: Eraser,
+      run: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .unsetAllMarks()
+          .clearNodes()
+          .run();
       },
     },
     {
@@ -218,7 +304,7 @@ function SlashMenuView({
               aria-selected={i === selectedIndex}
               className={cn(
                 "flex w-full min-w-0 items-center gap-2 px-2 py-1.5 text-left text-ui-sm",
-                i === selectedIndex ? "bg-paper-2" : "hover:bg-paper-2",
+                i === selectedIndex ? "bg-paper-3" : "hover:bg-paper-3",
               )}
               onMouseEnter={() => onHoverIndex(i)}
               onMouseDown={(e) => {

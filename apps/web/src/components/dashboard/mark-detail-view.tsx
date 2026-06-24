@@ -5,7 +5,10 @@ import {
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -60,7 +63,6 @@ import { CommentThread } from "./comment-thread";
 import { MarkAiPromptActions } from "./mark-ai-prompt-actions";
 import { MarkDetailActions } from "./mark-detail-actions";
 import { MarkDescriptionEditor } from "./mark-description-editor";
-import { MarkDescriptionRead } from "./mark-description-read";
 import { MarkDetailCapture } from "./mark-detail-capture";
 import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
@@ -77,7 +79,8 @@ interface MarkDetailViewProps {
   variant?: "page" | "pane";
 }
 
-type EditingField = "title" | "page" | "description";
+type EditingField = "title" | "page";
+type DescriptionSaveState = "idle" | "saving" | "saved";
 
 const DETAIL_SIDEBAR_WIDTH_KEY = "youin:mark-detail-sidebar-width";
 const DETAIL_SIDEBAR_COLLAPSED_KEY = "youin:mark-detail-sidebar-collapsed";
@@ -198,15 +201,36 @@ export function MarkDetailView({
   const assignee = mark.assigneeId ? membersById.get(mark.assigneeId) : undefined;
   const [editingField, setEditingField] = useState<EditingField | null>(null);
   const [editTitle, setEditTitle] = useState(mark.title);
-  const [editDescription, setEditDescription] = useState(mark.description);
   const [editPage, setEditPage] = useState(mark.page);
+  const [descriptionDraftMarkId, setDescriptionDraftMarkId] = useState(mark.id);
+  const [descriptionDraftValue, setDescriptionDraftValue] = useState(
+    mark.description,
+  );
+  const [descriptionSaveStateValue, setDescriptionSaveStateValue] =
+    useState<DescriptionSaveState>("idle");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const descriptionSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const descriptionSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const lastRequestedDescriptionRef = useRef(mark.description);
   const sidebarPreferences = useMarkDetailSidebarPreferences();
   const isPane = variant === "pane";
+  const descriptionDraft =
+    descriptionDraftMarkId === mark.id ? descriptionDraftValue : mark.description;
+  const descriptionSaveState =
+    descriptionDraftMarkId === mark.id ? descriptionSaveStateValue : "idle";
+
+  if (descriptionDraftMarkId !== mark.id) {
+    setDescriptionDraftMarkId(mark.id);
+    setDescriptionDraftValue(mark.description);
+    setDescriptionSaveStateValue("idle");
+  }
 
   function startEdit(field: EditingField = "title") {
     setEditTitle(mark.title);
-    setEditDescription(mark.description);
     setEditPage(mark.page);
     setEditingField(field);
   }
@@ -214,12 +238,103 @@ export function MarkDetailView({
   function cancelEdit() {
     setEditingField(null);
     setEditTitle(mark.title);
-    setEditDescription(mark.description);
     setEditPage(mark.page);
   }
 
+  const setDescriptionDraft = useCallback(
+    (nextDraft: string) => {
+      setDescriptionDraftMarkId(mark.id);
+      setDescriptionDraftValue(nextDraft);
+    },
+    [mark.id],
+  );
+
+  const clearDescriptionTimers = useCallback(() => {
+    if (descriptionSaveTimerRef.current) {
+      clearTimeout(descriptionSaveTimerRef.current);
+      descriptionSaveTimerRef.current = null;
+    }
+    if (descriptionSavedTimerRef.current) {
+      clearTimeout(descriptionSavedTimerRef.current);
+      descriptionSavedTimerRef.current = null;
+    }
+  }, []);
+
+  const saveDescriptionDraft = useCallback(
+    async (rawDraft: string) => {
+      let descriptionNorm: string;
+      try {
+        descriptionNorm = normalizeDescriptionForStorage(rawDraft);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Description is invalid.");
+        return;
+      }
+      if (
+        descriptionNorm === mark.description ||
+        descriptionNorm === lastRequestedDescriptionRef.current
+      ) {
+        return;
+      }
+
+      lastRequestedDescriptionRef.current = descriptionNorm;
+      setDescriptionSaveStateValue("saving");
+      try {
+        await updateMark({
+          markId: mark.id,
+          updates: { description: descriptionNorm },
+        });
+        setDescriptionSaveStateValue("saved");
+        if (descriptionSavedTimerRef.current) {
+          clearTimeout(descriptionSavedTimerRef.current);
+        }
+        descriptionSavedTimerRef.current = setTimeout(() => {
+          setDescriptionSaveStateValue("idle");
+          descriptionSavedTimerRef.current = null;
+        }, 1200);
+      } catch {
+        lastRequestedDescriptionRef.current = mark.description;
+        setDescriptionSaveStateValue("idle");
+      }
+    },
+    [mark.description, mark.id, updateMark],
+  );
+
+  useEffect(() => {
+    lastRequestedDescriptionRef.current = mark.description;
+  }, [mark.description]);
+
+  useEffect(() => {
+    clearDescriptionTimers();
+  }, [clearDescriptionTimers, mark.id]);
+
+  useEffect(
+    () => () => {
+      clearDescriptionTimers();
+    },
+    [clearDescriptionTimers],
+  );
+
+  useEffect(() => {
+    if (descriptionDraft === mark.description) return;
+    if (descriptionSaveTimerRef.current) {
+      clearTimeout(descriptionSaveTimerRef.current);
+    }
+    descriptionSaveTimerRef.current = setTimeout(() => {
+      void saveDescriptionDraft(descriptionDraft);
+      descriptionSaveTimerRef.current = null;
+    }, 900);
+
+    return () => {
+      if (descriptionSaveTimerRef.current) {
+        clearTimeout(descriptionSaveTimerRef.current);
+        descriptionSaveTimerRef.current = null;
+      }
+    };
+  }, [descriptionDraft, mark.description, mark.id, saveDescriptionDraft]);
+
   async function saveEdit(field = editingField) {
     if (isSavingEdit || !field) return;
+    let updatePromise: Promise<unknown> | null = null;
     try {
       if (field === "title") {
         const title = editTitle.trim();
@@ -228,7 +343,7 @@ export function MarkDetailView({
           return;
         }
         if (title !== mark.title) {
-          await updateMark({ markId: mark.id, updates: { title } });
+          updatePromise = updateMark({ markId: mark.id, updates: { title } });
         }
       }
       if (field === "page") {
@@ -238,25 +353,14 @@ export function MarkDetailView({
           return;
         }
         if (normalizedPage !== mark.page) {
-          await updateMark({ markId: mark.id, updates: { page: normalizedPage } });
-        }
-      }
-      if (field === "description") {
-        let descriptionNorm: string;
-        try {
-          descriptionNorm = normalizeDescriptionForStorage(editDescription);
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Description is invalid.");
-          return;
-        }
-        if (descriptionNorm !== mark.description) {
-          await updateMark({
+          updatePromise = updateMark({
             markId: mark.id,
-            updates: { description: descriptionNorm },
+            updates: { page: normalizedPage },
           });
         }
       }
       setEditingField(null);
+      await updatePromise;
     } catch {
       // toast handled by the mutation
     }
@@ -266,13 +370,6 @@ export function MarkDetailView({
     if (e.key === "Escape") {
       e.preventDefault();
       cancelEdit();
-      return;
-    }
-    if (field === "description") {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        void saveEdit(field);
-      }
       return;
     }
     if (e.key === "Enter") {
@@ -564,52 +661,26 @@ export function MarkDetailView({
               title="Notes"
               icon={<FileText className="size-3.5" aria-hidden />}
               action={
-                editingField === "description" ? (
-                  <InlineEditActions
-                    field="description"
-                    saving={isSavingEdit}
-                    onCancel={cancelEdit}
-                    onSave={(field) => void saveEdit(field)}
-                  />
-                ) : mark.description ? (
-                  <button
-                    type="button"
-                    onClick={() => startEdit("description")}
-                    className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20"
-                    aria-label="Edit notes"
-                  >
-                    <Pencil className="size-3.5" aria-hidden />
-                  </button>
+                descriptionSaveState !== "idle" ? (
+                  <span className="text-ui-xs text-ink-3">
+                    {descriptionSaveState === "saving" ? "Saving" : "Saved"}
+                  </span>
                 ) : null
               }
             >
-              {editingField === "description" ? (
-                <div onKeyDown={(e) => handleEditKeyDown(e, "description")}>
-                  <MarkDescriptionEditor
-                    key={`${mark.id}-inline-description`}
-                    value={editDescription}
-                    onChange={setEditDescription}
-                    placeholder="Describe what should change..."
-                    ariaLabel="Mark notes"
-                    disabled={isSavingEdit}
-                    autoFocus
-                    className="rounded-md border-rule/45 bg-paper shadow-none hover:border-rule/70 hover:bg-paper focus-within:border-rule-strong/70 focus-within:bg-paper focus-within:ring-0"
-                  />
-                </div>
-              ) : mark.description ? (
-                <div className="rounded-md bg-paper px-2.5 py-2 ring-1 ring-rule/35">
-                  <MarkDescriptionRead html={mark.description} />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => startEdit("description")}
-                  className="flex min-h-10 w-full items-center justify-between rounded-md bg-paper-2/70 px-2.5 py-1.5 text-left text-ui-sm text-ink-3 ring-1 ring-rule/40 transition-colors hover:bg-paper-3 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/20 sm:min-h-9"
-                >
-                  <span>Add notes</span>
-                  <Pencil className="size-3.5" aria-hidden />
-                </button>
-              )}
+              <MarkDescriptionEditor
+                key={`${mark.id}-notes`}
+                value={descriptionDraft}
+                onChange={setDescriptionDraft}
+                onBlur={() => void saveDescriptionDraft(descriptionDraft)}
+                placeholder="Add notes..."
+                ariaLabel="Mark notes"
+                variant="inline"
+                showCharacterCount={false}
+                minHeightClassName="min-h-[3.25rem]"
+                contentClassName="px-1.5 py-1.5 text-ui-sm leading-relaxed text-ink-2"
+                className="-mx-1"
+              />
             </DetailContentSection>
 
             <DetailContentSection title="Labels" icon={<Tags className="size-3.5" aria-hidden />}>

@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 
 import { cn } from "@/lib/utils";
 import {
@@ -14,6 +13,10 @@ import {
 } from "@/lib/mark-description";
 
 import { MarkDescriptionSlash } from "./mark-description-slash";
+import {
+  markDescriptionContentClass,
+  markDescriptionExtensions,
+} from "./mark-description-tiptap";
 
 interface MarkDescriptionEditorProps {
   id?: string;
@@ -22,10 +25,14 @@ interface MarkDescriptionEditorProps {
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
+  contentClassName?: string;
   minHeightClassName?: string;
   maxLength?: number;
   disabled?: boolean;
   autoFocus?: boolean;
+  variant?: "boxed" | "inline";
+  showCharacterCount?: boolean;
+  onBlur?: () => void;
 }
 
 export function MarkDescriptionEditor({
@@ -35,32 +42,30 @@ export function MarkDescriptionEditor({
   placeholder = "Add detail… Type / for formatting",
   ariaLabel,
   className,
+  contentClassName,
   minHeightClassName = "min-h-[120px]",
   maxLength = MARK_DESCRIPTION_MAX_LENGTH,
   disabled = false,
   autoFocus = false,
+  variant = "boxed",
+  showCharacterCount = variant === "boxed",
+  onBlur,
 }: MarkDescriptionEditorProps) {
   const lastEmitted = useRef(value);
+  const onBlurRef = useRef(onBlur);
   const slashMountParentRef = useRef<HTMLDivElement>(null);
   const slashPositionAnchorRef = useRef<HTMLDivElement>(null);
+  const inline = variant === "inline";
+
+  useEffect(() => {
+    onBlurRef.current = onBlur;
+  }, [onBlur]);
 
   const editor = useEditor(
     {
       immediatelyRender: false,
       extensions: [
-        StarterKit.configure({
-          heading: {
-            levels: [1, 2, 3],
-          },
-          link: {
-            openOnClick: false,
-            HTMLAttributes: {
-              class: "text-mark underline underline-offset-2",
-              rel: "noopener noreferrer",
-              target: "_blank",
-            },
-          },
-        }),
+        ...markDescriptionExtensions({ openLinksOnClick: false }),
         Placeholder.configure({ placeholder }),
         CharacterCount.configure({
           limit: maxLength,
@@ -82,22 +87,23 @@ export function MarkDescriptionEditor({
           role: "textbox",
           "aria-label": ariaLabel ?? placeholder,
           "aria-multiline": "true",
-          class: cn(
-            "max-h-[min(40vh,20rem)] max-w-none overflow-y-auto px-3 py-2 outline-none",
-            "text-ui-sm leading-relaxed text-ink",
-            "focus-visible:outline-none",
-            "[&_blockquote]:my-2 [&_blockquote]:border-l [&_blockquote]:border-rule [&_blockquote]:pl-3",
-            "[&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-title-md [&_h1]:font-semibold [&_h1]:leading-snug",
-            "[&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-title-sm [&_h2]:font-semibold [&_h2]:leading-snug",
-            "[&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-ui-md [&_h3]:font-semibold [&_h3]:leading-snug",
-            "[&_hr]:my-3 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-rule",
-            "[&_li]:my-0.5",
-            "[&_ol]:my-2 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:pl-1",
-            "[&_p]:mb-2 [&_p:last-child]:mb-0",
-            "[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-paper-3 [&_pre]:p-2 [&_pre]:font-mono [&_pre]:text-ui-xs [&_pre]:leading-relaxed",
-            "[&_ul]:my-2 [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:pl-1",
-            minHeightClassName,
+          class: markDescriptionContentClass(
+            cn(
+              inline
+                ? "px-0 py-0"
+                : "max-h-[min(40vh,20rem)] overflow-y-auto px-3 py-2",
+              "text-ui-sm leading-relaxed text-ink",
+              "focus-visible:outline-none",
+              minHeightClassName,
+              contentClassName,
+            ),
           ),
+        },
+        handleDOMEvents: {
+          blur: () => {
+            onBlurRef.current?.();
+            return false;
+          },
         },
       },
       onUpdate: ({ editor: ed }) => {
@@ -106,14 +112,24 @@ export function MarkDescriptionEditor({
         onChange(draft);
       },
     },
-    [placeholder, ariaLabel, minHeightClassName, maxLength, autoFocus],
+    [
+      placeholder,
+      ariaLabel,
+      minHeightClassName,
+      maxLength,
+      autoFocus,
+      inline,
+      contentClassName,
+    ],
   );
 
   useEffect(() => {
     if (!editor) return;
     if (value === lastEmitted.current) return;
     lastEmitted.current = value;
-    editor.commands.setContent(storedDescriptionToEditorHtml(value), { emitUpdate: false });
+    editor.commands.setContent(storedDescriptionToEditorHtml(value), {
+      emitUpdate: false,
+    });
   }, [value, editor]);
 
   useEffect(() => {
@@ -145,7 +161,9 @@ export function MarkDescriptionEditor({
   return (
     <div
       className={cn(
-        "rounded-md border border-rule/60 bg-paper-2 transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:border-rule-strong/60 hover:bg-paper-3 focus-within:border-ring/45 focus-within:bg-paper-elevated focus-within:ring-2 focus-within:ring-ring/30",
+        inline
+          ? "rounded-sm border border-transparent bg-transparent transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:bg-paper-2/55 focus-within:border-rule/50 focus-within:bg-paper focus-within:ring-2 focus-within:ring-mark/10"
+          : "rounded-md border border-rule/60 bg-paper-2 transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:border-rule-strong/60 hover:bg-paper-3 focus-within:border-ring/45 focus-within:bg-paper-elevated focus-within:ring-2 focus-within:ring-ring/30",
         disabled && "pointer-events-none opacity-60",
         className,
       )}
@@ -158,11 +176,13 @@ export function MarkDescriptionEditor({
           aria-hidden
         />
       </div>
-      <div className="flex justify-end px-2 py-1">
-        <span className="tabular-nums text-ui-xs text-ink-3">
-          {chars} / {maxLength}
-        </span>
-      </div>
+      {showCharacterCount ? (
+        <div className="flex justify-end px-2 py-1">
+          <span className="tabular-nums text-ui-xs text-ink-3">
+            {chars} / {maxLength}
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }
