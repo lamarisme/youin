@@ -52,19 +52,25 @@ export function MarkDetailCapture({
     return (
       <div
         className={cn(
-          "flex min-h-10 flex-wrap items-center gap-2 rounded-md bg-paper-2/60 px-3 py-2 text-ui-sm text-ink-3 ring-1 ring-rule/35",
+          "grid min-h-20 gap-3 rounded-md border border-dashed border-rule/70 bg-paper-2/35 px-3 py-3 text-ui-sm text-ink-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
           spacing === "normal" && (isHero ? "mt-4" : "mt-5"),
         )}
       >
-        <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
-        <span className="font-medium text-ink-2">Capture</span>
-        <span className="min-w-0 flex-1 truncate">No snapshot saved.</span>
+        <div className="flex min-w-0 items-start gap-2.5">
+          <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
+          <div className="min-w-0 space-y-0.5">
+            <p className="font-medium text-ink-2">No capture saved</p>
+            <p className="max-w-prose text-ui-xs leading-relaxed text-ink-3">
+              Open the source page to inspect this mark in context.
+            </p>
+          </div>
+        </div>
         {mark.page.trim() ? (
           <MarkPageOpenButton
             page={mark.page}
             markTitle={mark.title}
             appearance="labeled"
-            className="h-7 px-2 text-ui-xs"
+            className="h-8 justify-self-start px-2 text-ui-xs sm:justify-self-end"
           />
         ) : null}
       </div>

@@ -887,7 +887,12 @@ function DetailSidebar({
   const content = <div className="space-y-1">{children}</div>;
 
   return (
-    <aside className="relative min-w-0">
+    <aside
+      className={cn(
+        "relative min-w-0",
+        !isPane && !collapsed && "lg:border-l lg:border-rule/60 lg:pl-4",
+      )}
+    >
       {!isPane ? (
         <button
           type="button"

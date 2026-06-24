@@ -370,7 +370,13 @@ export function NewMarkForm({
               Cancel
             </Button>
           ) : null}
-          <SubmitButton onClick={handleSubmit} loading={submitting} disabled={!canSubmit} className="h-10 sm:h-8">
+          <SubmitButton
+            onClick={handleSubmit}
+            loading={submitting}
+            loadingText="Creating mark"
+            disabled={!canSubmit}
+            className="h-10 sm:h-8"
+          >
             Create mark
           </SubmitButton>
         </div>
