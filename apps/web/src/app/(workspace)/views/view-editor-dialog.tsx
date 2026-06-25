@@ -123,11 +123,11 @@ export function ViewEditorDialog({
     });
   }
 
-  const title = mode === "create" ? "Create a saved view" : "Edit view";
+  const title = mode === "create" ? "Create a saved view" : "Edit saved view";
   const description =
     mode === "create"
-      ? "Choose the marks this view should collect."
-      : "Change the saved view setup. The view updates after saving.";
+      ? "Save a reusable lens for the marks your team checks often."
+      : "Update the icon, filters, layout, and display options for this view.";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -151,13 +151,13 @@ export function ViewEditorDialog({
             </Field>
 
             <section className="space-y-2">
-              <p className="text-ui-xs font-medium text-ink-2">Icon</p>
+              <p className="text-ui-xs font-medium text-ink-2">View icon</p>
               <ViewIconPicker value={icon} onChange={setIcon} />
             </section>
           </div>
 
           <section className="space-y-2">
-            <p className="text-ui-xs font-medium text-ink-2">Layout</p>
+            <p className="text-ui-xs font-medium text-ink-2">View layout</p>
             <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="View layout">
               {VIEW_TEMPLATES.map((template) => {
                 const active = layout === template.layout;
@@ -199,7 +199,7 @@ export function ViewEditorDialog({
 
           <section className="overflow-hidden rounded-md border border-rule/70 bg-paper-2/70">
             <div className="border-b border-rule/70 px-3 py-2">
-              <p className="text-ui-xs font-medium text-ink-2">Scope</p>
+              <p className="text-ui-xs font-medium text-ink-2">Filters</p>
             </div>
             <div className="grid gap-3 p-3">
               <ViewScopeFields
@@ -209,7 +209,7 @@ export function ViewEditorDialog({
                 labeled
                 onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
               />
-              <Field id="view-search" label="Search">
+              <Field id="view-search" label="Search terms">
                 <Input
                   id="view-search"
                   type="search"
@@ -227,9 +227,9 @@ export function ViewEditorDialog({
 
           <section className="overflow-hidden rounded-md border border-rule/70 bg-paper-2/70">
             <div className="border-b border-rule/70 px-3 py-2">
-              <p className="text-ui-xs font-medium text-ink-2">Presentation</p>
+              <p className="text-ui-xs font-medium text-ink-2">Display options</p>
             </div>
-            <div className="grid gap-2 p-3 sm:grid-cols-3">
+            <div className="grid gap-3 p-3 sm:grid-cols-3">
               <EditorSelect label="Sort">
                 <FilterSelect<WorkspaceViewSortMode>
                   value={filters.sort}
