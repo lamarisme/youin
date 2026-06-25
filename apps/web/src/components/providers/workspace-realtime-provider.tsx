@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { workspaceKeys } from "@/lib/queries/keys";
+import { WORKSPACE_INVALIDATED_EVENT } from "@/lib/queries/workspace-optimistic";
 import { createClient } from "@/lib/supabase/client";
 
 const WORKSPACE_REALTIME_TABLES = [
@@ -39,6 +40,7 @@ export function WorkspaceRealtimeProvider({
     pendingOptimisticMutationCount,
   );
   const queuedInvalidationRef = useRef(false);
+  const queuedInvalidationCoveredRef = useRef(false);
   const invalidateTimerRef = useRef<number | null>(null);
 
   const scheduleInvalidation = useCallback(() => {
@@ -61,10 +63,33 @@ export function WorkspaceRealtimeProvider({
     pendingOptimisticMutationCountRef.current = pendingOptimisticMutationCount;
 
     if (pendingOptimisticMutationCount === 0 && queuedInvalidationRef.current) {
+      const covered = queuedInvalidationCoveredRef.current;
       queuedInvalidationRef.current = false;
-      scheduleInvalidation();
+      queuedInvalidationCoveredRef.current = false;
+      if (!covered) {
+        scheduleInvalidation();
+      }
     }
   }, [pendingOptimisticMutationCount, scheduleInvalidation]);
+
+  useEffect(() => {
+    function handleWorkspaceInvalidated() {
+      if (
+        pendingOptimisticMutationCountRef.current > 0 &&
+        queuedInvalidationRef.current
+      ) {
+        queuedInvalidationCoveredRef.current = true;
+      }
+    }
+
+    window.addEventListener(WORKSPACE_INVALIDATED_EVENT, handleWorkspaceInvalidated);
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_INVALIDATED_EVENT,
+        handleWorkspaceInvalidated,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();

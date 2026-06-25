@@ -7,6 +7,7 @@ import {
   composeWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
   selectRouteWorkspaceBootstrap,
+  selectShellWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 } from "./workspace/snapshot.ts";
 
@@ -169,4 +170,40 @@ test("route snapshots win over same-timestamp shell snapshots", () => {
 
   assert.equal(selected?.loadedAt, current.loadedAt);
   assert.equal(selected?.workspace.marks[0]?.displayKey, "YIN-1");
+});
+
+test("shell selection rejects cached bootstrap from another user", () => {
+  const current = shellBootstrapToWorkspaceBootstrap({
+    ...shell,
+    userId: "user-old",
+    profile: {
+      ...shell.profile,
+      id: "user-old",
+      email: "old@example.com",
+    },
+  });
+  const shellSnapshot = shellBootstrapToWorkspaceBootstrap(shell);
+
+  const selected = selectShellWorkspaceBootstrap(current, shellSnapshot);
+
+  assert.equal(selected.userId, "user-a");
+  assert.equal(selected.profile.email, "ada@example.com");
+});
+
+test("shell selection rejects cached bootstrap from another workspace", () => {
+  const current = shellBootstrapToWorkspaceBootstrap({
+    ...shell,
+    workspaceId: "workspace-old",
+    workspace: {
+      ...shell.workspace,
+      id: "workspace-old",
+      name: "Old workspace",
+    },
+  });
+  const shellSnapshot = shellBootstrapToWorkspaceBootstrap(shell);
+
+  const selected = selectShellWorkspaceBootstrap(current, shellSnapshot);
+
+  assert.equal(selected.workspaceId, "workspace-a");
+  assert.equal(selected.workspace.name, "Youin");
 });

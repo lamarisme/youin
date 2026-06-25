@@ -134,6 +134,20 @@ export function mergeShellIntoWorkspaceBootstrap(
   };
 }
 
+export function selectShellWorkspaceBootstrap(
+  current: WorkspaceBootstrap | undefined,
+  shellSnapshot: WorkspaceBootstrap,
+): WorkspaceBootstrap {
+  if (
+    current &&
+    current.workspaceId === shellSnapshot.workspaceId &&
+    current.userId === shellSnapshot.userId
+  ) {
+    return current;
+  }
+  return shellSnapshot;
+}
+
 export function selectRouteWorkspaceBootstrap(
   current: WorkspaceBootstrap | undefined,
   routeSnapshot: WorkspaceBootstrap | undefined,

@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { WorkspaceViewIcon } from "@/app/(workspace)/views/view-ui";
@@ -68,6 +69,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { theme, toggleTheme } = useTheme();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const collapsed = useWorkspaceUiStore((state) => state.sidebarCollapsed);
@@ -139,6 +141,8 @@ export function AppSidebar() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
+      queryClient.clear();
+      useWorkspaceUiStore.getState().clearOptimisticWorkspace();
       router.replace("/login");
       router.refresh();
     } finally {

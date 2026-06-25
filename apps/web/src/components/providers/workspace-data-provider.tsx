@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { WorkspaceRealtimeProvider } from "@/components/providers/workspace-realtime-provider";
 import {
   mergeShellIntoWorkspaceBootstrap,
+  selectShellWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
   useWorkspaceQuery,
   WorkspaceSnapshotProvider,
@@ -32,6 +33,10 @@ export function WorkspaceDataProvider({
     [activeShell],
   );
   const snapshotQuery = useWorkspaceQuery(shellSnapshot);
+  const workspaceSnapshot = selectShellWorkspaceBootstrap(
+    snapshotQuery.data,
+    shellSnapshot,
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -46,7 +51,7 @@ export function WorkspaceDataProvider({
       workspaceId={activeShell.workspaceId}
       userId={activeShell.userId}
     >
-      <WorkspaceSnapshotProvider value={snapshotQuery.data ?? shellSnapshot}>
+      <WorkspaceSnapshotProvider value={workspaceSnapshot}>
         {children}
       </WorkspaceSnapshotProvider>
     </WorkspaceRealtimeProvider>

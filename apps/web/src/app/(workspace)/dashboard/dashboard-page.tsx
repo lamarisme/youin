@@ -13,6 +13,7 @@ import {
 } from "@/lib/workspace/routes";
 
 import {
+  dashboardRouteScopeCacheKey,
   dashboardSearchParamsKey,
   getDashboardIndexRouteState,
   getDashboardMarkRouteState,
@@ -88,7 +89,7 @@ export async function getDashboardMarkMetadata(
   const { selectedMark } = await getDashboardMarkRouteState(
     mark,
     dashboardSearchParamsKey(searchParams),
-    scope,
+    dashboardRouteScopeCacheKey(scope),
   );
 
   return {
@@ -114,7 +115,7 @@ export async function renderDashboardMarkPage({
   } = await getDashboardMarkRouteState(
     mark,
     dashboardSearchParamsKey(searchParams),
-    scope,
+    dashboardRouteScopeCacheKey(scope),
   );
 
   legacyScopeRedirect(urlParams, scope, mark);

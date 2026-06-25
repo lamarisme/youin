@@ -17,10 +17,29 @@ import { findMarkByRouteParam } from "@/lib/workspace/mark-display-id";
 import type { DashboardRouteScope } from "@/lib/workspace/routes";
 import { getDashboardReadModelForCurrentWorkspace } from "@/lib/workspace/server-read-models";
 
+type DashboardRouteScopeCacheKey = "all" | "mine" | `project:${string}`;
+
 export function dashboardSearchParamsKey(searchParams: PageSearchParams) {
   const urlParams = pageSearchParamsToUrlSearchParams(searchParams);
   urlParams.sort();
   return urlParams.toString();
+}
+
+export function dashboardRouteScopeCacheKey(
+  scope: DashboardRouteScope,
+): DashboardRouteScopeCacheKey {
+  if (scope.kind === "project") return `project:${scope.projectId}`;
+  return scope.kind;
+}
+
+function dashboardRouteScopeFromCacheKey(
+  key: DashboardRouteScopeCacheKey,
+): DashboardRouteScope {
+  if (key === "mine") return { kind: "mine" };
+  if (key.startsWith("project:")) {
+    return { kind: "project", projectId: key.slice("project:".length) };
+  }
+  return { kind: "all" };
 }
 
 function dashboardQueryFromParams(
@@ -71,9 +90,10 @@ export const getDashboardMarkRouteState = cache(
   async (
     mark: string,
     searchParamsKey: string,
-    scope: DashboardRouteScope = { kind: "all" },
+    scopeKey: DashboardRouteScopeCacheKey = "all",
   ) => {
     const urlParams = new URLSearchParams(searchParamsKey);
+    const scope = dashboardRouteScopeFromCacheKey(scopeKey);
     const { dashboardQuery, requestedProjectId } =
       dashboardQueryFromParams(urlParams, scope);
     const readModelRequest = {

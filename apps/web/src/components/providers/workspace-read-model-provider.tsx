@@ -221,8 +221,9 @@ export function AccountReadModelProvider({
     query.data?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
+  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
   return (
-    <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
+    <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}
     </WorkspaceSnapshotProvider>
   );
@@ -245,8 +246,9 @@ export function ViewsIndexReadModelProvider({
   );
   const snapshot = useSeedReadModelWorkspace(workspace, query.data?.loadedAt);
   const current = useWorkspaceQuery(snapshot);
+  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
   return (
-    <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
+    <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}
     </WorkspaceSnapshotProvider>
   );
@@ -270,8 +272,9 @@ export function ViewDetailReadModelProvider({
     query.data?.loadedAt,
   );
   const current = useWorkspaceQuery(snapshot);
+  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
   return (
-    <WorkspaceSnapshotProvider value={current.data ?? snapshot}>
+    <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}
     </WorkspaceSnapshotProvider>
   );

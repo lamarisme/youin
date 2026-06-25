@@ -16,8 +16,16 @@ export type MutationContext = {
   mutationId?: string;
 };
 
+export const WORKSPACE_INVALIDATED_EVENT = "youin:workspace-invalidated";
+
 export function invalidateWorkspace(queryClient: QueryClient) {
-  return queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+  return queryClient
+    .invalidateQueries({ queryKey: workspaceKeys.all })
+    .finally(() => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event(WORKSPACE_INVALIDATED_EVENT));
+      }
+    });
 }
 
 export function restoreWorkspace(context: MutationContext | undefined) {

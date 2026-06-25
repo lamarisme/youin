@@ -18,6 +18,7 @@ import {
   emptyWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
   selectRouteWorkspaceBootstrap,
+  selectShellWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 } from "@/lib/workspace/snapshot";
 import type {
@@ -81,6 +82,7 @@ export {
   emptyWorkspaceBootstrap,
   mergeShellIntoWorkspaceBootstrap,
   selectRouteWorkspaceBootstrap,
+  selectShellWorkspaceBootstrap,
   shellBootstrapToWorkspaceBootstrap,
 };
 
