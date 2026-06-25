@@ -135,7 +135,7 @@ export function ViewIconPicker({
   value?: WorkspaceViewIcon | null;
   onChange: (icon: WorkspaceViewIcon) => void;
   className?: string;
-  density?: "comfortable" | "compact";
+  density?: "comfortable" | "compact" | "inline";
   align?: "start" | "center" | "end";
 }) {
   const selectedOption =
@@ -143,6 +143,8 @@ export function ViewIconPicker({
     WORKSPACE_VIEW_ICON_OPTIONS[0];
   const SelectedIcon = selectedOption.icon;
   const compact = density === "compact";
+  const inline = density === "inline";
+  const iconOnly = compact || inline;
   const [open, setOpen] = useState(false);
 
   function selectIcon(icon: WorkspaceViewIcon) {
@@ -191,22 +193,24 @@ export function ViewIconPicker({
             "group inline-flex items-center rounded-md border border-rule/70 bg-paper-elevated text-ink-2 transition-[background-color,border-color,color,box-shadow]",
             "hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink aria-expanded:border-rule-strong/70 aria-expanded:bg-paper-2 aria-expanded:text-ink",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring",
-            compact
-              ? "size-9 justify-center p-0 sm:size-6"
+            iconOnly
+              ? inline
+                ? "size-10 justify-center rounded-none border-0 border-r border-rule/70 bg-transparent p-0 text-ink-3 hover:bg-paper-2 sm:size-9"
+                : "size-9 justify-center p-0 sm:size-6"
               : "h-10 w-full justify-between gap-2 px-2.5 sm:h-9",
             className,
           )}
         >
-          <span className={cn("inline-flex items-center gap-2", compact && "gap-0")}>
+          <span className={cn("inline-flex items-center gap-2", iconOnly && "gap-0")}>
             <span
               className={cn(
                 "flex shrink-0 items-center justify-center rounded-sm bg-paper text-mark ring-1 ring-rule/70",
-                compact ? "size-6 sm:size-5" : "size-7",
+                compact ? "size-6 sm:size-5" : inline ? "size-6" : "size-7",
               )}
             >
-              <SelectedIcon className={compact ? "size-3.5" : "size-4"} aria-hidden />
+              <SelectedIcon className={iconOnly ? "size-3.5" : "size-4"} aria-hidden />
             </span>
-            {compact ? null : (
+            {iconOnly ? null : (
               <span className="min-w-0 text-left">
                 <span className="block truncate text-ui-sm font-medium text-ink">
                   {selectedOption.label}
@@ -214,7 +218,7 @@ export function ViewIconPicker({
               </span>
             )}
           </span>
-          {compact ? null : <ChevronDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />}
+          {iconOnly ? null : <ChevronDown className="size-3.5 shrink-0 text-ink-3" aria-hidden />}
         </button>
       </PopoverTrigger>
       <PopoverContent

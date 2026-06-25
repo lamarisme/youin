@@ -138,22 +138,20 @@ export function ViewEditorDialog({
         </DialogHeader>
 
         <div className="grid gap-4 overflow-y-auto px-4 py-4">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end">
+          <div className="grid gap-4">
             <Field id="view-name" label="View name">
-              <Input
-                id="view-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={selectedTemplate.defaultName}
-                maxLength={80}
-                className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-9 sm:text-ui-sm"
-              />
+              <div className="flex h-10 overflow-hidden rounded-md border border-transparent bg-paper-elevated transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:bg-paper-2 focus-within:border-focus-ring/20 focus-within:bg-paper focus-within:ring-1 focus-within:ring-focus-ring/25 sm:h-9">
+                <ViewIconPicker value={icon} onChange={setIcon} density="inline" />
+                <input
+                  id="view-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder={selectedTemplate.defaultName}
+                  maxLength={80}
+                  className="h-full min-w-0 flex-1 bg-transparent px-2.5 text-ui-md font-medium text-ink outline-none placeholder:text-ink-3 sm:text-ui-sm"
+                />
+              </div>
             </Field>
-
-            <section className="space-y-2">
-              <p className="text-ui-xs font-medium text-ink-2">View icon</p>
-              <ViewIconPicker value={icon} onChange={setIcon} />
-            </section>
           </div>
 
           <section className="space-y-2">
