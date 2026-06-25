@@ -45,7 +45,11 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang="en" className={`${fontMono.variable} ${fontLogo.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${fontMono.variable} ${fontLogo.variable} dark h-full`}
+      style={{ colorScheme: "dark" }}
+    >
       <body className="min-h-full flex flex-col bg-paper font-sans text-ink antialiased">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider>

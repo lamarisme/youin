@@ -129,15 +129,7 @@ export function MarkDetailLoadingPreview({
             </PreviewSection>
 
             <PreviewSection title="Capture" loading>
-              <div aria-hidden="true" className="overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45">
-                <div className="flex items-center gap-2 px-3 py-2">
-                  <ShimmerBar className="size-5 rounded-full" />
-                  <ShimmerBar className="h-3 w-20 rounded-sm" />
-                </div>
-                <div className="px-3 pb-3">
-                  <ShimmerBar className="h-48 rounded-md sm:h-64" />
-                </div>
-              </div>
+              <LoadingCapturePreview markKey={mark.displayKey} />
             </PreviewSection>
 
             <PreviewSection title="Notes" icon={<FileText className="size-3.5" aria-hidden />}>
@@ -146,7 +138,9 @@ export function MarkDetailLoadingPreview({
                   <MarkDescriptionRead html={mark.description} />
                 </div>
               ) : (
-                <ShimmerBar className="h-9 rounded-md" />
+                <div className="min-h-10 rounded-md bg-paper-2/45 px-2.5 py-2 text-ui-sm text-ink-3 ring-1 ring-rule/35">
+                  Add notes...
+                </div>
               )}
             </PreviewSection>
 
@@ -166,7 +160,9 @@ export function MarkDetailLoadingPreview({
                   ))}
                 </div>
               ) : (
-                <ShimmerBar className="h-8 w-32 rounded-md" />
+                <div className="inline-flex h-8 items-center rounded-md bg-paper-2/45 px-2.5 text-ui-xs text-ink-3 ring-1 ring-rule/35">
+                  Label this mark...
+                </div>
               )}
             </PreviewSection>
           </section>
@@ -217,14 +213,60 @@ function ColdMarkPreview({ routeKey }: { routeKey: string | null }) {
             <ShimmerBar className="h-4 w-28 rounded-sm" />
           </div>
           <ShimmerBar className="h-8 max-w-xl rounded-md" />
-          <ShimmerBar className="h-9 rounded-md" />
-          <ShimmerBar className="h-48 rounded-md sm:h-64" />
-          <ShimmerBar className="h-24 rounded-md" />
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <ShimmerBar className="h-7 w-28 rounded-md" />
+            <ShimmerBar className="h-7 w-24 rounded-md" />
+            <ShimmerBar className="h-7 w-32 rounded-md" />
+          </div>
+          <PreviewSection title="Page" icon={<Link2 className="size-3.5" aria-hidden />}>
+            <ShimmerBar className="h-9 rounded-md" />
+          </PreviewSection>
+          <PreviewSection title="Capture" loading>
+            <LoadingCapturePreview markKey={routeKey ?? "YIN"} />
+          </PreviewSection>
+          <PreviewSection title="Notes" icon={<FileText className="size-3.5" aria-hidden />}>
+            <ShimmerBar className="h-10 rounded-md" />
+          </PreviewSection>
         </section>
 
         <PreviewSidebar />
       </div>
     </>
+  );
+}
+
+function LoadingCapturePreview({ markKey }: { markKey: string }) {
+  const shortKey = markKey.split("-").at(-1) ?? markKey;
+
+  return (
+    <div aria-hidden="true" className="overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <span className="inline-flex size-5 items-center justify-center rounded-full bg-mark-soft font-mono text-[0.625rem] font-semibold text-mark">
+          {shortKey}
+        </span>
+        <span className="text-ui-xs font-medium text-ink-2">Capture</span>
+        <ShimmerBar className="ml-auto h-3 w-20 rounded-sm" />
+      </div>
+      <div className="px-3 pb-3">
+        <div className="overflow-hidden rounded-md bg-paper ring-1 ring-rule/35">
+          <div className="flex items-center gap-1.5 border-b border-rule/45 px-2 py-1.5">
+            <ShimmerBar className="size-2.5 rounded-full" />
+            <ShimmerBar className="size-2.5 rounded-full" />
+            <ShimmerBar className="size-2.5 rounded-full" />
+            <ShimmerBar className="ml-2 h-3 w-32 rounded-sm" />
+          </div>
+          <div className="grid gap-2 p-3">
+            <ShimmerBar className="h-8 w-2/3 rounded-md" />
+            <ShimmerBar className="h-28 rounded-md sm:h-40" />
+            <div className="grid gap-2 sm:grid-cols-3">
+              <ShimmerBar className="h-8 rounded-md" />
+              <ShimmerBar className="h-8 rounded-md" />
+              <ShimmerBar className="h-8 rounded-md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -303,6 +345,8 @@ function PreviewSection({
 }
 
 function PreviewSidebar({ commentCount }: { commentCount?: number }) {
+  const hasNoComments = commentCount === 0;
+
   return (
     <aside className="hidden min-w-0 space-y-1 lg:block">
       <div className="flex min-h-10 items-center gap-2 rounded-md px-2 py-1.5 text-ui-sm font-medium text-ink-2">
@@ -320,8 +364,23 @@ function PreviewSidebar({ commentCount }: { commentCount?: number }) {
       </div>
 
       <div aria-hidden="true" className="space-y-2 px-2 pb-3 pt-1">
-        <CommentSkeleton width="w-44" />
-        <CommentSkeleton width="w-56" />
+        {hasNoComments ? (
+          <>
+            <p className="px-1 text-ui-sm text-ink-3">No comments yet. Start the conversation.</p>
+            <div className="rounded-md bg-paper-2/55 p-3 ring-1 ring-rule/35">
+              <ShimmerBar className="h-16 rounded-md" />
+              <div className="mt-2 flex justify-between">
+                <ShimmerBar className="size-7 rounded-md" />
+                <ShimmerBar className="h-7 w-14 rounded-md" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <CommentSkeleton width="w-44" />
+            <CommentSkeleton width="w-56" />
+          </>
+        )}
       </div>
 
       <div className="rounded-md border-b border-rule/65">
