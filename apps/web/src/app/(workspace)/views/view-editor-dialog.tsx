@@ -138,7 +138,7 @@ export function ViewEditorDialog({
         </DialogHeader>
 
         <div className="grid gap-4 overflow-y-auto px-4 py-4">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_17.5rem] sm:items-start">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-end">
             <Field id="view-name" label="View name">
               <Input
                 id="view-name"

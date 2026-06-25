@@ -12,17 +12,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   ViewIconPicker,
   WorkspaceViewIcon,
-  WorkspaceViewIconGlyph,
   defaultWorkspaceViewIcon,
-  workspaceViewIconLabel,
 } from "@/app/(workspace)/views/view-ui";
 import type {
   WorkspaceView,
@@ -279,25 +271,11 @@ export function DashboardViewsBar({
       >
         {saving ? (
           <span className="inline-flex min-h-10 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65 sm:min-h-7">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label={`Change view icon. Current icon: ${workspaceViewIconLabel(draftIcon)}.`}
-                  className="size-9 shrink-0 text-ink-3 hover:text-ink sm:size-6"
-                >
-                  <WorkspaceViewIconGlyph icon={draftIcon} layout="list" className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-auto p-2">
-                <DropdownMenuLabel className="px-1.5 pb-2 pt-1 text-ui-xs">
-                  Icon
-                </DropdownMenuLabel>
-                <ViewIconPicker value={draftIcon} onChange={setDraftIcon} />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ViewIconPicker
+              value={draftIcon}
+              onChange={setDraftIcon}
+              density="compact"
+            />
             <input
               ref={inputRef}
               value={draftName}
