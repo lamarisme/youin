@@ -8,6 +8,23 @@ export type MarkPriority = DomainMarkPriority;
 export type AiPromptTarget = "codex" | "claude" | "generic" | "bulk";
 export type WorkflowStatusColor = "gray" | "blue" | "amber" | "green" | "red" | "violet";
 export type WorkspaceViewLayout = "list" | "board";
+export type WorkspaceViewIcon =
+  | "lightbulb"
+  | "bug"
+  | "folder"
+  | "hammer"
+  | "wrench"
+  | "zap"
+  | "shield"
+  | "eye"
+  | "flag"
+  | "star"
+  | "package"
+  | "monitor"
+  | "search"
+  | "palette"
+  | "layout-grid"
+  | "clipboard-list";
 export type WorkspaceViewStatusFilter = "all" | MarkStatus;
 export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
 export type WorkspaceViewPinnedFilter = "all" | "pinned" | "unpinned";
@@ -160,6 +177,7 @@ export interface WorkspaceView {
   id: string;
   name: string;
   layout: WorkspaceViewLayout;
+  icon?: WorkspaceViewIcon;
   filters: WorkspaceViewFilters;
   config: WorkspaceViewConfig;
   createdByUserId: string;

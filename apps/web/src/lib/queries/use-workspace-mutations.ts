@@ -17,6 +17,7 @@ import type {
   WorkspaceView,
   WorkspaceViewConfig,
   WorkspaceViewFilters,
+  WorkspaceViewIcon,
   WorkspaceViewLayout,
   WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
@@ -168,7 +169,7 @@ export function useCreateWorkspaceViewMutation() {
       const now = optimisticCreatedAt();
       context.optimisticId = optimisticId;
       updateWorkspace(queryClient, (workspace, bundle) => {
-        const payload = workspaceViewPayload(input.layout, input.filters, input.config);
+        const payload = workspaceViewPayload(input.layout, input.filters, input.config, input.icon);
         return {
           ...workspace,
           views: [
@@ -210,10 +211,11 @@ export function useUpdateWorkspaceViewMutation() {
       viewId: string;
       name?: string;
       layout?: WorkspaceViewLayout;
+      icon?: WorkspaceViewIcon | null;
       filters?: Partial<WorkspaceViewFilters> | null;
       config?: Partial<WorkspaceViewConfig> | null;
     }) => ws.updateWorkspaceViewAction(viewId, input),
-    onMutate: async ({ viewId, name, layout, filters, config }) => {
+    onMutate: async ({ viewId, name, layout, icon, filters, config }) => {
       const context = await prepareOptimisticMutation(queryClient);
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
@@ -223,6 +225,7 @@ export function useUpdateWorkspaceViewMutation() {
                 ...view,
                 ...(typeof name === "string" ? { name: name.trim() } : {}),
                 ...(layout ? { layout } : {}),
+                ...(icon !== undefined ? { icon: icon ?? undefined } : {}),
                 ...(filters ? { filters: { ...view.filters, ...filters } } : {}),
                 ...(config ? { config: { ...view.config, ...config } } : {}),
               }

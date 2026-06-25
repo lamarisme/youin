@@ -60,7 +60,7 @@ import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-stat
 import { toast } from "sonner";
 
 import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
-import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
+import { WorkspaceViewIcon, viewLayoutLabel } from "./view-ui";
 
 const PAGE_SIZE = 8;
 const DELETED_VIEW_REDIRECT_KEY = "youin:deleted-view-redirect";
@@ -157,6 +157,7 @@ function ViewDetail({
         viewId: view.id,
         name: input.name,
         layout: input.layout,
+        icon: input.icon,
         filters: input.filters,
         config: input.config,
       });
@@ -225,7 +226,7 @@ function ViewDetail({
         <header className="flex flex-col gap-2 border-b border-rule/70 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3">
-              <ViewLayoutIcon layout={view.layout} className="size-4" />
+              <WorkspaceViewIcon view={view} className="size-4" />
             </span>
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -306,6 +307,7 @@ function ViewDetail({
           initialValue={{
             name: view.name,
             layout: view.layout,
+            icon: view.icon,
             filters: view.filters,
             config: view.config,
           }}

@@ -9,6 +9,7 @@ import {
   filterWorkspaceForView,
   normalizeWorkspaceViewConfig,
   normalizeWorkspaceViewFilters,
+  normalizeWorkspaceViewIcon,
   normalizeWorkspaceViewLayout,
 } from "./views.ts";
 
@@ -78,6 +79,9 @@ test("normalizes view layout, filters, and config", () => {
   assert.equal(normalizeWorkspaceViewLayout("board"), "board");
   assert.equal(normalizeWorkspaceViewLayout("analytics"), "list");
   assert.throws(() => normalizeWorkspaceViewLayout("gallery"), /Unsupported view layout/);
+  assert.equal(normalizeWorkspaceViewIcon("bug"), "bug");
+  assert.equal(normalizeWorkspaceViewIcon(null), undefined);
+  assert.throws(() => normalizeWorkspaceViewIcon("smile"), /Unsupported view icon/);
 
   assert.deepEqual(
     normalizeWorkspaceViewFilters({

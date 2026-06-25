@@ -13,7 +13,6 @@ import { useState } from "react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
-
 import { PageContainer } from "@/components/page-container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,11 @@ import {
 import { useSavedViews } from "@/components/dashboard/use-saved-views";
 
 import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
-import { ViewLayoutIcon, viewLayoutLabel } from "./view-ui";
+import {
+  WorkspaceViewIcon,
+  defaultWorkspaceViewIcon,
+  viewLayoutLabel,
+} from "./view-ui";
 
 const LOCAL_SAVED_VIEWS_PREFIX = "youin:saved-views:";
 const LOCAL_IMPORT_DISMISSED_PREFIX = "youin:views-import-dismissed:";
@@ -198,6 +201,7 @@ export function ViewsClient() {
           initialValue={{
             name: "All marks",
             layout: "list",
+            icon: defaultWorkspaceViewIcon("list"),
             filters: DEFAULT_WORKSPACE_VIEW_FILTERS,
             config: DEFAULT_WORKSPACE_VIEW_CONFIG,
           }}
@@ -255,7 +259,7 @@ function ViewRow({
   const content = (
     <>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-2 text-ink-3 group-hover:bg-paper-3">
-        <ViewLayoutIcon layout={view.layout} className="size-4" />
+        <WorkspaceViewIcon view={view} className="size-4" />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

@@ -26,7 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
+import { WorkspaceViewIcon, viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
 import { useTheme } from "@/components/theme-provider";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -48,6 +48,7 @@ interface PaletteCommand {
   keywords?: string[];
   shortcut?: string;
   icon?: LucideIcon;
+  iconNode?: ReactNode;
   run: () => void;
 }
 
@@ -346,7 +347,7 @@ function CommandPaletteDialog({
         subtitle: `${viewLayoutLabel(view.layout)} view`,
         group: "views" as const,
         keywords: ["view", view.layout],
-        icon: View,
+        iconNode: <WorkspaceViewIcon view={view} className="size-4 shrink-0 text-ink-3" />,
         run: () => router.push(`/views/${view.id}`),
       }));
     const markCommands: PaletteCommand[] = marks.map((mark) => ({
@@ -426,7 +427,9 @@ function CommandPaletteDialog({
                       "text-ink-2",
                     )}
                   >
-                    {Icon ? (
+                    {cmd.iconNode ? (
+                      cmd.iconNode
+                    ) : Icon ? (
                       <Icon className="size-4 shrink-0 text-ink-3" aria-hidden />
                     ) : null}
                     <span className="min-w-0 flex-1">

@@ -18,12 +18,12 @@ import {
   Search,
   Sun,
   User,
-  View,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
 
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { WorkspaceViewIcon } from "@/app/(workspace)/views/view-ui";
 import { BrandLogo } from "@/components/brand-logo";
 import { useOpenCommandPalette } from "@/components/command-palette";
 import { useTheme } from "@/components/theme-provider";
@@ -560,7 +560,7 @@ function SidebarViewIconLink({
             SIDEBAR_FOCUS,
           )}
         >
-          <View className="size-[1rem]" aria-hidden />
+          <WorkspaceViewIcon view={view} className="size-[1rem]" />
         </Link>
       </TooltipTrigger>
       <TooltipContent side="right">{view.name}</TooltipContent>
@@ -587,12 +587,12 @@ function SidebarViewLink({
         SIDEBAR_FOCUS,
       )}
     >
-      <View
+      <WorkspaceViewIcon
+        view={view}
         className={cn(
           "size-[1.05rem] shrink-0 transition-colors",
           active ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
         )}
-        aria-hidden
       />
       <span className="min-w-0 flex-1 truncate">{view.name}</span>
     </Link>

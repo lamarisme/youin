@@ -176,6 +176,13 @@
       "when": 1782129600000,
       "tag": "0024_realtime_workspace_publication",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782133200000,
+      "tag": "0025_workspace_view_icons",
+      "breakpoints": true
     }
   ]
 }

@@ -7,9 +7,11 @@ import type {
   WorkspaceView,
   WorkspaceViewConfig,
   WorkspaceViewFilters,
+  WorkspaceViewIcon,
   WorkspaceViewLayout,
 } from "@/lib/collab-types";
 import {
+  normalizeWorkspaceViewIcon,
   normalizeWorkspaceViewConfig,
   normalizeWorkspaceViewFilters,
   normalizeWorkspaceViewLayout,
@@ -29,6 +31,7 @@ function mapWorkspaceView(row: typeof workspaceViews.$inferSelect): WorkspaceVie
     id: row.id,
     name: row.name,
     layout,
+    icon: normalizeWorkspaceViewIcon(row.icon),
     filters: normalizeWorkspaceViewFilters(row.filters),
     config: normalizeWorkspaceViewConfig(layout, row.config),
     createdByUserId: row.createdByUserId,
@@ -46,11 +49,13 @@ function cleanName(name: string): string {
 export async function createWorkspaceViewAction(input: {
   name: string;
   layout: WorkspaceViewLayout;
+  icon?: WorkspaceViewIcon | null;
   filters?: Partial<WorkspaceViewFilters> | null;
   config?: Partial<WorkspaceViewConfig> | null;
 }): Promise<SavedWorkspaceView> {
   const { db, workspaceId, userId } = await requireWorkspaceContext();
   const layout = normalizeWorkspaceViewLayout(input.layout);
+  const icon = normalizeWorkspaceViewIcon(input.icon);
   const filters = normalizeWorkspaceViewFilters(input.filters);
   const config = normalizeWorkspaceViewConfig(layout, input.config);
   const [created] = await db
@@ -59,6 +64,7 @@ export async function createWorkspaceViewAction(input: {
       workspaceId,
       name: cleanName(input.name),
       layout,
+      icon: icon ?? null,
       filters,
       config,
       createdByUserId: userId,
@@ -74,6 +80,7 @@ export async function updateWorkspaceViewAction(
   input: {
     name?: string;
     layout?: WorkspaceViewLayout;
+    icon?: WorkspaceViewIcon | null;
     filters?: Partial<WorkspaceViewFilters> | null;
     config?: Partial<WorkspaceViewConfig> | null;
   },
@@ -93,6 +100,7 @@ export async function updateWorkspaceViewAction(
     layout,
   };
   if (typeof input.name === "string") patch.name = cleanName(input.name);
+  if (input.icon !== undefined) patch.icon = normalizeWorkspaceViewIcon(input.icon) ?? null;
   if (input.filters !== undefined) {
     patch.filters = normalizeWorkspaceViewFilters(input.filters);
   }

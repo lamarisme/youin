@@ -66,6 +66,7 @@ import {
 import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import {
+  normalizeWorkspaceViewIcon,
   normalizeWorkspaceViewConfig,
   normalizeWorkspaceViewFilters,
   normalizeWorkspaceViewLayout,
@@ -223,6 +224,7 @@ async function loadViews(workspaceId: string): Promise<WorkspaceView[]> {
       id: view.id,
       name: view.name,
       layout,
+      icon: normalizeWorkspaceViewIcon(view.icon),
       filters: normalizeWorkspaceViewFilters(view.filters),
       config: normalizeWorkspaceViewConfig(layout, view.config),
       createdByUserId: view.createdByUserId,

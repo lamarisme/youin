@@ -9,6 +9,7 @@ import type {
   WorkspaceViewDashboardGroupBy,
   WorkspaceViewDensity,
   WorkspaceViewFilters,
+  WorkspaceViewIcon,
   WorkspaceViewLayout,
   WorkspaceViewPinnedFilter,
   WorkspaceViewPriorityFilter,
@@ -23,6 +24,24 @@ const PINNED_FILTERS = ["all", "pinned", "unpinned"] as const;
 const ASSIGNEE_FILTERS = ["all", "me", "unassigned"] as const;
 const SORT_MODES = ["recent", "oldest", "priority", "status"] as const;
 const VIEW_LAYOUTS_ACTIVE = ["list", "board"] as const;
+const VIEW_ICONS = [
+  "lightbulb",
+  "bug",
+  "folder",
+  "hammer",
+  "wrench",
+  "zap",
+  "shield",
+  "eye",
+  "flag",
+  "star",
+  "package",
+  "monitor",
+  "search",
+  "palette",
+  "layout-grid",
+  "clipboard-list",
+] as const satisfies readonly WorkspaceViewIcon[];
 const DASHBOARD_GROUP_BY = ["none", "status", "page", "assignee", "project"] as const;
 const DASHBOARD_DENSITIES = ["comfortable", "compact"] as const;
 
@@ -66,6 +85,16 @@ function stringOrAll(value: unknown): string {
 export function normalizeWorkspaceViewLayout(value: unknown): WorkspaceViewLayout {
   if (value === "analytics") return "list";
   if (!isWorkspaceViewLayout(value)) throw new Error("Unsupported view layout.");
+  return value;
+}
+
+export function isWorkspaceViewIcon(value: unknown): value is WorkspaceViewIcon {
+  return typeof value === "string" && VIEW_ICONS.includes(value as WorkspaceViewIcon);
+}
+
+export function normalizeWorkspaceViewIcon(value: unknown): WorkspaceViewIcon | undefined {
+  if (value == null || value === "") return undefined;
+  if (!isWorkspaceViewIcon(value)) throw new Error("Unsupported view icon.");
   return value;
 }
 
@@ -126,10 +155,12 @@ export function workspaceViewPayload(
   layout: unknown,
   filters: unknown,
   config: unknown,
-): Pick<WorkspaceView, "layout" | "filters" | "config"> {
+  icon?: unknown,
+): Pick<WorkspaceView, "layout" | "filters" | "config" | "icon"> {
   const normalizedLayout = normalizeWorkspaceViewLayout(layout);
   return {
     layout: normalizedLayout,
+    icon: normalizeWorkspaceViewIcon(icon),
     filters: normalizeWorkspaceViewFilters(filters),
     config: normalizeWorkspaceViewConfig(normalizedLayout, config),
   };

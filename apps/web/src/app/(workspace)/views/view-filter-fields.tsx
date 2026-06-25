@@ -177,7 +177,7 @@ export function ViewScopeFields({
     <div
       className={
         labeled
-          ? "grid gap-2 sm:grid-cols-2"
+          ? "grid gap-x-3 gap-y-3 sm:grid-cols-3"
           : "flex flex-wrap items-center gap-1.5"
       }
     >

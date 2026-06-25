@@ -6,13 +6,30 @@ import {
   Inbox,
   LayoutList,
   UserCheck,
-  View,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { WorkspaceView, WorkspaceViewConfig, WorkspaceViewFilters } from "@/lib/collab-types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ViewIconPicker,
+  WorkspaceViewIcon,
+  WorkspaceViewIconGlyph,
+  defaultWorkspaceViewIcon,
+  workspaceViewIconLabel,
+} from "@/app/(workspace)/views/view-ui";
+import type {
+  WorkspaceView,
+  WorkspaceViewConfig,
+  WorkspaceViewFilters,
+  WorkspaceViewIcon as WorkspaceViewIconId,
+} from "@/lib/collab-types";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import { useCreateWorkspaceViewMutation } from "@/lib/queries/use-workspace-mutations";
 import { cn } from "@/lib/utils";
@@ -61,6 +78,9 @@ export function DashboardViewsBar({
   const { mutateAsync: createView, isPending } = useCreateWorkspaceViewMutation();
   const [saving, setSaving] = useState(false);
   const [draftName, setDraftName] = useState("");
+  const [draftIcon, setDraftIcon] = useState<WorkspaceViewIconId>(
+    defaultWorkspaceViewIcon("list"),
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -153,10 +173,12 @@ export function DashboardViewsBar({
       await createView({
         name,
         layout: "list",
+        icon: draftIcon,
         filters: workspaceSnapshot.filters,
         config: workspaceSnapshot.config,
       });
       setDraftName("");
+      setDraftIcon(defaultWorkspaceViewIcon("list"));
       setSaving(false);
     } catch {
       // Mutation toast handles the failure and the draft stays available.
@@ -232,7 +254,15 @@ export function DashboardViewsBar({
                 ? "Saving view"
                 : describeWorkspaceViewFilters(view.filters)
             }
-            icon={View}
+            iconNode={
+              <WorkspaceViewIcon
+                view={view}
+                className={cn(
+                  "size-3.5 shrink-0 sm:size-3",
+                  activeWorkspaceViewId === view.id ? "text-ink-2" : "text-ink-3",
+                )}
+              />
+            }
             active={activeWorkspaceViewId === view.id}
             disabled={isOptimisticId(view.id)}
             onClick={() => applyWorkspaceView(view)}
@@ -249,6 +279,25 @@ export function DashboardViewsBar({
       >
         {saving ? (
           <span className="inline-flex min-h-10 min-w-0 items-center gap-1 rounded-md bg-paper-2 px-1.5 ring-1 ring-rule/65 sm:min-h-7">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={`Change view icon. Current icon: ${workspaceViewIconLabel(draftIcon)}.`}
+                  className="size-9 shrink-0 text-ink-3 hover:text-ink sm:size-6"
+                >
+                  <WorkspaceViewIconGlyph icon={draftIcon} layout="list" className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto p-2">
+                <DropdownMenuLabel className="px-1.5 pb-2 pt-1 text-ui-xs">
+                  Icon
+                </DropdownMenuLabel>
+                <ViewIconPicker value={draftIcon} onChange={setDraftIcon} />
+              </DropdownMenuContent>
+            </DropdownMenu>
             <input
               ref={inputRef}
               value={draftName}
@@ -262,6 +311,7 @@ export function DashboardViewsBar({
                   event.preventDefault();
                   setSaving(false);
                   setDraftName("");
+                  setDraftIcon(defaultWorkspaceViewIcon("list"));
                 }
               }}
               placeholder="View name"
@@ -297,6 +347,7 @@ function ViewChip({
   label,
   count,
   icon: Icon,
+  iconNode,
   active,
   disabled,
   title,
@@ -304,7 +355,8 @@ function ViewChip({
 }: {
   label: string;
   count?: number;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  iconNode?: ReactNode;
   active?: boolean;
   disabled?: boolean;
   title?: string;
@@ -329,7 +381,10 @@ function ViewChip({
           : "text-ink-3 hover:bg-paper-2 hover:text-ink",
       )}
     >
-      <Icon className={cn("size-3.5 shrink-0 sm:size-3", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
+      {iconNode ??
+        (Icon ? (
+          <Icon className={cn("size-3.5 shrink-0 sm:size-3", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
+        ) : null)}
       <span className="max-w-[8rem] truncate">{label}</span>
       {typeof count === "number" ? (
         <span

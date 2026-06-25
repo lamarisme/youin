@@ -3,6 +3,7 @@ import { MARK_PRIORITIES, MARK_STATUSES } from "@youin/domain";
 import type {
   WorkspaceViewConfig,
   WorkspaceViewFilters,
+  WorkspaceViewIcon,
 } from "@/lib/collab-types";
 import {
   type AnyPgColumn,
@@ -424,6 +425,7 @@ export const workspaceViews = pgTable(
       .references(() => workspaces.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     layout: workspaceViewLayoutEnum("layout").notNull(),
+    icon: text("icon").$type<WorkspaceViewIcon | null>(),
     filters: jsonb("filters").$type<WorkspaceViewFilters>().notNull(),
     config: jsonb("config").$type<WorkspaceViewConfig>().notNull().default(sql`'{}'::jsonb`),
     createdByUserId: uuid("created_by_user_id")

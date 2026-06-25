@@ -20,6 +20,7 @@ import type {
   WorkspaceViewConfig,
   WorkspaceViewDensity,
   WorkspaceViewFilters,
+  WorkspaceViewIcon,
   WorkspaceViewLayout,
   WorkspaceViewSortMode,
   WorkspaceViewDashboardGroupBy,
@@ -31,11 +32,16 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ViewScopeFields } from "./view-filter-fields";
-import { VIEW_TEMPLATES } from "./view-ui";
+import {
+  VIEW_TEMPLATES,
+  ViewIconPicker,
+  defaultWorkspaceViewIcon,
+} from "./view-ui";
 
 export type ViewEditorValue = {
   name: string;
   layout: WorkspaceViewLayout;
+  icon?: WorkspaceViewIcon;
   filters: WorkspaceViewFilters;
   config: WorkspaceViewConfig;
 };
@@ -71,6 +77,9 @@ export function ViewEditorDialog({
   onSubmit: (value: ViewEditorValue) => void;
 }) {
   const [layout, setLayout] = useState<WorkspaceViewLayout>(initialValue.layout);
+  const [icon, setIcon] = useState<WorkspaceViewIcon>(
+    initialValue.icon ?? defaultWorkspaceViewIcon(initialValue.layout),
+  );
   const [name, setName] = useState(initialValue.name);
   const [filters, setFilters] = useState<WorkspaceViewFilters>({
     ...DEFAULT_WORKSPACE_VIEW_FILTERS,
@@ -104,6 +113,7 @@ export function ViewEditorDialog({
     onSubmit({
       name,
       layout,
+      icon,
       filters,
       config: {
         ...DEFAULT_WORKSPACE_VIEW_CONFIG,
@@ -121,23 +131,30 @@ export function ViewEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(90vh,46rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent className="flex max-h-[min(92vh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 border-b border-rule/70 px-4 py-3 pr-12">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 overflow-y-auto px-4 py-4">
-          <Field id="view-name" label="View name">
-            <Input
-              id="view-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={selectedTemplate.defaultName}
-              maxLength={80}
-              className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-9 sm:text-ui-sm"
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_17.5rem] sm:items-start">
+            <Field id="view-name" label="View name">
+              <Input
+                id="view-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={selectedTemplate.defaultName}
+                maxLength={80}
+                className="h-10 bg-paper-elevated text-ui-md font-medium sm:h-9 sm:text-ui-sm"
+              />
+            </Field>
+
+            <section className="space-y-2">
+              <p className="text-ui-xs font-medium text-ink-2">Icon</p>
+              <ViewIconPicker value={icon} onChange={setIcon} />
+            </section>
+          </div>
 
           <section className="space-y-2">
             <p className="text-ui-xs font-medium text-ink-2">Layout</p>

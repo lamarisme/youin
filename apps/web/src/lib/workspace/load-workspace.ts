@@ -42,6 +42,7 @@ import { normalizeDisplayNamePreference } from "@/lib/workspace/member-label";
 import { isMarkImageStoragePath } from "@/lib/mark-image-path";
 import { normalizeWorkflowStatusColor } from "@/lib/workspace/workflow-statuses";
 import {
+  normalizeWorkspaceViewIcon,
   normalizeWorkspaceViewConfig,
   normalizeWorkspaceViewFilters,
   normalizeWorkspaceViewLayout,
@@ -263,6 +264,7 @@ export async function loadWorkspaceAggregate(
       id: view.id,
       name: view.name,
       layout,
+      icon: normalizeWorkspaceViewIcon(view.icon),
       filters: normalizeWorkspaceViewFilters(view.filters),
       config: normalizeWorkspaceViewConfig(layout, view.config),
       createdByUserId: view.createdByUserId,
