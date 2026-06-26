@@ -111,6 +111,7 @@ ALTER TABLE public.marks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marks_to_labels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mentions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_read_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_review_links ENABLE ROW LEVEL SECURITY;
@@ -135,6 +136,7 @@ BEGIN
         'marks_to_labels',
         'mark_comments',
         'mark_events',
+        'mentions',
         'inbox_read_states',
         'workspace_views',
         'workspace_review_links'
@@ -357,6 +359,27 @@ CREATE POLICY mark_events_insert ON public.mark_events
     actor_user_id = auth.uid()
     AND public.user_workspace_member(workspace_id)
   );
+
+CREATE POLICY mentions_select_member ON public.mentions
+  FOR SELECT TO authenticated
+  USING (public.user_workspace_member(workspace_id));
+
+CREATE POLICY mentions_insert_member ON public.mentions
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    created_by_user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+    AND EXISTS (
+      SELECT 1
+      FROM public.workspace_members wm
+      WHERE wm.workspace_id = mentions.workspace_id
+        AND wm.user_id = mentions.mentioned_user_id
+    )
+  );
+
+CREATE POLICY mentions_delete_member ON public.mentions
+  FOR DELETE TO authenticated
+  USING (public.user_workspace_member(workspace_id));
 
 CREATE POLICY inbox_read_states_select_own ON public.inbox_read_states
   FOR SELECT TO authenticated

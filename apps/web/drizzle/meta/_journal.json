@@ -183,6 +183,13 @@
       "when": 1782133200000,
       "tag": "0025_workspace_view_icons",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782136800000,
+      "tag": "0026_mentions",
+      "breakpoints": true
     }
   ]
 }
