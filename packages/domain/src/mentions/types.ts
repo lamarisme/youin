@@ -63,3 +63,26 @@ export interface MentionResolutionPlan {
   notificationTargets: string[];
   ignoredMentions: IgnoredMention[];
 }
+
+export interface MentionSuggestionMember {
+  /** Stable user identity for the workspace member. */
+  userId: string;
+  /** Workspace-scoped username without the leading `@`. */
+  username: string;
+  /** Human-readable name shown alongside the username. */
+  displayName: string;
+  /** Optional avatar URL, passed through for consumers that render avatars. */
+  avatarUrl?: string | null;
+}
+
+export interface MentionSuggestion {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+export interface SuggestMentionsInput {
+  members: readonly MentionSuggestionMember[];
+  query?: string | null;
+}
