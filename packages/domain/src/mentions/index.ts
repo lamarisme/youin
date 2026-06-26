@@ -4,5 +4,14 @@ export {
   isMentionUsername,
   parseMentions,
 } from "./parse.ts";
-export type { ParsedMention } from "./types.ts";
-
+export { resolveMentions } from "./resolve.ts";
+export type {
+  IgnoredMention,
+  IgnoredMentionReason,
+  MentionResolutionPlan,
+  MentionableMember,
+  ParsedMention,
+  PreviousResolvedMention,
+  ResolveMentionsInput,
+  ResolvedMention,
+} from "./types.ts";
