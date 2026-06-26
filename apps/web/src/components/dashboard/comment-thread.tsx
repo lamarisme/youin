@@ -87,6 +87,7 @@ export function CommentThread({
   showHeading = true,
 }: CommentThreadProps) {
   const userId = useWorkspaceData((s) => s.userId);
+  const mentionMembers = useWorkspaceData((s) => s.workspace.members);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [composerError, setComposerError] = useState<string | null>(null);
@@ -218,6 +219,7 @@ export function CommentThread({
             maxLength={MARK_COMMENT_MAX_LENGTH}
             disabled={submitting}
             minHeightClassName="min-h-[76px] sm:min-h-[52px]"
+            mentionMembers={mentionMembers}
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
