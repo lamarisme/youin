@@ -5,6 +5,7 @@ import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 
 import { cn } from "@/lib/utils";
+import type { TeamMember } from "@/lib/collab-types";
 import {
   MARK_DESCRIPTION_MAX_LENGTH,
   editorHtmlToDraft,
@@ -12,6 +13,7 @@ import {
   storedDescriptionToEditorHtml,
 } from "@/lib/mark-description";
 
+import { MarkDescriptionMention } from "./mark-description-mention";
 import { MarkDescriptionSlash } from "./mark-description-slash";
 import {
   markDescriptionContentClass,
@@ -33,6 +35,7 @@ interface MarkDescriptionEditorProps {
   variant?: "boxed" | "inline";
   showCharacterCount?: boolean;
   onBlur?: () => void;
+  mentionMembers?: readonly TeamMember[];
 }
 
 export function MarkDescriptionEditor({
@@ -50,6 +53,7 @@ export function MarkDescriptionEditor({
   variant = "boxed",
   showCharacterCount = variant === "boxed",
   onBlur,
+  mentionMembers,
 }: MarkDescriptionEditorProps) {
   const lastEmitted = useRef(value);
   const onBlurRef = useRef(onBlur);
@@ -77,6 +81,15 @@ export function MarkDescriptionEditor({
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
         }),
+        ...(mentionMembers
+          ? [
+              MarkDescriptionMention.configure({
+                members: mentionMembers,
+                getMountParent: () => slashMountParentRef.current,
+                getPositionAnchor: () => slashPositionAnchorRef.current,
+              }),
+            ]
+          : []),
       ],
       content: storedDescriptionToEditorHtml(value),
       editable: !disabled,
@@ -120,6 +133,7 @@ export function MarkDescriptionEditor({
       autoFocus,
       inline,
       contentClassName,
+      mentionMembers,
     ],
   );
 
