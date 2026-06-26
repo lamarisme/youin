@@ -32,6 +32,7 @@ import {
   CAPTURE_PANEL_SCRIPT,
   MESSAGE_ENSURE_REVIEW_SCRIPTS
 } from "../lib/review-scripts"
+import { getElementScreenshotBackground } from "../lib/screenshot-background"
 import { generateSelector } from "../lib/selector"
 import {
   getActiveProjectId,
@@ -60,7 +61,7 @@ const CURSOR_STYLE_ID = "youin-review-cursor"
 const YOUIN_UI_ATTR = "data-youin-extension-ui"
 const Z_TOP = EXTENSION_LAYER.reviewOverlay
 const MIN_REGION_SIZE = 8
-const SCREENSHOT_CAPTURE_TIMEOUT_MS = 1500
+const SCREENSHOT_CAPTURE_TIMEOUT_MS = 3000
 
 type Mode = "inactive" | "active" | "paused" | "region"
 
@@ -614,6 +615,7 @@ function enrichCaptureAsync(
       try {
         elementScreenshotDataUrl = await withTimeout(
           toPng(target, {
+            backgroundColor: getElementScreenshotBackground(target),
             pixelRatio: Math.max(1, window.devicePixelRatio || 1),
             cacheBust: true
           }),
