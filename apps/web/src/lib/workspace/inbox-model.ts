@@ -3,12 +3,29 @@ import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
 export type InboxCollaborationSourceType = "mark_event" | "mention";
+export type InboxActivityType = MarkEventType | "mention";
 
 export interface InboxPerson {
   id: string;
   name: string;
   username: string;
   initials: string;
+}
+
+export interface InboxActivity {
+  id: string;
+  sourceType: InboxCollaborationSourceType;
+  sourceId: string;
+  markId: string;
+  markDisplayKey: string;
+  markTitle: string;
+  projectId: string;
+  actor: InboxPerson;
+  type: InboxActivityType;
+  fromValue?: string;
+  toValue?: string;
+  createdAt: string;
+  unread: boolean;
 }
 
 export interface InboxEvent {
@@ -20,7 +37,7 @@ export interface InboxEvent {
   actorName: string;
   actorUsername: string;
   actorInitials: string;
-  type: MarkEventType;
+  type: InboxActivityType;
   fromValue?: string;
   toValue?: string;
   createdAt: string;
