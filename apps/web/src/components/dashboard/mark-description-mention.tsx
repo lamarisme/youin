@@ -19,7 +19,8 @@ import { MentionPicker } from "./mention-picker";
 export const markDescriptionMentionPluginKey = new PluginKey("markDescriptionMention");
 
 export type MarkDescriptionMentionOptions = {
-  members: readonly TeamMember[];
+  getMembers?: () => readonly TeamMember[];
+  isEnabled?: () => boolean;
   /** Portal mount; should be a `pointer-events-none` layer over the editor inside the same modal as the field. */
   getMountParent?: () => HTMLElement | null;
   /** `position:relative` wrapper used to convert viewport caret coords to `absolute` menu coords. */
@@ -47,7 +48,8 @@ export const MarkDescriptionMention = Extension.create<MarkDescriptionMentionOpt
 
   addOptions() {
     return {
-      members: [],
+      getMembers: () => [],
+      isEnabled: () => true,
       getMountParent: undefined,
       getPositionAnchor: undefined,
     };
@@ -85,7 +87,7 @@ export const MarkDescriptionMention = Extension.create<MarkDescriptionMentionOpt
         pluginKey: markDescriptionMentionPluginKey,
         editor,
         char: "@",
-        allow: mentionAllowed,
+        allow: (props) => (opts.isEnabled?.() ?? true) && mentionAllowed(props),
         command: ({ editor: ed, range, props: item }) => {
           ed.chain()
             .focus()
@@ -93,7 +95,7 @@ export const MarkDescriptionMention = Extension.create<MarkDescriptionMentionOpt
             .insertContent(`@${item.username} `)
             .run();
         },
-        items: ({ query }) => mentionSuggestionsForMembers(opts.members, query),
+        items: ({ query }) => mentionSuggestionsForMembers(opts.getMembers?.() ?? [], query),
         render: () => ({
           onStart: (props) => {
             latest = props;

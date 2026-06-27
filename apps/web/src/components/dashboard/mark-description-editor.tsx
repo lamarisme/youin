@@ -57,6 +57,7 @@ export function MarkDescriptionEditor({
 }: MarkDescriptionEditorProps) {
   const lastEmitted = useRef(value);
   const onBlurRef = useRef(onBlur);
+  const mentionMembersRef = useRef(mentionMembers);
   const slashMountParentRef = useRef<HTMLDivElement>(null);
   const slashPositionAnchorRef = useRef<HTMLDivElement>(null);
   const inline = variant === "inline";
@@ -64,6 +65,10 @@ export function MarkDescriptionEditor({
   useEffect(() => {
     onBlurRef.current = onBlur;
   }, [onBlur]);
+
+  useEffect(() => {
+    mentionMembersRef.current = mentionMembers;
+  }, [mentionMembers]);
 
   const editor = useEditor(
     {
@@ -81,15 +86,12 @@ export function MarkDescriptionEditor({
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
         }),
-        ...(mentionMembers
-          ? [
-              MarkDescriptionMention.configure({
-                members: mentionMembers,
-                getMountParent: () => slashMountParentRef.current,
-                getPositionAnchor: () => slashPositionAnchorRef.current,
-              }),
-            ]
-          : []),
+        MarkDescriptionMention.configure({
+          isEnabled: () => mentionMembersRef.current !== undefined,
+          getMembers: () => mentionMembersRef.current ?? [],
+          getMountParent: () => slashMountParentRef.current,
+          getPositionAnchor: () => slashPositionAnchorRef.current,
+        }),
       ],
       content: storedDescriptionToEditorHtml(value),
       editable: !disabled,
@@ -133,7 +135,6 @@ export function MarkDescriptionEditor({
       autoFocus,
       inline,
       contentClassName,
-      mentionMembers,
     ],
   );
 
@@ -153,7 +154,7 @@ export function MarkDescriptionEditor({
 
   const charsLive = useEditorState({
     editor,
-    selector: ({ editor: ed }) => ed?.storage.characterCount.characters() ?? 0,
+    selector: ({ editor: ed }) => ed?.storage.characterCount?.characters?.() ?? 0,
   });
 
   if (!editor) {
