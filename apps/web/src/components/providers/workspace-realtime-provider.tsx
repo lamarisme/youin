@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { workspaceKeys } from "@/lib/queries/keys";
@@ -23,6 +23,26 @@ const WORKSPACE_REALTIME_TABLES = [
 
 const REALTIME_INVALIDATION_DELAY_MS = 150;
 
+function queryKeyId(queryKey: QueryKey): string {
+  return JSON.stringify(queryKey);
+}
+
+function mergeQueryKeys(
+  current: QueryKey[] | null,
+  next: QueryKey[],
+): QueryKey[] {
+  if (!current) return [...next];
+  const seen = new Set(current.map(queryKeyId));
+  const merged = [...current];
+  for (const queryKey of next) {
+    const id = queryKeyId(queryKey);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(queryKey);
+  }
+  return merged;
+}
+
 export function WorkspaceRealtimeProvider({
   workspaceId,
   userId,
@@ -40,22 +60,43 @@ export function WorkspaceRealtimeProvider({
     pendingOptimisticMutationCount,
   );
   const queuedInvalidationRef = useRef(false);
+  const queuedInvalidationKeysRef = useRef<QueryKey[] | null>(null);
   const queuedInvalidationCoveredRef = useRef(false);
+  const scheduledInvalidationKeysRef = useRef<QueryKey[] | null>(null);
   const invalidateTimerRef = useRef<number | null>(null);
 
-  const scheduleInvalidation = useCallback(() => {
+  const scheduleInvalidation = useCallback((
+    queryKeys: QueryKey[] = [workspaceKeys.all],
+  ) => {
     if (pendingOptimisticMutationCountRef.current > 0) {
       queuedInvalidationRef.current = true;
+      queuedInvalidationKeysRef.current = mergeQueryKeys(
+        queuedInvalidationKeysRef.current,
+        queryKeys,
+      );
       return;
     }
+
+    scheduledInvalidationKeysRef.current = mergeQueryKeys(
+      scheduledInvalidationKeysRef.current,
+      queryKeys,
+    );
 
     if (invalidateTimerRef.current !== null) {
       window.clearTimeout(invalidateTimerRef.current);
     }
 
     invalidateTimerRef.current = window.setTimeout(() => {
+      const nextQueryKeys = scheduledInvalidationKeysRef.current ?? [
+        workspaceKeys.all,
+      ];
+      scheduledInvalidationKeysRef.current = null;
       invalidateTimerRef.current = null;
-      void queryClient.invalidateQueries({ queryKey: workspaceKeys.all });
+      void Promise.all(
+        nextQueryKeys.map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
     }, REALTIME_INVALIDATION_DELAY_MS);
   }, [queryClient]);
 
@@ -64,10 +105,12 @@ export function WorkspaceRealtimeProvider({
 
     if (pendingOptimisticMutationCount === 0 && queuedInvalidationRef.current) {
       const covered = queuedInvalidationCoveredRef.current;
+      const queryKeys = queuedInvalidationKeysRef.current ?? [workspaceKeys.all];
       queuedInvalidationRef.current = false;
+      queuedInvalidationKeysRef.current = null;
       queuedInvalidationCoveredRef.current = false;
       if (!covered) {
-        scheduleInvalidation();
+        scheduleInvalidation(queryKeys);
       }
     }
   }, [pendingOptimisticMutationCount, scheduleInvalidation]);
@@ -103,7 +146,7 @@ export function WorkspaceRealtimeProvider({
         table: "workspaces",
         filter: `id=eq.${workspaceId}`,
       },
-      scheduleInvalidation,
+      () => scheduleInvalidation(),
     );
 
     channel.on(
@@ -114,7 +157,7 @@ export function WorkspaceRealtimeProvider({
         table: "profiles",
         filter: `id=eq.${userId}`,
       },
-      scheduleInvalidation,
+      () => scheduleInvalidation(),
     );
 
     for (const table of WORKSPACE_REALTIME_TABLES) {
@@ -126,7 +169,13 @@ export function WorkspaceRealtimeProvider({
           table,
           filter: `workspace_id=eq.${workspaceId}`,
         },
-        scheduleInvalidation,
+        () => {
+          if (table === "inbox_read_states") {
+            scheduleInvalidation([workspaceKeys.inbox(workspaceId, userId)]);
+            return;
+          }
+          scheduleInvalidation();
+        },
       );
     }
 
@@ -136,6 +185,7 @@ export function WorkspaceRealtimeProvider({
       if (invalidateTimerRef.current !== null) {
         window.clearTimeout(invalidateTimerRef.current);
         invalidateTimerRef.current = null;
+        scheduledInvalidationKeysRef.current = null;
       }
       void supabase.removeChannel(channel);
     };
