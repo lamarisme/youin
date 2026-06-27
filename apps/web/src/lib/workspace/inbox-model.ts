@@ -28,7 +28,6 @@ export interface InboxActivity {
   toValue?: string;
   preview?: string;
   createdAt: string;
-  unread: boolean;
 }
 
 export interface InboxEvent {

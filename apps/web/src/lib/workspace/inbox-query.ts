@@ -144,7 +144,11 @@ function commentPreview(body: string | undefined): string | undefined {
   return plain.length > 160 ? `${plain.slice(0, 157).trimEnd()}...` : plain;
 }
 
-function inboxEventFromActivity(activity: InboxActivity): InboxEvent {
+function inboxActivityUnread(activity: InboxActivity, lastReadAt: string): boolean {
+  return lastReadAt === "" ? true : activity.createdAt > lastReadAt;
+}
+
+function inboxEventFromActivity(activity: InboxActivity, unread: boolean): InboxEvent {
   return {
     id: activity.id,
     markId: activity.markId,
@@ -161,7 +165,7 @@ function inboxEventFromActivity(activity: InboxActivity): InboxEvent {
     contextId: activity.contextId,
     preview: activity.preview,
     createdAt: activity.createdAt,
-    unread: activity.unread,
+    unread,
   };
 }
 
@@ -170,13 +174,11 @@ function normalizeMarkEvents({
   markById,
   memberById,
   profileById,
-  lastReadAt,
 }: {
   events: EventRow[];
   markById: Map<string, MarkRow>;
   memberById: Map<string, MemberRow>;
   profileById: Map<string, ProfileRow>;
-  lastReadAt: string;
 }): InboxActivity[] {
   return events.flatMap((event) => {
     const mark = markById.get(event.markId);
@@ -199,17 +201,14 @@ function normalizeMarkEvents({
       fromValue: event.fromValue ?? undefined,
       toValue: event.toValue ?? undefined,
       createdAt: event.createdAt,
-      unread: lastReadAt === "" ? true : event.createdAt > lastReadAt,
     }];
   });
 }
 
 function normalizeMentionFacts({
   mentions: mentionFacts,
-  lastReadAt,
 }: {
   mentions: InboxMentionFact[];
-  lastReadAt: string;
 }): InboxActivity[] {
   return mentionFacts.flatMap((mention) => {
     if (!mention.mark) return [];
@@ -229,7 +228,6 @@ function normalizeMentionFacts({
       toValue: mention.source.id,
       preview: commentPreview(mention.source.comment?.body),
       createdAt: mention.createdAt,
-      unread: lastReadAt === "" ? true : mention.createdAt > lastReadAt,
     }];
   });
 }
@@ -252,12 +250,13 @@ function buildInboxSnapshotFromActivities({
 
   const groupMap = new Map<string, InboxGroup>();
   for (const activity of activities) {
-    const event = inboxEventFromActivity(activity);
+    const unread = inboxActivityUnread(activity, lastReadAt);
+    const event = inboxEventFromActivity(activity, unread);
     const existing = groupMap.get(activity.markId);
     if (existing) {
       existing.events.push(event);
       if (activity.createdAt > existing.latestAt) existing.latestAt = activity.createdAt;
-      if (activity.unread) existing.unreadCount += 1;
+      if (unread) existing.unreadCount += 1;
       continue;
     }
 
@@ -268,7 +267,7 @@ function buildInboxSnapshotFromActivities({
       projectId: activity.projectId,
       events: [event],
       latestAt: activity.createdAt,
-      unreadCount: activity.unread ? 1 : 0,
+      unreadCount: unread ? 1 : 0,
     });
   }
 
@@ -276,7 +275,7 @@ function buildInboxSnapshotFromActivities({
     a.latestAt < b.latestAt ? 1 : -1,
   );
   const unreadCount = activities.reduce(
-    (count, activity) => count + (activity.unread ? 1 : 0),
+    (count, activity) => count + (inboxActivityUnread(activity, lastReadAt) ? 1 : 0),
     0,
   );
 
@@ -559,7 +558,6 @@ export async function loadInboxSnapshotForWorkspace({
           markById: new Map(markRows.map((mark) => [mark.id, mark])),
           memberById: new Map((members as MemberRow[]).map((member) => [member.userId, member])),
           profileById: new Map((profileRows as ProfileRow[]).map((profile) => [profile.id, profile])),
-          lastReadAt,
         });
       }
     }
@@ -572,7 +570,6 @@ export async function loadInboxSnapshotForWorkspace({
   });
   const mentionActivities = normalizeMentionFacts({
     mentions: mentionFacts,
-    lastReadAt,
   });
 
   return buildInboxSnapshotFromActivities({
