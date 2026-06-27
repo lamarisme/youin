@@ -13,6 +13,7 @@ import {
   workspaceMembers,
 } from "@/db/schema";
 import type { CommentType, MarkEventType } from "@/lib/collab-types";
+import { markDescriptionPlainText } from "@/lib/mark-description";
 import {
   emptyInboxSnapshot,
   type InboxActivity,
@@ -137,6 +138,12 @@ function commentContextFromRow(
   };
 }
 
+function commentPreview(body: string | undefined): string | undefined {
+  const plain = markDescriptionPlainText(body ?? "");
+  if (!plain) return undefined;
+  return plain.length > 160 ? `${plain.slice(0, 157).trimEnd()}...` : plain;
+}
+
 function inboxEventFromActivity(activity: InboxActivity): InboxEvent {
   return {
     id: activity.id,
@@ -150,6 +157,9 @@ function inboxEventFromActivity(activity: InboxActivity): InboxEvent {
     type: activity.type,
     fromValue: activity.fromValue,
     toValue: activity.toValue,
+    contextType: activity.contextType,
+    contextId: activity.contextId,
+    preview: activity.preview,
     createdAt: activity.createdAt,
     unread: activity.unread,
   };
@@ -207,6 +217,8 @@ function normalizeMentionFacts({
       id: `mention:${mention.id}`,
       sourceType: "mention",
       sourceId: mention.id,
+      contextType: mention.source.type,
+      contextId: mention.source.id,
       markId: mention.mark.id,
       markDisplayKey: mention.mark.displayKey,
       markTitle: mention.mark.title,
@@ -215,6 +227,7 @@ function normalizeMentionFacts({
       type: "mention",
       fromValue: mention.source.type,
       toValue: mention.source.id,
+      preview: commentPreview(mention.source.comment?.body),
       createdAt: mention.createdAt,
       unread: lastReadAt === "" ? true : mention.createdAt > lastReadAt,
     }];

@@ -336,12 +336,13 @@ function InboxGroupRow({
   const top = group.events[0];
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
+  const preview = top.type === "mention" ? top.preview : undefined;
   const actorLabel = top.actorUsername || top.actorName;
-  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
+  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
   return (
     <ProductListItem className="p-0">
       <Link
-        href={markHref(group.markDisplayKey, new URLSearchParams())}
+        href={inboxEventHref(group, top)}
         aria-label={rowLabel}
         className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
@@ -377,11 +378,24 @@ function InboxGroupRow({
               <span className="text-ink-3"> · +{formatCount(extras)} more update{extras === 1 ? "" : "s"}</span>
             ) : null}
           </p>
+          {preview ? (
+            <p className="truncate text-ui-xs text-ink-3">
+              {preview}
+            </p>
+          ) : null}
         </div>
         <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-ink-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
     </ProductListItem>
   );
+}
+
+function inboxEventHref(group: InboxGroup, event: InboxEvent): string {
+  const href = markHref(group.markDisplayKey, new URLSearchParams());
+  if (event.type === "mention" && event.contextType === "mark_comment" && event.contextId) {
+    return `${href}#comment-${encodeURIComponent(event.contextId)}`;
+  }
+  return href;
 }
 
 function UnreadDot({ active }: { active: boolean }) {

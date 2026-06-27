@@ -16,6 +16,8 @@ export interface InboxActivity {
   id: string;
   sourceType: InboxCollaborationSourceType;
   sourceId: string;
+  contextType?: string;
+  contextId?: string;
   markId: string;
   markDisplayKey: string;
   markTitle: string;
@@ -24,6 +26,7 @@ export interface InboxActivity {
   type: InboxActivityType;
   fromValue?: string;
   toValue?: string;
+  preview?: string;
   createdAt: string;
   unread: boolean;
 }
@@ -40,6 +43,9 @@ export interface InboxEvent {
   type: InboxActivityType;
   fromValue?: string;
   toValue?: string;
+  contextType?: string;
+  contextId?: string;
+  preview?: string;
   createdAt: string;
   unread: boolean;
 }
