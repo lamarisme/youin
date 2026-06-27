@@ -204,6 +204,7 @@ export function CommentThread({
             comment={comment}
             author={membersById.get(comment.authorId)}
             isOwn={comment.authorId === userId}
+            mentionMembers={mentionMembers}
           />
         ))}
       </div>
@@ -300,9 +301,10 @@ interface CommentItemProps {
   comment: MarkComment;
   author?: TeamMember;
   isOwn: boolean;
+  mentionMembers: readonly TeamMember[];
 }
 
-function CommentItem({ comment, author, isOwn }: CommentItemProps) {
+function CommentItem({ comment, author, isOwn, mentionMembers }: CommentItemProps) {
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
@@ -404,6 +406,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           <div
             className="space-y-2"
             onKeyDown={(e) => {
+              if (e.defaultPrevented) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 setEditing(false);
@@ -424,6 +427,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 minHeightClassName="min-h-[60px]"
                 disabled={isSaving}
                 autoFocus
+                mentionMembers={mentionMembers}
               />
             </div>
             <div className="flex items-center justify-end gap-1.5">
