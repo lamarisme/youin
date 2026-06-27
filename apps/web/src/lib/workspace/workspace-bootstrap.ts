@@ -15,6 +15,11 @@ type BootstrapWorkspaceArgs = {
 
 export type CreateWorkspaceForUserArgs = Partial<BootstrapWorkspaceArgs>;
 
+type ProfileSyncValues = {
+  email: string;
+  fullName: string;
+};
+
 function isMissingBootstrapSignatureError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const maybeError = error as { code?: unknown; message?: unknown };
@@ -101,6 +106,26 @@ function workspaceArgsFromUser(
   };
 }
 
+function profileSyncValuesFromUser(user: User): ProfileSyncValues {
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const fromMeta =
+    typeof meta.full_name === "string" ? meta.full_name.trim() : "";
+  return {
+    email: user.email ?? "",
+    fullName: fromMeta || user.email?.split("@")[0] || "Member",
+  };
+}
+
+function profileNeedsSync(
+  profile: { email: string | null; fullName: string | null },
+  values: ProfileSyncValues,
+): boolean {
+  return (
+    profile.email !== values.email ||
+    (!profile.fullName?.trim() && Boolean(values.fullName.trim()))
+  );
+}
+
 /**
  * Upsert profile row for authenticated user so RLS and member lists have email / display name.
  */
@@ -108,26 +133,31 @@ export async function syncProfileFromUser(
   supabase: SupabaseClient,
   user: User,
 ): Promise<void> {
-  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const fromMeta =
-    typeof meta.full_name === "string" ? meta.full_name.trim() : "";
   void supabase;
   const db = getDb();
+  const values = profileSyncValuesFromUser(user);
   await db
     .insert(profiles)
     .values({
       id: user.id,
-      email: user.email ?? "",
-      fullName: fromMeta || user.email?.split("@")[0] || "Member",
+      email: values.email,
+      fullName: values.fullName,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: profiles.id,
       set: {
-        email: user.email ?? "",
+        email: values.email,
         fullName: sql`COALESCE(NULLIF(TRIM(${profiles.fullName}), ''), excluded.full_name)`,
         updatedAt: new Date(),
       },
+      setWhere: sql`
+        ${profiles.email} IS DISTINCT FROM excluded.email
+        OR (
+          NULLIF(TRIM(${profiles.fullName}), '') IS NULL
+          AND NULLIF(TRIM(excluded.full_name), '') IS NOT NULL
+        )
+      `,
     });
 }
 
@@ -141,14 +171,32 @@ export async function resolveWorkspaceForUser(
   supabase: SupabaseClient,
   user: User,
 ): Promise<string | null> {
-  await syncProfileFromUser(supabase, user);
   const db = getDb();
+  const profileValues = profileSyncValuesFromUser(user);
 
-  const [profile] = await db
-    .select({ currentWorkspaceId: profiles.currentWorkspaceId })
+  let [profile] = await db
+    .select({
+      currentWorkspaceId: profiles.currentWorkspaceId,
+      email: profiles.email,
+      fullName: profiles.fullName,
+    })
     .from(profiles)
     .where(eq(profiles.id, user.id))
     .limit(1);
+
+  if (!profile || profileNeedsSync(profile, profileValues)) {
+    await syncProfileFromUser(supabase, user);
+    [profile] = await db
+      .select({
+        currentWorkspaceId: profiles.currentWorkspaceId,
+        email: profiles.email,
+        fullName: profiles.fullName,
+      })
+      .from(profiles)
+      .where(eq(profiles.id, user.id))
+      .limit(1);
+  }
+
   const memberships = await db
     .select({ workspaceId: workspaceMembers.workspaceId })
     .from(workspaceMembers)

@@ -87,6 +87,7 @@ export function CommentThread({
   showHeading = true,
 }: CommentThreadProps) {
   const userId = useWorkspaceData((s) => s.userId);
+  const mentionMembers = useWorkspaceData((s) => s.workspace.members);
   const { mutateAsync: addComments } = useAddCommentsMutation();
   const [state, dispatch] = useReducer(reducer, INITIAL);
   const [composerError, setComposerError] = useState<string | null>(null);
@@ -203,6 +204,7 @@ export function CommentThread({
             comment={comment}
             author={membersById.get(comment.authorId)}
             isOwn={comment.authorId === userId}
+            mentionMembers={mentionMembers}
           />
         ))}
       </div>
@@ -218,6 +220,7 @@ export function CommentThread({
             maxLength={MARK_COMMENT_MAX_LENGTH}
             disabled={submitting}
             minHeightClassName="min-h-[76px] sm:min-h-[52px]"
+            mentionMembers={mentionMembers}
           />
         </div>
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -298,9 +301,10 @@ interface CommentItemProps {
   comment: MarkComment;
   author?: TeamMember;
   isOwn: boolean;
+  mentionMembers: readonly TeamMember[];
 }
 
-function CommentItem({ comment, author, isOwn }: CommentItemProps) {
+function CommentItem({ comment, author, isOwn, mentionMembers }: CommentItemProps) {
   const namePref = useWorkspaceData((s) => s.profile.displayNamePreference);
   const { mutateAsync: updateComment, isPending: isSaving } =
     useUpdateCommentMutation();
@@ -402,6 +406,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
           <div
             className="space-y-2"
             onKeyDown={(e) => {
+              if (e.defaultPrevented) return;
               if (e.key === "Escape") {
                 e.preventDefault();
                 setEditing(false);
@@ -422,6 +427,7 @@ function CommentItem({ comment, author, isOwn }: CommentItemProps) {
                 minHeightClassName="min-h-[60px]"
                 disabled={isSaving}
                 autoFocus
+                mentionMembers={mentionMembers}
               />
             </div>
             <div className="flex items-center justify-end gap-1.5">

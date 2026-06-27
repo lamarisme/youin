@@ -391,6 +391,73 @@ export const markEvents = pgTable(
   ],
 );
 
+export const mentions = pgTable(
+  "mentions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    /**
+     * Generic source discriminator such as `mark_comment` or `mark_description`.
+     * Kept as text so future collaboration surfaces can opt in without enum churn.
+     */
+    sourceType: text("source_type").notNull(),
+    /** Stable id of the source record within `source_type`. */
+    sourceId: uuid("source_id").notNull(),
+    /**
+     * Optional mark context for mark-scoped sources. This lets mark deletion cascade
+     * current mentions while keeping the model open to non-mark collaboration surfaces.
+     */
+    markId: uuid("mark_id").references(() => marks.id, { onDelete: "cascade" }),
+    mentionedUserId: uuid("mentioned_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "no action" }),
+    createdByUserId: uuid("created_by_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "no action" }),
+    startIndex: integer("start_index").notNull(),
+    endIndex: integer("end_index").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("mentions_source_occurrence_unique").on(
+      table.workspaceId,
+      table.sourceType,
+      table.sourceId,
+      table.mentionedUserId,
+      table.startIndex,
+      table.endIndex,
+    ),
+    index("mentions_source_idx").on(
+      table.workspaceId,
+      table.sourceType,
+      table.sourceId,
+    ),
+    index("mentions_mentioned_user_created_at_idx").on(
+      table.mentionedUserId,
+      table.workspaceId,
+      table.createdAt,
+    ),
+    index("mentions_created_by_user_created_at_idx").on(
+      table.createdByUserId,
+      table.workspaceId,
+      table.createdAt,
+    ),
+    index("mentions_mark_idx").on(table.markId),
+    check(
+      "mentions_source_type_not_blank",
+      sql`length(trim(${table.sourceType})) > 0`,
+    ),
+    check(
+      "mentions_offsets_valid",
+      sql`${table.startIndex} >= 0 AND ${table.endIndex} > ${table.startIndex}`,
+    ),
+  ],
+);
+
 export const inboxReadStates = pgTable(
   "inbox_read_states",
   {
@@ -546,6 +613,8 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   memberships: many(workspaceMembers),
   authoredComments: many(markComments),
   authoredEvents: many(markEvents),
+  createdMentions: many(mentions, { relationName: "mentions_creator" }),
+  mentionedIn: many(mentions, { relationName: "mentions_mentioned_user" }),
   inboxReadStates: many(inboxReadStates),
   createdViews: many(workspaceViews),
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
@@ -562,6 +631,7 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   workflowStatuses: many(markWorkflowStatuses),
   labels: many(markLabels),
   events: many(markEvents),
+  mentions: many(mentions),
   inboxReadStates: many(inboxReadStates),
   invites: many(workspaceInvites),
   reviewLinks: many(workspaceReviewLinks),
@@ -625,6 +695,7 @@ export const marksRelations = relations(marks, ({ one, many }) => ({
   }),
   comments: many(markComments),
   events: many(markEvents),
+  mentions: many(mentions),
   labels: many(marksToLabels),
 }));
 
@@ -670,6 +741,27 @@ export const markEventsRelations = relations(markEvents, ({ one }) => ({
   actor: one(profiles, {
     fields: [markEvents.actorUserId],
     references: [profiles.id],
+  }),
+}));
+
+export const mentionsRelations = relations(mentions, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [mentions.workspaceId],
+    references: [workspaces.id],
+  }),
+  mark: one(marks, {
+    fields: [mentions.markId],
+    references: [marks.id],
+  }),
+  mentionedUser: one(profiles, {
+    fields: [mentions.mentionedUserId],
+    references: [profiles.id],
+    relationName: "mentions_mentioned_user",
+  }),
+  creator: one(profiles, {
+    fields: [mentions.createdByUserId],
+    references: [profiles.id],
+    relationName: "mentions_creator",
   }),
 }));
 
@@ -737,6 +829,7 @@ export type MarkWorkflowStatus = typeof markWorkflowStatuses.$inferSelect;
 export type MarkLabel = typeof markLabels.$inferSelect;
 export type MarkComment = typeof markComments.$inferSelect;
 export type MarkEvent = typeof markEvents.$inferSelect;
+export type Mention = typeof mentions.$inferSelect;
 export type InboxReadState = typeof inboxReadStates.$inferSelect;
 export type WorkspaceView = typeof workspaceViews.$inferSelect;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;

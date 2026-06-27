@@ -2,6 +2,34 @@ import type { MarkEventType, Workspace } from "@/lib/collab-types";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
+export type InboxCollaborationSourceType = "mark_event" | "mention";
+export type InboxActivityType = MarkEventType | "mention";
+
+export interface InboxPerson {
+  id: string;
+  name: string;
+  username: string;
+  initials: string;
+}
+
+export interface InboxActivity {
+  id: string;
+  sourceType: InboxCollaborationSourceType;
+  sourceId: string;
+  contextType?: string;
+  contextId?: string;
+  markId: string;
+  markDisplayKey: string;
+  markTitle: string;
+  projectId: string;
+  actor: InboxPerson;
+  type: InboxActivityType;
+  fromValue?: string;
+  toValue?: string;
+  preview?: string;
+  createdAt: string;
+}
+
 export interface InboxEvent {
   id: string;
   markId: string;
@@ -11,9 +39,12 @@ export interface InboxEvent {
   actorName: string;
   actorUsername: string;
   actorInitials: string;
-  type: MarkEventType;
+  type: InboxActivityType;
   fromValue?: string;
   toValue?: string;
+  contextType?: string;
+  contextId?: string;
+  preview?: string;
   createdAt: string;
   unread: boolean;
 }
@@ -33,6 +64,41 @@ export interface InboxSnapshot {
   totalEvents: number;
   unreadCount: number;
   lastReadAt: string;
+}
+
+export interface InboxMentionMarkContext {
+  id: string;
+  displayKey: string;
+  title: string;
+  projectId: string;
+}
+
+export interface InboxMentionCommentContext {
+  id: string;
+  markId: string;
+  authorId: string;
+  type: "text" | "image";
+  body?: string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
+export interface InboxMentionSourceContext {
+  type: string;
+  id: string;
+  comment: InboxMentionCommentContext | null;
+}
+
+export interface InboxMentionFact {
+  sourceKind: "mention";
+  id: string;
+  source: InboxMentionSourceContext;
+  mark: InboxMentionMarkContext | null;
+  actor: InboxPerson;
+  mentionedUser: InboxPerson;
+  startIndex: number;
+  endIndex: number;
+  createdAt: string;
 }
 
 export function emptyInboxSnapshot(lastReadAt = ""): InboxSnapshot {

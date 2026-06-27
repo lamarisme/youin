@@ -119,6 +119,10 @@ export function describeEvent(
       return event.toValue === "true" ? "pinned this mark" : "unpinned this mark";
     case "comment_added":
       return "commented on this mark";
+    case "mention":
+      return event.contextType === "mark_comment"
+        ? "mentioned you in a comment"
+        : "mentioned you";
     case "assignee_changed":
       if (!event.toValue) return "unassigned this mark";
       {

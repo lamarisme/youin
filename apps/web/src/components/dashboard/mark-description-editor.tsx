@@ -5,6 +5,7 @@ import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 
 import { cn } from "@/lib/utils";
+import type { TeamMember } from "@/lib/collab-types";
 import {
   MARK_DESCRIPTION_MAX_LENGTH,
   editorHtmlToDraft,
@@ -12,6 +13,7 @@ import {
   storedDescriptionToEditorHtml,
 } from "@/lib/mark-description";
 
+import { MarkDescriptionMention } from "./mark-description-mention";
 import { MarkDescriptionSlash } from "./mark-description-slash";
 import {
   markDescriptionContentClass,
@@ -33,6 +35,7 @@ interface MarkDescriptionEditorProps {
   variant?: "boxed" | "inline";
   showCharacterCount?: boolean;
   onBlur?: () => void;
+  mentionMembers?: readonly TeamMember[];
 }
 
 export function MarkDescriptionEditor({
@@ -50,9 +53,11 @@ export function MarkDescriptionEditor({
   variant = "boxed",
   showCharacterCount = variant === "boxed",
   onBlur,
+  mentionMembers,
 }: MarkDescriptionEditorProps) {
   const lastEmitted = useRef(value);
   const onBlurRef = useRef(onBlur);
+  const mentionMembersRef = useRef(mentionMembers);
   const slashMountParentRef = useRef<HTMLDivElement>(null);
   const slashPositionAnchorRef = useRef<HTMLDivElement>(null);
   const inline = variant === "inline";
@@ -60,6 +65,10 @@ export function MarkDescriptionEditor({
   useEffect(() => {
     onBlurRef.current = onBlur;
   }, [onBlur]);
+
+  useEffect(() => {
+    mentionMembersRef.current = mentionMembers;
+  }, [mentionMembers]);
 
   const editor = useEditor(
     {
@@ -74,6 +83,12 @@ export function MarkDescriptionEditor({
         // Host getters run when the slash menu opens (Tiptap), not during React render.
         // eslint-disable-next-line react-hooks/refs
         MarkDescriptionSlash.configure({
+          getMountParent: () => slashMountParentRef.current,
+          getPositionAnchor: () => slashPositionAnchorRef.current,
+        }),
+        MarkDescriptionMention.configure({
+          isEnabled: () => mentionMembersRef.current !== undefined,
+          getMembers: () => mentionMembersRef.current ?? [],
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
         }),
@@ -139,7 +154,7 @@ export function MarkDescriptionEditor({
 
   const charsLive = useEditorState({
     editor,
-    selector: ({ editor: ed }) => ed?.storage.characterCount.characters() ?? 0,
+    selector: ({ editor: ed }) => ed?.storage.characterCount?.characters?.() ?? 0,
   });
 
   if (!editor) {

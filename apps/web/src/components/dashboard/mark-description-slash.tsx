@@ -29,6 +29,8 @@ import { createRoot, type Root } from "react-dom/client";
 
 import { cn } from "@/lib/utils";
 
+import { resolveSuggestionMenuPosition } from "./suggestion-menu-position";
+
 export const markDescriptionSlashPluginKey = new PluginKey("markDescriptionSlash");
 
 export type SlashCommandItem = {
@@ -255,25 +257,13 @@ function SlashMenuView({
   /** When set, menu is `position:absolute` inside this element (required inside modal dialogs). */
   positionAnchor: HTMLElement | null;
 }) {
-  const rect = clientRect?.();
-  if (!rect) return null;
-
   const menuWidth = 256;
-  let top: number;
-  let left: number;
-  let position: "absolute" | "fixed";
-
-  if (positionAnchor) {
-    const ar = positionAnchor.getBoundingClientRect();
-    top = rect.bottom - ar.top + 4;
-    left = rect.left - ar.left;
-    left = Math.min(Math.max(0, left), Math.max(0, ar.width - menuWidth));
-    position = "absolute";
-  } else {
-    top = rect.bottom + 4;
-    left = Math.min(Math.max(8, rect.left), window.innerWidth - menuWidth - 8);
-    position = "fixed";
-  }
+  const position = resolveSuggestionMenuPosition({
+    clientRect,
+    menuWidth,
+    positionAnchor,
+  });
+  if (!position) return null;
 
   return (
     <div
@@ -281,9 +271,9 @@ function SlashMenuView({
       aria-label="Formatting commands"
       className="pointer-events-auto max-h-[min(40vh,16rem)] w-64 overflow-y-auto rounded-md bg-paper-2 py-1 text-ink shadow-[var(--shadow-popover)] ring-1 ring-rule outline-none"
       style={{
-        position,
-        top,
-        left,
+        position: position.position,
+        top: position.top,
+        left: position.left,
         zIndex: 200,
       }}
       onMouseDown={(e) => {

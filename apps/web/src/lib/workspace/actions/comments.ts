@@ -4,13 +4,22 @@ import { and, eq } from "drizzle-orm";
 
 import { markComments, marks } from "@/db/schema";
 import { isMarkImageStoragePath } from "@/lib/mark-image-path";
-import { normalizeCommentForStorage } from "@/lib/mark-description";
+import {
+  markDescriptionPlainText,
+  normalizeCommentForStorage,
+} from "@/lib/mark-description";
+import {
+  deleteMentionsForSource,
+  syncMentionsForSource,
+} from "@/lib/workspace/mentions";
 
 import {
   requireWorkspaceContext,
   revalidateWorkspaceViews,
   withWorkspaceActor,
 } from "./session";
+
+const MARK_COMMENT_MENTION_SOURCE = "mark_comment";
 
 export async function addMarkCommentsAction(
   markId: string,
@@ -57,7 +66,26 @@ export async function addMarkCommentsAction(
   }
   if (!inserts.length) throw new Error("Comment can't be empty.");
   await withWorkspaceActor(ctx, async (tx) => {
-    await tx.insert(markComments).values(inserts);
+    const createdComments = await tx
+      .insert(markComments)
+      .values(inserts)
+      .returning({
+        id: markComments.id,
+        type: markComments.type,
+        body: markComments.body,
+      });
+
+    for (const comment of createdComments) {
+      if (comment.type !== "text" || !comment.body) continue;
+      await syncMentionsForSource(tx, {
+        workspaceId: ctx.workspaceId,
+        sourceType: MARK_COMMENT_MENTION_SOURCE,
+        sourceId: comment.id,
+        markId,
+        actorUserId: ctx.userId,
+        text: markDescriptionPlainText(comment.body),
+      });
+    }
   });
   revalidateWorkspaceViews();
 }
@@ -71,6 +99,7 @@ export async function updateMarkCommentAction(
   if (!normalized) throw new Error("Comment can't be empty.");
   const [row] = await ctx.db
     .select({
+      markId: markComments.markId,
       authorUserId: markComments.authorUserId,
       type: markComments.type,
     })
@@ -92,6 +121,14 @@ export async function updateMarkCommentAction(
       .update(markComments)
       .set({ body: normalized })
       .where(eq(markComments.id, commentId));
+    await syncMentionsForSource(tx, {
+      workspaceId: ctx.workspaceId,
+      sourceType: MARK_COMMENT_MENTION_SOURCE,
+      sourceId: commentId,
+      markId: row.markId,
+      actorUserId: ctx.userId,
+      text: markDescriptionPlainText(normalized),
+    });
   });
   revalidateWorkspaceViews();
 }
@@ -115,6 +152,11 @@ export async function deleteMarkCommentAction(
   if (row.authorUserId !== ctx.userId)
     throw new Error("You can only delete your own comments.");
   await withWorkspaceActor(ctx, async (tx) => {
+    await deleteMentionsForSource(tx, {
+      workspaceId: ctx.workspaceId,
+      sourceType: MARK_COMMENT_MENTION_SOURCE,
+      sourceId: commentId,
+    });
     await tx.delete(markComments).where(eq(markComments.id, commentId));
   });
   revalidateWorkspaceViews();
