@@ -46,6 +46,7 @@ export const MarkDescriptionMentionRead =
                       class: mentionHighlightClass,
                       "data-mention-user-id": segment.member.id,
                       "data-mention-username": segment.member.username,
+                      tabindex: "0",
                       "aria-label": `Mention: ${memberPickerLabel(
                         segment.member,
                         options.displayNamePreference,

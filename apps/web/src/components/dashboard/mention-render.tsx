@@ -49,6 +49,10 @@ function MentionChip({
     <span
       className={mentionHighlightClass}
       title={memberPickerLabel(member, displayNamePreference)}
+      data-mention-user-id={member.id}
+      data-mention-username={member.username}
+      tabIndex={0}
+      aria-label={`Mention: ${memberPickerLabel(member, displayNamePreference)}`}
     >
       @{member.username}
     </span>

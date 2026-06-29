@@ -14,6 +14,7 @@ import {
   markDescriptionContentClass,
   markDescriptionExtensions,
 } from "./mark-description-tiptap";
+import { useMentionHoverCard } from "./use-mention-hover-card";
 
 const EMPTY_MENTION_MEMBERS: readonly TeamMember[] = [];
 
@@ -31,6 +32,10 @@ export function MarkDescriptionRead({
   displayNamePreference = "full_name",
 }: MarkDescriptionReadProps) {
   const content = useMemo(() => storedDescriptionToEditorHtml(html), [html]);
+  const { hoverCard, mentionHoverHandlers } = useMentionHoverCard({
+    members: mentionMembers,
+    displayNamePreference,
+  });
   const extensions = useMemo(
     () => [
       ...markDescriptionExtensions({ openLinksOnClick: true }),
@@ -67,12 +72,16 @@ export function MarkDescriptionRead({
   if (!markDescriptionPlainText(content)) return null;
 
   return (
-    <EditorContent
-      editor={editor}
-      className={cn(
-        "mark-description-read max-w-[65ch] break-words text-ui-md leading-relaxed text-ink-2",
-        className,
-      )}
-    />
+    <>
+      <EditorContent
+        editor={editor}
+        className={cn(
+          "mark-description-read max-w-[65ch] break-words text-ui-md leading-relaxed text-ink-2",
+          className,
+        )}
+        {...mentionHoverHandlers}
+      />
+      {hoverCard}
+    </>
   );
 }

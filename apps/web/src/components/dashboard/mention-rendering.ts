@@ -50,3 +50,22 @@ export function segmentKnownMentions(
 
   return segments.length ? segments : [{ type: "text", value: text }];
 }
+
+export function findKnownMentionAtBoundary({
+  text,
+  offset,
+  members,
+  side,
+}: {
+  text: string;
+  offset: number;
+  members: readonly TeamMember[];
+  side: "before" | "after";
+}): Extract<MentionTextSegment, { type: "mention" }> | null {
+  for (const segment of segmentKnownMentions(text, members)) {
+    if (segment.type !== "mention") continue;
+    if (side === "before" && segment.end === offset) return segment;
+    if (side === "after" && segment.start === offset) return segment;
+  }
+  return null;
+}

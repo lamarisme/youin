@@ -14,6 +14,7 @@ import {
 } from "@/lib/mark-description";
 
 import { MarkDescriptionMention } from "./mark-description-mention";
+import { MarkDescriptionMentionDelete } from "./mark-description-mention-delete";
 import { MarkDescriptionSlash } from "./mark-description-slash";
 import {
   markDescriptionContentClass,
@@ -91,6 +92,10 @@ export function MarkDescriptionEditor({
           getMembers: () => mentionMembersRef.current ?? [],
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
+        }),
+        MarkDescriptionMentionDelete.configure({
+          isEnabled: () => mentionMembersRef.current !== undefined,
+          getMembers: () => mentionMembersRef.current ?? [],
         }),
       ],
       content: storedDescriptionToEditorHtml(value),
