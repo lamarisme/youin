@@ -463,6 +463,8 @@ function CommentItem({ comment, author, isOwn, mentionMembers }: CommentItemProp
           <MarkDescriptionRead
             html={comment.body ?? ""}
             className="max-w-none break-words text-ui-sm leading-relaxed text-ink"
+            mentionMembers={mentionMembers}
+            displayNamePreference={namePref}
           />
         ) : comment.imageUrl ? (
           <div className="aspect-[16/7] w-full overflow-hidden rounded bg-paper-3">

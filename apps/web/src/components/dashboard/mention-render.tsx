@@ -4,8 +4,8 @@ import { useMemo } from "react";
 
 import type { DisplayNamePreference, TeamMember } from "@/lib/collab-types";
 
-import { parseMentions } from "./mention-utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
+import { mentionHighlightClass, segmentKnownMentions } from "./mention-rendering";
 
 interface MentionRenderProps {
   body: string;
@@ -20,7 +20,10 @@ export function MentionRender({
   displayNamePreference,
   className,
 }: MentionRenderProps) {
-  const segments = useMemo(() => parseMentions(body, members), [body, members]);
+  const segments = useMemo(
+    () => segmentKnownMentions(body, members),
+    [body, members],
+  );
 
   return (
     <p className={className}>
@@ -44,7 +47,7 @@ function MentionChip({
 }) {
   return (
     <span
-      className="inline-flex items-baseline rounded bg-mark-soft px-1 align-baseline font-medium text-mark"
+      className={mentionHighlightClass}
       title={memberPickerLabel(member, displayNamePreference)}
     >
       @{member.username}
