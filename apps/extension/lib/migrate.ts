@@ -110,7 +110,8 @@ export async function migrateLocalDataToWorkspace(
     getProjects(),
     getMarks()
   ])
-  if (!localMarks.length) {
+  const migratableMarks = localMarks.filter((mark) => !mark.remoteMarkId)
+  if (!migratableMarks.length) {
     await markMigrationDone(userId)
     return {
       ok: true,
@@ -201,7 +202,7 @@ export async function migrateLocalDataToWorkspace(
   const localProjectById = new Map<string, Project>()
   for (const project of localProjects) localProjectById.set(project.id, project)
   const usedLocalProjectIds = new Set(
-    localMarks.map((mark) => mark.projectId || project.projectId)
+    migratableMarks.map((mark) => mark.projectId || project.projectId)
   )
 
   const localToRemoteProjectId = new Map<string, string>()
@@ -243,7 +244,7 @@ export async function migrateLocalDataToWorkspace(
     screenshotUploaded: boolean
   }> = []
 
-  for (const localMark of localMarks) {
+  for (const localMark of migratableMarks) {
     const remoteProjectId =
       localToRemoteProjectId.get(localMark.projectId) ??
       project.projectId
