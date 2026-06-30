@@ -302,6 +302,7 @@ export function NewMarkForm({
             ariaLabel="Description"
             disabled={submitting}
             minHeightClassName="min-h-[72px]"
+            mentionMembers={members}
           />
         </Field>
       </div>

@@ -13,8 +13,15 @@ import {
   workspaceMembers,
 } from "@/db/schema";
 import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
-import { normalizeDescriptionForStorage } from "@/lib/mark-description";
+import {
+  markDescriptionPlainText,
+  normalizeDescriptionForStorage,
+} from "@/lib/mark-description";
 import { isValidMarkPageUrl, normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
+import {
+  MARK_DESCRIPTION_MENTION_SOURCE,
+  syncMentionsForSource,
+} from "@/lib/workspace/mentions";
 
 import {
   requireWorkspaceContext,
@@ -161,6 +168,7 @@ export async function createMarkAction(input: {
     ctx.workspaceId,
     input.workflowStatusId,
   );
+  const description = normalizeDescriptionForStorage(input.description);
 
   const mk = await withWorkspaceActor(ctx, async (tx) => {
     const [created] = await tx
@@ -169,7 +177,7 @@ export async function createMarkAction(input: {
         workspaceId: ctx.workspaceId,
         projectId: input.projectId,
         title,
-        description: normalizeDescriptionForStorage(input.description),
+        description,
         page: pageNormalized,
         status: workflowStatus.lifecycleStatus,
         workflowStatusId: workflowStatus.id,
@@ -194,6 +202,14 @@ export async function createMarkAction(input: {
         })),
       );
     }
+    await syncMentionsForSource(tx, {
+      workspaceId: ctx.workspaceId,
+      sourceType: MARK_DESCRIPTION_MENTION_SOURCE,
+      sourceId: created.id,
+      markId: created.id,
+      actorUserId: ctx.userId,
+      text: markDescriptionPlainText(description),
+    });
     return created;
   });
 
@@ -260,6 +276,16 @@ export async function updateMarkFieldsAction(
       .where(and(eq(marks.id, markId), eq(marks.workspaceId, ctx.workspaceId)))
       .returning({ id: marks.id });
     if (!updated) throw new Error("Mark not found.");
+    if (typeof patch.description === "string") {
+      await syncMentionsForSource(tx, {
+        workspaceId: ctx.workspaceId,
+        sourceType: MARK_DESCRIPTION_MENTION_SOURCE,
+        sourceId: markId,
+        markId,
+        actorUserId: ctx.userId,
+        text: markDescriptionPlainText(patch.description),
+      });
+    }
   });
   revalidateWorkspaceViews();
 }

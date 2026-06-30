@@ -9,6 +9,7 @@ import {
   normalizeCommentForStorage,
 } from "@/lib/mark-description";
 import {
+  MARK_COMMENT_MENTION_SOURCE,
   deleteMentionsForSource,
   syncMentionsForSource,
 } from "@/lib/workspace/mentions";
@@ -18,8 +19,6 @@ import {
   revalidateWorkspaceViews,
   withWorkspaceActor,
 } from "./session";
-
-const MARK_COMMENT_MENTION_SOURCE = "mark_comment";
 
 export async function addMarkCommentsAction(
   markId: string,

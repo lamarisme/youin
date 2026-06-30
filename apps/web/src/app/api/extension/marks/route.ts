@@ -10,7 +10,9 @@ import {
 } from "@youin/domain";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { getDb } from "@/db/client";
 import {
+  markDescriptionPlainText,
   normalizeCommentForStorage,
   normalizeDescriptionForStorage,
 } from "@/lib/mark-description";
@@ -24,6 +26,12 @@ import {
   isValidMarkPageUrl,
   normalizeMarkPageUrl,
 } from "@/lib/workspace/mark-page-url";
+import { setDbRequestUser } from "@/lib/workspace/actions/session";
+import {
+  MARK_COMMENT_MENTION_SOURCE,
+  MARK_DESCRIPTION_MENTION_SOURCE,
+  syncMentionsForSource,
+} from "@/lib/workspace/mentions";
 import { resolveWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +66,11 @@ type ExtensionMarkPatchInput = {
 type ExtensionAuthResult =
   | { error: NextResponse }
   | { supabase: SupabaseClient; user: User; workspaceId: string };
+
+type PersistedTextComment = {
+  id: string;
+  body: string;
+};
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -305,6 +318,45 @@ async function defaultWorkflowStatusId(
   if (error) throw new Error(error.message);
   if (!data) throw new Error(`Workspace is missing a ${lifecycle} status.`);
   return data.id as string;
+}
+
+async function syncExtensionMentionSources({
+  workspaceId,
+  actorUserId,
+  markId,
+  description,
+  comments = [],
+}: {
+  workspaceId: string;
+  actorUserId: string;
+  markId: string;
+  description?: string;
+  comments?: PersistedTextComment[];
+}): Promise<void> {
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await setDbRequestUser(tx, actorUserId);
+    if (typeof description === "string") {
+      await syncMentionsForSource(tx, {
+        workspaceId,
+        sourceType: MARK_DESCRIPTION_MENTION_SOURCE,
+        sourceId: markId,
+        markId,
+        actorUserId,
+        text: markDescriptionPlainText(description),
+      });
+    }
+    for (const comment of comments) {
+      await syncMentionsForSource(tx, {
+        workspaceId,
+        sourceType: MARK_COMMENT_MENTION_SOURCE,
+        sourceId: comment.id,
+        markId,
+        actorUserId,
+        text: markDescriptionPlainText(comment.body),
+      });
+    }
+  });
 }
 
 export function OPTIONS(): NextResponse {
@@ -555,19 +607,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   let warning: string | undefined;
+  let createdComments: PersistedTextComment[] = [];
   if (comments.length) {
-    const { error: commentError } = await supabase.from("mark_comments").insert(
-      comments.map((body) => ({
-        mark_id: markId,
-        author_user_id: user.id,
-        type: "text" as const,
-        body,
-      })),
-    );
+    const { data: commentRows, error: commentError } = await supabase
+      .from("mark_comments")
+      .insert(
+        comments.map((body) => ({
+          mark_id: markId,
+          author_user_id: user.id,
+          type: "text" as const,
+          body,
+        })),
+      )
+      .select("id,body");
     if (commentError) {
       warning = commentError.message;
+    } else {
+      createdComments = (commentRows ?? []).map((comment) => ({
+        id: comment.id as string,
+        body: String(comment.body ?? ""),
+      }));
     }
   }
+
+  await syncExtensionMentionSources({
+    workspaceId,
+    actorUserId: user.id,
+    markId,
+    description,
+    comments: createdComments,
+  });
 
   return NextResponse.json(
     {
@@ -664,15 +733,28 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     );
   }
   if (commentBody) {
-    const { error: commentError } = await supabase
+    const { data: comment, error: commentError } = await supabase
       .from("mark_comments")
       .insert({
         mark_id: markId,
         author_user_id: user.id,
         type: "text" as const,
         body: commentBody,
-      });
+      })
+      .select("id,body")
+      .single();
     if (commentError) return jsonError(commentError.message, 400);
+    await syncExtensionMentionSources({
+      workspaceId,
+      actorUserId: user.id,
+      markId,
+      comments: [
+        {
+          id: comment.id as string,
+          body: String(comment.body ?? ""),
+        },
+      ],
+    });
   }
 
   let openingBody = "";
@@ -702,6 +784,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         .eq("id", firstComment.id as string)
         .eq("mark_id", markId);
       if (openingError) return jsonError(openingError.message, 400);
+      await syncExtensionMentionSources({
+        workspaceId,
+        actorUserId: user.id,
+        markId,
+        comments: [
+          {
+            id: firstComment.id as string,
+            body: openingBody,
+          },
+        ],
+      });
     }
   }
 

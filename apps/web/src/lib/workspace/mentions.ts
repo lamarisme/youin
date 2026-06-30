@@ -11,6 +11,9 @@ import { and, asc, eq } from "drizzle-orm";
 import { mentions, workspaceMembers } from "@/db/schema";
 import type { WorkspaceTransaction } from "@/lib/workspace/actions/session";
 
+export const MARK_COMMENT_MENTION_SOURCE = "mark_comment";
+export const MARK_DESCRIPTION_MENTION_SOURCE = "mark_description";
+
 export interface MentionSource {
   workspaceId: string;
   sourceType: string;

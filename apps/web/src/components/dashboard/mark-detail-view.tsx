@@ -680,6 +680,7 @@ export function MarkDetailView({
                 minHeightClassName="min-h-[3.25rem]"
                 contentClassName="px-1.5 py-1.5 text-ui-sm leading-relaxed text-ink-2"
                 className="-mx-1"
+                mentionMembers={workspace.members}
               />
             </DetailContentSection>
 
