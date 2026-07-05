@@ -540,6 +540,9 @@ export const workspaceInvites = pgTable(
       .notNull()
       .default(sql`now() + interval '14 days'`),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => profiles.id, {
+      onDelete: "no action",
+    }),
     status: workspaceInviteStatusEnum("status").notNull().default("pending"),
     source: workspaceInviteSourceEnum("source").notNull().default("signup"),
     token: text("token").unique(),
@@ -619,7 +622,8 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   createdViews: many(workspaceViews),
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
   createdMarks: many(marks, { relationName: "marks_creator" }),
-  sentInvites: many(workspaceInvites),
+  sentInvites: many(workspaceInvites, { relationName: "workspace_invites_invited_by" }),
+  acceptedInvites: many(workspaceInvites, { relationName: "workspace_invites_accepted_by" }),
   createdReviewLinks: many(workspaceReviewLinks),
 }));
 
@@ -797,6 +801,12 @@ export const workspaceInvitesRelations = relations(
     invitedBy: one(profiles, {
       fields: [workspaceInvites.invitedByUserId],
       references: [profiles.id],
+      relationName: "workspace_invites_invited_by",
+    }),
+    acceptedBy: one(profiles, {
+      fields: [workspaceInvites.acceptedByUserId],
+      references: [profiles.id],
+      relationName: "workspace_invites_accepted_by",
     }),
   }),
 );

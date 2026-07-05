@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
 
 import type { getDb } from "@/db/client";
 import {
@@ -11,6 +11,7 @@ import {
   mentions,
   profiles,
   workspaceMembers,
+  workspaceInvites,
 } from "@/db/schema";
 import type { CommentType, MarkEventType } from "@/lib/collab-types";
 import { markDescriptionPlainText } from "@/lib/mark-description";
@@ -28,6 +29,7 @@ import {
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { requireWorkspaceContext } from "@/lib/workspace/actions/session";
+import { accountHref } from "@/lib/workspace/routes";
 
 type AppDb = ReturnType<typeof getDb>;
 
@@ -79,6 +81,13 @@ type CommentRow = {
   body: string | null;
   imageUrl: string | null;
   createdAt: string;
+};
+
+type InviteAcceptedRow = {
+  id: string;
+  email: string;
+  acceptedByUserId: string;
+  acceptedAt: string;
 };
 
 function toIso(value: Date | string): string {
@@ -154,6 +163,7 @@ function inboxEventFromActivity(activity: InboxActivity, unread: boolean): Inbox
     markId: activity.markId,
     markTitle: activity.markTitle,
     projectId: activity.projectId,
+    targetHref: activity.targetHref,
     actorId: activity.actor.id,
     actorName: activity.actor.name,
     actorUsername: activity.actor.username,
@@ -192,6 +202,8 @@ function normalizeMarkEvents({
       id: event.id,
       sourceType: "mark_event",
       sourceId: event.id,
+      groupId: event.markId,
+      groupKind: "mark",
       markId: event.markId,
       markDisplayKey: formatMarkDisplayKey(mark.seq ?? 0),
       markTitle: mark.title?.trim() || "(untitled)",
@@ -216,6 +228,8 @@ function normalizeMentionFacts({
       id: `mention:${mention.id}`,
       sourceType: "mention",
       sourceId: mention.id,
+      groupId: mention.mark.id,
+      groupKind: "mark",
       contextType: mention.source.type,
       contextId: mention.source.id,
       markId: mention.mark.id,
@@ -230,6 +244,34 @@ function normalizeMentionFacts({
       createdAt: mention.createdAt,
     }];
   });
+}
+
+function normalizeInviteAcceptedActivities({
+  invites,
+  memberById,
+  profileById,
+}: {
+  invites: InviteAcceptedRow[];
+  memberById: Map<string, MemberRow>;
+  profileById: Map<string, ProfileRow>;
+}): InboxActivity[] {
+  return invites.map((invite) => ({
+    id: `invite:${invite.id}:accepted`,
+    sourceType: "workspace_invite",
+    sourceId: invite.id,
+    groupId: `workspace_invite:${invite.id}`,
+    groupKind: "workspace",
+    markTitle: "Workspace invitation",
+    targetHref: accountHref("team"),
+    actor: personFromRows({
+      userId: invite.acceptedByUserId,
+      memberById,
+      profileById,
+    }),
+    type: "invitation_accepted",
+    preview: invite.email,
+    createdAt: invite.acceptedAt,
+  }));
 }
 
 function sortInboxActivities(activities: InboxActivity[]): InboxActivity[] {
@@ -252,7 +294,7 @@ function buildInboxSnapshotFromActivities({
   for (const activity of activities) {
     const unread = inboxActivityUnread(activity, lastReadAt);
     const event = inboxEventFromActivity(activity, unread);
-    const existing = groupMap.get(activity.markId);
+    const existing = groupMap.get(activity.groupId);
     if (existing) {
       existing.events.push(event);
       if (activity.createdAt > existing.latestAt) existing.latestAt = activity.createdAt;
@@ -260,11 +302,14 @@ function buildInboxSnapshotFromActivities({
       continue;
     }
 
-    groupMap.set(activity.markId, {
+    groupMap.set(activity.groupId, {
+      groupId: activity.groupId,
+      kind: activity.groupKind,
       markId: activity.markId,
       markDisplayKey: activity.markDisplayKey,
       markTitle: activity.markTitle,
       projectId: activity.projectId,
+      targetHref: activity.targetHref,
       events: [event],
       latestAt: activity.createdAt,
       unreadCount: unread ? 1 : 0,
@@ -446,7 +491,7 @@ export async function loadInboxSnapshotForWorkspace({
   userId: string;
   workspaceId: string;
 }): Promise<InboxSnapshot> {
-  const [readStates, assignedMarks, touchedComments] = await Promise.all([
+  const [readStates, assignedMarks, touchedComments, acceptedInvites] = await Promise.all([
     db
       .select({ lastReadAt: inboxReadStates.lastReadAt })
       .from(inboxReadStates)
@@ -478,6 +523,25 @@ export async function loadInboxSnapshotForWorkspace({
           eq(markComments.authorUserId, userId),
         ),
       ),
+    db
+      .select({
+        id: workspaceInvites.id,
+        email: workspaceInvites.email,
+        acceptedByUserId: workspaceInvites.acceptedByUserId,
+        acceptedAt: workspaceInvites.acceptedAt,
+      })
+      .from(workspaceInvites)
+      .where(
+        and(
+          eq(workspaceInvites.workspaceId, workspaceId),
+          eq(workspaceInvites.invitedByUserId, userId),
+          eq(workspaceInvites.status, "accepted"),
+          isNotNull(workspaceInvites.acceptedByUserId),
+          isNotNull(workspaceInvites.acceptedAt),
+          ne(workspaceInvites.acceptedByUserId, userId),
+        ),
+      )
+      .orderBy(desc(workspaceInvites.acceptedAt)),
   ]);
 
   const lastReadAt = readStates[0]?.lastReadAt
@@ -572,10 +636,54 @@ export async function loadInboxSnapshotForWorkspace({
     mentions: mentionFacts,
   });
 
+  const acceptedInviteRows = acceptedInvites.flatMap((invite) => {
+    if (!invite.acceptedByUserId || !invite.acceptedAt) return [];
+    return [{
+      id: invite.id,
+      email: invite.email,
+      acceptedByUserId: invite.acceptedByUserId,
+      acceptedAt: toIso(invite.acceptedAt),
+    }];
+  }) as InviteAcceptedRow[];
+
+  let inviteAcceptedActivities: InboxActivity[] = [];
+  if (acceptedInviteRows.length > 0) {
+    const actorIds = unique(acceptedInviteRows.map((invite) => invite.acceptedByUserId));
+    const [members, profileRows] = await Promise.all([
+      db
+        .select({
+          userId: workspaceMembers.userId,
+          username: workspaceMembers.username,
+        })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, workspaceId),
+            inArray(workspaceMembers.userId, actorIds),
+          ),
+        ),
+      db
+        .select({
+          id: profiles.id,
+          fullName: profiles.fullName,
+          email: profiles.email,
+        })
+        .from(profiles)
+        .where(inArray(profiles.id, actorIds)),
+    ]);
+
+    inviteAcceptedActivities = normalizeInviteAcceptedActivities({
+      invites: acceptedInviteRows,
+      memberById: new Map((members as MemberRow[]).map((member) => [member.userId, member])),
+      profileById: new Map((profileRows as ProfileRow[]).map((profile) => [profile.id, profile])),
+    });
+  }
+
   return buildInboxSnapshotFromActivities({
     activities: sortInboxActivities([
       ...markEventActivities,
       ...mentionActivities,
+      ...inviteAcceptedActivities,
     ]),
     lastReadAt,
   });

@@ -123,6 +123,8 @@ export function describeEvent(
       return event.contextType === "mark_comment"
         ? "mentioned you in a comment"
         : "mentioned you";
+    case "invitation_accepted":
+      return "joined your workspace";
     case "assignee_changed":
       if (!event.toValue) return "unassigned this mark";
       {

@@ -9,6 +9,7 @@ import { ArrowRight, CheckCheck, Inbox, Loader2, MailCheck } from "lucide-react"
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
 import { Notice } from "@/components/notice";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProductList, ProductListItem } from "@/components/product-list";
 import type { DisplayNamePreference } from "@/lib/collab-types";
@@ -19,7 +20,7 @@ import { workspaceInviteAcceptanceFeedback } from "@/lib/workspace/invite-accept
 import type {
   PendingWorkspaceInvite,
 } from "@/lib/workspace/invitations";
-import { markHref } from "@/lib/workspace/routes";
+import { accountHref, markHref } from "@/lib/workspace/routes";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
@@ -210,9 +211,9 @@ export function InboxView({
         <ProductList>
           {inbox.groups.map((group) => (
             <InboxGroupRow
-              key={group.markId}
+              key={group.groupId}
               group={group}
-              projectName={projectLookup.get(group.projectId) ?? null}
+              projectName={group.projectId ? projectLookup.get(group.projectId) ?? null : null}
               members={memberLookup}
               displayNamePreference={displayNamePreference}
               dataUpdatedAt={inbox.dataUpdatedAt}
@@ -336,9 +337,20 @@ function InboxGroupRow({
   const top = group.events[0];
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
+  const isInvitationAccepted = top.type === "invitation_accepted";
   const preview = top.type === "mention" ? top.preview : undefined;
   const actorLabel = top.actorUsername || top.actorName;
-  const rowLabel = `${group.markDisplayKey}, ${group.markTitle}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
+  const actorParts = rosterDisplayParts(top.actorName, top.actorUsername, displayNamePreference);
+  const title = isInvitationAccepted ? actorParts.primary : group.markTitle;
+  const visibleEventSummary = isInvitationAccepted
+    ? "Joined your workspace"
+    : eventSummary;
+  const groupLabel = group.markDisplayKey
+    ? `${group.markDisplayKey}, ${group.markTitle}`
+    : title;
+  const rowLabel = isInvitationAccepted
+    ? `${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
+    : `${groupLabel}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
   return (
     <ProductListItem className="p-0">
       <Link
@@ -355,10 +367,17 @@ function InboxGroupRow({
                 group.unreadCount > 0 ? "text-ink" : "text-ink-2",
               )}
             >
-              <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
-                {group.markDisplayKey}
-              </span>
-              <span className="min-w-0 truncate">{group.markTitle}</span>
+              {group.markDisplayKey ? (
+                <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
+                  {group.markDisplayKey}
+                </span>
+              ) : null}
+              <span className="min-w-0 truncate">{title}</span>
+              {isInvitationAccepted ? (
+                <Badge variant="outline" className="shrink-0 border-ok/20 bg-ok-soft text-ui-2xs capitalize text-ok">
+                  Accepted
+                </Badge>
+              ) : null}
             </div>
             <time
               className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
@@ -372,8 +391,12 @@ function InboxGroupRow({
           </div>
 
           <p className="truncate text-ui-sm text-ink-2">
-            <ActorChip event={top} preference={displayNamePreference} />{" "}
-            {eventSummary}
+            {isInvitationAccepted ? null : (
+              <>
+                <ActorChip event={top} preference={displayNamePreference} />{" "}
+              </>
+            )}
+            {visibleEventSummary}
             {extras > 0 ? (
               <span className="text-ink-3"> · +{formatCount(extras)} more update{extras === 1 ? "" : "s"}</span>
             ) : null}
@@ -391,6 +414,9 @@ function InboxGroupRow({
 }
 
 function inboxEventHref(group: InboxGroup, event: InboxEvent): string {
+  if (event.targetHref) return event.targetHref;
+  if (group.targetHref) return group.targetHref;
+  if (!group.markDisplayKey) return accountHref("team");
   const href = markHref(group.markDisplayKey, new URLSearchParams());
   if (event.type === "mention" && event.contextType === "mark_comment" && event.contextId) {
     return `${href}#comment-${encodeURIComponent(event.contextId)}`;

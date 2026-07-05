@@ -2,8 +2,9 @@ import type { MarkEventType, Workspace } from "@/lib/collab-types";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
-export type InboxCollaborationSourceType = "mark_event" | "mention";
-export type InboxActivityType = MarkEventType | "mention";
+export type InboxCollaborationSourceType = "mark_event" | "mention" | "workspace_invite";
+export type InboxActivityType = MarkEventType | "mention" | "invitation_accepted";
+export type InboxGroupKind = "mark" | "workspace";
 
 export interface InboxPerson {
   id: string;
@@ -16,12 +17,15 @@ export interface InboxActivity {
   id: string;
   sourceType: InboxCollaborationSourceType;
   sourceId: string;
+  groupId: string;
+  groupKind: InboxGroupKind;
   contextType?: string;
   contextId?: string;
-  markId: string;
-  markDisplayKey: string;
+  markId?: string;
+  markDisplayKey?: string;
   markTitle: string;
-  projectId: string;
+  projectId?: string;
+  targetHref?: string;
   actor: InboxPerson;
   type: InboxActivityType;
   fromValue?: string;
@@ -32,9 +36,10 @@ export interface InboxActivity {
 
 export interface InboxEvent {
   id: string;
-  markId: string;
+  markId?: string;
   markTitle: string;
-  projectId: string;
+  projectId?: string;
+  targetHref?: string;
   actorId: string;
   actorName: string;
   actorUsername: string;
@@ -50,10 +55,13 @@ export interface InboxEvent {
 }
 
 export interface InboxGroup {
-  markId: string;
-  markDisplayKey: string;
+  groupId: string;
+  kind: InboxGroupKind;
+  markId?: string;
+  markDisplayKey?: string;
   markTitle: string;
-  projectId: string;
+  projectId?: string;
+  targetHref?: string;
   events: InboxEvent[];
   latestAt: string;
   unreadCount: number;
@@ -164,7 +172,9 @@ export function buildInboxSnapshot({
 
   const groupMap = new Map<string, InboxGroup>();
   for (const event of inboxEvents) {
-    const existing = groupMap.get(event.markId);
+    const eventMarkId = event.markId;
+    if (!eventMarkId) continue;
+    const existing = groupMap.get(eventMarkId);
     if (existing) {
       existing.events.push(event);
       if (event.createdAt > existing.latestAt) existing.latestAt = event.createdAt;
@@ -172,9 +182,11 @@ export function buildInboxSnapshot({
       continue;
     }
 
-    const mark = markById.get(event.markId);
-    groupMap.set(event.markId, {
-      markId: event.markId,
+    const mark = markById.get(eventMarkId);
+    groupMap.set(eventMarkId, {
+      groupId: eventMarkId,
+      kind: "mark",
+      markId: eventMarkId,
       markDisplayKey: mark?.displayKey ?? formatMarkDisplayKey(mark?.seq ?? 0),
       markTitle: event.markTitle,
       projectId: event.projectId,

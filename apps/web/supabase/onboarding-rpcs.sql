@@ -352,7 +352,9 @@ BEGIN
   END IF;
 
   UPDATE public.workspace_invites AS wi
-  SET status = 'accepted', accepted_at = now()
+  SET status = 'accepted',
+      accepted_at = now(),
+      accepted_by_user_id = v_user_id
   WHERE wi.id = v_invite.id
     AND wi.status = 'pending';
 

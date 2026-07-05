@@ -190,6 +190,13 @@
       "when": 1782136800000,
       "tag": "0026_mentions",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782140400000,
+      "tag": "0027_invite_acceptance_actor",
+      "breakpoints": true
     }
   ]
 }
