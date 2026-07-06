@@ -60,6 +60,7 @@ import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-stat
 import { toast } from "sonner";
 
 import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
+import { ViewAnalytics } from "./view-analytics";
 import { WorkspaceViewIcon, viewLayoutLabel } from "./view-ui";
 
 const PAGE_SIZE = 8;
@@ -277,6 +278,15 @@ function ViewDetail({
               onNewMark={() => setNewMarkOpen(true)}
             />
           </div>
+        ) : view.layout === "analytics" ? (
+          <ViewAnalytics
+            view={view}
+            marks={visibleMarks}
+            workspace={workspace}
+            displayNamePreference={displayNamePreference}
+            referenceTime={loadedAt}
+            markHrefFor={(mark) => markHref(mark.displayKey, searchParamsFromFilters(view.filters))}
+          />
         ) : view.layout === "board" ? (
           <StatusBoard
             marks={visibleMarks}

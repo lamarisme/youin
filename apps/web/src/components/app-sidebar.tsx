@@ -46,10 +46,12 @@ import { Kbd } from "@/components/ui/kbd";
 import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
+import { PRODUCT_SHORTCUT_IDS } from "@/lib/product-shortcuts";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { useSwitchWorkspaceMutation } from "@/lib/queries/use-workspace-mutations";
 import { createClient } from "@/lib/supabase/client";
+import { useProductShortcutFormatter } from "@/lib/use-product-shortcuts";
 import { cn } from "@/lib/utils";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { projectMarkCountsFromMarks } from "@/lib/workspace/read-model-mappers";
@@ -71,6 +73,7 @@ export function AppSidebar() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { theme, toggleTheme } = useTheme();
+  const formatProductShortcut = useProductShortcutFormatter();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const collapsed = useWorkspaceUiStore((state) => state.sidebarCollapsed);
   const toggleCollapsed = useWorkspaceUiStore(
@@ -131,6 +134,9 @@ export function AppSidebar() {
   const initials = initialsFromFullName(profileName.trim() || profileEmail);
   const workspaceLabel = workspaceName || tCommon("workspaceFallback");
   const accountActive = pathname === "/account" || pathname.startsWith("/account/");
+  const commandPaletteShortcut = formatProductShortcut(
+    PRODUCT_SHORTCUT_IDS.openCommandPalette,
+  );
   const myMarksHref = useMemo(() => {
     return dashboardHref(searchParams, { kind: "mine" }, { resetPage: true });
   }, [searchParams]);
@@ -225,7 +231,7 @@ export function AppSidebar() {
             </TooltipTrigger>
             <TooltipContent side="right">
               {tSide("searchShortcut")}
-              <Kbd className="ml-1.5">Ctrl/Cmd K</Kbd>
+              <Kbd className="ml-1.5">{commandPaletteShortcut}</Kbd>
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -242,7 +248,7 @@ export function AppSidebar() {
             <Search className="size-[1rem] shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-ui-sm lg:text-ui-xs">{tSide("searchOrJump")}</span>
             <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
-              <Kbd>Ctrl/Cmd K</Kbd>
+              <Kbd>{commandPaletteShortcut}</Kbd>
             </span>
           </button>
         )}
@@ -261,7 +267,7 @@ export function AppSidebar() {
           href="/inbox"
           label={tNav("inbox")}
           icon={InboxIcon}
-          shortcut="I"
+          shortcutLabel={formatProductShortcut(PRODUCT_SHORTCUT_IDS.navigateInbox)}
           active={pathname === "/inbox" || pathname.startsWith("/inbox/")}
           collapsed={collapsed}
           badgeCount={inbox.unreadCount}
@@ -271,7 +277,7 @@ export function AppSidebar() {
           href={myMarksHref}
           label={tNav("myMarks")}
           icon={CircleDashed}
-          shortcut="M"
+          shortcutLabel={formatProductShortcut(PRODUCT_SHORTCUT_IDS.navigateMyMarks)}
           active={myMarksActive}
           collapsed={collapsed}
           onNavigate={navigateFromSidebar}
@@ -323,7 +329,7 @@ function SidebarNavLink({
   href,
   label,
   icon: Icon,
-  shortcut,
+  shortcutLabel,
   active,
   collapsed,
   badgeCount = 0,
@@ -333,7 +339,7 @@ function SidebarNavLink({
   href: string;
   label: string;
   icon: LucideIcon;
-  shortcut?: string;
+  shortcutLabel?: string;
   active: boolean;
   collapsed: boolean;
   badgeCount?: number;
@@ -380,8 +386,8 @@ function SidebarNavLink({
         </TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-1.5">
           {label}
-          {shortcut ? (
-            <Kbd>G {shortcut}</Kbd>
+          {shortcutLabel ? (
+            <Kbd>{shortcutLabel}</Kbd>
           ) : null}
         </TooltipContent>
       </Tooltip>
@@ -410,9 +416,9 @@ function SidebarNavLink({
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {showBadge ? (
         <SidebarBadge count={badgeCount} label={badgeLabel} />
-      ) : shortcut ? (
+      ) : shortcutLabel ? (
         <Kbd className="hidden bg-paper-3/70 px-1 opacity-0 transition-opacity group-hover:opacity-100 lg:inline-flex">
-          G {shortcut}
+          {shortcutLabel}
         </Kbd>
       ) : null}
     </Link>

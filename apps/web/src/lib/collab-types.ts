@@ -7,7 +7,7 @@ export type MarkStatus = DomainMarkStatus;
 export type MarkPriority = DomainMarkPriority;
 export type AiPromptTarget = "codex" | "claude" | "generic" | "bulk";
 export type WorkflowStatusColor = "gray" | "blue" | "amber" | "green" | "red" | "violet";
-export type WorkspaceViewLayout = "list" | "board";
+export type WorkspaceViewLayout = "list" | "board" | "analytics";
 export type WorkspaceViewIcon =
   | "lightbulb"
   | "bug"
@@ -24,6 +24,7 @@ export type WorkspaceViewIcon =
   | "search"
   | "palette"
   | "layout-grid"
+  | "chart-column"
   | "clipboard-list";
 export type WorkspaceViewStatusFilter = "all" | MarkStatus;
 export type WorkspaceViewPriorityFilter = "all" | MarkPriority;
@@ -32,6 +33,18 @@ export type WorkspaceViewAssigneeFilter = "all" | "me" | "unassigned";
 export type WorkspaceViewSortMode = "recent" | "oldest" | "priority" | "status";
 export type WorkspaceViewDashboardGroupBy = "none" | "status" | "page" | "assignee" | "project";
 export type WorkspaceViewDensity = "comfortable" | "compact";
+export type WorkspaceViewAnalyticsTimeframe = "7d" | "30d" | "90d" | "all";
+export type WorkspaceViewAnalyticsWidget =
+  | "summary"
+  | "createdTrend"
+  | "openClosedTrend"
+  | "statusBreakdown"
+  | "priorityBreakdown"
+  | "assigneeWorkload"
+  | "projectBreakdown"
+  | "labelBreakdown"
+  | "pageHotspots"
+  | "agingBuckets";
 export type MarkEventType =
   | "created"
   | "status_changed"
@@ -171,6 +184,8 @@ export interface WorkspaceViewConfig {
   boardGroupBy?: "status";
   dashboardGroupBy?: WorkspaceViewDashboardGroupBy;
   dashboardDensity?: WorkspaceViewDensity;
+  analyticsTimeframe?: WorkspaceViewAnalyticsTimeframe;
+  analyticsWidgets?: WorkspaceViewAnalyticsWidget[];
 }
 
 export interface WorkspaceView {

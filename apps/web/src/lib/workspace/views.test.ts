@@ -77,10 +77,11 @@ const workspace: Workspace = {
 
 test("normalizes view layout, filters, and config", () => {
   assert.equal(normalizeWorkspaceViewLayout("board"), "board");
-  assert.equal(normalizeWorkspaceViewLayout("analytics"), "list");
+  assert.equal(normalizeWorkspaceViewLayout("analytics"), "analytics");
   assert.throws(() => normalizeWorkspaceViewLayout("gallery"), /Unsupported view layout/);
   assert.equal(normalizeWorkspaceViewIcon("bug"), "bug");
   assert.equal(normalizeWorkspaceViewIcon(null), undefined);
+  assert.equal(normalizeWorkspaceViewIcon("chart-column"), "chart-column");
   assert.throws(() => normalizeWorkspaceViewIcon("smile"), /Unsupported view icon/);
 
   assert.deepEqual(
@@ -107,6 +108,17 @@ test("normalizes view layout, filters, and config", () => {
     boardGroupBy: "status",
     dashboardGroupBy: "none",
     dashboardDensity: "comfortable",
+  });
+
+  assert.deepEqual(normalizeWorkspaceViewConfig("analytics", {
+    analyticsTimeframe: "90d",
+    analyticsWidgets: ["summary", "pageHotspots", "summary", "scatter"],
+  }), {
+    boardGroupBy: "status",
+    dashboardGroupBy: "none",
+    dashboardDensity: "comfortable",
+    analyticsTimeframe: "90d",
+    analyticsWidgets: ["summary", "pageHotspots"],
   });
 });
 

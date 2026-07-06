@@ -157,6 +157,10 @@ export function DashboardViewsBar({
       }),
     [builtIns, filters],
   );
+  const quickWorkspaceViews = useMemo(
+    () => views.filter((view) => view.layout !== "analytics").slice(0, 5),
+    [views],
+  );
 
   async function commitSave() {
     const name = draftName.trim();
@@ -235,9 +239,9 @@ export function DashboardViewsBar({
           />
         ))}
 
-        {views.length > 0 ? <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" aria-hidden /> : null}
+        {quickWorkspaceViews.length > 0 ? <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" aria-hidden /> : null}
 
-        {views.slice(0, 5).map((view) => (
+        {quickWorkspaceViews.map((view) => (
           <ViewChip
             key={view.id}
             label={view.name}
@@ -457,6 +461,8 @@ function workspaceConfigEqual(a: WorkspaceViewConfig, b: WorkspaceViewConfig): b
   return (
     (a.boardGroupBy ?? "status") === (b.boardGroupBy ?? "status") &&
     (a.dashboardGroupBy ?? "none") === (b.dashboardGroupBy ?? "none") &&
-    (a.dashboardDensity ?? "comfortable") === (b.dashboardDensity ?? "comfortable")
+    (a.dashboardDensity ?? "comfortable") === (b.dashboardDensity ?? "comfortable") &&
+    (a.analyticsTimeframe ?? "30d") === (b.analyticsTimeframe ?? "30d") &&
+    (a.analyticsWidgets ?? []).join(",") === (b.analyticsWidgets ?? []).join(",")
   );
 }

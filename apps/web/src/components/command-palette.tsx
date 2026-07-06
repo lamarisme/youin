@@ -33,9 +33,18 @@ import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
+import {
+  getProductNavigationShortcut,
+  getProductNavigationShortcutByKey,
+  isProductNavigationShortcutLeaderKey,
+  matchesProductShortcutEvent,
+  PRODUCT_SHORTCUT_IDS,
+  type ProductShortcutId,
+} from "@/lib/product-shortcuts";
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
+import { useProductShortcutFormatter } from "@/lib/use-product-shortcuts";
 import { cn } from "@/lib/utils";
 import { getCommandPaletteIndexReadModelAction } from "@/lib/workspace/actions";
 import { dashboardHref, markHref } from "@/lib/workspace/routes";
@@ -46,7 +55,7 @@ interface PaletteCommand {
   subtitle?: string;
   group: "actions" | "navigate" | "marks" | "views" | "projects" | "theme";
   keywords?: string[];
-  shortcut?: string;
+  shortcutId?: ProductShortcutId;
   icon?: LucideIcon;
   iconNode?: ReactNode;
   run: () => void;
@@ -68,7 +77,12 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+      if (
+        matchesProductShortcutEvent(
+          e,
+          PRODUCT_SHORTCUT_IDS.openCommandPalette,
+        )
+      ) {
         e.preventDefault();
         if (open) {
           setOpen(false);
@@ -136,6 +150,7 @@ function CommandPaletteDialog({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme, toggleTheme } = useTheme();
+  const formatProductShortcut = useProductShortcutFormatter();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { projects, views, workspaceId, userId, inboxSnapshot, loadedAt } =
@@ -191,23 +206,16 @@ function CommandPaletteDialog({
       if (isInputTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!pendingG) {
-        if (e.key === "g" || e.key === "G") {
+        if (isProductNavigationShortcutLeaderKey(e.key)) {
           pendingG = true;
           timeoutId = setTimeout(reset, 900);
         }
         return;
       }
-      const navMap: Record<string, string> = {
-        i: "/inbox",
-        m: "/dashboard/mine",
-        v: "/views",
-        c: "/account",
-      };
-      const key = e.key.toLowerCase();
-      const target = navMap[key];
-      if (target) {
+      const navigationShortcut = getProductNavigationShortcutByKey(e.key);
+      if (navigationShortcut) {
         e.preventDefault();
-        router.push(target);
+        router.push(navigationShortcut.href);
       }
       reset();
     }
@@ -279,9 +287,14 @@ function CommandPaletteDialog({
         title: t("nav.myMarks"),
         subtitle: t("nav.myMarksSub"),
         group: "navigate",
-        shortcut: "G M",
+        shortcutId: PRODUCT_SHORTCUT_IDS.navigateMyMarks,
         icon: CircleDashed,
-        run: () => router.push("/dashboard/mine"),
+        run: () =>
+          router.push(
+            getProductNavigationShortcut(
+              PRODUCT_SHORTCUT_IDS.navigateMyMarks,
+            ).href,
+          ),
       },
       {
         id: "nav-inbox",
@@ -291,27 +304,39 @@ function CommandPaletteDialog({
             : t("nav.inbox"),
         subtitle: t("nav.inboxSub"),
         group: "navigate",
-        shortcut: "G I",
+        shortcutId: PRODUCT_SHORTCUT_IDS.navigateInbox,
         icon: Inbox,
-        run: () => router.push("/inbox"),
+        run: () =>
+          router.push(
+            getProductNavigationShortcut(PRODUCT_SHORTCUT_IDS.navigateInbox)
+              .href,
+          ),
       },
       {
         id: "nav-views",
         title: t("nav.views"),
         subtitle: t("nav.viewsSub"),
         group: "navigate",
-        shortcut: "G V",
+        shortcutId: PRODUCT_SHORTCUT_IDS.navigateViews,
         icon: View,
-        run: () => router.push("/views"),
+        run: () =>
+          router.push(
+            getProductNavigationShortcut(PRODUCT_SHORTCUT_IDS.navigateViews)
+              .href,
+          ),
       },
       {
         id: "nav-account",
         title: t("nav.account"),
         subtitle: t("nav.accountSub"),
         group: "navigate",
-        shortcut: "G C",
+        shortcutId: PRODUCT_SHORTCUT_IDS.navigateAccount,
         icon: User,
-        run: () => router.push("/account"),
+        run: () =>
+          router.push(
+            getProductNavigationShortcut(PRODUCT_SHORTCUT_IDS.navigateAccount)
+              .href,
+          ),
       },
       {
         id: "theme-toggle",
@@ -440,9 +465,9 @@ function CommandPaletteDialog({
                         </span>
                       ) : null}
                     </span>
-                    {cmd.shortcut ? (
+                    {cmd.shortcutId ? (
                       <Kbd className="ml-auto shrink-0">
-                        {cmd.shortcut}
+                        {formatProductShortcut(cmd.shortcutId)}
                       </Kbd>
                     ) : null}
                   </Command.Item>
@@ -462,7 +487,9 @@ function CommandPaletteDialog({
           {t("footerRun")}
         </span>
         <span className="flex items-center gap-1.5">
-          <Kbd>Ctrl/Cmd K</Kbd>
+          <Kbd>
+            {formatProductShortcut(PRODUCT_SHORTCUT_IDS.openCommandPalette)}
+          </Kbd>
           {t("footerToggle")}
         </span>
       </div>
