@@ -31,11 +31,6 @@ function legacyScopeRedirect(
     const nextScope = { kind: "project", projectId } satisfies DashboardRouteScope;
     redirect(mark ? markHref(mark, urlParams, nextScope) : dashboardHref(urlParams, nextScope));
   }
-
-  if (urlParams.get("assignee") === "me") {
-    const nextScope = { kind: "mine" } satisfies DashboardRouteScope;
-    redirect(mark ? markHref(mark, urlParams, nextScope) : dashboardHref(urlParams, nextScope));
-  }
 }
 
 function ensureProjectScopeExists(

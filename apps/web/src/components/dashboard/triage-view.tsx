@@ -148,7 +148,7 @@ export function TriageView({
     selectedProject ??
     workspace.projects.find((project) => !isOptimisticId(project.id)) ??
     null;
-  const isMyMarksPage = filters.assignee === "me";
+  const isMyMarksPage = routeScope.kind === "mine";
 
   const currentVisibleMarks = useVisibleDashboardMarks({
     marks: workspace.marks,
@@ -172,7 +172,7 @@ export function TriageView({
       ) ?? null
     );
   }, [rowFilters.projectId, workspace.projects]);
-  const rowIsMyMarksPage = rowFilters.assignee === "me";
+  const rowIsMyMarksPage = isMyMarksPage;
   const pageTitle = isMyMarksPage ? "My marks" : "Triage";
 
   const updateDashboardFilters: typeof update = useCallback(

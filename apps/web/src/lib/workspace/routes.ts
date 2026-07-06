@@ -40,7 +40,6 @@ function dashboardScopeFromSearchParams(
   if (projectId && projectId !== "all") {
     return { kind: "project", projectId };
   }
-  if (params.get("assignee") === "me") return { kind: "mine" };
   return { kind: "all" };
 }
 
@@ -62,7 +61,7 @@ function dashboardQueryWithoutRouteScope(
   const params = new URLSearchParams(searchParams.toString());
   params.delete("mark");
   params.delete("project");
-  if (scope.kind === "mine" || (scope.kind === "all" && params.get("assignee") === "me")) {
+  if (scope.kind === "mine") {
     params.delete("assignee");
   }
   if (options?.resetPage) params.delete("page");

@@ -17,7 +17,7 @@ function cleanWorkspacePath(path: string, searchParams: URLSearchParams) {
     const mark = params.get("mark");
     if (mark) return markHref(mark, params);
     const projectId = params.get("project")?.trim();
-    if ((projectId && projectId !== "all") || params.get("assignee") === "me") {
+    if (projectId && projectId !== "all") {
       return dashboardHref(params);
     }
   }
