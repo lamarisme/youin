@@ -89,6 +89,20 @@ function readModelUpdatedAt(loadedAt: string): number | undefined {
   return updatedAtFromIso(loadedAt);
 }
 
+function isRouteReadModelNewer<TReadModel extends { loadedAt: string }>(
+  routeData: TReadModel,
+  cachedData: TReadModel | undefined,
+): boolean {
+  if (!cachedData) return false;
+  const routeUpdatedAt = readModelUpdatedAt(routeData.loadedAt);
+  const cachedUpdatedAt = readModelUpdatedAt(cachedData.loadedAt);
+  return (
+    typeof routeUpdatedAt === "number" &&
+    typeof cachedUpdatedAt === "number" &&
+    routeUpdatedAt > cachedUpdatedAt
+  );
+}
+
 function useWorkspaceReadModelQuery<TReadModel extends { loadedAt: string }>({
   queryKey,
   queryFn,
@@ -98,11 +112,22 @@ function useWorkspaceReadModelQuery<TReadModel extends { loadedAt: string }>({
   queryFn: () => Promise<TReadModel>;
   initialData: TReadModel;
 }) {
+  const queryClient = useQueryClient();
+  const initialDataUpdatedAt = readModelUpdatedAt(initialData.loadedAt);
+
+  useEffect(() => {
+    const cachedData = queryClient.getQueryData<TReadModel>(queryKey);
+    if (!isRouteReadModelNewer(initialData, cachedData)) return;
+    queryClient.setQueryData<TReadModel>(queryKey, initialData, {
+      updatedAt: initialDataUpdatedAt,
+    });
+  }, [initialData, initialDataUpdatedAt, queryClient, queryKey]);
+
   return useQuery({
     queryKey,
     queryFn,
     initialData,
-    initialDataUpdatedAt: readModelUpdatedAt(initialData.loadedAt),
+    initialDataUpdatedAt,
     placeholderData: keepPreviousData,
     staleTime: QUERY_CACHE.readModelStaleMs,
     gcTime: QUERY_CACHE.gcMs,
