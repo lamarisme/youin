@@ -7,19 +7,13 @@ import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { WORKSPACE_INVALIDATED_EVENT } from "@/lib/queries/workspace-optimistic";
 import { createClient } from "@/lib/supabase/client";
-
-const WORKSPACE_REALTIME_TABLES = [
-  "projects",
-  "mark_events",
-  "mark_labels",
-  "mark_workflow_statuses",
-  "marks",
-  "workspace_invites",
-  "workspace_members",
-  "workspace_review_links",
-  "workspace_views",
-  "inbox_read_states",
-] as const;
+import {
+  INBOX_REALTIME_TABLES,
+  WORKSPACE_REALTIME_TABLES,
+  queryKeysForInboxTableChange,
+  queryKeysForWorkspaceTableChange,
+  type RealtimeRow,
+} from "@/components/providers/workspace-realtime-routing";
 
 const REALTIME_INVALIDATION_DELAY_MS = 150;
 
@@ -170,11 +164,46 @@ export function WorkspaceRealtimeProvider({
           filter: `workspace_id=eq.${workspaceId}`,
         },
         () => {
-          if (table === "inbox_read_states") {
-            scheduleInvalidation([workspaceKeys.inbox(workspaceId, userId)]);
-            return;
-          }
-          scheduleInvalidation();
+          scheduleInvalidation(
+            queryKeysForWorkspaceTableChange({ table, workspaceId, userId }),
+          );
+        },
+      );
+    }
+
+    for (const table of INBOX_REALTIME_TABLES) {
+      channel.on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table,
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          const nextRow =
+            payload.new && typeof payload.new === "object"
+              ? payload.new as RealtimeRow
+              : {};
+          const previousRow =
+            payload.old && typeof payload.old === "object"
+              ? payload.old as RealtimeRow
+              : {};
+          const queryKeys = mergeQueryKeys(
+            queryKeysForInboxTableChange({
+              table,
+              row: nextRow,
+              workspaceId,
+              userId,
+            }),
+            queryKeysForInboxTableChange({
+              table,
+              row: previousRow,
+              workspaceId,
+              userId,
+            }),
+          );
+          if (queryKeys.length > 0) scheduleInvalidation(queryKeys);
         },
       );
     }

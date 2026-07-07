@@ -472,6 +472,8 @@ DECLARE
     'marks',
     'mark_events',
     'inbox_read_states',
+    'inbox_activities',
+    'inbox_activity_read_states',
     'workspace_views',
     'workspace_review_links'
   ];
