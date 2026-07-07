@@ -289,8 +289,8 @@ export function MarkFilters({
               </span>
             </Button>
           </DialogTrigger>
-          <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[30rem]">
-            <div className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
+          <DialogContent className="flex max-h-[calc(100dvh-2rem)] min-h-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-[30rem]">
+            <div className="shrink-0 border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
               <DialogTitle>Filters</DialogTitle>
               <DialogDescription className="sr-only">
                 Narrow marks by status, stage, priority, label, pinned state, or assignee.
@@ -300,7 +300,7 @@ export function MarkFilters({
               </p>
             </div>
 
-            <div className="max-h-[min(70vh,34rem)] overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
               <section className="px-4 py-3">
                 <span className={dialogLabelClass}>Status</span>
                 <div className="mt-2 grid grid-cols-3 gap-1 rounded-md bg-paper-2 p-1">
@@ -426,7 +426,7 @@ export function MarkFilters({
               ) : null}
             </div>
 
-            <div className="flex items-center justify-between gap-2 border-t border-rule/70 bg-paper-2/70 px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-t border-rule/70 bg-paper-2/70 px-4 py-3">
               <Button
                 type="button"
                 variant="ghost"

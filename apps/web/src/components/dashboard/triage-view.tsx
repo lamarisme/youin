@@ -480,7 +480,7 @@ export function TriageView({
           ) : null}
 
           <Dialog open={newMarkDialogOpen} onOpenChange={setNewMarkDialogOpen}>
-            <DialogContent className="max-h-[min(90vh,44rem)] gap-0 overflow-hidden p-0 sm:max-w-2xl">
+            <DialogContent className="flex max-h-[min(90dvh,44rem)] min-h-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
               <DialogHeader className="border-b border-rule/70 px-4 pb-3 pt-4 pr-12">
                 <DialogTitle>New mark</DialogTitle>
                 <DialogDescription>
@@ -489,7 +489,7 @@ export function TriageView({
                     : "Create a project first to add marks."}
                 </DialogDescription>
               </DialogHeader>
-              <div className="max-h-[min(78vh,38rem)] overflow-y-auto p-4">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable]">
                 <NewMarkForm
                   labels={workspace.labels}
                   members={workspace.members}

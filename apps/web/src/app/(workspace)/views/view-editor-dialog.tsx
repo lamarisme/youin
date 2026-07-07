@@ -247,13 +247,13 @@ export function ViewEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[min(92vh,48rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent className="flex max-h-[min(92dvh,48rem)] min-h-0 flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 border-b border-rule/70 px-4 py-3 pr-12">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 overflow-y-auto px-4 py-4">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-gutter:stable]">
           <div className="grid gap-4">
             <Field id="view-name" label="View name">
               <div className="flex h-10 overflow-hidden rounded-md border border-transparent bg-paper-elevated transition-[background-color,border-color,box-shadow] duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:bg-paper-2 focus-within:border-focus-ring/20 focus-within:bg-paper focus-within:ring-1 focus-within:ring-focus-ring/25 sm:h-9">
