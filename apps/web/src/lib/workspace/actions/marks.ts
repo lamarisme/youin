@@ -22,6 +22,7 @@ import {
   MARK_DESCRIPTION_MENTION_SOURCE,
   syncMentionsForSource,
 } from "@/lib/workspace/mentions";
+import { syncCanonicalInboxActivitiesForWorkspace } from "@/lib/workspace/inbox-producers";
 
 import {
   requireWorkspaceContext,
@@ -214,6 +215,10 @@ export async function createMarkAction(input: {
   });
 
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
   return {
     id: mk.id,
     seq: Number(mk.seq ?? 0),
@@ -288,6 +293,10 @@ export async function updateMarkFieldsAction(
     }
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
 
 export async function toggleMarkStatusAction(markId: string): Promise<void> {
@@ -359,6 +368,10 @@ export async function updateMarkPriorityAction(
     if (!updated) throw new Error("Mark not found.");
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
 
 export async function assignMarkAction(
@@ -376,6 +389,10 @@ export async function assignMarkAction(
     if (!updated) throw new Error("Mark not found.");
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
 
 export async function setMarkLabelsAction(
@@ -429,4 +446,8 @@ export async function setMarkLabelsAction(
     });
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
