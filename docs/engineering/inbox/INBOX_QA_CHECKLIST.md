@@ -4,29 +4,29 @@ Use this checklist before production rollout of the canonical Inbox Read impleme
 
 ## Setup
 
-- [ ] Apply all Inbox migrations through `0032_retire_legacy_inbox_realtime`.
-- [ ] Run the canonical activity backfill in dry-run mode and review skipped rows.
-- [ ] Run the canonical activity backfill with `--apply` in the target environment.
-- [ ] Run the read-state backfill from legacy timestamps before disabling legacy behavior.
+- [x] Apply all Inbox migrations through `0032_retire_legacy_inbox_realtime`.
+- [x] Run the canonical activity backfill in dry-run mode and review skipped rows.
+- [x] Run the canonical activity backfill with `--apply` in the target environment.
+- [x] Run the read-state backfill from legacy timestamps before disabling legacy behavior.
 - [ ] Confirm `inbox_activities` and `inbox_activity_read_states` are in Supabase realtime publication.
 - [ ] Confirm `inbox_read_states` is not in Supabase realtime publication.
 
 ## Assignment
 
-- [ ] User A assigns a Mark to User B.
-- [ ] User B sees one unread assignment activity.
-- [ ] User B opens the activity from Inbox.
-- [ ] The activity becomes read only after the Mark detail context renders.
-- [ ] Other unread activities on the same Mark remain unread unless their own context is viewed.
+- [x] User A assigns a Mark to User B.
+- [x] User B sees one unread assignment activity.
+- [x] User B opens the activity from Inbox.
+- [x] The activity becomes read only after the Mark detail context renders.
+- [x] Other unread activities on the same Mark remain unread unless their own context is viewed.
 
 ## Mention
 
-- [ ] User A mentions User B in a Mark description.
-- [ ] User B sees one unread mention activity.
-- [ ] Opening the Mark without the description context becoming visible does not acknowledge the activity.
-- [ ] The activity becomes read after the description mention context is visible.
-- [ ] User A mentions User B in a comment.
-- [ ] The activity becomes read only after the target comment is visible.
+- [x] User A mentions User B in a Mark description.
+- [x] User B sees one unread mention activity.
+- [x] Opening the Mark without the description context becoming visible does not acknowledge the activity.
+- [x] The activity becomes read after the description mention context is visible.
+- [x] User A mentions User B in a comment.
+- [x] The activity becomes read only after the target comment is visible.
 
 ## Comment
 
@@ -62,34 +62,34 @@ Use this checklist before production rollout of the canonical Inbox Read impleme
 
 ## Multiple Activities On One Mark
 
-- [ ] Create at least three unread activities on the same Mark.
-- [ ] View only one required context.
-- [ ] Confirm only the matching activity becomes read.
-- [ ] Use Mark All Read.
-- [ ] Confirm every remaining unread activity becomes read.
+- [x] Create at least three unread activities on the same Mark.
+- [x] View only one required context.
+- [x] Confirm only the matching activity becomes read.
+- [x] Use Mark All Read.
+- [x] Confirm every remaining unread activity becomes read.
 
 ## Opening Marks Outside Inbox
 
-- [ ] Open a Mark directly from Dashboard without Inbox route context.
-- [ ] Confirm unrelated Inbox activities are not acknowledged.
-- [ ] Open a Mark directly with no `inboxActivity` query param.
-- [ ] Confirm the Inbox unread count does not change.
+- [x] Open a Mark directly from Dashboard without Inbox route context.
+- [x] Confirm unrelated Inbox activities are not acknowledged.
+- [x] Open a Mark directly with no `inboxActivity` query param.
+- [x] Confirm the Inbox unread count does not change.
 
 ## Mark All Read
 
-- [ ] Use Mark All Read with several unread activities.
-- [ ] Confirm `inbox_activity_read_states` rows are inserted for current-user unread activities.
-- [ ] Confirm no rows are inserted for another user.
-- [ ] Repeat Mark All Read.
-- [ ] Confirm no duplicate read-state rows are created.
+- [x] Use Mark All Read with several unread activities.
+- [x] Confirm `inbox_activity_read_states` rows are inserted for current-user unread activities.
+- [x] Confirm no rows are inserted for another user.
+- [x] Repeat Mark All Read.
+- [x] Confirm no duplicate read-state rows are created.
 
 ## Realtime Synchronization
 
-- [ ] Open Inbox in two browser tabs for the same user.
-- [ ] Create a new activity from another session.
-- [ ] Confirm both tabs converge to the same unread count.
-- [ ] Acknowledge an activity in one tab.
-- [ ] Confirm the other tab updates without a full workspace refresh.
+- [x] Open Inbox in two browser tabs for the same user.
+- [x] Create a new activity from another session.
+- [x] Confirm both tabs converge to the same unread count.
+- [x] Acknowledge an activity in one tab.
+- [x] Confirm the other tab updates without a full workspace refresh.
 
 ## Multiple Browser Tabs
 
@@ -101,7 +101,7 @@ Use this checklist before production rollout of the canonical Inbox Read impleme
 
 ## Automatic Read Acknowledgement
 
-- [ ] Confirm route start does not acknowledge read before content is rendered.
+- [x] Confirm route start does not acknowledge read before content is rendered.
 - [ ] Confirm failed Mark loads do not acknowledge read.
 - [ ] Confirm repeated visits are idempotent.
 - [ ] Confirm browser back/forward does not create duplicate read states.
@@ -117,11 +117,11 @@ Use this checklist before production rollout of the canonical Inbox Read impleme
 
 ## Mention Visibility Acknowledgement
 
-- [ ] Open a comment mention activity.
-- [ ] Confirm the containing comment must be visible before acknowledgement.
-- [ ] Open a description mention activity.
-- [ ] Confirm the Notes section must be visible before acknowledgement.
-- [ ] Confirm opening the same Mark without the mention target does not acknowledge the mention.
+- [x] Open a comment mention activity.
+- [x] Confirm the containing comment must be visible before acknowledgement.
+- [x] Open a description mention activity.
+- [x] Confirm the Notes section must be visible before acknowledgement.
+- [x] Confirm opening the same Mark without the mention target does not acknowledge the mention.
 
 ## Refresh Behavior
 
@@ -139,9 +139,9 @@ Use this checklist before production rollout of the canonical Inbox Read impleme
 
 ## Backfill Verification
 
-- [ ] Compare projected canonical activity counts against expected legacy counts for representative workspaces.
-- [ ] Confirm skipped source rows are explainable.
-- [ ] Confirm rerunning activity backfill does not create duplicates.
+- [x] Compare projected canonical activity counts against expected legacy counts for representative workspaces.
+- [x] Confirm skipped source rows are explainable.
+- [x] Confirm rerunning activity backfill does not create duplicates.
 - [ ] Confirm accepted workspace invites are projected as canonical invite activities for the inviter.
 - [ ] Confirm historical deleted mentions are documented as unreconstructable.
 
