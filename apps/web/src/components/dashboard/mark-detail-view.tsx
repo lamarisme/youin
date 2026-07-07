@@ -378,6 +378,59 @@ export function MarkDetailView({
     return () => window.cancelAnimationFrame(frame);
   }, [acknowledgeInboxContext, inboxRouteContext, mark.id]);
 
+  useEffect(() => {
+    if (!inboxRouteContext) return;
+    if (
+      inboxRouteContext.requiredContextType !== "comment" &&
+      inboxRouteContext.requiredContextType !== "mention"
+    ) {
+      return;
+    }
+    const targetId =
+      inboxRouteContext.targetId ??
+      (inboxRouteContext.requiredContextType === "comment"
+        ? `comment-${inboxRouteContext.requiredContextId}`
+        : null);
+    if (!targetId) return;
+
+    let observer: IntersectionObserver | null = null;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(targetId);
+      if (!target || !("IntersectionObserver" in window)) return;
+
+      let hashTarget = "";
+      try {
+        hashTarget = window.location.hash
+          ? decodeURIComponent(window.location.hash.slice(1))
+          : "";
+      } catch {
+        hashTarget = "";
+      }
+      if (hashTarget === targetId) {
+        target.scrollIntoView({ block: "center" });
+      }
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries.some(
+            (entry) => entry.isIntersecting && entry.intersectionRatio >= 0.35,
+          );
+          if (!visible) return;
+          observer?.disconnect();
+          observer = null;
+          void acknowledgeInboxContext(inboxRouteContext);
+        },
+        { threshold: [0.35] },
+      );
+      observer.observe(target);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [acknowledgeInboxContext, comments.length, inboxRouteContext, mark.id]);
+
   async function saveEdit(field = editingField) {
     if (isSavingEdit || !field) return;
     let updatePromise: Promise<unknown> | null = null;
@@ -705,6 +758,7 @@ export function MarkDetailView({
             ) : null}
 
             <DetailContentSection
+              id="mark-description"
               title="Notes"
               icon={<FileText className="size-3.5" aria-hidden />}
               action={
@@ -848,18 +902,20 @@ export function MarkDetailView({
 }
 
 function DetailContentSection({
+  id,
   title,
   icon,
   action,
   children,
 }: {
+  id?: string;
   title: string;
   icon: ReactNode;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-rule/60 py-3 sm:py-3.5">
+    <section id={id} className="scroll-mt-20 border-t border-rule/60 py-3 sm:py-3.5">
       <div className="mb-2 flex min-h-7 items-center gap-2">
         <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3">
           {icon}

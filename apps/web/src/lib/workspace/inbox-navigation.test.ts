@@ -59,6 +59,15 @@ test("inboxContextParamsForEvent adds visible targets for comments and mentions"
     requiredContextId: mentionId,
   }));
   assert.equal(mentionParams.get(INBOX_TARGET_ID_PARAM), `comment-${commentId}`);
+
+  const descriptionMentionParams = inboxContextParamsForEvent(event({
+    type: "mention",
+    contextType: "mark_description",
+    contextId: markId,
+    requiredContextType: "mention",
+    requiredContextId: mentionId,
+  }));
+  assert.equal(descriptionMentionParams.get(INBOX_TARGET_ID_PARAM), "mark-description");
 });
 
 test("parseInboxRouteContext accepts complete valid route context only", () => {

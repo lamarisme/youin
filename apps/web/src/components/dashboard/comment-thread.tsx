@@ -348,7 +348,10 @@ function CommentItem({ comment, author, isOwn, mentionMembers }: CommentItemProp
 
   return (
     <>
-      <div className="group rounded-md bg-paper-2 p-3">
+      <div
+        id={`comment-${comment.id}`}
+        className="group scroll-mt-20 rounded-md bg-paper-2 p-3"
+      >
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             <Avatar className="size-5">
