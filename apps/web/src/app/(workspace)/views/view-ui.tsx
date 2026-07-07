@@ -2,6 +2,7 @@
 
 import {
   Bug,
+  ChartColumnBig,
   Check,
   ChevronDown,
   ClipboardList,
@@ -55,6 +56,13 @@ export const VIEW_TEMPLATES: ReadonlyArray<{
     defaultName: "Status board",
     icon: SquareKanban,
   },
+  {
+    layout: "analytics",
+    label: "Insights",
+    description: "Charts for volume, ownership, hotspots, and aging.",
+    defaultName: "Workspace insights",
+    icon: ChartColumnBig,
+  },
 ];
 
 export const WORKSPACE_VIEW_ICON_OPTIONS: ReadonlyArray<{
@@ -77,6 +85,7 @@ export const WORKSPACE_VIEW_ICON_OPTIONS: ReadonlyArray<{
   { id: "search", label: "Research", icon: Search },
   { id: "palette", label: "Design", icon: Palette },
   { id: "layout-grid", label: "Architecture", icon: LayoutGrid },
+  { id: "chart-column", label: "Insights", icon: ChartColumnBig },
   { id: "clipboard-list", label: "QA", icon: ClipboardList },
 ];
 
@@ -94,6 +103,7 @@ export function ViewLayoutIcon({ layout, className }: { layout: WorkspaceViewLay
 }
 
 export function defaultWorkspaceViewIcon(layout: WorkspaceViewLayout): WorkspaceViewIcon {
+  if (layout === "analytics") return "chart-column";
   return layout === "board" ? "layout-grid" : "folder";
 }
 

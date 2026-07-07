@@ -42,6 +42,7 @@ export const markCommentTypeEnum = pgEnum("mark_comment_type", [
 export const workspaceViewLayoutEnum = pgEnum("workspace_view_layout", [
   "list",
   "board",
+  "analytics",
 ]);
 export const workspaceInviteStatusEnum = pgEnum("workspace_invite_status", [
   "pending",

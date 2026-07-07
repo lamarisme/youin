@@ -26,6 +26,7 @@ DROP FUNCTION IF EXISTS public.marks_assign_sequence();
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'assignee_changed';
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'label_changed';
 ALTER TYPE "public"."mark_event_type" ADD VALUE IF NOT EXISTS 'prompt_copied';
+ALTER TYPE "public"."workspace_view_layout" ADD VALUE IF NOT EXISTS 'analytics';
 
 DO $$
 DECLARE

@@ -197,6 +197,13 @@
       "when": 1782140400000,
       "tag": "0027_invite_acceptance_actor",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782144000000,
+      "tag": "0028_workspace_view_analytics",
+      "breakpoints": true
     }
   ]
 }
