@@ -12,7 +12,8 @@
     "db:migrate": "node scripts/drizzle-migrate.cjs",
     "db:baseline": "node scripts/drizzle-baseline.cjs",
     "db:studio": "drizzle-kit studio --config drizzle.config.ts",
-    "inbox:backfill": "tsx scripts/backfill-inbox-activities.ts"
+    "inbox:backfill": "tsx scripts/backfill-inbox-activities.ts",
+    "inbox:backfill-read-states": "tsx scripts/backfill-inbox-read-states.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

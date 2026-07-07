@@ -47,6 +47,7 @@ export { logMarkPromptCopyAction } from "./prompt-copy";
 
 export {
   getInboxAction,
+  markInboxActivitiesViewedAction,
   markInboxReadAction,
 } from "./inbox";
 
