@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDistance } from "date-fns";
 import {
   Check,
@@ -43,6 +44,7 @@ import { Input } from "@/components/ui/input";
 import type { MarkItem, WorkspaceLabel } from "@/lib/collab-types";
 import { formatDateTimeFull } from "@/lib/dates";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
+import { workspaceKeys } from "@/lib/queries/keys";
 import {
   useCreateLabelMutation,
   useDeleteMarkMutation,
@@ -68,6 +70,8 @@ import { MarkDetailNav } from "./mark-detail-nav";
 import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
+import { markInboxActivitiesViewedAction } from "@/lib/workspace/actions";
+import { parseInboxRouteContext, type InboxRouteContext } from "@/lib/workspace/inbox-navigation";
 import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
@@ -128,14 +132,16 @@ export function MarkDetailView({
   routeScope = { kind: "all" },
   variant = "page",
 }: MarkDetailViewProps) {
-  const { workspace, userId, displayNamePreference } = useWorkspaceData((s) => ({
+  const { workspace, workspaceId, userId, displayNamePreference } = useWorkspaceData((s) => ({
     workspace: s.workspace,
+    workspaceId: s.workspaceId,
     userId: s.userId,
     displayNamePreference: s.profile.displayNamePreference,
   }));
   const { detailNavigation } = useDashboardReadModel();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { mutate: toggleMarkPinned } = useToggleMarkPinnedMutation();
   const { mutate: setMarkLabels } = useSetMarkLabelsMutation();
   const { mutateAsync: createLabel } = useCreateLabelMutation();
@@ -216,12 +222,18 @@ export function MarkDetailView({
     null,
   );
   const lastRequestedDescriptionRef = useRef(mark.description);
+  const detailLayoutRef = useRef<HTMLDivElement>(null);
+  const acknowledgedInboxContextRef = useRef<string | null>(null);
   const sidebarPreferences = useMarkDetailSidebarPreferences();
   const isPane = variant === "pane";
   const descriptionDraft =
     descriptionDraftMarkId === mark.id ? descriptionDraftValue : mark.description;
   const descriptionSaveState =
     descriptionDraftMarkId === mark.id ? descriptionSaveStateValue : "idle";
+  const inboxRouteContext = useMemo(
+    () => parseInboxRouteContext(searchParams),
+    [searchParams],
+  );
 
   if (descriptionDraftMarkId !== mark.id) {
     setDescriptionDraftMarkId(mark.id);
@@ -331,6 +343,40 @@ export function MarkDetailView({
       }
     };
   }, [descriptionDraft, mark.description, mark.id, saveDescriptionDraft]);
+
+  const acknowledgeInboxContext = useCallback(
+    async (context: InboxRouteContext) => {
+      const contextKey = `${context.activityId}:${context.requiredContextType}:${context.requiredContextId}`;
+      if (acknowledgedInboxContextRef.current === contextKey) return;
+      acknowledgedInboxContextRef.current = contextKey;
+      try {
+        await markInboxActivitiesViewedAction({
+          activityIds: [context.activityId],
+          requiredContextType: context.requiredContextType,
+          requiredContextId: context.requiredContextId,
+        });
+        if (workspaceId && userId) {
+          await queryClient.invalidateQueries({
+            queryKey: workspaceKeys.inbox(workspaceId, userId),
+          });
+        }
+      } catch {
+        acknowledgedInboxContextRef.current = null;
+      }
+    },
+    [queryClient, userId, workspaceId],
+  );
+
+  useEffect(() => {
+    if (!inboxRouteContext) return;
+    if (inboxRouteContext.requiredContextType !== "mark") return;
+    if (inboxRouteContext.requiredContextId !== mark.id) return;
+    if (!detailLayoutRef.current) return;
+    const frame = window.requestAnimationFrame(() => {
+      void acknowledgeInboxContext(inboxRouteContext);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [acknowledgeInboxContext, inboxRouteContext, mark.id]);
 
   async function saveEdit(field = editingField) {
     if (isSavingEdit || !field) return;
@@ -472,6 +518,7 @@ export function MarkDetailView({
       ) : null}
 
       <div
+        ref={detailLayoutRef}
         key={mark.id}
         data-mark-detail-layout={!isPane || undefined}
         style={!isPane ? detailLayoutStyle : undefined}

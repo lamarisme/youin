@@ -1,5 +1,9 @@
 import type { MarkEventType, Workspace } from "@/lib/collab-types";
-import type { InboxCanonicalActivityType, InboxCanonicalSourceType } from "@/db/schema";
+import type {
+  InboxCanonicalActivityType,
+  InboxCanonicalSourceType,
+  InboxRequiredContextType,
+} from "@/db/schema";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
@@ -25,6 +29,8 @@ export interface InboxActivity {
   groupKind: InboxGroupKind;
   contextType?: string;
   contextId?: string;
+  requiredContextType?: InboxRequiredContextType;
+  requiredContextId?: string;
   markId?: string;
   markDisplayKey?: string;
   markTitle: string;
@@ -53,6 +59,8 @@ export interface InboxEvent {
   toValue?: string;
   contextType?: string;
   contextId?: string;
+  requiredContextType?: InboxRequiredContextType;
+  requiredContextId?: string;
   preview?: string;
   createdAt: string;
   unread: boolean;

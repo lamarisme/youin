@@ -15,7 +15,7 @@ import {
   workspaceMembers,
   workspaceInvites,
 } from "@/db/schema";
-import type { InboxCanonicalActivityType } from "@/db/schema";
+import type { InboxCanonicalActivityType, InboxRequiredContextType } from "@/db/schema";
 import type { CommentType, MarkEventType } from "@/lib/collab-types";
 import { markDescriptionPlainText } from "@/lib/mark-description";
 import {
@@ -101,7 +101,7 @@ type CanonicalActivityRow = {
   sourceId: string;
   actorUserId: string | null;
   markId: string | null;
-  requiredContextType: string;
+  requiredContextType: InboxRequiredContextType;
   requiredContextId: string;
   payload: Record<string, unknown>;
   createdAt: string;
@@ -206,6 +206,8 @@ function inboxEventFromActivity(activity: InboxActivity, unread: boolean): Inbox
     toValue: activity.toValue,
     contextType: activity.contextType,
     contextId: activity.contextId,
+    requiredContextType: activity.requiredContextType,
+    requiredContextId: activity.requiredContextId,
     preview: activity.preview,
     createdAt: activity.createdAt,
     unread,
@@ -321,6 +323,8 @@ function normalizeCanonicalActivities({
       groupKind: markId ? "mark" : "workspace",
       contextType,
       contextId,
+      requiredContextType: activity.requiredContextType,
+      requiredContextId: activity.requiredContextId,
       markId: markId ?? undefined,
       markDisplayKey: displaySeq ? formatMarkDisplayKey(displaySeq) : undefined,
       markTitle:

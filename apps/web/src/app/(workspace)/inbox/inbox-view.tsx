@@ -21,6 +21,7 @@ import type {
   PendingWorkspaceInvite,
 } from "@/lib/workspace/invitations";
 import { accountHref, markHref } from "@/lib/workspace/routes";
+import { inboxContextParamsForEvent } from "@/lib/workspace/inbox-navigation";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
@@ -417,9 +418,16 @@ function inboxEventHref(group: InboxGroup, event: InboxEvent): string {
   if (event.targetHref) return event.targetHref;
   if (group.targetHref) return group.targetHref;
   if (!group.markDisplayKey) return accountHref("team");
-  const href = markHref(group.markDisplayKey, new URLSearchParams());
+  const params = inboxContextParamsForEvent(event);
+  const href = markHref(group.markDisplayKey, params);
   if (event.type === "mention" && event.contextType === "mark_comment" && event.contextId) {
     return `${href}#comment-${encodeURIComponent(event.contextId)}`;
+  }
+  if (event.requiredContextType === "comment" && event.requiredContextId) {
+    return `${href}#comment-${encodeURIComponent(event.requiredContextId)}`;
+  }
+  if (event.requiredContextType === "mention" && event.contextType === "mark_description") {
+    return `${href}#mark-description`;
   }
   return href;
 }
