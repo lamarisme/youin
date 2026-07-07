@@ -338,7 +338,7 @@ function InboxGroupRow({
   const top = group.events[0];
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
-  const isInvitationAccepted = top.type === "invitation_accepted";
+  const isInvitationAccepted = top.type === "invite" && top.fromValue === "accepted";
   const preview = top.type === "mention" ? top.preview : undefined;
   const actorLabel = top.actorUsername || top.actorName;
   const actorParts = rosterDisplayParts(top.actorName, top.actorUsername, displayNamePreference);

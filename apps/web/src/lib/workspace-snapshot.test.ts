@@ -32,12 +32,10 @@ const shell: WorkspaceShellBootstrap = {
     timezone: "UTC",
     displayNamePreference: "full_name",
   },
-  inboxLastReadAt: "2026-05-01T00:00:00.000Z",
   inboxSnapshot: {
     groups: [],
     totalEvents: 0,
     unreadCount: 0,
-    lastReadAt: "2026-05-01T00:00:00.000Z",
   },
   loadedAt: "2026-05-02T00:00:00.000Z",
   workspace: {

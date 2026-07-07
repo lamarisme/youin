@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, ne } from "drizzle-orm";
 
 import type { getDb } from "../../db/client.ts";
 import {
@@ -7,10 +7,12 @@ import {
   markEvents,
   marks,
   mentions,
+  workspaceInvites,
 } from "../../db/schema.ts";
 import type { MarkEventType } from "../collab-types.ts";
 import {
   mergeCanonicalActivityProjections,
+  projectInviteAcceptedActivity,
   projectMarkEventActivities,
   projectMentionActivity,
   type CanonicalActivityProjection,
@@ -54,11 +56,21 @@ export type BackfillMentionRow = {
   createdAt: Date | string;
 };
 
+export type BackfillInviteAcceptedRow = {
+  id: string;
+  workspaceId: string;
+  email: string;
+  invitedByUserId: string;
+  acceptedByUserId: string;
+  acceptedAt: Date | string;
+};
+
 export type InboxActivityBackfillInput = {
   marks: BackfillMarkRow[];
   commentAuthors: BackfillCommentAuthorRow[];
   markEvents: BackfillMarkEventRow[];
   mentions: BackfillMentionRow[];
+  acceptedInvites: BackfillInviteAcceptedRow[];
 };
 
 export type InboxActivityBackfillSummary = {
@@ -66,6 +78,7 @@ export type InboxActivityBackfillSummary = {
   workspaceId: string | null;
   markEventsScanned: number;
   mentionsScanned: number;
+  acceptedInvitesScanned: number;
   activitiesProjected: number;
   activitiesInserted: number;
   duplicatesSkipped: number;
@@ -104,6 +117,7 @@ export function projectCanonicalActivitiesForBackfill(
       }),
     ),
     ...input.mentions.map((mention) => projectMentionActivity(mention)),
+    ...input.acceptedInvites.map((invite) => projectInviteAcceptedActivity(invite)),
   ]);
 }
 
@@ -133,6 +147,7 @@ export async function backfillCanonicalInboxActivities({
     workspaceId: workspaceId ?? null,
     markEventsScanned: input.markEvents.length,
     mentionsScanned: input.mentions.length,
+    acceptedInvitesScanned: input.acceptedInvites.length,
     activitiesProjected: projection.activities.length,
     activitiesInserted,
     duplicatesSkipped: dryRun
@@ -146,11 +161,12 @@ async function loadBackfillInput(
   db: AppDb,
   workspaceId?: string,
 ): Promise<InboxActivityBackfillInput> {
-  const [markRows, commentAuthorRows, eventRows, mentionRows] = await Promise.all([
+  const [markRows, commentAuthorRows, eventRows, mentionRows, inviteRows] = await Promise.all([
     selectMarks(db, workspaceId),
     selectCommentAuthors(db, workspaceId),
     selectMarkEvents(db, workspaceId),
     selectMentions(db, workspaceId),
+    selectAcceptedInvites(db, workspaceId),
   ]);
 
   return {
@@ -163,6 +179,10 @@ async function loadBackfillInput(
     mentions: mentionRows.map((mention) => ({
       ...mention,
       createdAt: mention.createdAt,
+    })),
+    acceptedInvites: inviteRows.map((invite) => ({
+      ...invite,
+      acceptedAt: invite.acceptedAt,
     })),
   };
 }
@@ -230,6 +250,40 @@ async function selectMentions(
     })
     .from(mentions);
   return workspaceId ? query.where(eq(mentions.workspaceId, workspaceId)) : query;
+}
+
+async function selectAcceptedInvites(
+  db: AppDb,
+  workspaceId?: string,
+): Promise<BackfillInviteAcceptedRow[]> {
+  const query = db
+    .select({
+      id: workspaceInvites.id,
+      workspaceId: workspaceInvites.workspaceId,
+      email: workspaceInvites.email,
+      invitedByUserId: workspaceInvites.invitedByUserId,
+      acceptedByUserId: workspaceInvites.acceptedByUserId,
+      acceptedAt: workspaceInvites.acceptedAt,
+    })
+    .from(workspaceInvites)
+    .where(
+      and(
+        workspaceId ? eq(workspaceInvites.workspaceId, workspaceId) : undefined,
+        eq(workspaceInvites.status, "accepted"),
+        isNotNull(workspaceInvites.acceptedByUserId),
+        isNotNull(workspaceInvites.acceptedAt),
+        ne(workspaceInvites.acceptedByUserId, workspaceInvites.invitedByUserId),
+      ),
+    );
+  const rows = await query;
+  return rows.flatMap((invite) => {
+    if (!invite.acceptedByUserId || !invite.acceptedAt) return [];
+    return [{
+      ...invite,
+      acceptedByUserId: invite.acceptedByUserId,
+      acceptedAt: invite.acceptedAt,
+    }];
+  });
 }
 
 function addMarkRecipient(

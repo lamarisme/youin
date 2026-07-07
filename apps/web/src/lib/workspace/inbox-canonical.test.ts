@@ -5,6 +5,7 @@ import {
   canonicalActivitySourceKey,
   canonicalActivityTypeForMarkEvent,
   mergeCanonicalActivityProjections,
+  projectInviteAcceptedActivity,
   projectMarkEventActivities,
   projectMentionActivity,
   type CanonicalMarkEventInput,
@@ -19,6 +20,7 @@ const eventId = "66666666-6666-4666-8666-666666666666";
 const commentId = "77777777-7777-4777-8777-777777777777";
 const mentionId = "88888888-8888-4888-8888-888888888888";
 const sourceId = "99999999-9999-4999-8999-999999999999";
+const inviteId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 function markEvent(input: Partial<CanonicalMarkEventInput> = {}): CanonicalMarkEventInput {
   return {
@@ -168,6 +170,39 @@ test("projects mention rows as immutable mention activities", () => {
       endIndex: 12,
     },
     createdAt: new Date("2026-07-01T12:00:00.000Z"),
+  });
+});
+
+test("projects accepted invites as immutable invite activities for the inviter", () => {
+  const projection = projectInviteAcceptedActivity({
+    id: inviteId,
+    workspaceId,
+    email: "teammate@example.com",
+    invitedByUserId: recipientUserId,
+    acceptedByUserId: actorUserId,
+    acceptedAt: "2026-07-01T13:00:00.000Z",
+  });
+
+  assert.deepEqual(projection.skipped, []);
+  assert.equal(projection.activities.length, 1);
+  assert.deepEqual(projection.activities[0], {
+    workspaceId,
+    recipientUserId,
+    activityType: "invite",
+    sourceType: "workspace_invite",
+    sourceId: inviteId,
+    sourceEventId: null,
+    actorUserId,
+    subjectType: "invite",
+    subjectId: inviteId,
+    markId: null,
+    requiredContextType: "invite",
+    requiredContextId: inviteId,
+    payload: {
+      eventType: "accepted",
+      email: "teammate@example.com",
+    },
+    createdAt: new Date("2026-07-01T13:00:00.000Z"),
   });
 });
 

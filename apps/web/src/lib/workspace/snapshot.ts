@@ -40,7 +40,7 @@ function emptyProfile(): UserProfile {
 }
 
 function emptyInboxSnapshot() {
-  return { groups: [], totalEvents: 0, unreadCount: 0, lastReadAt: "" };
+  return { groups: [], totalEvents: 0, unreadCount: 0 };
 }
 
 export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
@@ -50,7 +50,6 @@ export function emptyWorkspaceBootstrap(): WorkspaceBootstrap {
     workspace: emptyWorkspace(),
     workspaceMemberships: [],
     profile: emptyProfile(),
-    inboxLastReadAt: "",
     inboxSnapshot: emptyInboxSnapshot(),
     loadedAt: "",
   };
@@ -74,7 +73,6 @@ export function shellBootstrapToWorkspaceBootstrap(
     userId: shell.userId,
     workspaceMemberships: shell.workspaceMemberships,
     profile: shell.profile,
-    inboxLastReadAt: shell.inboxLastReadAt,
     inboxSnapshot: shell.inboxSnapshot,
     loadedAt: shell.loadedAt,
     workspace: {
@@ -121,7 +119,6 @@ export function mergeShellIntoWorkspaceBootstrap(
     userId: shell.userId,
     workspaceMemberships: shell.workspaceMemberships,
     profile: shell.profile,
-    inboxLastReadAt: shell.inboxSnapshot.lastReadAt || shell.inboxLastReadAt,
     inboxSnapshot: shell.inboxSnapshot,
     workspace: {
       ...current.workspace,

@@ -12,7 +12,6 @@ export const WORKSPACE_REALTIME_TABLES = [
   "workspace_members",
   "workspace_review_links",
   "workspace_views",
-  "inbox_read_states",
 ] as const;
 
 export const INBOX_REALTIME_TABLES = [
@@ -25,18 +24,12 @@ export type InboxRealtimeTable = (typeof INBOX_REALTIME_TABLES)[number];
 
 export type RealtimeRow = Record<string, unknown>;
 
-export function queryKeysForWorkspaceTableChange({
-  table,
-  workspaceId,
-  userId,
-}: {
+export function queryKeysForWorkspaceTableChange(_input: {
   table: WorkspaceRealtimeTable;
   workspaceId: string;
   userId: string;
 }): QueryKey[] {
-  if (table === "inbox_read_states") {
-    return [workspaceKeys.inbox(workspaceId, userId)];
-  }
+  void _input;
   return [workspaceKeys.all];
 }
 

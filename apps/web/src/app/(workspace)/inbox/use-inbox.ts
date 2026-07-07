@@ -27,10 +27,9 @@ export interface InboxData extends InboxSnapshot {
   refetch: () => void;
 }
 
-function markSnapshotRead(snapshot: InboxSnapshot, lastReadAt: string): InboxSnapshot {
+function markSnapshotRead(snapshot: InboxSnapshot): InboxSnapshot {
   return {
     ...snapshot,
-    lastReadAt,
     unreadCount: 0,
     groups: snapshot.groups.map((group) => ({
       ...group,
@@ -69,12 +68,11 @@ export function useInbox(
   const mutation = useMutation({
     mutationFn: markInboxReadAction,
     onMutate: async () => {
-      const lastReadAt = new Date().toISOString();
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<InboxSnapshot>(queryKey);
       queryClient.setQueryData<InboxSnapshot>(
         queryKey,
-        markSnapshotRead(previous ?? snapshot, lastReadAt),
+        markSnapshotRead(previous ?? snapshot),
       );
       return { previous };
     },
@@ -129,33 +127,13 @@ export function describeEvent(
     case "review_link":
       return "shared a review link";
     case "invite":
-      return "sent an invitation";
-    case "created":
-      return "created this mark";
-    case "status_changed":
-      return event.toValue === "closed" ? "closed this mark" : "reopened this mark";
-    case "priority_changed":
-      return `set priority to ${event.toValue ?? "none"}`;
-    case "pinned_changed":
-      return event.toValue === "true" ? "pinned this mark" : "unpinned this mark";
-    case "comment_added":
-      return "commented on this mark";
+      return event.fromValue === "accepted"
+        ? "joined your workspace"
+        : "sent an invitation";
     case "mention":
       return event.contextType === "mark_comment"
         ? "mentioned you in a comment"
         : "mentioned you";
-    case "invitation_accepted":
-      return "joined your workspace";
-    case "assignee_changed":
-      if (!event.toValue) return "unassigned this mark";
-      {
-        const m = members.get(event.toValue);
-        if (m?.username) return `assigned to @${m.username}`;
-        if (m?.name) return `assigned to ${m.name}`;
-        return "assigned to a teammate";
-      }
-    case "label_changed":
-      return "updated labels";
     default:
       return "updated this mark";
   }

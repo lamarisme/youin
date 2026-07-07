@@ -87,12 +87,16 @@ export function MarkDescriptionEditor({
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
         }),
+        // Host getters run when mention suggestions open (Tiptap), not during React render.
+        // eslint-disable-next-line react-hooks/refs
         MarkDescriptionMention.configure({
           isEnabled: () => mentionMembersRef.current !== undefined,
           getMembers: () => mentionMembersRef.current ?? [],
           getMountParent: () => slashMountParentRef.current,
           getPositionAnchor: () => slashPositionAnchorRef.current,
         }),
+        // Host getters run when mention delete suggestions open (Tiptap), not during React render.
+        // eslint-disable-next-line react-hooks/refs
         MarkDescriptionMentionDelete.configure({
           isEnabled: () => mentionMembersRef.current !== undefined,
           getMembers: () => mentionMembersRef.current ?? [],

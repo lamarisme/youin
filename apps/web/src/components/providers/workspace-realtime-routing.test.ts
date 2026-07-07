@@ -11,17 +11,6 @@ const workspaceId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
 const otherUserId = "33333333-3333-4333-8333-333333333333";
 
-test("routes legacy inbox read state changes to the Inbox query only", () => {
-  assert.deepEqual(
-    queryKeysForWorkspaceTableChange({
-      table: "inbox_read_states",
-      workspaceId,
-      userId,
-    }),
-    [workspaceKeys.inbox(workspaceId, userId)],
-  );
-});
-
 test("routes ordinary workspace table changes to workspace-wide invalidation", () => {
   assert.deepEqual(
     queryKeysForWorkspaceTableChange({

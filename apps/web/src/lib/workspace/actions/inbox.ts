@@ -2,11 +2,7 @@
 
 import { and, eq, inArray } from "drizzle-orm";
 
-import {
-  inboxActivities,
-  inboxReadStates,
-  type InboxRequiredContextType,
-} from "@/db/schema";
+import { inboxActivities, type InboxRequiredContextType } from "@/db/schema";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 import { getInboxSnapshotForCurrentWorkspace } from "@/lib/workspace/inbox-query";
 import {
@@ -70,10 +66,10 @@ export async function markInboxActivitiesViewedAction(input: {
   return { activityIds, readAt: readDate.toISOString() };
 }
 
-export async function markInboxReadAction(): Promise<{ lastReadAt: string }> {
+export async function markInboxReadAction(): Promise<{ readAt: string }> {
   const { db, userId, workspaceId } = await requireWorkspaceContext();
-  const lastReadDate = new Date();
-  const lastReadAt = lastReadDate.toISOString();
+  const readDate = new Date();
+  const readAt = readDate.toISOString();
   const unreadActivityIds = await loadUnreadCanonicalInboxActivityIds({
     db,
     workspaceId,
@@ -85,27 +81,12 @@ export async function markInboxReadAction(): Promise<{ lastReadAt: string }> {
       activityId,
       workspaceId,
       userId,
-      readAt: lastReadDate,
+      readAt: readDate,
       readTrigger: "mark_all_read",
       contextViewedAt: null,
-      createdAt: lastReadDate,
-      updatedAt: lastReadDate,
+      createdAt: readDate,
+      updatedAt: readDate,
     })),
   });
-  await db
-    .insert(inboxReadStates)
-    .values({
-      workspaceId,
-      userId,
-      lastReadAt: lastReadDate,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: [inboxReadStates.workspaceId, inboxReadStates.userId],
-      set: {
-        lastReadAt: lastReadDate,
-        updatedAt: new Date(),
-      },
-    });
-  return { lastReadAt };
+  return { readAt };
 }

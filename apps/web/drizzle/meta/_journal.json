@@ -225,6 +225,13 @@
       "when": 1782154800000,
       "tag": "0031_inbox_realtime_publication",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782158400000,
+      "tag": "0032_retire_legacy_inbox_realtime",
+      "breakpoints": true
     }
   ]
 }

@@ -33,6 +33,15 @@ export type CanonicalMentionInput = {
   createdAt: Date | string;
 };
 
+export type CanonicalInviteAcceptedInput = {
+  id: string;
+  workspaceId: string;
+  email: string;
+  invitedByUserId: string;
+  acceptedByUserId: string;
+  acceptedAt: Date | string;
+};
+
 export type CanonicalActivityProjectionSkipReason =
   | "unmapped_event_type"
   | "missing_required_context"
@@ -194,6 +203,44 @@ export function projectMentionActivity(
         endIndex: mention.endIndex,
       }),
       createdAt: toDate(mention.createdAt),
+    }],
+    skipped: [],
+  };
+}
+
+export function projectInviteAcceptedActivity(
+  invite: CanonicalInviteAcceptedInput,
+): CanonicalActivityProjection {
+  if (invite.invitedByUserId === invite.acceptedByUserId) {
+    return {
+      activities: [],
+      skipped: [{
+        sourceType: "workspace_invite",
+        sourceId: invite.id,
+        reason: "self_authored",
+      }],
+    };
+  }
+
+  return {
+    activities: [{
+      workspaceId: invite.workspaceId,
+      recipientUserId: invite.invitedByUserId,
+      activityType: "invite",
+      sourceType: "workspace_invite",
+      sourceId: invite.id,
+      sourceEventId: null,
+      actorUserId: invite.acceptedByUserId,
+      subjectType: "invite",
+      subjectId: invite.id,
+      markId: null,
+      requiredContextType: "invite",
+      requiredContextId: invite.id,
+      payload: cleanPayload({
+        eventType: "accepted",
+        email: invite.email,
+      }),
+      createdAt: toDate(invite.acceptedAt),
     }],
     skipped: [],
   };
