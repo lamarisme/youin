@@ -55,6 +55,32 @@ export const workspaceInviteSourceEnum = pgEnum("workspace_invite_source", [
   "manual",
 ]);
 
+export type InboxCanonicalActivityType =
+  | "assignment"
+  | "mention"
+  | "comment"
+  | "workflow_change"
+  | "status_change"
+  | "priority_change"
+  | "label_change"
+  | "review_link"
+  | "invite";
+
+export type InboxCanonicalSourceType =
+  | "mark_event"
+  | "mention"
+  | "workspace_invite"
+  | "workspace_review_link";
+
+export type InboxRequiredContextType =
+  | "mark"
+  | "comment"
+  | "mention"
+  | "review"
+  | "invite";
+
+export type InboxReadTrigger = "context_viewed" | "mark_all_read";
+
 /** Application profile; `id` matches the original `auth.users.id`, even after account deletion anonymizes the row. */
 export const profiles = pgTable(
   "profiles",
@@ -484,6 +510,113 @@ export const inboxReadStates = pgTable(
   ],
 );
 
+export const inboxActivities = pgTable(
+  "inbox_activities",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    recipientUserId: uuid("recipient_user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    activityType: text("activity_type")
+      .$type<InboxCanonicalActivityType>()
+      .notNull(),
+    sourceType: text("source_type")
+      .$type<InboxCanonicalSourceType>()
+      .notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceEventId: uuid("source_event_id"),
+    actorUserId: uuid("actor_user_id").references(() => profiles.id, {
+      onDelete: "no action",
+    }),
+    subjectType: text("subject_type"),
+    subjectId: uuid("subject_id"),
+    markId: uuid("mark_id").references(() => marks.id, { onDelete: "set null" }),
+    requiredContextType: text("required_context_type")
+      .$type<InboxRequiredContextType>()
+      .notNull(),
+    requiredContextId: uuid("required_context_id").notNull(),
+    payload: jsonb("payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("inbox_activities_recipient_created_at_idx").on(
+      table.workspaceId,
+      table.recipientUserId,
+      table.createdAt,
+    ),
+    uniqueIndex("inbox_activities_source_unique").on(
+      table.workspaceId,
+      table.recipientUserId,
+      table.sourceType,
+      table.sourceId,
+    ),
+    index("inbox_activities_required_context_idx").on(
+      table.workspaceId,
+      table.recipientUserId,
+      table.requiredContextType,
+      table.requiredContextId,
+    ),
+    index("inbox_activities_mark_idx").on(table.markId),
+    check(
+      "inbox_activities_activity_type_not_blank",
+      sql`length(trim(${table.activityType})) > 0`,
+    ),
+    check(
+      "inbox_activities_source_type_not_blank",
+      sql`length(trim(${table.sourceType})) > 0`,
+    ),
+    check(
+      "inbox_activities_required_context_type_not_blank",
+      sql`length(trim(${table.requiredContextType})) > 0`,
+    ),
+  ],
+);
+
+export const inboxActivityReadStates = pgTable(
+  "inbox_activity_read_states",
+  {
+    activityId: uuid("activity_id")
+      .notNull()
+      .references(() => inboxActivities.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    readTrigger: text("read_trigger").$type<InboxReadTrigger>().notNull(),
+    contextViewedAt: timestamp("context_viewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.activityId, table.userId] }),
+    index("inbox_activity_read_states_user_workspace_idx").on(
+      table.userId,
+      table.workspaceId,
+    ),
+    check(
+      "inbox_activity_read_states_trigger_not_blank",
+      sql`length(trim(${table.readTrigger})) > 0`,
+    ),
+  ],
+);
+
 export const workspaceViews = pgTable(
   "workspace_views",
   {
@@ -620,6 +753,9 @@ export const profilesRelations = relations(profiles, ({ many }) => ({
   createdMentions: many(mentions, { relationName: "mentions_creator" }),
   mentionedIn: many(mentions, { relationName: "mentions_mentioned_user" }),
   inboxReadStates: many(inboxReadStates),
+  inboxActivities: many(inboxActivities, { relationName: "inbox_activities_recipient" }),
+  actedInboxActivities: many(inboxActivities, { relationName: "inbox_activities_actor" }),
+  inboxActivityReadStates: many(inboxActivityReadStates),
   createdViews: many(workspaceViews),
   assignedMarks: many(marks, { relationName: "marks_assignee" }),
   createdMarks: many(marks, { relationName: "marks_creator" }),
@@ -638,6 +774,8 @@ export const workspacesRelations = relations(workspaces, ({ many }) => ({
   events: many(markEvents),
   mentions: many(mentions),
   inboxReadStates: many(inboxReadStates),
+  inboxActivities: many(inboxActivities),
+  inboxActivityReadStates: many(inboxActivityReadStates),
   invites: many(workspaceInvites),
   reviewLinks: many(workspaceReviewLinks),
 }));
@@ -701,6 +839,7 @@ export const marksRelations = relations(marks, ({ one, many }) => ({
   comments: many(markComments),
   events: many(markEvents),
   mentions: many(mentions),
+  inboxActivities: many(inboxActivities),
   labels: many(marksToLabels),
 }));
 
@@ -781,6 +920,46 @@ export const inboxReadStatesRelations = relations(inboxReadStates, ({ one }) => 
   }),
 }));
 
+export const inboxActivitiesRelations = relations(inboxActivities, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [inboxActivities.workspaceId],
+    references: [workspaces.id],
+  }),
+  recipient: one(profiles, {
+    fields: [inboxActivities.recipientUserId],
+    references: [profiles.id],
+    relationName: "inbox_activities_recipient",
+  }),
+  actor: one(profiles, {
+    fields: [inboxActivities.actorUserId],
+    references: [profiles.id],
+    relationName: "inbox_activities_actor",
+  }),
+  mark: one(marks, {
+    fields: [inboxActivities.markId],
+    references: [marks.id],
+  }),
+  readStates: many(inboxActivityReadStates),
+}));
+
+export const inboxActivityReadStatesRelations = relations(
+  inboxActivityReadStates,
+  ({ one }) => ({
+    activity: one(inboxActivities, {
+      fields: [inboxActivityReadStates.activityId],
+      references: [inboxActivities.id],
+    }),
+    workspace: one(workspaces, {
+      fields: [inboxActivityReadStates.workspaceId],
+      references: [workspaces.id],
+    }),
+    user: one(profiles, {
+      fields: [inboxActivityReadStates.userId],
+      references: [profiles.id],
+    }),
+  }),
+);
+
 export const workspaceViewsRelations = relations(workspaceViews, ({ one }) => ({
   workspace: one(workspaces, {
     fields: [workspaceViews.workspaceId],
@@ -842,6 +1021,10 @@ export type MarkComment = typeof markComments.$inferSelect;
 export type MarkEvent = typeof markEvents.$inferSelect;
 export type Mention = typeof mentions.$inferSelect;
 export type InboxReadState = typeof inboxReadStates.$inferSelect;
+export type InboxActivity = typeof inboxActivities.$inferSelect;
+export type NewInboxActivity = typeof inboxActivities.$inferInsert;
+export type InboxActivityReadState = typeof inboxActivityReadStates.$inferSelect;
+export type NewInboxActivityReadState = typeof inboxActivityReadStates.$inferInsert;
 export type WorkspaceView = typeof workspaceViews.$inferSelect;
 export type WorkspaceInvite = typeof workspaceInvites.$inferSelect;
 export type WorkspaceReviewLink = typeof workspaceReviewLinks.$inferSelect;

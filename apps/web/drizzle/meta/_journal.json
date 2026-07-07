@@ -204,6 +204,13 @@
       "when": 1782144000000,
       "tag": "0028_workspace_view_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782147600000,
+      "tag": "0029_inbox_activities",
+      "breakpoints": true
     }
   ]
 }
