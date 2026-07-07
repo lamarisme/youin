@@ -109,6 +109,27 @@ export function describeEvent(
   members: Map<string, { name: string; username: string }>,
 ): string {
   switch (event.type) {
+    case "assignment":
+      if (!event.toValue) return "assigned this mark";
+      {
+        const m = members.get(event.toValue);
+        if (m?.username) return `assigned to @${m.username}`;
+        if (m?.name) return `assigned to ${m.name}`;
+        return "assigned to a teammate";
+      }
+    case "status_change":
+    case "workflow_change":
+      return event.toValue === "closed" ? "closed this mark" : "updated status";
+    case "priority_change":
+      return `set priority to ${event.toValue ?? "none"}`;
+    case "label_change":
+      return "updated labels";
+    case "comment":
+      return "commented on this mark";
+    case "review_link":
+      return "shared a review link";
+    case "invite":
+      return "sent an invitation";
     case "created":
       return "created this mark";
     case "status_changed":

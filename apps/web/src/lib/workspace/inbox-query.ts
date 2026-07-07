@@ -4,6 +4,8 @@ import { and, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
 
 import type { getDb } from "@/db/client";
 import {
+  inboxActivities,
+  inboxActivityReadStates,
   inboxReadStates,
   markComments,
   markEvents,
@@ -13,6 +15,7 @@ import {
   workspaceMembers,
   workspaceInvites,
 } from "@/db/schema";
+import type { InboxCanonicalActivityType } from "@/db/schema";
 import type { CommentType, MarkEventType } from "@/lib/collab-types";
 import { markDescriptionPlainText } from "@/lib/mark-description";
 import {
@@ -90,6 +93,20 @@ type InviteAcceptedRow = {
   acceptedAt: string;
 };
 
+type CanonicalActivityRow = {
+  id: string;
+  recipientUserId: string;
+  activityType: InboxCanonicalActivityType;
+  sourceType: InboxActivity["sourceType"];
+  sourceId: string;
+  actorUserId: string | null;
+  markId: string | null;
+  requiredContextType: string;
+  requiredContextId: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+};
+
 function toIso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : value;
 }
@@ -151,6 +168,22 @@ function commentPreview(body: string | undefined): string | undefined {
   const plain = markDescriptionPlainText(body ?? "");
   if (!plain) return undefined;
   return plain.length > 160 ? `${plain.slice(0, 157).trimEnd()}...` : plain;
+}
+
+function payloadString(
+  payload: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = payload[key];
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function payloadNumber(
+  payload: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = payload[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function inboxActivityUnread(activity: InboxActivity, lastReadAt: string): boolean {
@@ -246,6 +279,76 @@ function normalizeMentionFacts({
   });
 }
 
+function normalizeCanonicalActivities({
+  activities,
+  markById,
+  commentById,
+  memberById,
+  profileById,
+}: {
+  activities: CanonicalActivityRow[];
+  markById: Map<string, MarkRow>;
+  commentById: Map<string, CommentRow>;
+  memberById: Map<string, MemberRow>;
+  profileById: Map<string, ProfileRow>;
+}): InboxActivity[] {
+  return activities.map((activity) => {
+    const payload = activity.payload ?? {};
+    const payloadMarkId = payloadString(payload, "markId");
+    const markId = activity.markId ?? payloadMarkId;
+    const mark = markId ? markById.get(markId) : undefined;
+    const comment =
+      activity.requiredContextType === "comment"
+        ? commentById.get(activity.requiredContextId)
+        : undefined;
+    const displaySeq = mark ? Number(mark.seq ?? 0) : payloadNumber(payload, "markSeq");
+    const sourceType = payloadString(payload, "sourceType");
+    const sourceId = payloadString(payload, "sourceId");
+    const contextType =
+      activity.activityType === "mention" && sourceType
+        ? sourceType
+        : activity.requiredContextType;
+    const contextId =
+      activity.activityType === "mention" && sourceId
+        ? sourceId
+        : activity.requiredContextId;
+
+    return {
+      id: activity.id,
+      sourceType: activity.sourceType,
+      sourceId: activity.sourceId,
+      groupId: markId ?? `${activity.sourceType}:${activity.sourceId}`,
+      groupKind: markId ? "mark" : "workspace",
+      contextType,
+      contextId,
+      markId: markId ?? undefined,
+      markDisplayKey: displaySeq ? formatMarkDisplayKey(displaySeq) : undefined,
+      markTitle:
+        mark?.title?.trim() ||
+        payloadString(payload, "markTitle") ||
+        "(unavailable mark)",
+      projectId: mark?.projectId,
+      actor: activity.actorUserId
+        ? personFromRows({
+            userId: activity.actorUserId,
+            memberById,
+            profileById,
+          })
+        : {
+            id: "system",
+            name: "YouIn",
+            username: "",
+            initials: "Y",
+          },
+      type: activity.activityType,
+      fromValue: payloadString(payload, "fromValue"),
+      toValue: payloadString(payload, "toValue"),
+      preview: commentPreview(comment?.body ?? undefined),
+      createdAt: activity.createdAt,
+    };
+  });
+}
+
 function normalizeInviteAcceptedActivities({
   invites,
   memberById,
@@ -284,15 +387,20 @@ function sortInboxActivities(activities: InboxActivity[]): InboxActivity[] {
 function buildInboxSnapshotFromActivities({
   activities,
   lastReadAt,
+  readActivityIds,
 }: {
   activities: InboxActivity[];
   lastReadAt: string;
+  readActivityIds?: string[];
 }): InboxSnapshot {
   if (activities.length === 0) return emptyInboxSnapshot(lastReadAt);
 
+  const readActivityIdSet = readActivityIds ? new Set(readActivityIds) : null;
   const groupMap = new Map<string, InboxGroup>();
   for (const activity of activities) {
-    const unread = inboxActivityUnread(activity, lastReadAt);
+    const unread = readActivityIdSet
+      ? !readActivityIdSet.has(activity.id)
+      : inboxActivityUnread(activity, lastReadAt);
     const event = inboxEventFromActivity(activity, unread);
     const existing = groupMap.get(activity.groupId);
     if (existing) {
@@ -320,7 +428,15 @@ function buildInboxSnapshotFromActivities({
     a.latestAt < b.latestAt ? 1 : -1,
   );
   const unreadCount = activities.reduce(
-    (count, activity) => count + (inboxActivityUnread(activity, lastReadAt) ? 1 : 0),
+    (count, activity) =>
+      count +
+      (readActivityIdSet
+        ? readActivityIdSet.has(activity.id)
+          ? 0
+          : 1
+        : inboxActivityUnread(activity, lastReadAt)
+          ? 1
+          : 0),
     0,
   );
 
@@ -329,6 +445,39 @@ function buildInboxSnapshotFromActivities({
     totalEvents: activities.length,
     unreadCount,
     lastReadAt,
+  };
+}
+
+function appendLegacyWorkspaceGroups({
+  canonical,
+  legacy,
+}: {
+  canonical: InboxSnapshot;
+  legacy: InboxSnapshot;
+}): InboxSnapshot {
+  const existingGroupIds = new Set(canonical.groups.map((group) => group.groupId));
+  const legacyWorkspaceGroups = legacy.groups.filter(
+    (group) => group.kind === "workspace" && !existingGroupIds.has(group.groupId),
+  );
+  if (!legacyWorkspaceGroups.length) return canonical;
+
+  const groups = [...canonical.groups, ...legacyWorkspaceGroups].sort((a, b) =>
+    a.latestAt < b.latestAt ? 1 : -1,
+  );
+  const legacyEventCount = legacyWorkspaceGroups.reduce(
+    (count, group) => count + group.events.length,
+    0,
+  );
+  const legacyUnreadCount = legacyWorkspaceGroups.reduce(
+    (count, group) => count + group.unreadCount,
+    0,
+  );
+
+  return {
+    groups,
+    totalEvents: canonical.totalEvents + legacyEventCount,
+    unreadCount: canonical.unreadCount + legacyUnreadCount,
+    lastReadAt: canonical.lastReadAt || legacy.lastReadAt,
   };
 }
 
@@ -482,7 +631,7 @@ export async function loadMentionInboxFactsForWorkspace({
   });
 }
 
-export async function loadInboxSnapshotForWorkspace({
+export async function loadLegacyInboxSnapshotForWorkspace({
   db,
   userId,
   workspaceId,
@@ -686,6 +835,183 @@ export async function loadInboxSnapshotForWorkspace({
       ...inviteAcceptedActivities,
     ]),
     lastReadAt,
+  });
+}
+
+export async function loadInboxSnapshotForWorkspace({
+  db,
+  userId,
+  workspaceId,
+}: {
+  db: AppDb;
+  userId: string;
+  workspaceId: string;
+}): Promise<InboxSnapshot> {
+  const [readStates, activityRowsRaw, readActivityRows] = await Promise.all([
+    db
+      .select({ lastReadAt: inboxReadStates.lastReadAt })
+      .from(inboxReadStates)
+      .where(
+        and(
+          eq(inboxReadStates.workspaceId, workspaceId),
+          eq(inboxReadStates.userId, userId),
+        ),
+      )
+      .limit(1),
+    db
+      .select({
+        id: inboxActivities.id,
+        recipientUserId: inboxActivities.recipientUserId,
+        activityType: inboxActivities.activityType,
+        sourceType: inboxActivities.sourceType,
+        sourceId: inboxActivities.sourceId,
+        actorUserId: inboxActivities.actorUserId,
+        markId: inboxActivities.markId,
+        requiredContextType: inboxActivities.requiredContextType,
+        requiredContextId: inboxActivities.requiredContextId,
+        payload: inboxActivities.payload,
+        createdAt: inboxActivities.createdAt,
+      })
+      .from(inboxActivities)
+      .where(
+        and(
+          eq(inboxActivities.workspaceId, workspaceId),
+          eq(inboxActivities.recipientUserId, userId),
+        ),
+      )
+      .orderBy(desc(inboxActivities.createdAt)),
+    db
+      .select({ activityId: inboxActivityReadStates.activityId })
+      .from(inboxActivityReadStates)
+      .where(
+        and(
+          eq(inboxActivityReadStates.workspaceId, workspaceId),
+          eq(inboxActivityReadStates.userId, userId),
+        ),
+      ),
+  ]);
+
+  const legacySnapshotPromise = loadLegacyInboxSnapshotForWorkspace({
+    db,
+    userId,
+    workspaceId,
+  });
+  const lastReadAt = readStates[0]?.lastReadAt ? toIso(readStates[0].lastReadAt) : "";
+
+  if (!activityRowsRaw.length) {
+    return legacySnapshotPromise;
+  }
+
+  const activityRows = activityRowsRaw.map((activity) => ({
+    ...activity,
+    payload:
+      activity.payload && typeof activity.payload === "object" && !Array.isArray(activity.payload)
+        ? activity.payload
+        : {},
+    createdAt: toIso(activity.createdAt),
+  })) as CanonicalActivityRow[];
+
+  const markIds = unique(
+    activityRows.flatMap((activity) => {
+      const payloadMarkId = payloadString(activity.payload, "markId");
+      return [activity.markId, payloadMarkId].filter((id): id is string => Boolean(id));
+    }),
+  );
+  const commentIds = unique(
+    activityRows.flatMap((activity) => {
+      const sourceType = payloadString(activity.payload, "sourceType");
+      const sourceId = payloadString(activity.payload, "sourceId");
+      if (activity.requiredContextType === "comment") return [activity.requiredContextId];
+      if (activity.activityType === "mention" && sourceType === "mark_comment" && sourceId) {
+        return [sourceId];
+      }
+      return [];
+    }),
+  );
+  const actorIds = unique(
+    activityRows.flatMap((activity) => (activity.actorUserId ? [activity.actorUserId] : [])),
+  );
+
+  const [markRows, commentRows, members, profileRows] = await Promise.all([
+    markIds.length
+      ? db
+          .select({
+            id: marks.id,
+            title: marks.title,
+            projectId: marks.projectId,
+            seq: marks.seq,
+          })
+          .from(marks)
+          .where(and(eq(marks.workspaceId, workspaceId), inArray(marks.id, markIds)))
+      : Promise.resolve([]),
+    commentIds.length
+      ? db
+          .select({
+            id: markComments.id,
+            markId: markComments.markId,
+            authorUserId: markComments.authorUserId,
+            type: markComments.type,
+            body: markComments.body,
+            imageUrl: markComments.imageUrl,
+            createdAt: markComments.createdAt,
+          })
+          .from(markComments)
+          .innerJoin(marks, eq(marks.id, markComments.markId))
+          .where(
+            and(
+              eq(marks.workspaceId, workspaceId),
+              inArray(markComments.id, commentIds),
+            ),
+          )
+      : Promise.resolve([]),
+    actorIds.length
+      ? db
+          .select({
+            userId: workspaceMembers.userId,
+            username: workspaceMembers.username,
+          })
+          .from(workspaceMembers)
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, workspaceId),
+              inArray(workspaceMembers.userId, actorIds),
+            ),
+          )
+      : Promise.resolve([]),
+    actorIds.length
+      ? db
+          .select({
+            id: profiles.id,
+            fullName: profiles.fullName,
+            email: profiles.email,
+          })
+          .from(profiles)
+          .where(inArray(profiles.id, actorIds))
+      : Promise.resolve([]),
+  ]);
+
+  const canonicalActivities = normalizeCanonicalActivities({
+    activities: activityRows,
+    markById: new Map((markRows as MarkRow[]).map((mark) => [mark.id, mark])),
+    commentById: new Map(
+      (commentRows as typeof commentRows).map((comment) => [
+        comment.id,
+        { ...comment, createdAt: toIso(comment.createdAt) } as CommentRow,
+      ]),
+    ),
+    memberById: new Map((members as MemberRow[]).map((member) => [member.userId, member])),
+    profileById: new Map((profileRows as ProfileRow[]).map((profile) => [profile.id, profile])),
+  });
+
+  const canonicalSnapshot = buildInboxSnapshotFromActivities({
+    activities: sortInboxActivities(canonicalActivities),
+    lastReadAt,
+    readActivityIds: readActivityRows.map((read) => read.activityId),
+  });
+
+  return appendLegacyWorkspaceGroups({
+    canonical: canonicalSnapshot,
+    legacy: await legacySnapshotPromise,
   });
 }
 

@@ -1,9 +1,13 @@
 import type { MarkEventType, Workspace } from "@/lib/collab-types";
+import type { InboxCanonicalActivityType, InboxCanonicalSourceType } from "@/db/schema";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 
-export type InboxCollaborationSourceType = "mark_event" | "mention" | "workspace_invite";
-export type InboxActivityType = MarkEventType | "mention" | "invitation_accepted";
+export type InboxCollaborationSourceType = InboxCanonicalSourceType | "workspace_invite";
+export type InboxActivityType =
+  | MarkEventType
+  | InboxCanonicalActivityType
+  | "invitation_accepted";
 export type InboxGroupKind = "mark" | "workspace";
 
 export interface InboxPerson {
