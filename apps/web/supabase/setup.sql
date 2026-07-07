@@ -114,6 +114,8 @@ ALTER TABLE public.mark_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mark_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.mentions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.inbox_read_states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inbox_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inbox_activity_read_states ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.workspace_review_links ENABLE ROW LEVEL SECURITY;
 
@@ -138,7 +140,8 @@ BEGIN
         'mark_comments',
         'mark_events',
         'mentions',
-        'inbox_read_states',
+        'inbox_activities',
+        'inbox_activity_read_states',
         'workspace_views',
         'workspace_review_links'
       )
@@ -407,6 +410,52 @@ CREATE POLICY inbox_read_states_update_own ON public.inbox_read_states
     AND public.user_workspace_member(workspace_id)
   );
 
+CREATE POLICY inbox_activities_select_own ON public.inbox_activities
+  FOR SELECT TO authenticated
+  USING (
+    recipient_user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  );
+
+CREATE POLICY inbox_activity_read_states_select_own ON public.inbox_activity_read_states
+  FOR SELECT TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  );
+
+CREATE POLICY inbox_activity_read_states_insert_own ON public.inbox_activity_read_states
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+    AND EXISTS (
+      SELECT 1
+      FROM public.inbox_activities ia
+      WHERE ia.id = inbox_activity_read_states.activity_id
+        AND ia.workspace_id = inbox_activity_read_states.workspace_id
+        AND ia.recipient_user_id = inbox_activity_read_states.user_id
+    )
+  );
+
+CREATE POLICY inbox_activity_read_states_update_own ON public.inbox_activity_read_states
+  FOR UPDATE TO authenticated
+  USING (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+  )
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
+    AND EXISTS (
+      SELECT 1
+      FROM public.inbox_activities ia
+      WHERE ia.id = inbox_activity_read_states.activity_id
+        AND ia.workspace_id = inbox_activity_read_states.workspace_id
+        AND ia.recipient_user_id = inbox_activity_read_states.user_id
+    )
+  );
+
 -- ── 4. Realtime publication ─────────────────────────────────────────────────
 DO $$
 DECLARE
@@ -421,7 +470,8 @@ DECLARE
     'mark_workflow_statuses',
     'marks',
     'mark_events',
-    'inbox_read_states',
+    'inbox_activities',
+    'inbox_activity_read_states',
     'workspace_views',
     'workspace_review_links'
   ];

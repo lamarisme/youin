@@ -23,7 +23,6 @@ export type WorkspaceBootstrap = {
   workspace: Workspace;
   workspaceMemberships: WorkspaceMembershipSummary[];
   profile: UserProfile;
-  inboxLastReadAt: InboxSnapshot["lastReadAt"];
   inboxSnapshot: InboxSnapshot;
   /** Changes whenever the shell refetches bootstrap from the server — drive client hydration keys. */
   loadedAt: string;
@@ -54,7 +53,6 @@ export type WorkspaceShellBootstrap = {
   workspace: WorkspaceShell;
   workspaceMemberships: WorkspaceMembershipSummary[];
   profile: UserProfile;
-  inboxLastReadAt: InboxSnapshot["lastReadAt"];
   inboxSnapshot: InboxSnapshot;
   loadedAt: string;
 };

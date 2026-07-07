@@ -32,6 +32,7 @@ import {
   MARK_DESCRIPTION_MENTION_SOURCE,
   syncMentionsForSource,
 } from "@/lib/workspace/mentions";
+import { syncCanonicalInboxActivitiesForWorkspace } from "@/lib/workspace/inbox-producers";
 import { resolveWorkspaceForUser } from "@/lib/workspace/workspace-bootstrap";
 
 export const dynamic = "force-dynamic";
@@ -637,6 +638,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     description,
     comments: createdComments,
   });
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: getDb(),
+    workspaceId,
+  });
 
   return NextResponse.json(
     {
@@ -669,6 +674,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const auth = await createAuthorizedClient(request);
   if ("error" in auth) return auth.error;
   const { supabase, user, workspaceId } = auth;
+  let shouldSyncCanonicalInbox = false;
 
   const { data: mark, error: markReadError } = await supabase
     .from("marks")
@@ -719,6 +725,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       .eq("id", markId)
       .eq("workspace_id", workspaceId);
     if (statusError) return jsonError(statusError.message, 400);
+    shouldSyncCanonicalInbox = true;
   }
 
   let commentBody = "";
@@ -755,6 +762,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         },
       ],
     });
+    shouldSyncCanonicalInbox = true;
   }
 
   let openingBody = "";
@@ -795,7 +803,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           },
         ],
       });
+      shouldSyncCanonicalInbox = true;
     }
+  }
+
+  if (shouldSyncCanonicalInbox) {
+    await syncCanonicalInboxActivitiesForWorkspace({
+      db: getDb(),
+      workspaceId,
+    });
   }
 
   return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });

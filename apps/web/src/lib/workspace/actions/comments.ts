@@ -13,6 +13,7 @@ import {
   deleteMentionsForSource,
   syncMentionsForSource,
 } from "@/lib/workspace/mentions";
+import { syncCanonicalInboxActivitiesForWorkspace } from "@/lib/workspace/inbox-producers";
 
 import {
   requireWorkspaceContext,
@@ -87,6 +88,10 @@ export async function addMarkCommentsAction(
     }
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
 
 export async function updateMarkCommentAction(
@@ -130,6 +135,10 @@ export async function updateMarkCommentAction(
     });
   });
   revalidateWorkspaceViews();
+  await syncCanonicalInboxActivitiesForWorkspace({
+    db: ctx.db,
+    workspaceId: ctx.workspaceId,
+  });
 }
 
 export async function deleteMarkCommentAction(

@@ -394,7 +394,6 @@ export async function loadWorkspaceShellBootstrap(
     workspace,
     workspaceMemberships,
     profile,
-    inboxLastReadAt: inboxSnapshot.lastReadAt,
     inboxSnapshot,
     loadedAt: new Date().toISOString(),
   };

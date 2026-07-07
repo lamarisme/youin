@@ -2,9 +2,11 @@
 
 import { and, eq } from "drizzle-orm";
 
-import { workspaceInvites, workspaceMembers } from "@/db/schema";
+import { getDb } from "@/db/client";
+import { inboxActivities, workspaceInvites, workspaceMembers } from "@/db/schema";
 import { createClient } from "@/lib/supabase/server";
 import { assertWorkspaceOwner } from "@/lib/workspace/authz";
+import { projectInviteAcceptedActivity } from "@/lib/workspace/inbox-canonical";
 import {
   type AcceptWorkspaceInviteInput,
   isWorkspaceInviteUuid,
@@ -64,9 +66,61 @@ export async function acceptWorkspaceInviteAction(
 
   const result = normalizeWorkspaceInviteAcceptanceResult(data);
   if (result.status === "accepted" || result.status === "already_member") {
+    if (result.status === "accepted") {
+      await createInviteAcceptedInboxActivity({
+        acceptedByUserId: user.id,
+        inviteId: result.inviteId,
+        workspaceId: result.workspaceId,
+      });
+    }
     revalidateWorkspaceViews();
   }
   return result;
+}
+
+async function createInviteAcceptedInboxActivity({
+  acceptedByUserId,
+  inviteId,
+  workspaceId,
+}: {
+  acceptedByUserId: string;
+  inviteId: string | null;
+  workspaceId: string | null;
+}): Promise<void> {
+  if (!inviteId || !workspaceId) return;
+
+  const db = getDb();
+  const [invite] = await db
+    .select({
+      id: workspaceInvites.id,
+      workspaceId: workspaceInvites.workspaceId,
+      email: workspaceInvites.email,
+      invitedByUserId: workspaceInvites.invitedByUserId,
+      acceptedByUserId: workspaceInvites.acceptedByUserId,
+      acceptedAt: workspaceInvites.acceptedAt,
+    })
+    .from(workspaceInvites)
+    .where(
+      and(
+        eq(workspaceInvites.id, inviteId),
+        eq(workspaceInvites.workspaceId, workspaceId),
+        eq(workspaceInvites.status, "accepted"),
+      ),
+    )
+    .limit(1);
+
+  if (!invite?.acceptedByUserId || !invite.acceptedAt) return;
+  const projection = projectInviteAcceptedActivity({
+    id: invite.id,
+    workspaceId: invite.workspaceId,
+    email: invite.email,
+    invitedByUserId: invite.invitedByUserId,
+    acceptedByUserId,
+    acceptedAt: invite.acceptedAt,
+  });
+  if (!projection.activities.length) return;
+
+  await db.insert(inboxActivities).values(projection.activities).onConflictDoNothing();
 }
 
 export async function inviteMemberAction(email: string): Promise<void> {

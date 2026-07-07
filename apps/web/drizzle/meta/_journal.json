@@ -204,6 +204,34 @@
       "when": 1782144000000,
       "tag": "0028_workspace_view_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782147600000,
+      "tag": "0029_inbox_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782151200000,
+      "tag": "0030_inbox_comment_event_context",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782154800000,
+      "tag": "0031_inbox_realtime_publication",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782158400000,
+      "tag": "0032_retire_legacy_inbox_realtime",
+      "breakpoints": true
     }
   ]
 }
