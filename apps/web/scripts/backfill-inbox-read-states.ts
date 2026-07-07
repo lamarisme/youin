@@ -15,6 +15,12 @@ type CliOptions = {
   batchSize?: number;
 };
 
+const REQUIRED_TABLES = [
+  "inbox_read_states",
+  "inbox_activities",
+  "inbox_activity_read_states",
+] as const;
+
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = { dryRun: true };
   for (let index = 0; index < argv.length; index += 1) {
@@ -73,23 +79,154 @@ async function main(): Promise<void> {
     throw new Error("DATABASE_URL is missing. Set it in .env.local or the environment.");
   }
 
-  const sql = postgres(databaseUrl, { max: 1, prepare: false });
+  const startedAt = Date.now();
+  const warnings = buildWarnings(options, databaseUrl);
+  const sql = postgres(databaseUrl, { max: 1, prepare: false, connect_timeout: 10 });
   const db = drizzle(sql, { schema });
 
   try {
+    printStart("Inbox read-state backfill", options, databaseUrl, warnings);
+    await assertRequiredTables(sql, REQUIRED_TABLES);
+
     const summary = await backfillInboxActivityReadStatesFromLegacyTimestamps({
       db,
       workspaceId: options.workspaceId,
       dryRun: options.dryRun,
       batchSize: options.batchSize,
     });
-    console.log(JSON.stringify(summary, null, 2));
+
+    printSummary({
+      title: "Inbox read-state backfill",
+      elapsedMs: Date.now() - startedAt,
+      warnings,
+      summary,
+    });
   } finally {
     await sql.end({ timeout: 5 });
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
+main().catch((error: unknown) => {
+  console.error("Final status: FAILED");
+  console.error(formatError(error));
+  process.exitCode = 1;
 });
+
+async function assertRequiredTables(
+  sqlClient: ReturnType<typeof postgres>,
+  tableNames: readonly string[],
+): Promise<void> {
+  const missing: string[] = [];
+  for (const tableName of tableNames) {
+    const rows = await sqlClient`
+      SELECT to_regclass(${`public.${tableName}`}) IS NOT NULL AS exists
+    `;
+    if (!rows[0]?.exists) missing.push(tableName);
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      [
+        `Missing required Inbox read-state backfill table(s): ${missing.join(", ")}.`,
+        "Run database migrations before executing this backfill.",
+      ].join(" "),
+    );
+  }
+}
+
+function buildWarnings(options: CliOptions, databaseUrl: string): string[] {
+  const warnings: string[] = [];
+  if (!options.workspaceId) {
+    warnings.push("No --workspace-id provided; this run scans every workspace.");
+  }
+  if (!options.dryRun && !isLocalDatabaseUrl(databaseUrl)) {
+    warnings.push("Applying against a non-local DATABASE_URL. Confirm this is the intended QA target.");
+  }
+  return warnings;
+}
+
+function printStart(
+  title: string,
+  options: CliOptions,
+  databaseUrl: string,
+  warnings: string[],
+): void {
+  console.log(`${title} starting.`);
+  console.log(`Mode: ${options.dryRun ? "dry-run" : "apply"}`);
+  console.log(`Workspace: ${options.workspaceId ?? "all workspaces"}`);
+  console.log(`Batch size: ${options.batchSize ?? 500}`);
+  console.log(`Database: ${describeDatabaseUrl(databaseUrl)}`);
+  for (const warning of warnings) console.warn(`Warning: ${warning}`);
+}
+
+function printSummary({
+  title,
+  elapsedMs,
+  warnings,
+  summary,
+}: {
+  title: string;
+  elapsedMs: number;
+  warnings: string[];
+  summary: Awaited<ReturnType<typeof backfillInboxActivityReadStatesFromLegacyTimestamps>>;
+}): void {
+  console.log(`${title} completed.`);
+  console.log(`Activities scanned: ${summary.activitiesMatched}`);
+  console.log(`Activities projected: ${summary.activitiesMatched}`);
+  console.log(`Legacy read states scanned: ${summary.legacyStatesScanned}`);
+  console.log(`Inserted rows: ${summary.readStatesInserted}`);
+  console.log(`Duplicate rows skipped: ${summary.duplicatesSkipped}`);
+  console.log(`Skipped rows: 0`);
+  console.log(`Elapsed time: ${formatDuration(elapsedMs)}`);
+  console.log(`Warnings: ${warnings.length}`);
+  console.log(`Final status: ${summary.dryRun ? "DRY_RUN_COMPLETE" : "APPLY_COMPLETE"}`);
+  console.log(
+    JSON.stringify(
+      {
+        ...summary,
+        elapsedMs,
+        skippedRows: 0,
+        warnings,
+        finalStatus: summary.dryRun ? "DRY_RUN_COMPLETE" : "APPLY_COMPLETE",
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+function describeDatabaseUrl(databaseUrl: string): string {
+  try {
+    const url = new URL(databaseUrl);
+    const databaseName = url.pathname.replace(/^\//, "") || "postgres";
+    return `${url.hostname}:${url.port || "default"}/${databaseName}`;
+  } catch {
+    return "unparseable DATABASE_URL";
+  }
+}
+
+function isLocalDatabaseUrl(databaseUrl: string): boolean {
+  try {
+    const hostname = new URL(databaseUrl).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message || error.stack || error.name;
+  }
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
