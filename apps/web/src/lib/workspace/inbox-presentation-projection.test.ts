@@ -56,6 +56,12 @@ test("groups mark-only activities into one Mark Context group", () => {
   assert.equal(snapshot.groups.length, 1);
   assert.equal(snapshot.groups[0].groupId, `mark:${markId}`);
   assert.equal(snapshot.groups[0].kind, "mark");
+  assert.equal(snapshot.groups[0].requiredContextType, "mark");
+  assert.equal(snapshot.groups[0].requiredContextId, markId);
+  assert.deepEqual(snapshot.groups[0].activityIds, [
+    priority.id,
+    status.id,
+  ]);
   assert.equal(snapshot.groups[0].unreadCount, 2);
   assert.deepEqual(snapshot.groups[0].acknowledgementCandidateActivityIds, [
     priority.id,
@@ -89,6 +95,9 @@ test("splits Mark Context and Comment Context activities for the same Mark", () 
     `comment:${commentId}`,
     `mark:${markId}`,
   ]);
+  assert.equal(snapshot.groups[0].requiredContextType, "comment");
+  assert.equal(snapshot.groups[0].requiredContextId, commentId);
+  assert.deepEqual(snapshot.groups[0].activityIds, [comment.id]);
   assert.equal(snapshot.groups[0].targetId, `comment-${commentId}`);
 });
 
@@ -120,6 +129,9 @@ test("keeps mention activities in standalone groups while preserving target meta
     `mark:${markId}`,
   ]);
   assert.equal(snapshot.groups[0].kind, "standalone");
+  assert.equal(snapshot.groups[0].requiredContextType, "mention");
+  assert.equal(snapshot.groups[0].requiredContextId, mentionId);
+  assert.deepEqual(snapshot.groups[0].activityIds, [mentionId]);
   assert.equal(snapshot.groups[0].targetId, `comment-${commentId}`);
   assert.deepEqual(snapshot.groups[0].acknowledgementCandidateActivityIds, [mentionId]);
 });

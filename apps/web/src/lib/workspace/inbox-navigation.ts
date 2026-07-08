@@ -1,5 +1,5 @@
 import type { InboxRequiredContextType } from "@/db/schema";
-import type { InboxEvent } from "@/lib/workspace/inbox-model";
+import type { InboxEvent, InboxGroup } from "@/lib/workspace/inbox-model";
 
 export const INBOX_ACTIVITY_PARAM = "inboxActivity";
 export const INBOX_CONTEXT_TYPE_PARAM = "inboxContextType";
@@ -51,6 +51,19 @@ export function inboxContextParamsForEvent(
   params.set(INBOX_CONTEXT_ID_PARAM, event.requiredContextId);
   const targetId = inboxTargetIdForEvent(event);
   if (targetId) params.set(INBOX_TARGET_ID_PARAM, targetId);
+  return params;
+}
+
+export function inboxContextParamsForGroup(group: InboxGroup): URLSearchParams {
+  const params = new URLSearchParams();
+  if (!group.requiredContextType || !group.requiredContextId) return params;
+  for (const activityId of group.activityIds ?? []) {
+    params.append(INBOX_ACTIVITY_PARAM, activityId);
+  }
+  if (!params.has(INBOX_ACTIVITY_PARAM)) return params;
+  params.set(INBOX_CONTEXT_TYPE_PARAM, group.requiredContextType);
+  params.set(INBOX_CONTEXT_ID_PARAM, group.requiredContextId);
+  if (group.targetId) params.set(INBOX_TARGET_ID_PARAM, group.targetId);
   return params;
 }
 

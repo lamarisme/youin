@@ -21,7 +21,7 @@ import type {
   PendingWorkspaceInvite,
 } from "@/lib/workspace/invitations";
 import { accountHref, markHref } from "@/lib/workspace/routes";
-import { inboxContextParamsForEvent } from "@/lib/workspace/inbox-navigation";
+import { inboxContextParamsForGroup } from "@/lib/workspace/inbox-navigation";
 
 import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
@@ -355,7 +355,7 @@ function InboxGroupRow({
   return (
     <ProductListItem className="p-0">
       <Link
-        href={inboxEventHref(group, top)}
+        href={inboxGroupHref(group)}
         aria-label={rowLabel}
         className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
@@ -414,21 +414,16 @@ function InboxGroupRow({
   );
 }
 
-function inboxEventHref(group: InboxGroup, event: InboxEvent): string {
-  if (event.targetHref) return event.targetHref;
+function inboxGroupHref(group: InboxGroup): string {
+  if (group.destination?.kind === "href") return group.destination.href;
   if (group.targetHref) return group.targetHref;
-  if (!group.markDisplayKey) return accountHref("team");
-  const params = inboxContextParamsForEvent(event, group.events);
-  const href = markHref(group.markDisplayKey, params);
-  if (event.type === "mention" && event.contextType === "mark_comment" && event.contextId) {
-    return `${href}#comment-${encodeURIComponent(event.contextId)}`;
-  }
-  if (event.requiredContextType === "comment" && event.requiredContextId) {
-    return `${href}#comment-${encodeURIComponent(event.requiredContextId)}`;
-  }
-  if (event.requiredContextType === "mention" && event.contextType === "mark_description") {
-    return `${href}#mark-description`;
-  }
+  const markDisplayKey =
+    group.destination?.kind === "mark"
+      ? group.destination.markDisplayKey
+      : group.markDisplayKey;
+  if (!markDisplayKey) return accountHref("team");
+  const href = markHref(markDisplayKey, inboxContextParamsForGroup(group));
+  if (group.targetId) return `${href}#${encodeURIComponent(group.targetId)}`;
   return href;
 }
 

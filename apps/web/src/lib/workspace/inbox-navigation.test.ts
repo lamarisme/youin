@@ -7,10 +7,11 @@ import {
   INBOX_CONTEXT_TYPE_PARAM,
   INBOX_TARGET_ID_PARAM,
   inboxActivityIdsForViewedContext,
+  inboxContextParamsForGroup,
   inboxContextParamsForEvent,
   parseInboxRouteContext,
 } from "./inbox-navigation.ts";
-import type { InboxEvent } from "./inbox-model.ts";
+import type { InboxEvent, InboxGroup } from "./inbox-model.ts";
 
 const activityId = "11111111-1111-4111-8111-111111111111";
 const priorityActivityId = "55555555-5555-4555-8555-555555555555";
@@ -31,6 +32,35 @@ function event(input: Partial<InboxEvent> = {}): InboxEvent {
     type: "status_change",
     createdAt: "2026-07-01T00:00:00.000Z",
     unread: true,
+    ...input,
+  };
+}
+
+function group(input: Partial<InboxGroup> = {}): InboxGroup {
+  return {
+    groupId: `mark:${markId}`,
+    kind: "mark",
+    requiredContextType: "mark",
+    requiredContextId: markId,
+    activityIds: [activityId, priorityActivityId],
+    markId,
+    markDisplayKey: "YIN-1",
+    markTitle: "Mark",
+    events: [
+      event({
+        id: activityId,
+        requiredContextType: "mark",
+        requiredContextId: markId,
+      }),
+      event({
+        id: priorityActivityId,
+        type: "priority_change",
+        requiredContextType: "mark",
+        requiredContextId: markId,
+      }),
+    ],
+    latestAt: "2026-07-01T00:00:00.000Z",
+    unreadCount: 2,
     ...input,
   };
 }
@@ -110,6 +140,37 @@ test("parseInboxRouteContext deduplicates repeated activity ids", () => {
     activityId,
     priorityActivityId,
   ]);
+});
+
+test("inboxContextParamsForGroup encodes group-owned navigation metadata", () => {
+  const params = inboxContextParamsForGroup(group());
+
+  assert.deepEqual(params.getAll(INBOX_ACTIVITY_PARAM), [
+    activityId,
+    priorityActivityId,
+  ]);
+  assert.equal(params.get(INBOX_CONTEXT_TYPE_PARAM), "mark");
+  assert.equal(params.get(INBOX_CONTEXT_ID_PARAM), markId);
+  assert.deepEqual(parseInboxRouteContext(params)?.activityIds, [
+    activityId,
+    priorityActivityId,
+  ]);
+});
+
+test("inboxContextParamsForGroup includes the group target id", () => {
+  const params = inboxContextParamsForGroup(group({
+    groupId: `comment:${commentId}`,
+    kind: "comment",
+    requiredContextType: "comment",
+    requiredContextId: commentId,
+    activityIds: [activityId],
+    targetId: `comment-${commentId}`,
+  }));
+
+  assert.deepEqual(params.getAll(INBOX_ACTIVITY_PARAM), [activityId]);
+  assert.equal(params.get(INBOX_CONTEXT_TYPE_PARAM), "comment");
+  assert.equal(params.get(INBOX_CONTEXT_ID_PARAM), commentId);
+  assert.equal(params.get(INBOX_TARGET_ID_PARAM), `comment-${commentId}`);
 });
 
 test("inboxContextParamsForEvent adds visible targets for comments and mentions", () => {

@@ -54,26 +54,28 @@ export function buildPresentationInboxSnapshotFromActivities({
       if (activity.createdAt > existing.latestAt) existing.latestAt = activity.createdAt;
       if (unread) existing.unreadCount += 1;
       existing.representativeEvent = selectRepresentativeEvent(existing.events);
-      existing.acknowledgementCandidateActivityIds = acknowledgementCandidateActivityIds(
+      existing.activityIds = navigationActivityIds(
         existing.events,
         classification,
       );
+      existing.acknowledgementCandidateActivityIds = existing.activityIds;
       continue;
     }
 
+    const activityIds = navigationActivityIds([event], classification);
     groupMap.set(classification.presentationGroupId, {
       groupId: classification.presentationGroupId,
       kind: classification.groupKind,
       presentationContextType: classification.presentationContextType,
       presentationContextId: classification.presentationContextId,
       destination: classification.destination,
+      requiredContextType: classification.acknowledgementContextType,
+      requiredContextId: classification.acknowledgementContextId,
+      activityIds,
       acknowledgementContextType: classification.acknowledgementContextType,
       acknowledgementContextId: classification.acknowledgementContextId,
       targetId: classification.targetId,
-      acknowledgementCandidateActivityIds: acknowledgementCandidateActivityIds(
-        [event],
-        classification,
-      ),
+      acknowledgementCandidateActivityIds: activityIds,
       representativeEvent: event,
       markId: activity.markId,
       markDisplayKey: activity.markDisplayKey,
@@ -115,7 +117,7 @@ export function buildPresentationInboxSnapshotFromActivities({
   };
 }
 
-function acknowledgementCandidateActivityIds(
+function navigationActivityIds(
   events: InboxEvent[],
   classification: InboxPresentationClassification,
 ): string[] {

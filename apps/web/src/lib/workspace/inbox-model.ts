@@ -92,6 +92,9 @@ export interface InboxGroup {
   presentationContextType?: InboxPresentationContextType;
   presentationContextId?: string;
   destination?: InboxPresentationDestination;
+  requiredContextType?: InboxRequiredContextType;
+  requiredContextId?: string;
+  activityIds?: string[];
   acknowledgementContextType?: InboxRequiredContextType;
   acknowledgementContextId?: string;
   targetId?: string;
