@@ -1,168 +1,125 @@
-# Inbox Read Behavior
+# Inbox Read/Unread Behavior
 
-**Status:** Draft
+**Status:** Approved and implemented
 
 ## Goal
 
-Define how Inbox activities transition between **Unread** and **Read**.
+Define how Inbox activities transition between unread and read.
 
-This document describes the expected product behavior independently of the implementation.
+This document describes product behavior. Runtime ownership and implementation details live in:
 
----
+- `INBOX_READ_ARCHITECTURE.md`
+- `INBOX_GROUPING_V2_ARCHITECTURE.md`
 
-# Core Principle
+## Core Principle
 
-Unread means:
+Unread means the activity still requires the user's attention.
 
-> This activity still requires the user's attention.
+Read means the user has viewed the context required by that activity, or explicitly used "Mark all read."
 
-Read means:
+The Inbox should help users discover work. Users should not need to manually manage notification state during normal workflows.
 
-> The user has successfully viewed the context related to this activity.
+## Activity Identity
 
-The Inbox should help users discover work, not manage notification state manually.
+Each Inbox activity represents one canonical event.
 
-"Mark all read" is a convenience action, not the primary workflow.
-
----
-
-# Activity Identity
-
-Each Inbox activity represents a single event.
-
-A new event creates a new Inbox activity.
-
-Activities are immutable once created.
-
-Updating a Mark must never replace or modify previously created Inbox activities.
+Activities are immutable once created. Updating a Mark must not replace or mutate previously created Inbox activities.
 
 Examples:
 
-- Assignment → creates one activity.
-- Mention → creates one activity.
-- Comment → creates one activity.
-- Status Change → creates one activity.
+- Assignment creates one activity.
+- Mention creates one activity.
+- Comment creates one activity.
+- Status change creates one activity.
+- Priority change creates one activity.
 
----
+## Required Contexts
 
-# Activity Rules
+Every activity has a required context. The activity becomes read only after that context is viewed.
 
-| Activity        | Required Context       |
-| --------------- | ---------------------- |
-| Assignment      | The related Mark       |
-| Mention         | The mentioned content  |
-| Comment         | The related comment    |
-| Workflow Change | The related Mark       |
-| Status Change   | The related Mark       |
-| Priority Change | The related Mark       |
-| Label Change    | The related Mark       |
-| Review Link     | The related Review     |
-| Invite          | The invitation details |
+| Activity | Required context |
+| --- | --- |
+| Assignment | Related Mark |
+| Workflow change | Related Mark |
+| Status change | Related Mark |
+| Priority change | Related Mark |
+| Label change | Related Mark |
+| Comment | Related comment |
+| Reply | Related comment thread |
+| Mention in comment | Mentioned content in the containing comment |
+| Mention in Mark description | Mentioned content in the Mark description |
+| Review | Related review context |
+| Review reply | Related review context |
+| Review mention | Mentioned content in the review context |
+| Invite | Invitation details |
 
----
+## Read Rules
 
-# Read Rules
+### 1. Read State Is Activity-Based
 
-## Rule 1 — Read is activity-based
+Each activity has its own read state in `inbox_activity_read_states`.
 
-Each Inbox activity maintains its own Read state.
+Reading one activity must not automatically read unrelated activities.
 
-Reading one activity must never automatically mark other activities as Read.
+### 2. Context Determines Read
 
----
-
-## Rule 2 — Context determines Read
-
-An activity becomes Read only after the user has successfully viewed the context required for that activity.
-
-The required context depends on the activity type.
-
-Examples:
-
-- Assignment → opening the related Mark.
-- Mention → reaching the mentioned content.
-- Comment → reaching the related comment.
-
-Opening an unrelated page must never mark an activity as Read.
-
----
-
-## Rule 3 — Read is automatic
-
-The system should automatically mark an activity as Read after its required context has been viewed.
-
-Users should not be required to manually acknowledge notifications during normal workflows.
-
----
-
-## Rule 4 — Manual actions
-
-"Mark all read" marks every currently unread activity as Read.
-
-This action exists only as a convenience feature.
-
-It must never be required for normal Inbox usage.
-
----
-
-# Exceptions
-
-An activity must remain Unread if the required context has not actually been viewed.
+An activity becomes read only after its required context has been viewed.
 
 Examples:
 
-- Opening a Mark without reaching the mentioned content must not mark a Mention as Read.
-- Opening a page before its content has finished loading must not mark an activity as Read.
-- Leaving the page before the required context becomes visible must not mark an activity as Read.
+- Opening a Mark can acknowledge Mark-context activities for that Mark.
+- Scrolling to a comment can acknowledge comment-context activities for that comment.
+- Viewing a comment that contains a mention can acknowledge the mention activity after the target comment is visible.
 
----
+Opening an unrelated page must never mark an activity as read.
 
-# Read Triggers
+### 3. Read Is Automatic During Normal Workflows
 
-An activity may become Read only after one of the following events occurs.
+The system automatically acknowledges activities after the required context is visible.
 
-| Trigger        | Description                                             |
-| -------------- | ------------------------------------------------------- |
-| Context Viewed | The required context becomes visible to the user.       |
-| Mark All Read  | The user explicitly marks all Inbox activities as Read. |
+The user should not need to manually acknowledge individual Inbox activities.
 
-No other action should change an activity's Read state.
+### 4. "Mark All Read" Is Explicit
 
----
+"Mark all read" marks every currently unread activity for the current user as read.
 
-# Open Questions
+This is a convenience action. It is not the primary read path.
 
-The following questions require Product and Engineering decisions before implementation.
+### 5. Grouping Does Not Change Read Semantics
 
-1. Should Read state be stored per activity or derived from a global timestamp?
+Presentation Groups can contain multiple canonical activities.
 
-2. Should opening a Mark from outside the Inbox also mark related activities as Read?
+Unread counts remain activity-based:
 
-3. How should the system determine that a user has actually viewed a Mention or Comment?
+- A group with three unread activities contributes `3` to the unread badge.
+- A visible card can represent the highest-priority activity while hidden activities remain in the group.
+- Acknowledgement candidates must still be validated against the viewed context.
 
-4. Should users be able to manually mark activities as Unread?
+## Exceptions
 
-5. Should Read state synchronize across all user devices and browser sessions?
+An activity must remain unread when its required context was not actually viewed.
 
-6. How long should Read activities remain visible in the Inbox?
+Examples:
 
-7. Should the Inbox provide filters for:
-   - Unread
-   - Read
-   - Mentions
-   - Assignments
-   - Comments
-   - Workflow updates
+- Opening a Mark without reaching the mentioned content must not acknowledge a description mention.
+- Loading a Mark page that fails before rendering must not acknowledge Mark-context activities.
+- Navigating away before the target comment becomes visible must not acknowledge comment-context activities.
+- Missing or deleted target content must not produce a false read.
 
----
+## Read Triggers
 
-# Success Criteria
+| Trigger | Description |
+| --- | --- |
+| Context viewed | The required context becomes visible to the user. |
+| Mark all read | The user explicitly marks all current unread activities as read. |
 
-A successful Inbox experience should satisfy the following:
+No other action should mutate read state.
 
-- Users never need to manually manage Read state during normal workflows.
-- Every activity has a predictable Read behavior.
-- Read behavior is consistent across all activity types.
-- Opening unrelated pages never affects Inbox state.
-- Multiple activities on the same Mark remain independent.
-- The Inbox always reflects the user's actual attention, not simply navigation history.
+## Success Criteria
+
+- Read behavior is predictable for every supported activity family.
+- Read state is stored per activity.
+- Grouped Inbox cards do not hide unread activity state.
+- Opening unrelated pages does not affect Inbox state.
+- Repeated acknowledgement is idempotent.
+- Realtime and cache updates converge across tabs.
