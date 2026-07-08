@@ -22,6 +22,7 @@ import {
   type InboxPerson,
   type InboxSnapshot,
 } from "@/lib/workspace/inbox-model";
+import { buildPresentationInboxSnapshotFromActivities } from "@/lib/workspace/inbox-presentation-projection";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { initialsFromFullName } from "@/lib/workspace/profile-utils";
 import { requireWorkspaceContext } from "@/lib/workspace/actions/session";
@@ -440,7 +441,7 @@ export async function loadInboxSnapshotForWorkspace({
     profileById: new Map((profileRows as ProfileRow[]).map((profile) => [profile.id, profile])),
   });
 
-  return buildInboxSnapshotFromActivities({
+  return buildPresentationInboxSnapshotFromActivities({
     activities: sortInboxActivities(canonicalActivities),
     readActivityIds: readActivityRows.map((read) => read.activityId),
   });
