@@ -67,6 +67,28 @@ export function inboxContextParamsForGroup(group: InboxGroup): URLSearchParams {
   return params;
 }
 
+export function inboxRouteContextKey(context: InboxRouteContext): string {
+  return [
+    context.requiredContextType,
+    context.requiredContextId,
+    ...[...context.activityIds].sort(),
+  ].join(":");
+}
+
+export function inboxRouteContextMatchesMark(
+  context: InboxRouteContext,
+  markId: string,
+): boolean {
+  return context.requiredContextType === "mark" && context.requiredContextId === markId;
+}
+
+export function inboxRouteContextVisibleTargetId(
+  context: InboxRouteContext,
+): string | null {
+  if (context.requiredContextType === "mark") return null;
+  return context.targetId ?? null;
+}
+
 export function parseInboxRouteContext(
   searchParams: {
     get: (name: string) => string | null;

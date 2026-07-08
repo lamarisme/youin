@@ -71,7 +71,13 @@ import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markInboxActivitiesViewedAction } from "@/lib/workspace/actions";
-import { parseInboxRouteContext, type InboxRouteContext } from "@/lib/workspace/inbox-navigation";
+import {
+  inboxRouteContextKey,
+  inboxRouteContextMatchesMark,
+  inboxRouteContextVisibleTargetId,
+  parseInboxRouteContext,
+  type InboxRouteContext,
+} from "@/lib/workspace/inbox-navigation";
 import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
@@ -346,7 +352,7 @@ export function MarkDetailView({
 
   const acknowledgeInboxContext = useCallback(
     async (context: InboxRouteContext) => {
-      const contextKey = `${context.activityIds.join(",")}:${context.requiredContextType}:${context.requiredContextId}`;
+      const contextKey = inboxRouteContextKey(context);
       if (acknowledgedInboxContextRef.current === contextKey) return;
       acknowledgedInboxContextRef.current = contextKey;
       try {
@@ -369,8 +375,7 @@ export function MarkDetailView({
 
   useEffect(() => {
     if (!inboxRouteContext) return;
-    if (inboxRouteContext.requiredContextType !== "mark") return;
-    if (inboxRouteContext.requiredContextId !== mark.id) return;
+    if (!inboxRouteContextMatchesMark(inboxRouteContext, mark.id)) return;
     if (!detailLayoutRef.current) return;
     const frame = window.requestAnimationFrame(() => {
       void acknowledgeInboxContext(inboxRouteContext);
@@ -380,17 +385,7 @@ export function MarkDetailView({
 
   useEffect(() => {
     if (!inboxRouteContext) return;
-    if (
-      inboxRouteContext.requiredContextType !== "comment" &&
-      inboxRouteContext.requiredContextType !== "mention"
-    ) {
-      return;
-    }
-    const targetId =
-      inboxRouteContext.targetId ??
-      (inboxRouteContext.requiredContextType === "comment"
-        ? `comment-${inboxRouteContext.requiredContextId}`
-        : null);
+    const targetId = inboxRouteContextVisibleTargetId(inboxRouteContext);
     if (!targetId) return;
 
     let observer: IntersectionObserver | null = null;
