@@ -5,7 +5,12 @@ import type {
 } from "@/db/schema";
 
 export type InboxCollaborationSourceType = InboxCanonicalSourceType | "workspace_invite";
-export type InboxActivityType = InboxCanonicalActivityType;
+export type InboxPresentationOnlyActivityType =
+  | "reply"
+  | "review"
+  | "review_reply"
+  | "review_mention";
+export type InboxActivityType = InboxCanonicalActivityType | InboxPresentationOnlyActivityType;
 export type InboxPresentationContextType =
   | "mark"
   | "comment"

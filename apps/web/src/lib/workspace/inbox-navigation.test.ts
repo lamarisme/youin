@@ -9,6 +9,7 @@ import {
   inboxActivityIdsForViewedContext,
   inboxContextParamsForGroup,
   inboxContextParamsForEvent,
+  inboxRouteContextAcknowledgementAttempts,
   inboxRouteContextKey,
   inboxRouteContextMatchesMark,
   inboxRouteContextVisibleTargetId,
@@ -241,6 +242,47 @@ test("target-based acknowledgement is not inferred when the navigation contract 
   }));
 
   assert.equal(parsed ? inboxRouteContextVisibleTargetId(parsed) : "missing", null);
+});
+
+test("comment-targeted routes expand acknowledgement attempts without mixing contexts", () => {
+  const attempts = inboxRouteContextAcknowledgementAttempts({
+    activityId: mentionActivityId,
+    activityIds: [activityId, mentionActivityId],
+    requiredContextType: "mention",
+    requiredContextId: mentionId,
+    targetId: `comment-${commentId}`,
+  });
+
+  assert.deepEqual(attempts, [
+    {
+      activityId,
+      activityIds: [activityId],
+      requiredContextType: "mention",
+      requiredContextId: mentionId,
+      targetId: `comment-${commentId}`,
+    },
+    {
+      activityId: mentionActivityId,
+      activityIds: [mentionActivityId],
+      requiredContextType: "mention",
+      requiredContextId: mentionId,
+      targetId: `comment-${commentId}`,
+    },
+    {
+      activityId,
+      activityIds: [activityId],
+      requiredContextType: "comment",
+      requiredContextId: commentId,
+      targetId: `comment-${commentId}`,
+    },
+    {
+      activityId: mentionActivityId,
+      activityIds: [mentionActivityId],
+      requiredContextType: "comment",
+      requiredContextId: commentId,
+      targetId: `comment-${commentId}`,
+    },
+  ]);
 });
 
 test("mixed presentation groups do not leak non-Mark activity ids into Mark acknowledgement", () => {

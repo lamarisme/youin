@@ -45,11 +45,19 @@ export function classifyPresentationContext(
   }
 
   if (
-    activity.type === "comment" &&
+    (activity.type === "comment" || activity.type === "reply") &&
     activity.requiredContextType === "comment" &&
     activity.requiredContextId
   ) {
     return { type: "comment", id: activity.requiredContextId };
+  }
+
+  if (
+    activity.type === "mention" &&
+    activity.contextType === "mark_comment" &&
+    activity.contextId
+  ) {
+    return { type: "comment", id: activity.contextId };
   }
 
   if (activity.type === "invite" && activity.requiredContextId) {
@@ -57,7 +65,10 @@ export function classifyPresentationContext(
   }
 
   if (
-    activity.type === "review_link" &&
+    (activity.type === "review_link" ||
+      activity.type === "review" ||
+      activity.type === "review_reply" ||
+      activity.type === "review_mention") &&
     (activity.requiredContextType === "review" || activity.sourceType === "workspace_review_link")
   ) {
     return { type: "review", id: activity.requiredContextId || activity.sourceId };

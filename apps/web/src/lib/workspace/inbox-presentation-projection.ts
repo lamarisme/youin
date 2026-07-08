@@ -1,5 +1,9 @@
 import { classifyInboxActivityForPresentation } from "@/lib/workspace/inbox-presentation-classifier";
 import {
+  selectPresentationEvent,
+  sortInboxEventsForPresentation,
+} from "@/lib/workspace/inbox-presentation-priority";
+import {
   emptyInboxSnapshot,
   type InboxActivity,
   type InboxEvent,
@@ -53,11 +57,11 @@ export function buildPresentationInboxSnapshotFromActivities({
       existing.events.push(event);
       if (activity.createdAt > existing.latestAt) existing.latestAt = activity.createdAt;
       if (unread) existing.unreadCount += 1;
-      existing.representativeEvent = selectRepresentativeEvent(existing.events);
-      existing.activityIds = navigationActivityIds(
-        existing.events,
-        classification,
-      );
+      existing.representativeEvent = selectPresentationEvent({
+        events: existing.events,
+        contextType: existing.presentationContextType,
+      });
+      existing.activityIds = navigationActivityIds(existing.events, classification);
       existing.acknowledgementCandidateActivityIds = existing.activityIds;
       continue;
     }
@@ -93,11 +97,25 @@ export function buildPresentationInboxSnapshotFromActivities({
 
   const groups = Array.from(groupMap.values())
     .map((group) => {
-      const representativeEvent = selectRepresentativeEvent(group.events);
+      const representativeEvent = selectPresentationEvent({
+        events: group.events,
+        contextType: group.presentationContextType,
+      });
+      const activityIds = group.events.map((event) => event.id);
       return {
         ...group,
+        requiredContextType: representativeEvent.requiredContextType,
+        requiredContextId: representativeEvent.requiredContextId,
+        acknowledgementContextType: representativeEvent.requiredContextType,
+        acknowledgementContextId: representativeEvent.requiredContextId,
+        activityIds,
+        acknowledgementCandidateActivityIds: activityIds,
         representativeEvent,
-        events: sortEventsForPresentation(group.events, representativeEvent),
+        events: sortInboxEventsForPresentation({
+          events: group.events,
+          representativeEvent,
+          contextType: group.presentationContextType,
+        }),
       };
     })
     .sort((a, b) => {
@@ -124,39 +142,5 @@ function navigationActivityIds(
   if (classification.candidateActivityPolicy === "single_activity") {
     return [classification.activityId];
   }
-  if (
-    !classification.acknowledgementContextType ||
-    !classification.acknowledgementContextId
-  ) {
-    return [classification.activityId];
-  }
-  return events
-    .filter(
-      (event) =>
-        event.requiredContextType === classification.acknowledgementContextType &&
-        event.requiredContextId === classification.acknowledgementContextId,
-    )
-    .map((event) => event.id);
-}
-
-function selectRepresentativeEvent(events: InboxEvent[]): InboxEvent {
-  const unreadEvents = events.filter((event) => event.unread);
-  return sortEventsByRecency(unreadEvents.length ? unreadEvents : events)[0] ?? events[0];
-}
-
-function sortEventsForPresentation(
-  events: InboxEvent[],
-  representativeEvent: InboxEvent,
-): InboxEvent[] {
-  return [
-    representativeEvent,
-    ...sortEventsByRecency(events.filter((event) => event.id !== representativeEvent.id)),
-  ];
-}
-
-function sortEventsByRecency(events: InboxEvent[]): InboxEvent[] {
-  return [...events].sort((a, b) => {
-    if (a.createdAt === b.createdAt) return a.id.localeCompare(b.id);
-    return a.createdAt < b.createdAt ? 1 : -1;
-  });
+  return events.map((event) => event.id);
 }

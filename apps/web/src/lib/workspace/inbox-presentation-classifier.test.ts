@@ -77,7 +77,7 @@ test("classifies comment activities by required comment context", () => {
   });
 });
 
-test("keeps comment mentions standalone until exact acknowledgement semantics are broadened", () => {
+test("classifies comment mentions by containing Comment Context", () => {
   const result = classifyInboxActivityForPresentation(activity({
     id: mentionId,
     sourceType: "mention",
@@ -89,11 +89,13 @@ test("keeps comment mentions standalone until exact acknowledgement semantics ar
     requiredContextId: mentionId,
   }));
 
-  assert.equal(result.presentationContextType, "standalone");
-  assert.equal(result.presentationContextId, mentionId);
-  assert.equal(result.presentationGroupId, `standalone:${mentionId}`);
+  assert.equal(result.presentationContextType, "comment");
+  assert.equal(result.presentationContextId, commentId);
+  assert.equal(result.presentationGroupId, `comment:${commentId}`);
+  assert.equal(result.acknowledgementContextType, "mention");
+  assert.equal(result.acknowledgementContextId, mentionId);
   assert.equal(result.targetId, `comment-${commentId}`);
-  assert.equal(result.candidateActivityPolicy, "single_activity");
+  assert.equal(result.candidateActivityPolicy, "shared_context");
   assert.deepEqual(result.destination, {
     kind: "mark",
     markDisplayKey: "YIN-1",

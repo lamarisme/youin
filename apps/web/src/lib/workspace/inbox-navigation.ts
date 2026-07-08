@@ -89,6 +89,34 @@ export function inboxRouteContextVisibleTargetId(
   return context.targetId ?? null;
 }
 
+export function inboxRouteContextAcknowledgementAttempts(
+  context: InboxRouteContext,
+): InboxRouteContext[] {
+  const commentContextId = commentContextIdFromTargetId(context.targetId);
+  if (!commentContextId) return [context];
+
+  const viewedContexts = uniqueContextKeys([
+    {
+      requiredContextType: context.requiredContextType,
+      requiredContextId: context.requiredContextId,
+    },
+    {
+      requiredContextType: "comment",
+      requiredContextId: commentContextId,
+    },
+  ]);
+
+  return viewedContexts.flatMap((viewedContext) =>
+    context.activityIds.map((activityId) => ({
+      activityId,
+      activityIds: [activityId],
+      requiredContextType: viewedContext.requiredContextType,
+      requiredContextId: viewedContext.requiredContextId,
+      ...(context.targetId ? { targetId: context.targetId } : {}),
+    })),
+  );
+}
+
 export function parseInboxRouteContext(
   searchParams: {
     get: (name: string) => string | null;
@@ -139,4 +167,25 @@ function inboxTargetIdForEvent(event: InboxEvent): string | undefined {
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function commentContextIdFromTargetId(targetId: string | undefined): string | null {
+  const prefix = "comment-";
+  if (!targetId?.startsWith(prefix)) return null;
+  const commentId = targetId.slice(prefix.length).trim();
+  return commentId || null;
+}
+
+function uniqueContextKeys(
+  contexts: Array<Pick<InboxRouteContext, "requiredContextType" | "requiredContextId">>,
+): Array<Pick<InboxRouteContext, "requiredContextType" | "requiredContextId">> {
+  const seen = new Set<string>();
+  const result: Array<Pick<InboxRouteContext, "requiredContextType" | "requiredContextId">> = [];
+  for (const context of contexts) {
+    const key = `${context.requiredContextType}:${context.requiredContextId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(context);
+  }
+  return result;
 }

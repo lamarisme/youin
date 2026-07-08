@@ -72,6 +72,7 @@ import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markInboxActivitiesViewedAction } from "@/lib/workspace/actions";
 import {
+  inboxRouteContextAcknowledgementAttempts,
   inboxRouteContextKey,
   inboxRouteContextMatchesMark,
   inboxRouteContextVisibleTargetId,
@@ -355,12 +356,24 @@ export function MarkDetailView({
       const contextKey = inboxRouteContextKey(context);
       if (acknowledgedInboxContextRef.current === contextKey) return;
       acknowledgedInboxContextRef.current = contextKey;
+      let acknowledgedAnyActivity = false;
       try {
-        await markInboxActivitiesViewedAction({
-          activityIds: context.activityIds,
-          requiredContextType: context.requiredContextType,
-          requiredContextId: context.requiredContextId,
-        });
+        const attempts = inboxRouteContextAcknowledgementAttempts(context);
+        for (const attempt of attempts) {
+          try {
+            const result = await markInboxActivitiesViewedAction({
+              activityIds: attempt.activityIds,
+              requiredContextType: attempt.requiredContextType,
+              requiredContextId: attempt.requiredContextId,
+            });
+            acknowledgedAnyActivity ||= result.activityIds.length > 0;
+          } catch {
+            // Server-side context validation remains the source of truth.
+          }
+        }
+        if (!acknowledgedAnyActivity) {
+          throw new Error("No Inbox activities matched the viewed context.");
+        }
         if (workspaceId && userId) {
           await queryClient.invalidateQueries({
             queryKey: workspaceKeys.inbox(workspaceId, userId),
