@@ -3,15 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Check,
   CircleDashed,
   Import,
   Plus,
   Trash2,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
+import { useQuickAccessViews } from "@/components/dashboard/use-quick-access-views";
+import { useSavedViews } from "@/components/dashboard/use-saved-views";
 import { EmptyState } from "@/components/empty-state";
 import { PageContainer } from "@/components/page-container";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +45,6 @@ import {
   DEFAULT_WORKSPACE_VIEW_CONFIG,
   DEFAULT_WORKSPACE_VIEW_FILTERS,
 } from "@/lib/workspace/views";
-import { useSavedViews } from "@/components/dashboard/use-saved-views";
 
 import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
 import {
@@ -55,9 +57,10 @@ const LOCAL_SAVED_VIEWS_PREFIX = "youin:saved-views:";
 const LOCAL_IMPORT_DISMISSED_PREFIX = "youin:views-import-dismissed:";
 
 export function ViewsClient() {
-  const { workspace, workspaceId } = useWorkspaceData((s) => ({
+  const { workspace, workspaceId, userId } = useWorkspaceData((s) => ({
     workspace: s.workspace,
     workspaceId: s.workspaceId,
+    userId: s.userId,
   }));
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -83,6 +86,15 @@ export function ViewsClient() {
     useCreateWorkspaceViewMutation();
   const { mutateAsync: deleteView, isPending: isDeleting } =
     useDeleteWorkspaceViewMutation();
+  const stableViews = useMemo(
+    () => workspace.views.filter((view) => !isOptimisticId(view.id)),
+    [workspace.views],
+  );
+  const {
+    addQuickAccessView,
+    removeQuickAccessView,
+    isQuickAccessView,
+  } = useQuickAccessViews({ workspaceId, userId, views: stableViews });
 
   const showImport = localSavedViews.length > 0 && !dismissedImportState.dismissed;
 
@@ -183,6 +195,14 @@ export function ViewsClient() {
               <ViewRow
                 key={view.id}
                 view={view}
+                inQuickAccess={isQuickAccessView(view.id)}
+                onToggleQuickAccess={() => {
+                  if (isQuickAccessView(view.id)) {
+                    removeQuickAccessView(view.id);
+                  } else {
+                    addQuickAccessView(view.id);
+                  }
+                }}
                 onDelete={() => setDeleteCandidate(view)}
               />
             ))}
@@ -250,9 +270,13 @@ export function ViewsClient() {
 
 function ViewRow({
   view,
+  inQuickAccess,
+  onToggleQuickAccess,
   onDelete,
 }: {
   view: WorkspaceView;
+  inQuickAccess: boolean;
+  onToggleQuickAccess: () => void;
   onDelete: () => void;
 }) {
   const saving = isOptimisticId(view.id);
@@ -288,6 +312,28 @@ function ViewRow({
           {content}
         </Link>
       )}
+      <Button
+        type="button"
+        size="sm"
+        variant={inQuickAccess ? "outline" : "ghost"}
+        className="h-8 shrink-0 gap-1.5 rounded-md px-2 text-ui-xs text-ink-3 hover:text-ink"
+        onClick={onToggleQuickAccess}
+        disabled={saving}
+        aria-label={
+          inQuickAccess
+            ? `Remove ${view.name} from quick access`
+            : `Add ${view.name} to quick access`
+        }
+      >
+        {inQuickAccess ? (
+          <Check className="size-3.5" aria-hidden />
+        ) : (
+          <Plus className="size-3.5" aria-hidden />
+        )}
+        <span className="hidden sm:inline">
+          {inQuickAccess ? "In quick access" : "Quick access"}
+        </span>
+      </Button>
       <Button
         type="button"
         size="icon"

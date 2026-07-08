@@ -28,6 +28,7 @@ import {
 
 import { WorkspaceViewIcon, viewLayoutLabel } from "@/app/(workspace)/views/view-ui";
 import { useInbox } from "@/app/(workspace)/inbox/use-inbox";
+import { useQuickAccessViews } from "@/components/dashboard/use-quick-access-views";
 import { useTheme } from "@/components/theme-provider";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -53,7 +54,7 @@ interface PaletteCommand {
   id: string;
   title: string;
   subtitle?: string;
-  group: "actions" | "navigate" | "marks" | "views" | "projects" | "theme";
+  group: "actions" | "navigate" | "quickAccess" | "marks" | "views" | "projects" | "theme";
   keywords?: string[];
   shortcutId?: ProductShortcutId;
   icon?: LucideIcon;
@@ -179,6 +180,19 @@ function CommandPaletteDialog({
   const marks = useMemo(
     () => paletteIndex.data?.marks ?? [],
     [paletteIndex.data?.marks],
+  );
+  const stableViews = useMemo(
+    () => views.filter((view) => !isOptimisticId(view.id)),
+    [views],
+  );
+  const { quickAccessViews, quickAccessViewIds } = useQuickAccessViews({
+    workspaceId,
+    userId,
+    views: stableViews,
+  });
+  const quickAccessViewIdSet = useMemo(
+    () => new Set(quickAccessViewIds),
+    [quickAccessViewIds],
   );
 
   // G + letter uses the same destinations as sidebar and palette.
@@ -364,8 +378,18 @@ function CommandPaletteDialog({
             }),
           ),
       }));
-    const viewCommands: PaletteCommand[] = views
-      .filter((view) => !isOptimisticId(view.id))
+    const quickAccessCommands: PaletteCommand[] = quickAccessViews
+      .map((view) => ({
+        id: `quick-access-view-${view.id}`,
+        title: view.name,
+        subtitle: `${viewLayoutLabel(view.layout)} view`,
+        group: "quickAccess" as const,
+        keywords: ["quick", "access", "view", view.layout],
+        iconNode: <WorkspaceViewIcon view={view} className="size-4 shrink-0 text-ink-3" />,
+        run: () => router.push(`/views/${view.id}`),
+      }));
+    const viewCommands: PaletteCommand[] = stableViews
+      .filter((view) => !quickAccessViewIdSet.has(view.id))
       .map((view) => ({
         id: `view-${view.id}`,
         title: view.name,
@@ -384,8 +408,21 @@ function CommandPaletteDialog({
       icon: CircleDashed,
       run: () => router.push(markHref(mark.displayKey, new URLSearchParams())),
     }));
-    return [...base, ...markCommands, ...viewCommands, ...projectCommands];
-  }, [router, pathname, searchParams, theme, toggleTheme, projects, views, marks, inbox.unreadCount, t]);
+    return [...base, ...quickAccessCommands, ...markCommands, ...viewCommands, ...projectCommands];
+  }, [
+    router,
+    pathname,
+    searchParams,
+    theme,
+    toggleTheme,
+    projects,
+    stableViews,
+    quickAccessViews,
+    quickAccessViewIdSet,
+    marks,
+    inbox.unreadCount,
+    t,
+  ]);
 
   const onSelect = useCallback(
     (id: string) => {
@@ -430,7 +467,7 @@ function CommandPaletteDialog({
           {t("empty")}
         </Command.Empty>
 
-        {(["actions", "navigate", "marks", "views", "projects", "theme"] as const).map((groupId) => {
+        {(["actions", "navigate", "quickAccess", "marks", "views", "projects", "theme"] as const).map((groupId) => {
           const items = allCommands.filter((c) => c.group === groupId);
           if (items.length === 0) return null;
           return (

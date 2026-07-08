@@ -18,6 +18,7 @@ import {
   Search,
   Sun,
   User,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useMemo, useState, type MouseEvent } from "react";
@@ -43,6 +44,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { useQuickAccessViews } from "@/components/dashboard/use-quick-access-views";
 import type { WorkspaceView } from "@/lib/collab-types";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { isOptimisticId } from "@/lib/optimistic-id";
@@ -117,6 +119,16 @@ export function AppSidebar() {
     inboxSnapshot: s.inboxSnapshot,
     loadedAt: s.loadedAt,
   }));
+  const stableViews = useMemo(
+    () => views.filter((view) => !isOptimisticId(view.id)),
+    [views],
+  );
+  const {
+    quickAccessViews,
+    quickAccessCandidates,
+    addQuickAccessView,
+    removeQuickAccessView,
+  } = useQuickAccessViews({ workspaceId, userId, views: stableViews });
 
   const inbox = useInbox(
     workspaceId,
@@ -285,9 +297,13 @@ export function AppSidebar() {
       </nav>
 
       <SidebarViewsSection
-        views={views.filter((view) => !isOptimisticId(view.id))}
+        views={stableViews}
+        quickAccessViews={quickAccessViews}
+        quickAccessCandidates={quickAccessCandidates}
         pathname={pathname}
         collapsed={collapsed}
+        onAddQuickAccess={addQuickAccessView}
+        onRemoveQuickAccess={removeQuickAccessView}
       />
 
       {/* Bottom section, desktop */}
@@ -451,15 +467,27 @@ function SidebarBadge({
 
 function SidebarViewsSection({
   views,
+  quickAccessViews,
+  quickAccessCandidates,
   pathname,
   collapsed,
+  onAddQuickAccess,
+  onRemoveQuickAccess,
 }: {
   views: WorkspaceView[];
+  quickAccessViews: WorkspaceView[];
+  quickAccessCandidates: WorkspaceView[];
   pathname: string;
   collapsed: boolean;
+  onAddQuickAccess: (viewId: string) => void;
+  onRemoveQuickAccess: (viewId: string) => void;
 }) {
-  const hasViews = views.length > 0;
-  const actionLabel = hasViews ? "Manage views" : "Create view";
+  const quickAccessViewIdSet = new Set(quickAccessViews.map((view) => view.id));
+  const regularViews = views.filter((view) => !quickAccessViewIdSet.has(view.id));
+  const hasQuickAccessViews = quickAccessViews.length > 0;
+  const hasViews = regularViews.length > 0;
+  const hasAnyViews = views.length > 0;
+  const actionLabel = hasAnyViews ? "Manage views" : "Create view";
 
   return (
     <section
@@ -470,36 +498,86 @@ function SidebarViewsSection({
       aria-label="Views"
     >
       {collapsed ? (
-        <div className="space-y-0.5">
-          <p className="sr-only">Views</p>
-          {views.map((view) => (
-            <SidebarViewIconLink
-              key={view.id}
-              view={view}
-              active={pathname === `/views/${view.id}`}
-            />
-          ))}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/views"
-                prefetch={true}
-                aria-label={actionLabel}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
-                  pathname === "/views" && "bg-paper text-ink",
-                  SIDEBAR_FOCUS,
-                )}
-              >
-                <Plus className="size-[1rem]" aria-hidden />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">{actionLabel}</TooltipContent>
-          </Tooltip>
+        <div className="space-y-3">
+          {hasAnyViews ? (
+            <div className="space-y-0.5">
+              <p className="sr-only">Quick access views</p>
+              {quickAccessViews.map((view) => (
+                <SidebarViewIconLink
+                  key={view.id}
+                  view={view}
+                  active={pathname === `/views/${view.id}`}
+                  label={`${view.name} quick access view`}
+                />
+              ))}
+              <QuickAccessViewAddMenu
+                collapsed
+                candidates={quickAccessCandidates}
+                onAddQuickAccess={onAddQuickAccess}
+              />
+            </div>
+          ) : null}
+          <div className="space-y-0.5">
+            <p className="sr-only">Views</p>
+            {regularViews.map((view) => (
+              <SidebarViewIconLink
+                key={view.id}
+                view={view}
+                active={pathname === `/views/${view.id}`}
+              />
+            ))}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/views"
+                  prefetch={true}
+                  aria-label={actionLabel}
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-paper-3/80 hover:text-ink",
+                    pathname === "/views" && "bg-paper text-ink",
+                    SIDEBAR_FOCUS,
+                  )}
+                >
+                  <Plus className="size-[1rem]" aria-hidden />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">{actionLabel}</TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       ) : (
         <>
-          <div className="flex h-8 items-center justify-between px-2">
+          {hasAnyViews ? (
+            <div className="space-y-0.5">
+              <div className="flex h-8 items-center justify-between px-2">
+                <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
+                  Quick access
+                </p>
+                <QuickAccessViewAddMenu
+                  candidates={quickAccessCandidates}
+                  onAddQuickAccess={onAddQuickAccess}
+                />
+              </div>
+              {hasQuickAccessViews ? (
+                quickAccessViews.map((view) => (
+                  <SidebarQuickAccessViewLink
+                    key={view.id}
+                    view={view}
+                    active={pathname === `/views/${view.id}`}
+                    onRemove={() => onRemoveQuickAccess(view.id)}
+                  />
+                ))
+              ) : (
+                <QuickAccessViewAddMenu
+                  candidates={quickAccessCandidates}
+                  onAddQuickAccess={onAddQuickAccess}
+                  variant="row"
+                />
+              )}
+            </div>
+          ) : null}
+
+          <div className={cn("flex h-8 items-center justify-between px-2", hasAnyViews && "mt-3")}>
             <p className="text-ui-xs font-medium uppercase tracking-[0.08em] text-ink-3">
               Views
             </p>
@@ -522,7 +600,7 @@ function SidebarViewsSection({
           </div>
           <div className="space-y-0.5">
             {hasViews ? (
-              views.map((view) => (
+              regularViews.map((view) => (
                 <SidebarViewLink
                   key={view.id}
                   view={view}
@@ -538,8 +616,14 @@ function SidebarViewsSection({
                   SIDEBAR_FOCUS,
                 )}
               >
-                <Plus className="size-[1.05rem] shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">Create view</span>
+                {hasAnyViews ? (
+                  <Folder className="size-[1.05rem] shrink-0" aria-hidden />
+                ) : (
+                  <Plus className="size-[1.05rem] shrink-0" aria-hidden />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  {hasAnyViews ? "Manage views" : "Create view"}
+                </span>
               </Link>
             )}
           </div>
@@ -552,9 +636,11 @@ function SidebarViewsSection({
 function SidebarViewIconLink({
   view,
   active,
+  label,
 }: {
   view: WorkspaceView;
   active: boolean;
+  label?: string;
 }) {
   return (
     <Tooltip>
@@ -563,7 +649,7 @@ function SidebarViewIconLink({
           href={`/views/${view.id}`}
           prefetch={true}
           aria-current={active ? "page" : undefined}
-          aria-label={view.name}
+          aria-label={label ?? view.name}
           className={cn(
             "flex size-8 items-center justify-center rounded-md transition-colors",
             active ? "bg-paper text-ink" : "text-ink-3 hover:bg-paper-3/80 hover:text-ink",
@@ -573,8 +659,123 @@ function SidebarViewIconLink({
           <WorkspaceViewIcon view={view} className="size-[1rem]" />
         </Link>
       </TooltipTrigger>
-      <TooltipContent side="right">{view.name}</TooltipContent>
+      <TooltipContent side="right">{label ?? view.name}</TooltipContent>
     </Tooltip>
+  );
+}
+
+function QuickAccessViewAddMenu({
+  candidates,
+  onAddQuickAccess,
+  collapsed = false,
+  variant = "button",
+}: {
+  candidates: WorkspaceView[];
+  onAddQuickAccess: (viewId: string) => void;
+  collapsed?: boolean;
+  variant?: "button" | "row";
+}) {
+  const hasCandidates = candidates.length > 0;
+  const label = hasCandidates ? "Add view to quick access" : "All views added";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          disabled={!hasCandidates}
+          className={cn(
+            "transition-colors disabled:pointer-events-none disabled:opacity-45",
+            SIDEBAR_FOCUS,
+            variant === "row"
+              ? "group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-ui-sm text-ink-3 hover:bg-paper-3/80 hover:text-ink"
+              : collapsed
+                ? "flex size-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3/80 hover:text-ink"
+                : "flex size-7 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3/80 hover:text-ink",
+          )}
+        >
+          {variant === "row" ? (
+            <>
+              <Plus className="size-[1.05rem] shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-left">Add view to quick access</span>
+            </>
+          ) : (
+            <Plus className={collapsed ? "size-[1rem]" : "size-4"} aria-hidden />
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align={collapsed ? "start" : "end"}
+        side={collapsed ? "right" : "bottom"}
+        className="w-56"
+      >
+        <DropdownMenuLabel>Quick access</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {hasCandidates ? (
+          candidates.map((view) => (
+            <DropdownMenuItem key={view.id} onSelect={() => onAddQuickAccess(view.id)}>
+              <WorkspaceViewIcon view={view} className="size-4 text-ink-3" />
+              <span className="min-w-0 flex-1 truncate">{view.name}</span>
+            </DropdownMenuItem>
+          ))
+        ) : (
+          <DropdownMenuItem disabled>All views added</DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function SidebarQuickAccessViewLink({
+  view,
+  active,
+  onRemove,
+}: {
+  view: WorkspaceView;
+  active: boolean;
+  onRemove: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "group flex h-9 w-full items-center rounded-md text-ui-sm transition-colors",
+        active ? "bg-paper font-medium text-ink" : "text-ink-2 hover:bg-paper-3/80 hover:text-ink",
+      )}
+    >
+      <Link
+        href={`/views/${view.id}`}
+        prefetch={true}
+        aria-current={active ? "page" : undefined}
+        title={view.name}
+        className={cn(
+          "flex min-w-0 flex-1 self-stretch items-center gap-2.5 rounded-l-md pl-2.5 pr-1",
+          SIDEBAR_FOCUS,
+        )}
+      >
+        <WorkspaceViewIcon
+          view={view}
+          className={cn(
+            "size-[1.05rem] shrink-0 transition-colors",
+            active ? "text-ink" : "text-ink-3 group-hover:text-ink-2",
+          )}
+        />
+        <span className="min-w-0 flex-1 truncate">{view.name}</span>
+      </Link>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${view.name} from quick access`}
+        title="Remove from quick access"
+        className={cn(
+          "mr-1 flex size-6 shrink-0 items-center justify-center rounded-md text-ink-3 opacity-0 transition-colors hover:bg-paper-3/80 hover:text-ink group-hover:opacity-100 focus-visible:opacity-100",
+          SIDEBAR_FOCUS,
+        )}
+      >
+        <X className="size-3.5" aria-hidden />
+      </button>
+    </div>
   );
 }
 
