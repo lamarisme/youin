@@ -1,5 +1,15 @@
 # Inbox Read Implementation Plan
 
+**Status:** Historical migration plan
+
+This document is retained to explain how the canonical Inbox Read model was planned and rolled out. It is not the current runtime source of truth.
+
+For current behavior and ownership, use:
+
+- `READ_UNREAD_BEHAVIOR.md`
+- `INBOX_READ_ARCHITECTURE.md`
+- `INBOX_GROUPING_V2_ARCHITECTURE.md`
+
 Source documents:
 
 - `docs/engineering/inbox/READ_UNREAD_BEHAVIOR.md`

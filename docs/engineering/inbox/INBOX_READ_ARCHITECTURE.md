@@ -1,10 +1,17 @@
 # Inbox Read Architecture
 
-**Status:** Design Proposal
+**Status:** Historical architecture record
 
 **Product source of truth:** `docs/engineering/inbox/READ_UNREAD_BEHAVIOR.md`
 
-This document describes an engineering architecture that can implement the read and unread behavior defined by the product document. It does not redefine product behavior.
+This document records the canonical Inbox Read architecture decision and the migration reasoning that led to the current implementation.
+
+For current runtime behavior, read this document together with:
+
+- `READ_UNREAD_BEHAVIOR.md`
+- `INBOX_GROUPING_V2_ARCHITECTURE.md`
+
+Sections that describe "Current Architecture" reflect the pre-migration system at the time this architecture was written. They are retained for context and should not be treated as the current runtime source of truth.
 
 ---
 

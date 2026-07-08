@@ -71,7 +71,14 @@ import { MarkHistory } from "./mark-history";
 import { MarkPageOpenButton } from "./mark-page-open";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { markInboxActivitiesViewedAction } from "@/lib/workspace/actions";
-import { parseInboxRouteContext, type InboxRouteContext } from "@/lib/workspace/inbox-navigation";
+import {
+  inboxRouteContextAcknowledgementAttempts,
+  inboxRouteContextKey,
+  inboxRouteContextMatchesMark,
+  inboxRouteContextVisibleTargetId,
+  parseInboxRouteContext,
+  type InboxRouteContext,
+} from "@/lib/workspace/inbox-navigation";
 import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { useDashboardFilters } from "./use-dashboard-filters";
 import { useVisibleDashboardMarks } from "./use-visible-dashboard-marks";
@@ -346,15 +353,27 @@ export function MarkDetailView({
 
   const acknowledgeInboxContext = useCallback(
     async (context: InboxRouteContext) => {
-      const contextKey = `${context.activityIds.join(",")}:${context.requiredContextType}:${context.requiredContextId}`;
+      const contextKey = inboxRouteContextKey(context);
       if (acknowledgedInboxContextRef.current === contextKey) return;
       acknowledgedInboxContextRef.current = contextKey;
+      let acknowledgedAnyActivity = false;
       try {
-        await markInboxActivitiesViewedAction({
-          activityIds: context.activityIds,
-          requiredContextType: context.requiredContextType,
-          requiredContextId: context.requiredContextId,
-        });
+        const attempts = inboxRouteContextAcknowledgementAttempts(context);
+        for (const attempt of attempts) {
+          try {
+            const result = await markInboxActivitiesViewedAction({
+              activityIds: attempt.activityIds,
+              requiredContextType: attempt.requiredContextType,
+              requiredContextId: attempt.requiredContextId,
+            });
+            acknowledgedAnyActivity ||= result.activityIds.length > 0;
+          } catch {
+            // Server-side context validation remains the source of truth.
+          }
+        }
+        if (!acknowledgedAnyActivity) {
+          throw new Error("No Inbox activities matched the viewed context.");
+        }
         if (workspaceId && userId) {
           await queryClient.invalidateQueries({
             queryKey: workspaceKeys.inbox(workspaceId, userId),
@@ -369,8 +388,7 @@ export function MarkDetailView({
 
   useEffect(() => {
     if (!inboxRouteContext) return;
-    if (inboxRouteContext.requiredContextType !== "mark") return;
-    if (inboxRouteContext.requiredContextId !== mark.id) return;
+    if (!inboxRouteContextMatchesMark(inboxRouteContext, mark.id)) return;
     if (!detailLayoutRef.current) return;
     const frame = window.requestAnimationFrame(() => {
       void acknowledgeInboxContext(inboxRouteContext);
@@ -380,17 +398,7 @@ export function MarkDetailView({
 
   useEffect(() => {
     if (!inboxRouteContext) return;
-    if (
-      inboxRouteContext.requiredContextType !== "comment" &&
-      inboxRouteContext.requiredContextType !== "mention"
-    ) {
-      return;
-    }
-    const targetId =
-      inboxRouteContext.targetId ??
-      (inboxRouteContext.requiredContextType === "comment"
-        ? `comment-${inboxRouteContext.requiredContextId}`
-        : null);
+    const targetId = inboxRouteContextVisibleTargetId(inboxRouteContext);
     if (!targetId) return;
 
     let observer: IntersectionObserver | null = null;
