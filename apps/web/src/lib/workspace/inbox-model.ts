@@ -6,7 +6,33 @@ import type {
 
 export type InboxCollaborationSourceType = InboxCanonicalSourceType | "workspace_invite";
 export type InboxActivityType = InboxCanonicalActivityType;
-export type InboxGroupKind = "mark" | "workspace";
+export type InboxPresentationContextType =
+  | "mark"
+  | "comment"
+  | "mark_description"
+  | "review"
+  | "invite"
+  | "standalone";
+export type InboxGroupKind = InboxPresentationContextType | "workspace";
+export type InboxAcknowledgementCandidatePolicy = "shared_context" | "single_activity";
+
+export type InboxPresentationDestination =
+  | { kind: "mark"; markDisplayKey: string; targetId?: string }
+  | { kind: "href"; href: string; targetId?: string }
+  | { kind: "standalone"; targetId?: string };
+
+export interface InboxPresentationClassification {
+  activityId: string;
+  presentationGroupId: string;
+  presentationContextType: InboxPresentationContextType;
+  presentationContextId: string;
+  groupKind: InboxGroupKind;
+  destination: InboxPresentationDestination;
+  acknowledgementContextType?: InboxRequiredContextType;
+  acknowledgementContextId?: string;
+  targetId?: string;
+  candidateActivityPolicy: InboxAcknowledgementCandidatePolicy;
+}
 
 export interface InboxPerson {
   id: string;
@@ -63,6 +89,14 @@ export interface InboxEvent {
 export interface InboxGroup {
   groupId: string;
   kind: InboxGroupKind;
+  presentationContextType?: InboxPresentationContextType;
+  presentationContextId?: string;
+  destination?: InboxPresentationDestination;
+  acknowledgementContextType?: InboxRequiredContextType;
+  acknowledgementContextId?: string;
+  targetId?: string;
+  acknowledgementCandidateActivityIds?: string[];
+  representativeEvent?: InboxEvent;
   markId?: string;
   markDisplayKey?: string;
   markTitle: string;
