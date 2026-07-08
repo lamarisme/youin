@@ -8,6 +8,7 @@ export const INBOX_TARGET_ID_PARAM = "inboxTargetId";
 
 export type InboxRouteContext = {
   activityId: string;
+  activityIds: string[];
   requiredContextType: InboxRequiredContextType;
   requiredContextId: string;
   targetId?: string;
@@ -21,10 +22,31 @@ const REQUIRED_CONTEXT_TYPES = new Set<InboxRequiredContextType>([
   "invite",
 ]);
 
-export function inboxContextParamsForEvent(event: InboxEvent): URLSearchParams {
+export function inboxActivityIdsForViewedContext(
+  event: InboxEvent,
+  candidateEvents: readonly InboxEvent[] = [event],
+): string[] {
+  if (!event.requiredContextType || !event.requiredContextId) return [];
+  const matchingIds = candidateEvents
+    .filter(
+      (candidate) =>
+        candidate.requiredContextType === event.requiredContextType &&
+        candidate.requiredContextId === event.requiredContextId,
+    )
+    .map((candidate) => candidate.id);
+
+  return unique([event.id, ...matchingIds]);
+}
+
+export function inboxContextParamsForEvent(
+  event: InboxEvent,
+  candidateEvents: readonly InboxEvent[] = [event],
+): URLSearchParams {
   const params = new URLSearchParams();
   if (!event.requiredContextType || !event.requiredContextId) return params;
-  params.set(INBOX_ACTIVITY_PARAM, event.id);
+  for (const activityId of inboxActivityIdsForViewedContext(event, candidateEvents)) {
+    params.append(INBOX_ACTIVITY_PARAM, activityId);
+  }
   params.set(INBOX_CONTEXT_TYPE_PARAM, event.requiredContextType);
   params.set(INBOX_CONTEXT_ID_PARAM, event.requiredContextId);
   const targetId = inboxTargetIdForEvent(event);
@@ -33,16 +55,26 @@ export function inboxContextParamsForEvent(event: InboxEvent): URLSearchParams {
 }
 
 export function parseInboxRouteContext(
-  searchParams: { get: (name: string) => string | null },
+  searchParams: {
+    get: (name: string) => string | null;
+    getAll?: (name: string) => string[];
+  },
 ): InboxRouteContext | null {
-  const activityId = searchParams.get(INBOX_ACTIVITY_PARAM)?.trim();
+  const activityIds = unique(
+    (searchParams.getAll?.(INBOX_ACTIVITY_PARAM) ?? [
+      searchParams.get(INBOX_ACTIVITY_PARAM) ?? "",
+    ])
+      .map((activityId) => activityId.trim())
+      .filter(Boolean),
+  );
   const requiredContextType = searchParams.get(INBOX_CONTEXT_TYPE_PARAM)?.trim();
   const requiredContextId = searchParams.get(INBOX_CONTEXT_ID_PARAM)?.trim();
   const targetId = searchParams.get(INBOX_TARGET_ID_PARAM)?.trim();
-  if (!activityId || !requiredContextType || !requiredContextId) return null;
+  if (!activityIds.length || !requiredContextType || !requiredContextId) return null;
   if (!isInboxRequiredContextType(requiredContextType)) return null;
   return {
-    activityId,
+    activityId: activityIds[0],
+    activityIds,
     requiredContextType,
     requiredContextId,
     ...(targetId ? { targetId } : {}),
@@ -68,4 +100,8 @@ function inboxTargetIdForEvent(event: InboxEvent): string | undefined {
     }
   }
   return undefined;
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values));
 }

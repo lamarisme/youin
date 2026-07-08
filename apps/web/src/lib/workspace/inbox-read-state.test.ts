@@ -44,6 +44,28 @@ test("validateContextViewedActivities accepts matching recipient activities", ()
   );
 });
 
+test("validateContextViewedActivities accepts multiple activities for one viewed context", () => {
+  assert.doesNotThrow(() =>
+    validateContextViewedActivities({
+      requestedActivityIds: [firstActivityId, secondActivityId],
+      activities: [
+        {
+          id: firstActivityId,
+          requiredContextType: "mark",
+          requiredContextId: markId,
+        },
+        {
+          id: secondActivityId,
+          requiredContextType: "mark",
+          requiredContextId: markId,
+        },
+      ],
+      requiredContextType: "mark",
+      requiredContextId: markId,
+    }),
+  );
+});
+
 test("validateContextViewedActivities rejects missing or mismatched contexts", () => {
   assert.throws(
     () =>

@@ -418,7 +418,7 @@ function inboxEventHref(group: InboxGroup, event: InboxEvent): string {
   if (event.targetHref) return event.targetHref;
   if (group.targetHref) return group.targetHref;
   if (!group.markDisplayKey) return accountHref("team");
-  const params = inboxContextParamsForEvent(event);
+  const params = inboxContextParamsForEvent(event, group.events);
   const href = markHref(group.markDisplayKey, params);
   if (event.type === "mention" && event.contextType === "mark_comment" && event.contextId) {
     return `${href}#comment-${encodeURIComponent(event.contextId)}`;

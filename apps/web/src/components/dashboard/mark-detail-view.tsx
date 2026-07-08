@@ -346,12 +346,12 @@ export function MarkDetailView({
 
   const acknowledgeInboxContext = useCallback(
     async (context: InboxRouteContext) => {
-      const contextKey = `${context.activityId}:${context.requiredContextType}:${context.requiredContextId}`;
+      const contextKey = `${context.activityIds.join(",")}:${context.requiredContextType}:${context.requiredContextId}`;
       if (acknowledgedInboxContextRef.current === contextKey) return;
       acknowledgedInboxContextRef.current = contextKey;
       try {
         await markInboxActivitiesViewedAction({
-          activityIds: [context.activityId],
+          activityIds: context.activityIds,
           requiredContextType: context.requiredContextType,
           requiredContextId: context.requiredContextId,
         });
