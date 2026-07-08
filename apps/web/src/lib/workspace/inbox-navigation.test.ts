@@ -163,6 +163,14 @@ test("inboxContextParamsForGroup encodes group-owned navigation metadata", () =>
   ]);
 });
 
+test("inboxContextParamsForGroup omits navigation metadata for deleted sources", () => {
+  const params = inboxContextParamsForGroup(group({
+    sourceState: "deleted",
+  }));
+
+  assert.equal(params.toString(), "");
+});
+
 test("Mark Context group carries assignment, status, and priority activities together", () => {
   const params = inboxContextParamsForGroup(group({
     activityIds: [assignmentActivityId, activityId, priorityActivityId],

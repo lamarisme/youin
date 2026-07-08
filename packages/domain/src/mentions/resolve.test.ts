@@ -127,7 +127,7 @@ test("detects mention removal during an edit", () => {
   assert.deepEqual(plan.notificationTargets, []);
 });
 
-test("treats changed offsets as persistence changes without re-notifying existing users", () => {
+test("treats changed offsets as the same logical mention", () => {
   const previous: PreviousResolvedMention = {
     userId: "user_omar",
     username: "omar",
@@ -140,11 +140,29 @@ test("treats changed offsets as persistence changes without re-notifying existin
     previousMentions: [previous],
   });
 
+  assert.deepEqual(plan.mentionsToCreate, []);
+  assert.deepEqual(plan.mentionsToDelete, []);
+  assert.deepEqual(plan.notificationTargets, []);
+});
+
+test("treats changed mention targets as a new logical mention", () => {
+  const previous: PreviousResolvedMention = {
+    userId: "user_omar",
+    username: "omar",
+    start: 6,
+    end: 11,
+  };
+  const plan = resolveMentions({
+    text: "Hello @sara",
+    members: MEMBERS,
+    previousMentions: [previous],
+  });
+
   assert.deepEqual(plan.mentionsToCreate, [
-    { userId: "user_omar", username: "omar", start: 4, end: 9 },
+    { userId: "user_sara", username: "sara", start: 6, end: 11 },
   ]);
   assert.deepEqual(plan.mentionsToDelete, [previous]);
-  assert.deepEqual(plan.notificationTargets, []);
+  assert.deepEqual(plan.notificationTargets, ["user_sara"]);
 });
 
 test("empty text removes previous mentions", () => {

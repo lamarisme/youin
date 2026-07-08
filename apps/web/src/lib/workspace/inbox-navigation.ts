@@ -56,6 +56,7 @@ export function inboxContextParamsForEvent(
 
 export function inboxContextParamsForGroup(group: InboxGroup): URLSearchParams {
   const params = new URLSearchParams();
+  if (group.sourceState === "deleted") return params;
   if (!group.requiredContextType || !group.requiredContextId) return params;
   for (const activityId of group.activityIds ?? []) {
     params.append(INBOX_ACTIVITY_PARAM, activityId);

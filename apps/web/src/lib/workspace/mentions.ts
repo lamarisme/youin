@@ -26,6 +26,10 @@ export interface SyncMentionsForSourceInput extends MentionSource {
   markId?: string | null;
 }
 
+type PreviousMentionRow = PreviousResolvedMention & {
+  id: string;
+};
+
 export async function loadWorkspaceMentionMembers(
   tx: WorkspaceTransaction,
   workspaceId: string,
@@ -47,9 +51,10 @@ export async function loadWorkspaceMentionMembers(
 export async function loadPreviousMentions(
   tx: WorkspaceTransaction,
   source: MentionSource,
-): Promise<PreviousResolvedMention[]> {
+): Promise<PreviousMentionRow[]> {
   const rows = await tx
     .select({
+      id: mentions.id,
       userId: mentions.mentionedUserId,
       start: mentions.startIndex,
       end: mentions.endIndex,
@@ -65,6 +70,7 @@ export async function loadPreviousMentions(
     .orderBy(asc(mentions.startIndex), asc(mentions.endIndex));
 
   return rows.map((row) => ({
+    id: row.id,
     userId: row.userId,
     start: row.start,
     end: row.end,
@@ -84,6 +90,7 @@ export async function syncMentionsForSource(
     previousMentions,
     currentUserId: input.actorUserId,
   });
+  const previousByUserId = new Map(previousMentions.map((mention) => [mention.userId, mention]));
 
   for (const mention of plan.mentionsToDelete) {
     await tx
@@ -116,6 +123,19 @@ export async function syncMentionsForSource(
         })),
       )
       .onConflictDoNothing();
+  }
+
+  for (const mention of plan.resolvedMentions) {
+    const previous = previousByUserId.get(mention.userId);
+    if (!previous) continue;
+    if (previous.start === mention.start && previous.end === mention.end) continue;
+    await tx
+      .update(mentions)
+      .set({
+        startIndex: mention.start,
+        endIndex: mention.end,
+      })
+      .where(eq(mentions.id, previous.id));
   }
 
   return plan;

@@ -217,6 +217,41 @@ test("preserves activity-based unread counts independent of group count", () => 
   );
 });
 
+test("keeps deleted source activities as passive history", () => {
+  const deletedMention = commentMentionActivity({
+    sourceState: "deleted",
+  });
+
+  const snapshot = buildPresentationInboxSnapshotFromActivities({
+    activities: [deletedMention],
+    readActivityIds: [],
+  });
+
+  assert.equal(snapshot.totalEvents, 1);
+  assert.equal(snapshot.unreadCount, 0);
+  assert.equal(snapshot.groups.length, 1);
+  assert.equal(snapshot.groups[0].sourceState, "deleted");
+  assert.equal(snapshot.groups[0].unreadCount, 0);
+  assert.equal(snapshot.groups[0].events[0].unread, false);
+  assert.deepEqual(snapshot.groups[0].activityIds, [deletedMention.id]);
+  assert.deepEqual(snapshot.groups[0].acknowledgementCandidateActivityIds, []);
+});
+
+test("omits obsolete mention activities from the active Inbox", () => {
+  const obsoleteMention = commentMentionActivity({
+    sourceState: "obsolete",
+  });
+
+  const snapshot = buildPresentationInboxSnapshotFromActivities({
+    activities: [obsoleteMention],
+    readActivityIds: [],
+  });
+
+  assert.equal(snapshot.totalEvents, 0);
+  assert.equal(snapshot.unreadCount, 0);
+  assert.deepEqual(snapshot.groups, []);
+});
+
 test("selects the newest unread event as representative", () => {
   const newerRead = activity({
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",

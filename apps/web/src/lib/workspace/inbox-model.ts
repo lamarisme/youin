@@ -20,6 +20,7 @@ export type InboxPresentationContextType =
   | "standalone";
 export type InboxGroupKind = InboxPresentationContextType | "workspace";
 export type InboxAcknowledgementCandidatePolicy = "shared_context" | "single_activity";
+export type InboxSourceState = "active" | "deleted" | "obsolete";
 
 export type InboxPresentationDestination =
   | { kind: "mark"; markDisplayKey: string; targetId?: string }
@@ -66,6 +67,7 @@ export interface InboxActivity {
   fromValue?: string;
   toValue?: string;
   preview?: string;
+  sourceState?: InboxSourceState;
   createdAt: string;
 }
 
@@ -87,6 +89,7 @@ export interface InboxEvent {
   requiredContextType?: InboxRequiredContextType;
   requiredContextId?: string;
   preview?: string;
+  sourceState?: InboxSourceState;
   createdAt: string;
   unread: boolean;
 }
@@ -110,6 +113,7 @@ export interface InboxGroup {
   markTitle: string;
   projectId?: string;
   targetHref?: string;
+  sourceState?: InboxSourceState;
   events: InboxEvent[];
   latestAt: string;
   unreadCount: number;

@@ -12,10 +12,10 @@ function normalizedUsername(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function mentionOccurrenceKey(
-  mention: Pick<ResolvedMention | PreviousResolvedMention, "userId" | "start" | "end">,
+function mentionIdentityKey(
+  mention: Pick<ResolvedMention | PreviousResolvedMention, "userId">,
 ): string {
-  return `${mention.userId}:${mention.start}:${mention.end}`;
+  return mention.userId;
 }
 
 function memberLookup(
@@ -67,15 +67,15 @@ export function resolveMentions(input: ResolveMentionsInput): MentionResolutionP
   }
 
   const previousMentions = [...(input.previousMentions ?? [])];
-  const previousKeys = new Set(previousMentions.map(mentionOccurrenceKey));
-  const nextKeys = new Set(resolvedMentions.map(mentionOccurrenceKey));
+  const previousKeys = new Set(previousMentions.map(mentionIdentityKey));
+  const nextKeys = new Set(resolvedMentions.map(mentionIdentityKey));
   const previousUserIds = new Set(previousMentions.map((mention) => mention.userId));
 
   const mentionsToCreate = resolvedMentions.filter(
-    (mention) => !previousKeys.has(mentionOccurrenceKey(mention)),
+    (mention) => !previousKeys.has(mentionIdentityKey(mention)),
   );
   const mentionsToDelete = previousMentions.filter(
-    (mention) => !nextKeys.has(mentionOccurrenceKey(mention)),
+    (mention) => !nextKeys.has(mentionIdentityKey(mention)),
   );
   const notificationTargets = resolvedMentions
     .filter((mention) => !previousUserIds.has(mention.userId))

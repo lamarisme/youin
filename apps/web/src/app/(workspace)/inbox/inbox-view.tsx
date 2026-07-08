@@ -338,20 +338,72 @@ function InboxGroupRow({
   const top = group.events[0];
   const extras = group.events.length - 1;
   const eventSummary = describeEvent(top, members);
+  const isDeletedSource = group.sourceState === "deleted";
   const isInvitationAccepted = top.type === "invite" && top.fromValue === "accepted";
-  const preview = top.type === "mention" ? top.preview : undefined;
+  const preview = !isDeletedSource && top.type === "mention" ? top.preview : undefined;
   const actorLabel = top.actorUsername || top.actorName;
   const actorParts = rosterDisplayParts(top.actorName, top.actorUsername, displayNamePreference);
   const title = isInvitationAccepted ? actorParts.primary : group.markTitle;
   const visibleEventSummary = isInvitationAccepted
     ? "Joined your workspace"
+    : isDeletedSource
+      ? "Original comment deleted"
     : eventSummary;
   const groupLabel = group.markDisplayKey
     ? `${group.markDisplayKey}, ${group.markTitle}`
     : title;
   const rowLabel = isInvitationAccepted
     ? `${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
-    : `${groupLabel}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
+    : isDeletedSource
+      ? `${groupLabel}. ${visibleEventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
+      : `${groupLabel}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
+
+  if (isDeletedSource) {
+    return (
+      <ProductListItem interactive={false} className="bg-destructive-soft/10 p-0">
+        <div
+          aria-label={rowLabel}
+          className="flex cursor-default items-start gap-3 border-l-2 border-destructive/45 px-4 py-3"
+        >
+          <UnreadDot active={false} />
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="flex min-w-0 items-baseline gap-1.5 text-ui-md font-semibold text-destructive">
+                {group.markDisplayKey ? (
+                  <span className="shrink-0 font-mono text-ui-xs font-medium text-destructive/80">
+                    {group.markDisplayKey}
+                  </span>
+                ) : null}
+                <span className="min-w-0 truncate">{title}</span>
+                <Badge
+                  variant="outline"
+                  className="shrink-0 cursor-default border-destructive/30 bg-destructive-soft text-ui-2xs text-destructive"
+                >
+                  Deleted
+                </Badge>
+              </div>
+              <time
+                className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
+                dateTime={group.latestAt}
+              >
+                {formatRelative(group.latestAt, dataUpdatedAt)}
+              </time>
+              {projectName ? (
+                <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{projectName}</span>
+              ) : null}
+            </div>
+            <p className="truncate text-ui-sm text-destructive">
+              {visibleEventSummary}
+              {extras > 0 ? (
+                <span className="text-destructive/70"> · +{formatCount(extras)} more update{extras === 1 ? "" : "s"}</span>
+              ) : null}
+            </p>
+          </div>
+        </div>
+      </ProductListItem>
+    );
+  }
+
   return (
     <ProductListItem className="p-0">
       <Link
@@ -378,6 +430,10 @@ function InboxGroupRow({
                 <Badge variant="outline" className="shrink-0 border-ok/20 bg-ok-soft text-ui-2xs capitalize text-ok">
                   Accepted
                 </Badge>
+              ) : isDeletedSource ? (
+                <Badge variant="outline" className="shrink-0 text-ui-2xs">
+                  Deleted
+                </Badge>
               ) : null}
             </div>
             <time
@@ -392,7 +448,7 @@ function InboxGroupRow({
           </div>
 
           <p className="truncate text-ui-sm text-ink-2">
-            {isInvitationAccepted ? null : (
+            {isInvitationAccepted || isDeletedSource ? null : (
               <>
                 <ActorChip event={top} preference={displayNamePreference} />{" "}
               </>
@@ -422,6 +478,7 @@ function inboxGroupHref(group: InboxGroup): string {
       ? group.destination.markDisplayKey
       : group.markDisplayKey;
   if (!markDisplayKey) return accountHref("team");
+  if (group.sourceState === "deleted") return markHref(markDisplayKey, new URLSearchParams());
   const href = markHref(markDisplayKey, inboxContextParamsForGroup(group));
   if (group.targetId) return `${href}#${encodeURIComponent(group.targetId)}`;
   return href;

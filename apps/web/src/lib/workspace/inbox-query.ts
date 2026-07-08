@@ -8,6 +8,7 @@ import {
   inboxActivityReadStates,
   markComments,
   marks,
+  mentions,
   profiles,
   workspaceMembers,
 } from "@/db/schema";
@@ -154,12 +155,14 @@ function normalizeCanonicalActivities({
   activities,
   markById,
   commentById,
+  activeMentionIds,
   memberById,
   profileById,
 }: {
   activities: CanonicalActivityRow[];
   markById: Map<string, MarkRow>;
   commentById: Map<string, CommentRow>;
+  activeMentionIds: Set<string>;
   memberById: Map<string, MemberRow>;
   profileById: Map<string, ProfileRow>;
 }): InboxActivity[] {
@@ -168,14 +171,17 @@ function normalizeCanonicalActivities({
     const payloadMarkId = payloadString(payload, "markId");
     const markId = activity.markId ?? payloadMarkId;
     const mark = markId ? markById.get(markId) : undefined;
-    const comment =
-      activity.requiredContextType === "comment"
-        ? commentById.get(activity.requiredContextId)
-        : undefined;
     const displaySeq = mark ? Number(mark.seq ?? 0) : payloadNumber(payload, "markSeq");
     const sourceType = payloadString(payload, "sourceType");
     const sourceId = payloadString(payload, "sourceId");
     const payloadEventType = payloadString(payload, "eventType");
+    const commentContextId =
+      activity.requiredContextType === "comment"
+        ? activity.requiredContextId
+        : activity.activityType === "mention" && sourceType === "mark_comment"
+          ? sourceId
+          : undefined;
+    const comment = commentContextId ? commentById.get(commentContextId) : undefined;
     const contextType =
       activity.activityType === "mention" && sourceType
         ? sourceType
@@ -229,9 +235,35 @@ function normalizeCanonicalActivities({
       fromValue: payloadString(payload, "fromValue") ?? payloadEventType,
       toValue: payloadString(payload, "toValue"),
       preview: commentPreview(comment?.body ?? undefined) ?? payloadString(payload, "email"),
+      sourceState: inboxActivitySourceState({
+        activity,
+        commentContextId,
+        comment,
+        activeMentionIds,
+      }),
       createdAt: activity.createdAt,
     };
   });
+}
+
+function inboxActivitySourceState({
+  activity,
+  commentContextId,
+  comment,
+  activeMentionIds,
+}: {
+  activity: CanonicalActivityRow;
+  commentContextId?: string;
+  comment?: CommentRow;
+  activeMentionIds: Set<string>;
+}): InboxActivity["sourceState"] {
+  if (commentContextId && !comment) {
+    return "deleted";
+  }
+  if (activity.activityType === "mention" && !activeMentionIds.has(activity.sourceId)) {
+    return "obsolete";
+  }
+  return "active";
 }
 
 function sortInboxActivities(activities: InboxActivity[]): InboxActivity[] {
@@ -369,8 +401,15 @@ export async function loadInboxSnapshotForWorkspace({
   const actorIds = unique(
     activityRows.flatMap((activity) => (activity.actorUserId ? [activity.actorUserId] : [])),
   );
+  const mentionActivityIds = unique(
+    activityRows.flatMap((activity) =>
+      activity.activityType === "mention" && activity.sourceType === "mention"
+        ? [activity.sourceId]
+        : [],
+    ),
+  );
 
-  const [markRows, commentRows, members, profileRows] = await Promise.all([
+  const [markRows, commentRows, activeMentionRows, members, profileRows] = await Promise.all([
     markIds.length
       ? db
           .select({
@@ -399,6 +438,17 @@ export async function loadInboxSnapshotForWorkspace({
             and(
               eq(marks.workspaceId, workspaceId),
               inArray(markComments.id, commentIds),
+            ),
+          )
+      : Promise.resolve([]),
+    mentionActivityIds.length
+      ? db
+          .select({ id: mentions.id })
+          .from(mentions)
+          .where(
+            and(
+              eq(mentions.workspaceId, workspaceId),
+              inArray(mentions.id, mentionActivityIds),
             ),
           )
       : Promise.resolve([]),
@@ -437,6 +487,7 @@ export async function loadInboxSnapshotForWorkspace({
         { ...comment, createdAt: toIso(comment.createdAt) } as CommentRow,
       ]),
     ),
+    activeMentionIds: new Set((activeMentionRows as Array<{ id: string }>).map((row) => row.id)),
     memberById: new Map((members as MemberRow[]).map((member) => [member.userId, member])),
     profileById: new Map((profileRows as ProfileRow[]).map((profile) => [profile.id, profile])),
   });
