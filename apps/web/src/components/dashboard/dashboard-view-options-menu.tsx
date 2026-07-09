@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Save, Settings2, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { MARK_SORT_OPTIONS } from "@/components/select-options";
@@ -9,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -39,10 +37,8 @@ const DASHBOARD_DENSITY_OPTIONS: ReadonlyArray<{ value: DashboardDensity; label:
   { value: "compact", label: "Compact" },
 ];
 
-interface DashboardViewOptionsMenuProps {
+interface DashboardDisplayMenuProps {
   filters: DashboardFilters;
-  canSaveView?: boolean;
-  onSaveView?: () => void;
   activeCountDescription?: (count: number) => string;
   triggerLabel?: string;
   triggerIcon?: ReactNode;
@@ -50,16 +46,14 @@ interface DashboardViewOptionsMenuProps {
   onApply: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
 }
 
-export function DashboardViewOptionsMenu({
+export function DashboardDisplayMenu({
   filters,
-  canSaveView = false,
-  onSaveView,
   activeCountDescription = (count) => `${count} changed`,
-  triggerLabel = "View",
+  triggerLabel = "Display",
   triggerIcon,
   triggerClassName,
   onApply,
-}: DashboardViewOptionsMenuProps) {
+}: DashboardDisplayMenuProps) {
   const activeCount =
     (filters.sort !== "recent" ? 1 : 0) +
     (filters.groupBy !== "none" ? 1 : 0) +
@@ -71,45 +65,28 @@ export function DashboardViewOptionsMenu({
         <Button
           type="button"
           size="sm"
-          variant="ghost"
+          variant="outline"
           aria-label={
             activeCount > 0
               ? `Open ${triggerLabel.toLowerCase()} options (${activeCountDescription(activeCount)})`
-              : "Open view options"
+              : `Open ${triggerLabel.toLowerCase()} options`
           }
           className={cn(
-            "h-7 gap-1 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink",
+            "h-11 gap-1.5 px-3 text-ui-sm font-normal sm:h-8 sm:px-2.5",
             triggerClassName,
           )}
         >
-          {triggerIcon ?? <SlidersHorizontal className="size-3" aria-hidden />}
+          {triggerIcon ?? <SlidersHorizontal className="size-3.5 opacity-75 sm:size-3" aria-hidden />}
           <span>{triggerLabel}</span>
           {activeCount > 0 ? (
-            <span className="font-mono text-ui-2xs tabular-nums text-mark">
-              {activeCount}
+            <span className="text-ink-3">
+              · <span className="tabular-nums">{activeCount}</span>
             </span>
           ) : null}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuItem
-          disabled={!canSaveView}
-          onSelect={() => {
-            if (canSaveView) onSaveView?.();
-          }}
-        >
-          <Save className="size-3.5" aria-hidden />
-          Save view
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/views">
-            <Settings2 className="size-3.5" aria-hidden />
-            Manage views
-          </Link>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Sort</DropdownMenuLabel>
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={filters.sort}
           onValueChange={(value) =>
@@ -124,7 +101,7 @@ export function DashboardViewOptionsMenu({
         </DropdownMenuRadioGroup>
 
         <DropdownMenuSeparator />
-        <DropdownMenuLabel>Group</DropdownMenuLabel>
+        <DropdownMenuLabel>Group by</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={filters.groupBy}
           onValueChange={(value) =>

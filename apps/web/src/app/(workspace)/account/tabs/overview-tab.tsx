@@ -133,8 +133,8 @@ export function OverviewTab() {
 
       <section>
         <ProductSectionHeader
-          title="Security and notifications"
-          description="Sign-in protection and how the team hears about activity."
+          title="Security"
+          description="Sign-in protection for this workspace."
         />
 
         <ProductList className="mt-3">
@@ -143,11 +143,6 @@ export function OverviewTab() {
             description="Require a code from your phone at sign-in."
             badge={<Badge variant="outline" className="text-ui-2xs">Not available yet</Badge>}
             muted
-          />
-          <SettingRow
-            title="Daily comment summary"
-            description="One email per day with new comments on your marks."
-            badge={<Badge variant="outline" className="text-ui-2xs text-ok">Enabled by default</Badge>}
           />
         </ProductList>
       </section>

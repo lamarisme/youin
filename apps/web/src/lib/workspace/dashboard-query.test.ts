@@ -41,7 +41,7 @@ test("dashboard query parser normalizes URL filters and page state", () => {
   assert.deepEqual(dashboardPaginationFromQuery(query), {
     enabled: true,
     page: 3,
-    pageSize: 8,
+    pageSize: 15,
   });
 });
 

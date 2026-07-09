@@ -1,6 +1,6 @@
 import type { MarkPriority, MarkStatus } from "@/lib/collab-types";
 
-export const DASHBOARD_PAGE_SIZE = 8;
+export const DASHBOARD_PAGE_SIZE = 15;
 
 export const DASHBOARD_STATUS_FILTERS = ["all", "open", "closed"] as const;
 export const DASHBOARD_PRIORITY_FILTERS = [

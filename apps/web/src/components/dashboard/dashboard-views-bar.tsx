@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import {
   CircleDashed,
   Flame,
   Inbox,
   LayoutList,
+  Save,
+  Settings2,
   UserCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -31,7 +34,6 @@ import {
   describeWorkspaceViewFilters,
 } from "@/lib/workspace/views";
 
-import { DashboardViewOptionsMenu } from "./dashboard-view-options-menu";
 import type { DashboardFilterPatch, DashboardFilters } from "./use-dashboard-filters";
 
 interface DashboardViewsBarProps {
@@ -147,7 +149,6 @@ export function DashboardViewsBar({
     workspaceSnapshot.filters,
     DEFAULT_WORKSPACE_VIEW_FILTERS,
   ) || !workspaceConfigEqual(workspaceSnapshot.config, DEFAULT_WORKSPACE_VIEW_CONFIG);
-  const canSaveView = hasSavableState && !activeWorkspaceViewId;
   const visibleBuiltIns = useMemo(
     () =>
       builtIns.filter((view) => {
@@ -157,6 +158,12 @@ export function DashboardViewsBar({
       }),
     [builtIns, filters],
   );
+  const activeBuiltInId = useMemo(
+    () => builtIns.find((view) => builtInMatches(view, filters))?.id ?? null,
+    [builtIns, filters],
+  );
+  const hasUnsavedWorklistState =
+    hasSavableState && !activeWorkspaceViewId && !activeBuiltInId;
   const quickWorkspaceViews = useMemo(
     () => views.filter((view) => view.layout !== "analytics").slice(0, 5),
     [views],
@@ -222,7 +229,7 @@ export function DashboardViewsBar({
   return (
     <div
       role="toolbar"
-      aria-label="Dashboard views"
+      aria-label="Worklists and saved views"
       className="flex min-w-0 items-center gap-1.5 border-b border-rule/70 pb-2 sm:gap-1"
     >
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] sm:gap-1 [&::-webkit-scrollbar]:hidden">
@@ -314,12 +321,37 @@ export function DashboardViewsBar({
             </Button>
           </span>
         ) : null}
-        <DashboardViewOptionsMenu
-          filters={filters}
-          canSaveView={canSaveView}
-          onSaveView={() => setSaving(true)}
-          onApply={onApply}
-        />
+        {hasUnsavedWorklistState && !saving ? (
+          <>
+            <span className="hidden rounded-md bg-paper-2 px-2 py-1 text-ui-xs font-medium text-ink-3 ring-1 ring-rule/65 sm:inline-flex">
+              Modified
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSaving(true)}
+              className="h-10 gap-1.5 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-7"
+            >
+              <Save className="size-3" aria-hidden />
+              <span>Save as view</span>
+            </Button>
+          </>
+        ) : null}
+        {!saving ? (
+          <Button
+            asChild
+            size="sm"
+            variant="ghost"
+            className="h-10 gap-1.5 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-7"
+          >
+            <Link href="/views">
+              <Settings2 className="size-3" aria-hidden />
+              <span className="hidden sm:inline">Manage</span>
+              <span className="sm:hidden">Views</span>
+            </Link>
+          </Button>
+        ) : null}
       </div>
     </div>
   );

@@ -103,6 +103,7 @@
     "groups": {
       "actions": "Actions",
       "navigate": "Navigate",
+      "quickAccess": "Quick access",
       "marks": "Marks",
       "views": "Views",
       "projects": "Projects",
