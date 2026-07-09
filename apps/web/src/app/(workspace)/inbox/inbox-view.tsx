@@ -4,7 +4,22 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { formatDistance } from "date-fns";
-import { ArrowRight, CheckCheck, Inbox, Loader2, MailCheck } from "lucide-react";
+import {
+  ArrowRight,
+  AtSign,
+  CheckCheck,
+  CircleDot,
+  FileText,
+  Flag,
+  Inbox,
+  LinkIcon,
+  Loader2,
+  MailCheck,
+  MessageSquare,
+  Tag,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
@@ -23,7 +38,7 @@ import type {
 import { accountHref, markHref } from "@/lib/workspace/routes";
 import { inboxContextParamsForGroup } from "@/lib/workspace/inbox-navigation";
 
-import { describeEvent, useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
+import { useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 import { PageContainer } from "@/components/page-container";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
@@ -65,10 +80,6 @@ export function InboxView({
     userId,
     initialData ?? inboxSnapshot,
     initialData ? undefined : updatedAtFromIso(loadedAt),
-  );
-  const memberLookup = useMemo(
-    () => new Map(workspace.members.map((m) => [m.id, { name: m.name, username: m.username }])),
-    [workspace.members],
   );
   const projectLookup = useMemo(
     () => new Map(workspace.projects.map((project) => [project.id, project.name])),
@@ -215,7 +226,6 @@ export function InboxView({
               key={group.groupId}
               group={group}
               projectName={group.projectId ? projectLookup.get(group.projectId) ?? null : null}
-              members={memberLookup}
               displayNamePreference={displayNamePreference}
               dataUpdatedAt={inbox.dataUpdatedAt}
             />
@@ -325,48 +335,45 @@ function InboxInvitations({
 function InboxGroupRow({
   group,
   projectName,
-  members,
   displayNamePreference,
   dataUpdatedAt,
 }: {
   group: InboxGroup;
   projectName: string | null;
-  members: Map<string, { name: string; username: string }>;
   displayNamePreference: DisplayNamePreference;
   dataUpdatedAt: number;
 }) {
   const top = group.events[0];
   const extras = group.events.length - 1;
-  const eventSummary = describeEvent(top, members);
   const isDeletedSource = group.sourceState === "deleted";
   const isInvitationAccepted = top.type === "invite" && top.fromValue === "accepted";
-  const preview = !isDeletedSource && top.type === "mention" ? top.preview : undefined;
   const actorLabel = top.actorUsername || top.actorName;
   const actorParts = rosterDisplayParts(top.actorName, top.actorUsername, displayNamePreference);
+  const activityPresentation = activityPresentationForEvent(top);
   const title = isInvitationAccepted ? actorParts.primary : group.markTitle;
   const visibleEventSummary = isInvitationAccepted
     ? "Joined your workspace"
     : isDeletedSource
       ? "Original comment deleted"
-    : eventSummary;
+      : activityPresentation.label;
   const groupLabel = group.markDisplayKey
     ? `${group.markDisplayKey}, ${group.markTitle}`
     : title;
   const rowLabel = isInvitationAccepted
-    ? `${actorLabel} ${eventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
+    ? `${actorLabel} joined your workspace. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
     : isDeletedSource
       ? `${groupLabel}. ${visibleEventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`
-      : `${groupLabel}. ${actorLabel} ${eventSummary}${preview ? `: ${preview}` : ""}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
+      : `${groupLabel}. ${actorLabel} ${visibleEventSummary}. ${formatRelative(group.latestAt, dataUpdatedAt)}.`;
 
   if (isDeletedSource) {
     return (
       <ProductListItem interactive={false} className="bg-destructive-soft/10 p-0">
         <div
           aria-label={rowLabel}
-          className="flex cursor-default items-start gap-3 border-l-2 border-destructive/45 px-4 py-3"
+          className="flex cursor-default items-start gap-3 border-l-2 border-destructive/45 px-4 py-2.5"
         >
           <UnreadDot active={false} />
-          <div className="min-w-0 flex-1 space-y-1">
+          <div className="min-w-0 flex-1 space-y-0.5">
             <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
               <div className="flex min-w-0 items-baseline gap-1.5 text-ui-md font-semibold text-destructive">
                 {group.markDisplayKey ? (
@@ -375,6 +382,15 @@ function InboxGroupRow({
                   </span>
                 ) : null}
                 <span className="min-w-0 truncate">{title}</span>
+                {projectName ? (
+                  <Badge
+                    variant="default"
+                    title={projectName}
+                    className="max-w-[9rem] text-ui-2xs text-ink-3"
+                  >
+                    {projectName}
+                  </Badge>
+                ) : null}
                 <Badge
                   variant="outline"
                   className="shrink-0 cursor-default border-destructive/30 bg-destructive-soft text-ui-2xs text-destructive"
@@ -388,9 +404,6 @@ function InboxGroupRow({
               >
                 {formatRelative(group.latestAt, dataUpdatedAt)}
               </time>
-              {projectName ? (
-                <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{projectName}</span>
-              ) : null}
             </div>
             <p className="truncate text-ui-sm text-destructive">
               {visibleEventSummary}
@@ -409,10 +422,10 @@ function InboxGroupRow({
       <Link
         href={inboxGroupHref(group)}
         aria-label={rowLabel}
-        className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
+        className="group flex items-start gap-3 rounded-md px-4 py-2.5 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
       >
         <UnreadDot active={group.unreadCount > 0} />
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div
               className={cn(
@@ -426,6 +439,15 @@ function InboxGroupRow({
                 </span>
               ) : null}
               <span className="min-w-0 truncate">{title}</span>
+              {!isInvitationAccepted && projectName ? (
+                <Badge
+                  variant="default"
+                  title={projectName}
+                  className="max-w-[9rem] text-ui-2xs text-ink-3"
+                >
+                  {projectName}
+                </Badge>
+              ) : null}
               {isInvitationAccepted ? (
                 <Badge variant="outline" className="shrink-0 border-ok/20 bg-ok-soft text-ui-2xs capitalize text-ok">
                   Accepted
@@ -442,27 +464,22 @@ function InboxGroupRow({
             >
               {formatRelative(group.latestAt, dataUpdatedAt)}
             </time>
-            {projectName ? (
-              <span className="min-w-0 truncate text-ui-xs text-ink-3 sm:col-start-1 sm:row-start-2">{projectName}</span>
-            ) : null}
           </div>
 
           <p className="truncate text-ui-sm text-ink-2">
-            {isInvitationAccepted || isDeletedSource ? null : (
+            {isInvitationAccepted ? (
+              visibleEventSummary
+            ) : (
               <>
                 <ActorChip event={top} preference={displayNamePreference} />{" "}
+                <ActivityIcon icon={activityPresentation.icon} />
+                {visibleEventSummary}
               </>
             )}
-            {visibleEventSummary}
             {extras > 0 ? (
               <span className="text-ink-3"> · +{formatCount(extras)} more update{extras === 1 ? "" : "s"}</span>
             ) : null}
           </p>
-          {preview ? (
-            <p className="truncate text-ui-xs text-ink-3">
-              {preview}
-            </p>
-          ) : null}
         </div>
         <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-ink-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
@@ -482,6 +499,47 @@ function inboxGroupHref(group: InboxGroup): string {
   const href = markHref(markDisplayKey, inboxContextParamsForGroup(group));
   if (group.targetId) return `${href}#${encodeURIComponent(group.targetId)}`;
   return href;
+}
+
+function activityPresentationForEvent(event: InboxEvent): {
+  icon: LucideIcon;
+  label: string;
+} {
+  switch (event.type) {
+    case "comment":
+      return { icon: MessageSquare, label: "Comment added" };
+    case "reply":
+      return { icon: MessageSquare, label: "Reply added" };
+    case "mention":
+      return event.contextType === "mark_comment"
+        ? { icon: AtSign, label: "Mentioned in comment" }
+        : { icon: FileText, label: "Mentioned in description" };
+    case "assignment":
+      return { icon: User, label: "Assignment changed" };
+    case "status_change":
+    case "workflow_change":
+      return { icon: CircleDot, label: "Status changed" };
+    case "priority_change":
+      return { icon: Flag, label: "Priority changed" };
+    case "label_change":
+      return { icon: Tag, label: "Labels changed" };
+    case "review_link":
+    case "review":
+    case "review_reply":
+    case "review_mention":
+      return { icon: LinkIcon, label: "Review link shared" };
+    default:
+      return { icon: CircleDot, label: "Activity updated" };
+  }
+}
+
+function ActivityIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return (
+    <Icon
+      className="mr-1.5 inline size-3.5 align-[-0.2em] text-ink-3"
+      aria-hidden
+    />
+  );
 }
 
 function UnreadDot({ active }: { active: boolean }) {
@@ -508,12 +566,12 @@ function ActorChip({
 }) {
   const parts = rosterDisplayParts(event.actorName, event.actorUsername, preference);
   return (
-    <span className="inline-flex items-center gap-1.5 align-baseline">
+    <span className="inline-flex min-w-0 items-center gap-1.5 align-baseline">
       <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-ui-2xs font-semibold text-ink-2">
         {event.actorInitials}
       </span>
       <span className="min-w-0 truncate font-medium text-ink" title={parts.primary}>
-        <span className="text-ink">{parts.primary}</span>
+        {parts.primary}
       </span>
     </span>
   );
