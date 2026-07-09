@@ -21,6 +21,7 @@ import {
   History,
   Link2,
   MessageCircle,
+  MoreHorizontal,
   PanelRightClose,
   PanelRightOpen,
   Pencil,
@@ -40,6 +41,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import type { MarkItem, WorkspaceLabel } from "@/lib/collab-types";
 import { formatDateTimeFull } from "@/lib/dates";
@@ -630,16 +637,10 @@ export function MarkDetailView({
                     iconOnly
                   />
                   {!isPane ? (
-                    <Button
-                      type="button"
-                      size="icon-sm"
-                      variant="ghost"
-                      onClick={() => setConfirmDelete(true)}
-                      aria-label="Delete mark"
-                      className="size-7 rounded-md text-ink-3 hover:bg-destructive-soft hover:text-destructive-token focus-visible:ring-2 focus-visible:ring-destructive/20"
-                    >
-                      <Trash2 className="size-3.5" aria-hidden />
-                    </Button>
+                    <MarkDetailMoreMenu
+                      disabled={isDeleting}
+                      onDelete={() => setConfirmDelete(true)}
+                    />
                   ) : null}
                 </div>
               </div>
@@ -935,6 +936,40 @@ function DetailContentSection({
       </div>
       <div className="min-w-0">{children}</div>
     </section>
+  );
+}
+
+function MarkDetailMoreMenu({
+  disabled,
+  onDelete,
+}: {
+  disabled?: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="More mark actions"
+          className="size-7 rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink focus-visible:ring-2 focus-visible:ring-mark/20"
+        >
+          <MoreHorizontal className="size-3.5" aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={disabled}
+          onSelect={onDelete}
+        >
+          <Trash2 className="size-4" aria-hidden />
+          Delete mark
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

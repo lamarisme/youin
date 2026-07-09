@@ -6,27 +6,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Cache pnpm modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.pnpm-store
           key: ${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v4
         with:
-          version: latest
-          run_install: true
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v3.4.1
+          version: 10.28.2
+          run_install: false
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 22.x
           cache: "pnpm"
-      - name: Build the extension
-        run: pnpm --filter youin-extension build
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck the extension
+        run: pnpm --filter @youin/extension typecheck
+      - name: Test the extension
+        run: pnpm --filter @youin/extension test
       - name: Package the extension into a zip artifact
-        run: pnpm --filter youin-extension package
+        run: pnpm --filter @youin/extension package
       - name: Browser Platform Publish
         uses: PlasmoHQ/bpp@v3
         with:

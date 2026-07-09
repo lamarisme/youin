@@ -21,6 +21,7 @@ import { isOptimisticId } from "@/lib/optimistic-id";
 import { cn } from "@/lib/utils";
 import { memberPickerLabel } from "@/lib/workspace/member-label";
 
+import { formatMarkPageLabel } from "./mark-page-label";
 import { MarkPageOpenButton } from "./mark-page-open";
 
 export interface MarkTableProps {
@@ -210,16 +211,54 @@ function MarkRow({
   const workflowLabel = mark.workflowStatusId
     ? workflowStatusesById.get(mark.workflowStatusId)?.name
     : undefined;
+  const rawPage = mark.page.trim();
+  const pageLabel = rawPage ? formatMarkPageLabel(mark.page) : "";
+  const showPageContext = rawPage.length > 0 && density !== "compact";
   const rowHeight =
     density === "compact"
       ? "min-h-11 py-1 sm:min-h-9"
       : "min-h-12 py-2 sm:min-h-11 sm:py-1.5";
-  const openLabel = `Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.`;
+  const openLabel = `Open mark ${mark.displayKey}: ${mark.title}. ${mark.status === "open" ? "Open" : "Closed"}.${rawPage ? ` Page: ${pageLabel}.` : ""}`;
   const openClassName =
     "flex min-h-11 min-w-0 items-center rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-mark/30 sm:min-h-0";
 
   function prefetchDetail() {
     if (href && !optimistic) router.prefetch(href);
+  }
+
+  function renderPrimaryContent() {
+    return (
+      <span
+        className={cn(
+          "flex min-w-0",
+          showPageContext ? "flex-col gap-0.5 py-1" : "items-baseline gap-2",
+        )}
+      >
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span
+            className={cn(
+              "shrink-0 font-mono text-ui-xs text-ink-3",
+              optimistic && "motion-safe:animate-pulse",
+            )}
+          >
+            {mark.displayKey}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
+            {mark.title}
+          </span>
+          <RowLabels mark={mark} labelsById={labelsById} density={density} />
+        </span>
+        {showPageContext ? (
+          <span
+            className="min-w-0 truncate text-ui-xs font-normal text-ink-3"
+            title={mark.page}
+          >
+            <span className="sr-only">Page URL: </span>
+            {pageLabel}
+          </span>
+        ) : null}
+      </span>
+    );
   }
 
   return (
@@ -279,13 +318,7 @@ function MarkRow({
             aria-label={openLabel}
             className={openClassName}
           >
-            <span className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 font-mono text-ui-xs text-ink-3">{mark.displayKey}</span>
-              <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
-                {mark.title}
-              </span>
-              <RowLabels mark={mark} labelsById={labelsById} density={density} />
-            </span>
+            {renderPrimaryContent()}
           </Link>
         ) : (
           <button
@@ -295,20 +328,7 @@ function MarkRow({
             aria-label={openLabel}
             className={cn(openClassName, optimistic && "cursor-default opacity-75")}
           >
-            <span className="flex min-w-0 items-baseline gap-2">
-              <span
-                className={cn(
-                  "shrink-0 font-mono text-ui-xs text-ink-3",
-                  optimistic && "motion-safe:animate-pulse",
-                )}
-              >
-                {mark.displayKey}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-ui-sm font-semibold text-ink group-hover/mark-row:text-ink-hover">
-                {mark.title}
-              </span>
-              <RowLabels mark={mark} labelsById={labelsById} density={density} />
-            </span>
+            {renderPrimaryContent()}
           </button>
         )}
 

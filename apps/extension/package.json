@@ -6,10 +6,11 @@
   "author": "opmarq@gmail.com",
   "scripts": {
     "dev": "plasmo dev --src-path=.",
-    "build": "plasmo build --src-path=.",
-    "package": "plasmo package --src-path=.",
+    "build": "plasmo build --src-path=. && node scripts/finalize-extension-build.mjs",
+    "package": "plasmo build --src-path=. && node scripts/finalize-extension-build.mjs && plasmo package --src-path=. && node scripts/verify-extension-build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:package": "node scripts/verify-extension-build.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.105.3",
@@ -52,6 +53,7 @@
         "https://youin.click/*",
         "https://www.youin.click/*"
       ]
-    }
+    },
+    "homepage_url": "https://youin.click"
   }
 }

@@ -36,12 +36,13 @@ export function MarkDetailCapture({
   spacing = "normal",
 }: MarkDetailCaptureProps) {
   const cap = mark.capture;
+  const hasPage = Boolean(mark.page.trim());
   const pageOrigin = formatMarkPageOrigin(mark.page);
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
   const isHero = variant === "hero";
   const screenshotSrc = markImageSrc(cap?.screenshotUrl);
   const readiness = [
-    { label: "Page", ready: Boolean(mark.page.trim()) },
+    { label: "Page", ready: hasPage },
     { label: "Selector", ready: Boolean(cap?.selector?.trim()) },
     { label: "Screenshot", ready: Boolean(cap?.screenshotUrl?.trim()) },
     { label: "DOM", ready: Boolean(domContext) },
@@ -52,25 +53,29 @@ export function MarkDetailCapture({
     return (
       <div
         className={cn(
-          "grid min-h-20 gap-3 rounded-md border border-dashed border-rule/70 bg-paper-2/35 px-3 py-3 text-ui-sm text-ink-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
+          "flex flex-col gap-3 rounded-md bg-paper-2/55 px-3 py-3 text-ui-sm text-ink-3 ring-1 ring-rule/45 sm:min-h-16 sm:flex-row sm:items-center sm:justify-between",
           spacing === "normal" && (isHero ? "mt-4" : "mt-5"),
         )}
       >
         <div className="flex min-w-0 items-start gap-2.5">
           <MarkPin label={shortMarkLabel(mark.displayKey)} size="sm" />
           <div className="min-w-0 space-y-0.5">
-            <p className="font-medium text-ink-2">No capture saved</p>
+            <p className="font-medium text-ink-2">
+              {hasPage ? "Open source page" : "No capture saved"}
+            </p>
             <p className="max-w-prose text-ui-xs leading-relaxed text-ink-3">
-              Open the source page to inspect this mark in context.
+              {hasPage
+                ? "No capture is saved yet. Inspect this mark where it lives."
+                : "Add a page URL to inspect this mark in context."}
             </p>
           </div>
         </div>
-        {mark.page.trim() ? (
+        {hasPage ? (
           <MarkPageOpenButton
             page={mark.page}
             markTitle={mark.title}
             appearance="labeled"
-            className="h-8 justify-self-start px-2 text-ui-xs sm:justify-self-end"
+            className="h-9 shrink-0 justify-self-start px-2.5 text-ui-xs sm:justify-self-end"
           />
         ) : null}
       </div>
@@ -90,7 +95,7 @@ export function MarkDetailCapture({
           <span className="min-w-0 flex-1 truncate text-ui-xs font-medium text-ink-2">
             Capture
           </span>
-          {isHero && mark.page.trim() ? (
+          {isHero && hasPage ? (
             <MarkPageOpenButton
               page={mark.page}
               markTitle={mark.title}
@@ -125,7 +130,7 @@ export function MarkDetailCapture({
               <p className="mx-auto max-w-sm text-ui-sm text-ink-3">
                 No capture snapshot saved. Open the page to inspect this mark in context.
               </p>
-              {mark.page.trim() ? (
+              {hasPage ? (
                 <MarkPageOpenButton
                   page={mark.page}
                   markTitle={mark.title}

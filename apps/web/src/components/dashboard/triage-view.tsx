@@ -63,6 +63,7 @@ import { markHref, type DashboardRouteScope } from "@/lib/workspace/routes";
 import { cn } from "@/lib/utils";
 
 import { BulkActionBar } from "./bulk-action-bar";
+import { dashboardListSectionTitle } from "./dashboard-worklists";
 import { DashboardViewsBar } from "./dashboard-views-bar";
 import { MarkFilters } from "./mark-filters";
 import { MarkTable } from "./mark-table";
@@ -457,6 +458,8 @@ export function TriageView({
                 filters={filters}
                 viewerId={userId}
                 counts={scopeCounts}
+                scope={isMyMarksPage ? "mine" : "all"}
+                showWorkspaceViews={!isMyMarksPage}
                 onApply={updateDashboardFilters}
               />
 
@@ -614,7 +617,7 @@ export function TriageView({
                 commentCountByMarkId={commentCountByMarkId}
                 displayNamePreference={displayNamePreference}
                 referenceTime={loadedAt}
-                sectionTitle={listSectionTitle({
+                sectionTitle={dashboardListSectionTitle({
                   filters: rowFilters,
                   selectedProjectName: rowSelectedProject?.name,
                   isMyMarksPage: rowIsMyMarksPage,
@@ -860,25 +863,6 @@ function groupDashboardMarks({
     if (b.id === "__unassigned") return 1;
     return a.title.localeCompare(b.title);
   });
-}
-
-function listSectionTitle({
-  filters,
-  selectedProjectName,
-  isMyMarksPage,
-}: {
-  filters: DashboardFilters;
-  selectedProjectName?: string;
-  isMyMarksPage: boolean;
-}): string {
-  if (isMyMarksPage) return "Mine";
-  if (selectedProjectName) return selectedProjectName;
-  if (filters.priority === "critical") return "Critical";
-  if (filters.status === "open") return "Open";
-  if (filters.status === "closed") return "Closed";
-  if (filters.assignee === "unassigned") return "Unassigned";
-  if (filters.assignee === "me") return "Mine";
-  return "All marks";
 }
 
 function pruneSelectedIds(

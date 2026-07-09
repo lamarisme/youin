@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Youin review screenshot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #fbfbfa;
+        --paper-2: #f4f4f2;
+        --paper-3: #ecebea;
+        --ink: #292832;
+        --muted: #6e6d75;
+        --rule: #deddd9;
+        --mark: #7158e8;
+        --mark-soft: #ebe7ff;
+        --ok: #268760;
+        --warn: #aa7a00;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+      .browser {
+        position: absolute;
+        inset: 38px 48px;
+        overflow: hidden;
+        border: 1px solid var(--rule);
+        background: white;
+        box-shadow: 0 32px 90px -56px rgb(41 40 50 / 0.44);
+      }
+      .chrome {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 48px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--paper-2);
+        padding: 0 18px;
+      }
+      .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--rule);
+      }
+      .address {
+        flex: 1;
+        height: 26px;
+        border-radius: 99px;
+        background: white;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 26px;
+        padding: 0 14px;
+      }
+      .app {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        min-height: calc(100% - 48px);
+      }
+      aside {
+        border-right: 1px solid var(--rule);
+        background: var(--paper);
+        padding: 24px 18px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 30px;
+        font-size: 20px;
+        font-weight: 760;
+      }
+      .logo {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--mark);
+        color: white;
+      }
+      .nav-line {
+        height: 34px;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        background: var(--paper-2);
+      }
+      .nav-line.active {
+        background: var(--mark-soft);
+      }
+      main {
+        padding: 28px 34px;
+      }
+      .header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        letter-spacing: 0;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 8px;
+      }
+      .pill {
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        border-radius: 7px;
+        padding: 8px 11px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .content {
+        display: grid;
+        grid-template-columns: 1fr 330px;
+        gap: 28px;
+      }
+      .site {
+        position: relative;
+        min-height: 496px;
+        border: 1px solid var(--rule);
+        background: white;
+        padding: 30px;
+      }
+      .hero {
+        height: 140px;
+        margin-bottom: 24px;
+        background: linear-gradient(135deg, #f8f7ff, #eef7f2);
+        border: 1px solid var(--rule);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .card {
+        height: 118px;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        padding: 16px;
+      }
+      .line {
+        height: 9px;
+        margin-bottom: 10px;
+        border-radius: 99px;
+        background: var(--paper-3);
+      }
+      .line.long {
+        width: 80%;
+      }
+      .line.mid {
+        width: 55%;
+      }
+      .selection {
+        position: absolute;
+        left: 338px;
+        top: 244px;
+        width: 202px;
+        height: 118px;
+        border: 2px solid var(--mark);
+        background: rgb(113 88 232 / 0.05);
+      }
+      .pin {
+        position: absolute;
+        left: 520px;
+        top: 224px;
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--mark);
+        color: white;
+        font-weight: 760;
+        box-shadow: 0 14px 32px -16px rgb(113 88 232 / 0.82);
+      }
+      .widget {
+        position: absolute;
+        right: 22px;
+        bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid color-mix(in srgb, var(--mark) 28%, var(--rule));
+        background: white;
+        padding: 10px 12px;
+        box-shadow: 0 18px 46px -30px rgb(41 40 50 / 0.52);
+      }
+      .widget .logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+      }
+      .widget span {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .panel {
+        border: 1px solid var(--rule);
+        background: white;
+        padding: 18px;
+      }
+      .panel h2 {
+        margin: 0 0 4px;
+        font-size: 18px;
+      }
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 14px 0;
+        border-radius: 99px;
+        background: var(--mark-soft);
+        color: var(--mark);
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 760;
+      }
+      .comment {
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        padding: 14px;
+        margin: 12px 0;
+      }
+      .comment strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+      .comment p {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .meta {
+        display: grid;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .meta div {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid var(--rule);
+        padding-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="browser">
+      <div class="chrome">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <div class="address">https://app.example.com/dashboard</div>
+      </div>
+      <div class="app">
+        <aside>
+          <div class="brand"><span class="logo">Y</span>Youin</div>
+          <div class="nav-line active"></div>
+          <div class="nav-line"></div>
+          <div class="nav-line"></div>
+          <div class="nav-line"></div>
+        </aside>
+        <main>
+          <div class="header">
+            <div>
+              <h1>Visual feedback on the live page</h1>
+              <p>Capture the element, page context, screenshot, and comment thread together.</p>
+            </div>
+            <div class="toolbar">
+              <span class="pill">Open</span>
+              <span class="pill">Critical</span>
+              <span class="pill">Mine</span>
+            </div>
+          </div>
+          <div class="content">
+            <section class="site">
+              <div class="hero"></div>
+              <div class="grid">
+                <div class="card">
+                  <div class="line long"></div>
+                  <div class="line mid"></div>
+                </div>
+                <div class="card">
+                  <div class="line long"></div>
+                  <div class="line mid"></div>
+                </div>
+                <div class="card">
+                  <div class="line long"></div>
+                  <div class="line mid"></div>
+                </div>
+              </div>
+              <div class="selection"></div>
+              <div class="pin">1</div>
+              <div class="widget"><span class="logo">Y</span><span>Review mode</span></div>
+            </section>
+            <section class="panel">
+              <h2>Checkout card spacing</h2>
+              <p>Saved from the selected element on this page.</p>
+              <div class="status">Synced to workspace</div>
+              <div class="comment">
+                <strong>Design review</strong>
+                <p>The card feels cramped on tablet width. Add breathing room before handoff.</p>
+              </div>
+              <div class="comment">
+                <strong>Engineering</strong>
+                <p>Selector, screenshot, and DOM context are attached.</p>
+              </div>
+              <div class="meta">
+                <div><span>Page URL</span><span>Captured</span></div>
+                <div><span>Element screenshot</span><span>Enabled</span></div>
+                <div><span>DOM context</span><span>Enabled</span></div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>
+

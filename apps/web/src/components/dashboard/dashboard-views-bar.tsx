@@ -33,33 +33,44 @@ import {
   DEFAULT_WORKSPACE_VIEW_FILTERS,
   describeWorkspaceViewFilters,
 } from "@/lib/workspace/views";
+import type { DashboardScopeCounts } from "@/lib/workspace/dashboard-query";
 
-import type { DashboardFilterPatch, DashboardFilters } from "./use-dashboard-filters";
+import {
+  buildDashboardWorklists,
+  dashboardWorklistMatches,
+  visibleDashboardWorklists,
+  type DashboardWorklist,
+  type DashboardWorklistId,
+  type DashboardWorklistScope,
+} from "./dashboard-worklists";
+import type {
+  DashboardFilterPatch,
+  DashboardFilters,
+} from "./use-dashboard-filters";
 
 interface DashboardViewsBarProps {
   views: WorkspaceView[];
   filters: DashboardFilters;
   viewerId: string | null;
   counts?: DashboardScopeCounts;
-  onApply: (patch: DashboardFilterPatch, options?: { resetPage?: boolean }) => void;
+  scope?: DashboardWorklistScope;
+  showWorkspaceViews?: boolean;
+  onApply: (
+    patch: DashboardFilterPatch,
+    options?: { resetPage?: boolean },
+  ) => void;
 }
 
-type DashboardScopeCounts = {
-  open: number;
-  critical: number;
-  mine: number;
-  unassigned: number;
-  total: number;
-};
-
 type BuiltInView = {
-  id: string;
-  name: string;
   icon: LucideIcon;
-  count?: number;
-  disabled?: boolean;
-  filters: Partial<WorkspaceViewFilters>;
-  config?: Partial<WorkspaceViewConfig>;
+} & DashboardWorklist;
+
+const WORKLIST_ICONS: Record<DashboardWorklistId, LucideIcon> = {
+  triage: Inbox,
+  critical: Flame,
+  mine: UserCheck,
+  unassigned: CircleDashed,
+  all: LayoutList,
 };
 
 export function DashboardViewsBar({
@@ -67,9 +78,12 @@ export function DashboardViewsBar({
   filters,
   viewerId,
   counts,
+  scope = "all",
+  showWorkspaceViews = true,
   onApply,
 }: DashboardViewsBarProps) {
-  const { mutateAsync: createView, isPending } = useCreateWorkspaceViewMutation();
+  const { mutateAsync: createView, isPending } =
+    useCreateWorkspaceViewMutation();
   const [saving, setSaving] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [draftIcon, setDraftIcon] = useState<WorkspaceViewIconId>(
@@ -82,91 +96,60 @@ export function DashboardViewsBar({
   }, [saving]);
 
   const builtIns = useMemo<ReadonlyArray<BuiltInView>>(
-    () => [
-      {
-        id: "triage",
-        name: "Triage",
-        icon: Inbox,
-        count: counts?.open,
-        filters: { status: "open", assignee: "all", sort: "recent" },
-        config: { dashboardGroupBy: "page", dashboardDensity: "compact" },
-      },
-      {
-        id: "critical",
-        name: "Critical",
-        icon: Flame,
-        count: counts?.critical,
-        filters: { status: "open", priority: "critical", assignee: "all", sort: "priority" },
-        config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
-      },
-      {
-        id: "mine",
-        name: "Mine",
-        icon: UserCheck,
-        count: counts?.mine,
-        disabled: !viewerId,
-        filters: { status: "open", assignee: "me", sort: "recent" },
-        config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
-      },
-      {
-        id: "unassigned",
-        name: "Unassigned",
-        icon: CircleDashed,
-        count: counts?.unassigned,
-        filters: { status: "open", assignee: "unassigned", sort: "recent" },
-        config: { dashboardGroupBy: "page", dashboardDensity: "compact" },
-      },
-      {
-        id: "all",
-        name: "All",
-        icon: LayoutList,
-        count: counts?.total,
-        filters: { status: "all", assignee: "all", sort: "recent" },
-        config: { dashboardGroupBy: "none", dashboardDensity: "comfortable" },
-      },
-    ],
-    [
-      counts?.critical,
-      counts?.mine,
-      counts?.open,
-      counts?.total,
-      counts?.unassigned,
-      viewerId,
-    ],
+    () =>
+      buildDashboardWorklists({ scope, counts, viewerId }).map((worklist) => ({
+        ...worklist,
+        icon: WORKLIST_ICONS[worklist.id],
+      })),
+    [counts, scope, viewerId],
   );
 
-  const workspaceSnapshot = useMemo(() => toWorkspaceSnapshot(filters), [filters]);
+  const workspaceSnapshot = useMemo(
+    () => toWorkspaceSnapshot(filters),
+    [filters],
+  );
   const activeWorkspaceViewId = useMemo(() => {
     return (
-      views.find((view) =>
-        workspaceFiltersEqual(view.filters, workspaceSnapshot.filters) &&
-        workspaceConfigEqual(view.config, workspaceSnapshot.config),
+      views.find(
+        (view) =>
+          workspaceFiltersEqual(view.filters, workspaceSnapshot.filters) &&
+          workspaceConfigEqual(view.config, workspaceSnapshot.config),
       )?.id ?? null
     );
   }, [views, workspaceSnapshot]);
 
-  const hasSavableState = !workspaceFiltersEqual(
-    workspaceSnapshot.filters,
-    DEFAULT_WORKSPACE_VIEW_FILTERS,
-  ) || !workspaceConfigEqual(workspaceSnapshot.config, DEFAULT_WORKSPACE_VIEW_CONFIG);
+  const hasSavableState =
+    !workspaceFiltersEqual(
+      workspaceSnapshot.filters,
+      DEFAULT_WORKSPACE_VIEW_FILTERS,
+    ) ||
+    !workspaceConfigEqual(
+      workspaceSnapshot.config,
+      DEFAULT_WORKSPACE_VIEW_CONFIG,
+    );
   const visibleBuiltIns = useMemo(
     () =>
-      builtIns.filter((view) => {
-        if (view.id === "triage" || view.id === "all") return true;
-        if (builtInMatches(view, filters)) return true;
-        return typeof view.count === "number" && view.count > 0;
+      visibleDashboardWorklists({
+        worklists: builtIns,
+        filters,
+        scope,
       }),
-    [builtIns, filters],
+    [builtIns, filters, scope],
   );
   const activeBuiltInId = useMemo(
-    () => builtIns.find((view) => builtInMatches(view, filters))?.id ?? null,
+    () =>
+      builtIns.find((view) => dashboardWorklistMatches(view, filters))?.id ??
+      null,
     [builtIns, filters],
   );
   const hasUnsavedWorklistState =
     hasSavableState && !activeWorkspaceViewId && !activeBuiltInId;
   const quickWorkspaceViews = useMemo(
-    () => views.filter((view) => view.layout !== "analytics").slice(0, 5),
-    [views],
+    () =>
+      showWorkspaceViews
+        ? views.filter((view) => view.layout !== "analytics").slice(0, 5)
+        : [],
+    [showWorkspaceViews, views],
   );
 
   async function commitSave() {
@@ -238,15 +221,19 @@ export function DashboardViewsBar({
             key={view.id}
             label={view.name}
             count={view.count}
-            title={view.disabled ? "Sign in to filter by your marks." : undefined}
+            title={
+              view.disabled ? "Sign in to filter by your marks." : undefined
+            }
             icon={view.icon}
-            active={builtInMatches(view, filters)}
+            active={dashboardWorklistMatches(view, filters)}
             disabled={view.disabled}
             onClick={() => applyBuiltIn(view)}
           />
         ))}
 
-        {quickWorkspaceViews.length > 0 ? <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" aria-hidden /> : null}
+        {quickWorkspaceViews.length > 0 ? (
+          <span className="mx-0.5 h-4 w-px shrink-0 bg-rule" aria-hidden />
+        ) : null}
 
         {quickWorkspaceViews.map((view) => (
           <ViewChip
@@ -262,7 +249,9 @@ export function DashboardViewsBar({
                 view={view}
                 className={cn(
                   "size-3.5 shrink-0 sm:size-3",
-                  activeWorkspaceViewId === view.id ? "text-ink-2" : "text-ink-3",
+                  activeWorkspaceViewId === view.id
+                    ? "text-ink-2"
+                    : "text-ink-3",
                 )}
               />
             }
@@ -345,7 +334,7 @@ export function DashboardViewsBar({
             variant="ghost"
             className="h-10 gap-1.5 px-2 text-ui-xs text-ink-3 hover:bg-paper-2 hover:text-ink sm:h-7"
           >
-            <Link href="/views">
+            <Link href="/views" aria-label="Manage views">
               <Settings2 className="size-3" aria-hidden />
               <span className="hidden sm:inline">Manage</span>
               <span className="sm:hidden">Views</span>
@@ -397,7 +386,13 @@ function ViewChip({
     >
       {iconNode ??
         (Icon ? (
-          <Icon className={cn("size-3.5 shrink-0 sm:size-3", active ? "text-ink-2" : "text-ink-3")} aria-hidden />
+          <Icon
+            className={cn(
+              "size-3.5 shrink-0 sm:size-3",
+              active ? "text-ink-2" : "text-ink-3",
+            )}
+            aria-hidden
+          />
         ) : null)}
       <span className="max-w-[8rem] truncate">{label}</span>
       {typeof count === "number" ? (
@@ -449,33 +444,10 @@ function toWorkspaceSnapshot(filters: DashboardFilters): {
   };
 }
 
-function builtInMatches(view: BuiltInView, filters: DashboardFilters): boolean {
-  const expected = {
-    status: "all",
-    workflowStatus: "all",
-    priority: "all",
-    pinned: "all",
-    label: "all",
-    assignee: "all",
-    q: "",
-    sort: "recent",
-    ...view.filters,
-  };
-  return (
-    filters.status === expected.status &&
-    filters.workflowStatus === expected.workflowStatus &&
-    filters.priority === expected.priority &&
-    filters.pinned === expected.pinned &&
-    filters.label === expected.label &&
-    filters.assignee === expected.assignee &&
-    filters.q === expected.q &&
-    filters.sort === expected.sort &&
-    filters.groupBy === (view.config?.dashboardGroupBy ?? "none") &&
-    filters.density === (view.config?.dashboardDensity ?? "comfortable")
-  );
-}
-
-function workspaceFiltersEqual(a: WorkspaceViewFilters, b: WorkspaceViewFilters): boolean {
+function workspaceFiltersEqual(
+  a: WorkspaceViewFilters,
+  b: WorkspaceViewFilters,
+): boolean {
   return (
     a.projectId === b.projectId &&
     a.status === b.status &&
@@ -489,12 +461,17 @@ function workspaceFiltersEqual(a: WorkspaceViewFilters, b: WorkspaceViewFilters)
   );
 }
 
-function workspaceConfigEqual(a: WorkspaceViewConfig, b: WorkspaceViewConfig): boolean {
+function workspaceConfigEqual(
+  a: WorkspaceViewConfig,
+  b: WorkspaceViewConfig,
+): boolean {
   return (
     (a.boardGroupBy ?? "status") === (b.boardGroupBy ?? "status") &&
     (a.dashboardGroupBy ?? "none") === (b.dashboardGroupBy ?? "none") &&
-    (a.dashboardDensity ?? "comfortable") === (b.dashboardDensity ?? "comfortable") &&
+    (a.dashboardDensity ?? "comfortable") ===
+      (b.dashboardDensity ?? "comfortable") &&
     (a.analyticsTimeframe ?? "30d") === (b.analyticsTimeframe ?? "30d") &&
-    (a.analyticsWidgets ?? []).join(",") === (b.analyticsWidgets ?? []).join(",")
+    (a.analyticsWidgets ?? []).join(",") ===
+      (b.analyticsWidgets ?? []).join(",")
   );
 }

@@ -18,11 +18,5 @@
     "build:web": "pnpm --filter web build",
     "start:web": "pnpm --filter web start",
     "lint:design": "bash scripts/design-lint.sh"
-  },
-  "pnpm": {
-    "overrides": {
-      "@types/react": "19.2.14",
-      "@types/react-dom": "19.2.3"
-    }
   }
 }
