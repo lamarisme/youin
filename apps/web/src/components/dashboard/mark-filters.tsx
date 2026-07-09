@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils";
 
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 
+import { DashboardDisplayMenu } from "./dashboard-view-options-menu";
 import type {
   AssigneeFilter,
   DashboardFilterPatch,
@@ -445,6 +446,8 @@ export function MarkFilters({
             </div>
           </DialogContent>
         </Dialog>
+
+        <DashboardDisplayMenu filters={filters} onApply={onChange} />
 
         {isUpdating ? (
           <span
