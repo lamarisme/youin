@@ -128,6 +128,39 @@ html:has(#__plasmo),
   color-scheme: light;
 }
 
+@media (prefers-color-scheme: dark) {
+  html:has(#__plasmo),
+  :host {
+    --yi-paper: oklch(6.92% 0.008 284.11);
+    --yi-paper-2: oklch(17.23% 0.0026 247.98);
+    --yi-paper-3: oklch(19.5% 0.0026 247.96);
+    --yi-paper-elevated: oklch(21.27% 0.0025 247.94);
+    --yi-ink: oklch(97.8% 0.003 197);
+    --yi-ink-hover: oklch(90% 0.006 264);
+    --yi-ink-2: oklch(84% 0.012 264);
+    --yi-ink-3: oklch(64.88% 0.0146 262.36);
+    --yi-rule: oklch(26.45% 0.0098 268.31);
+    --yi-rule-strong: oklch(32.74% 0.0105 285.81);
+    --yi-mark-soft: oklch(27% 0.075 276);
+    --yi-mark-ink: oklch(78% 0.095 276);
+    --yi-destructive: oklch(62% 0.17 28);
+    --yi-destructive-soft: oklch(24% 0.06 28);
+    --yi-ok: oklch(64% 0.13 154);
+    --yi-ok-soft: oklch(25.5% 0.05 154);
+    --yi-warn: oklch(73% 0.135 82);
+    --yi-warn-soft: oklch(27.5% 0.06 82);
+    --yi-info: oklch(68% 0.04 78);
+    --yi-info-soft: oklch(24% 0.02 62);
+    --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.5);
+    --yi-ext-shadow-dock: -16px 0 44px -18px oklch(0% 0 0 / 0.62),
+      -6px 0 18px -10px oklch(0% 0 0 / 0.42),
+      inset 1px 0 0 var(--yi-ext-border-hairline);
+    --yi-shadow-popover: 0 18px 40px -26px oklch(0% 0 0 / 0.72);
+
+    color-scheme: dark;
+  }
+}
+
 /* Popup-only surface: gentle entrance + crisp baseline */
 .youin-popup {
   animation: youin-popup-in 240ms var(--yi-ease-out-expo) both;
