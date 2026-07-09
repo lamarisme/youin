@@ -35,6 +35,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PageContainer } from "@/components/page-container";
@@ -253,19 +254,10 @@ function ViewDetail({
               <Plus className="size-3.5" aria-hidden />
               New mark
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5 rounded-md px-2.5"
-              onClick={() => setEditOpen(true)}
-            >
-              <Pencil className="size-3.5" aria-hidden />
-              Edit view
-            </Button>
             <ViewActionsMenu
               viewName={view.name}
               isDeleting={isDeleting}
+              onEdit={() => setEditOpen(true)}
               onDelete={() => setConfirmDeleteOpen(true)}
             />
           </div>
@@ -450,10 +442,12 @@ function ViewList({
 function ViewActionsMenu({
   viewName,
   isDeleting,
+  onEdit,
   onDelete,
 }: {
   viewName: string;
   isDeleting: boolean;
+  onEdit?: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -470,6 +464,15 @@ function ViewActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44">
+        {onEdit ? (
+          <>
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil className="size-4" aria-hidden />
+              Edit view
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuItem variant="destructive" disabled={isDeleting} onSelect={onDelete}>
           <Trash2 className="size-4" aria-hidden />
           Delete view
