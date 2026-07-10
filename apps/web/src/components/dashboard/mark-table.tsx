@@ -119,7 +119,7 @@ export function MarkTable(props: MarkTableProps) {
               className="sm:size-4"
             />
           ) : null}
-          <span className="inline-flex size-6 items-center justify-center text-ink-3">
+          <span className={cn(markStatusCellClass, "text-ink-3")}>
             <CircleDashed className="size-4" aria-hidden />
           </span>
           <div className="flex min-w-0 items-baseline gap-2">
@@ -327,9 +327,11 @@ function MarkRow({
 
 function markListGridClass(selectable: boolean) {
   return selectable
-    ? "grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto]"
+    ? "grid-cols-[1rem_1.5rem_minmax(0,1fr)_auto] gap-x-3 sm:gap-x-2"
     : "grid-cols-[1.5rem_minmax(0,1fr)_auto]";
 }
+
+const markStatusCellClass = "inline-flex size-11 items-center justify-center sm:size-6";
 
 function RowStatusToggle({
   mark,
@@ -351,7 +353,7 @@ function RowStatusToggle({
   if (!onToggle) {
     return (
       <span
-        className={cn("inline-flex size-6 items-center justify-center", open ? "text-ink-3" : "text-ok")}
+        className={cn(markStatusCellClass, open ? "text-ink-3" : "text-ok")}
         title={title}
         role="img"
         aria-label={title}
@@ -371,7 +373,8 @@ function RowStatusToggle({
       aria-label={open ? `Close ${mark.title}` : `Reopen ${mark.title}`}
       title={open ? `Close: ${title}` : `Reopen: ${title}`}
       className={cn(
-        "inline-flex size-11 items-center justify-center rounded-sm text-ink-3 outline-none transition-colors hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25 sm:size-6",
+        markStatusCellClass,
+        "rounded-sm text-ink-3 outline-none transition-colors hover:bg-paper-3 focus-visible:bg-paper-3 focus-visible:ring-2 focus-visible:ring-mark/25",
         open ? "hover:text-ok focus-visible:text-ok" : "text-ok hover:text-mark focus-visible:text-mark",
       )}
     >
