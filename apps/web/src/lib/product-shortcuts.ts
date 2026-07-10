@@ -1,5 +1,6 @@
 export const PRODUCT_SHORTCUT_IDS = {
   openCommandPalette: "openCommandPalette",
+  navigateTriage: "navigateTriage",
   navigateInbox: "navigateInbox",
   navigateMyMarks: "navigateMyMarks",
   navigateViews: "navigateViews",
@@ -10,6 +11,7 @@ export type ProductShortcutId =
   (typeof PRODUCT_SHORTCUT_IDS)[keyof typeof PRODUCT_SHORTCUT_IDS];
 
 export type ProductNavigationShortcutId =
+  | typeof PRODUCT_SHORTCUT_IDS.navigateTriage
   | typeof PRODUCT_SHORTCUT_IDS.navigateInbox
   | typeof PRODUCT_SHORTCUT_IDS.navigateMyMarks
   | typeof PRODUCT_SHORTCUT_IDS.navigateViews
@@ -17,7 +19,7 @@ export type ProductNavigationShortcutId =
 
 export type ProductShortcutPlatform = "apple" | "control" | "generic";
 
-type ProductShortcutKey = "mod" | "g" | "i" | "m" | "v" | "c" | "k";
+type ProductShortcutKey = "mod" | "g" | "i" | "m" | "t" | "v" | "c" | "k";
 type ProductShortcutChord = readonly ProductShortcutKey[];
 
 export interface ProductShortcutDefinition {
@@ -40,6 +42,10 @@ export const PRODUCT_SHORTCUTS = {
     id: PRODUCT_SHORTCUT_IDS.openCommandPalette,
     sequence: [["mod", "k"]],
   },
+  [PRODUCT_SHORTCUT_IDS.navigateTriage]: {
+    id: PRODUCT_SHORTCUT_IDS.navigateTriage,
+    sequence: [["g"], ["t"]],
+  },
   [PRODUCT_SHORTCUT_IDS.navigateInbox]: {
     id: PRODUCT_SHORTCUT_IDS.navigateInbox,
     sequence: [["g"], ["i"]],
@@ -59,6 +65,10 @@ export const PRODUCT_SHORTCUTS = {
 } as const satisfies Record<ProductShortcutId, ProductShortcutDefinition>;
 
 export const PRODUCT_NAVIGATION_SHORTCUTS = [
+  {
+    id: PRODUCT_SHORTCUT_IDS.navigateTriage,
+    href: "/dashboard",
+  },
   {
     id: PRODUCT_SHORTCUT_IDS.navigateInbox,
     href: "/inbox",
@@ -87,6 +97,7 @@ const KEY_LABELS = {
   i: "I",
   k: "K",
   m: "M",
+  t: "T",
   v: "V",
 } satisfies Record<Exclude<ProductShortcutKey, "mod">, string>;
 
@@ -193,6 +204,7 @@ function normalizeProductShortcutKey(
     normalized === "i" ||
     normalized === "k" ||
     normalized === "m" ||
+    normalized === "t" ||
     normalized === "v"
   ) {
     return normalized;

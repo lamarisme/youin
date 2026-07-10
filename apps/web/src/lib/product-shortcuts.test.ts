@@ -27,6 +27,10 @@ test("formats modifier shortcuts for each platform", () => {
 
 test("formats product navigation sequences", () => {
   assert.equal(
+    formatProductShortcut(PRODUCT_SHORTCUT_IDS.navigateTriage, "apple"),
+    "G T",
+  );
+  assert.equal(
     formatProductShortcut(PRODUCT_SHORTCUT_IDS.navigateMyMarks, "apple"),
     "G M",
   );
@@ -34,6 +38,10 @@ test("formats product navigation sequences", () => {
 
 test("maps navigation keys to centralized destinations", () => {
   assert.equal(isProductNavigationShortcutLeaderKey("G"), true);
+  assert.equal(
+    getProductNavigationShortcutByKey("t")?.href,
+    "/dashboard",
+  );
   assert.equal(
     getProductNavigationShortcutByKey("m")?.href,
     "/dashboard/mine",

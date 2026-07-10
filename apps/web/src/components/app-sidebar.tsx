@@ -9,6 +9,7 @@ import {
   CircleDashed,
   Folder,
   Inbox as InboxIcon,
+  LayoutDashboard,
   Loader2,
   LogOut,
   Moon,
@@ -149,10 +150,16 @@ export function AppSidebar() {
   const commandPaletteShortcut = formatProductShortcut(
     PRODUCT_SHORTCUT_IDS.openCommandPalette,
   );
+  const triageHref = useMemo(() => {
+    return dashboardHref(searchParams, { kind: "all" }, { resetPage: true });
+  }, [searchParams]);
   const myMarksHref = useMemo(() => {
     return dashboardHref(searchParams, { kind: "mine" }, { resetPage: true });
   }, [searchParams]);
   const myMarksActive = pathname === "/dashboard/mine" || pathname.startsWith("/dashboard/mine/");
+  const triageActive =
+    (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) &&
+    !myMarksActive;
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -224,6 +231,18 @@ export function AppSidebar() {
           </div>
         </div>
 
+        <nav className={sidebarNavGroupClass(collapsed)} aria-label="Triage">
+          <SidebarNavLink
+            href={triageHref}
+            label={tNav("triage")}
+            icon={LayoutDashboard}
+            shortcutLabel={formatProductShortcut(PRODUCT_SHORTCUT_IDS.navigateTriage)}
+            active={triageActive}
+            collapsed={collapsed}
+            onNavigate={navigateFromSidebar}
+          />
+        </nav>
+
         {/* Search bar */}
         {collapsed ? (
           <Tooltip>
@@ -268,11 +287,7 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav
-        className={cn(
-          "flex gap-1.5 overflow-x-auto pb-1",
-          "lg:block lg:overflow-visible lg:pb-0",
-          collapsed ? "lg:space-y-0.5" : "lg:space-y-0.5",
-        )}
+        className={sidebarNavGroupClass(collapsed)}
         aria-label="Primary"
       >
         <SidebarNavLink
@@ -338,6 +353,14 @@ export function AppSidebar() {
         )}
       </div>
     </aside>
+  );
+}
+
+function sidebarNavGroupClass(collapsed: boolean) {
+  return cn(
+    "flex gap-1.5 overflow-x-auto pb-1",
+    "lg:block lg:overflow-visible lg:pb-0",
+    collapsed ? "lg:space-y-0.5" : "lg:space-y-0.5",
   );
 }
 
