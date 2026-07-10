@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { migrateLocalDataToWorkspace } from "./migrate"
-import { KEY_MARKS, type Mark } from "./storage"
+import {
+  accountDataScope,
+  getMarksForScope,
+  KEY_MARKS,
+  LOCAL_DATA_SCOPE,
+  type Mark
+} from "./storage"
 
 const supabaseState = vi.hoisted(() => ({
   markInserts: [] as unknown[],
@@ -57,7 +63,9 @@ vi.mock("./supabase", () => {
       async single() {
         supabaseState.createdMarkId += 1
         return {
-          data: { id: `created-${supabaseState.createdMarkId}` },
+          data: {
+            id: `33333333-3333-4333-8333-${String(supabaseState.createdMarkId).padStart(12, "0")}`
+          },
           error: null
         }
       },
@@ -116,6 +124,21 @@ vi.mock("./supabase", () => {
     })
   }
 })
+
+vi.mock("./workspace-context", () => ({
+  fetchActiveWorkspaceContext: async () => ({
+    workspaceId: supabaseState.workspaceId,
+    workspaceName: "Workspace",
+    projects: [
+      {
+        id: supabaseState.projectId,
+        name: "General",
+        description: "",
+        createdAt: 0
+      }
+    ]
+  })
+}))
 
 function remoteSyncedMark(patch: Partial<Mark> = {}): Mark {
   const remoteMarkId = "22222222-2222-4222-8222-222222222222"
@@ -197,5 +220,16 @@ describe("migrateLocalDataToWorkspace", () => {
     expect(supabaseState.markInserts[0]).toMatchObject({
       title: "Legacy local mark"
     })
+    expect(await getMarksForScope(LOCAL_DATA_SCOPE)).toEqual([])
+    expect(
+      await getMarksForScope(
+        accountDataScope(supabaseState.userId, supabaseState.workspaceId)
+      )
+    ).toEqual([
+      expect.objectContaining({
+        remoteMarkId: "33333333-3333-4333-8333-000000000001",
+        title: "Legacy local mark"
+      })
+    ])
   })
 })

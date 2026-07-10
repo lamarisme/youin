@@ -5,7 +5,9 @@ import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 import { getSession } from "./auth"
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
+  accountDataScope,
   getActiveProjectId,
+  getDataScope,
   getMarks,
   markSynced,
   markSyncFailure,
@@ -13,6 +15,7 @@ import {
   removeMarkSyncOp,
   saveMarks,
   setActiveProjectId,
+  setDataScope,
   setProjects,
   type Mark,
   type MarkPriority,
@@ -24,6 +27,7 @@ import { fetchActiveWorkspaceContext } from "./workspace-context"
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const KEY_REMOTE_SYNCED_AT = "youin:remote-sync-completed-at"
+const MAX_REMOTE_MARK_PAGES = 500
 
 export const REMOTE_SYNC_STALE_MS = 5 * 60 * 1000
 
@@ -34,25 +38,21 @@ function isUuidLike(s: string): boolean {
 export async function isWorkspaceRemoteSyncFresh(
   maxAgeMs = REMOTE_SYNC_STALE_MS
 ): Promise<boolean> {
-  const result = await chrome.storage.local.get(KEY_REMOTE_SYNCED_AT)
-  const syncedAt = Number(result[KEY_REMOTE_SYNCED_AT] ?? 0)
+  const key = `${KEY_REMOTE_SYNCED_AT}:${await getDataScope()}`
+  const result = await chrome.storage.local.get(key)
+  const syncedAt = Number(result[key] ?? 0)
   return Number.isFinite(syncedAt) && Date.now() - syncedAt < maxAgeMs
 }
 
 export async function markWorkspaceRemoteSyncComplete(): Promise<void> {
-  await chrome.storage.local.set({ [KEY_REMOTE_SYNCED_AT]: Date.now() })
+  const key = `${KEY_REMOTE_SYNCED_AT}:${await getDataScope()}`
+  await chrome.storage.local.set({ [key]: Date.now() })
 }
 
 async function workspaceIdForUser(userId: string): Promise<string | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle()
-  if (error || !data?.workspace_id) return null
-  return data.workspace_id as string
+  void userId
+  const context = await fetchActiveWorkspaceContext()
+  return context?.workspaceId ?? null
 }
 
 async function ensureActiveProjectForProjects(
@@ -90,6 +90,7 @@ export async function syncWorkspaceFromRemote(
     }
   }
 
+  await setDataScope(accountDataScope(userId, context.workspaceId))
   const nextProjects = context.projects
   await setProjects(nextProjects)
 
@@ -120,6 +121,7 @@ interface CreatedRemoteMark {
   id: string
   seq: number
   createdAt: string
+  warning?: string
 }
 
 export interface SyncPendingMarksResult {
@@ -146,6 +148,10 @@ export interface RemoteMark {
   priority: MarkPriority
   selector: string
   viewport: string
+  captureKind?: "element" | "region" | null
+  bbox?: Mark["bbox"] | null
+  pageTitle?: string | null
+  elementFingerprint?: Mark["elementFingerprint"] | null
   createdAt: string
   updatedAt: string
   capturedAt?: string | null
@@ -176,7 +182,10 @@ async function uploadLocalMarkScreenshot(
     .from("marks")
     .update({ screenshot_url: upload.path })
     .eq("id", mark.remoteMarkId)
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    await supabase.storage.from("mark-images").remove([upload.path])
+    return { ok: false, error: error.message }
+  }
 
   const screenshotUrl = upload.signedUrl ?? mark.screenshotUrl
   await patchMark(mark.id, {
@@ -214,6 +223,7 @@ async function patchRemoteMark(
     commentBody?: string
     title?: string
     openingBody?: string
+    operationId?: string
   }
 ): Promise<PushMarkResult> {
   const session = await getSession()
@@ -255,28 +265,34 @@ async function patchRemoteMark(
 
 export async function pushMarkStatusToWorkspace(
   mark: Mark,
-  status: Mark["status"]
+  status: Mark["status"],
+  operationId?: string
 ): Promise<PushMarkResult> {
-  return patchRemoteMark(mark, { status: normalizeMarkStatus(status) })
+  return patchRemoteMark(mark, {
+    status: normalizeMarkStatus(status),
+    operationId
+  })
 }
 
 export async function pushMarkCommentToWorkspace(
   mark: Mark,
-  commentBody: string
+  commentBody: string,
+  operationId?: string
 ): Promise<PushMarkResult> {
   const body = commentBody.trim()
   if (!body) return { ok: true, skipped: true }
-  return patchRemoteMark(mark, { commentBody: body })
+  return patchRemoteMark(mark, { commentBody: body, operationId })
 }
 
 export async function pushMarkEditToWorkspace(
   mark: Mark,
-  patch: { title: string; openingBody: string }
+  patch: { title: string; openingBody: string },
+  operationId?: string
 ): Promise<PushMarkResult> {
   const title = patch.title.trim()
   const openingBody = patch.openingBody.trim()
   if (!title || !openingBody) return { ok: true, skipped: true }
-  return patchRemoteMark(mark, { title, openingBody })
+  return patchRemoteMark(mark, { title, openingBody, operationId })
 }
 
 /** Insert a freshly saved local mark as a `marks` row when authenticated. */
@@ -326,6 +342,7 @@ export async function pushMarkToWorkspace(
         authorization: `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
+        clientMutationId: mark.id,
         projectId,
         title: mark.title.trim(),
         description: "",
@@ -334,9 +351,16 @@ export async function pushMarkToWorkspace(
         priority: normalizeMarkPriority(mark.priority),
         selector: mark.selector,
         viewport: `${mark.viewport.width}x${mark.viewport.height}@${mark.viewport.dpr}`,
+        captureKind: mark.captureKind ?? "element",
+        bbox: mark.bbox,
+        pageTitle: mark.pageTitle,
+        elementFingerprint: mark.elementFingerprint,
         domSnapshot: mark.domSnapshot,
         capturedAt: new Date(mark.createdAt).toISOString(),
-        comments: (mark.thread ?? []).map((m) => ({ body: m.body }))
+        comments: (mark.thread ?? []).map((m) => ({
+          body: m.body,
+          clientMutationId: m.id
+        }))
       })
     })
   } catch {
@@ -361,7 +385,8 @@ export async function pushMarkToWorkspace(
   const createdMark = (await res.json()) as CreatedRemoteMark
   let screenshotDataUrl = options?.screenshotDataUrl ?? mark.screenshotDataUrl
   let screenshotUrl = mark.screenshotUrl
-  let warning: string | undefined
+  let warning = createdMark.warning
+  let screenshotError: string | undefined
 
   if (screenshotDataUrl) {
     const workspaceId = await workspaceIdForUser(session.user.id)
@@ -379,12 +404,14 @@ export async function pushMarkToWorkspace(
         screenshotUrl = upload.screenshotUrl
         screenshotDataUrl = undefined
       } else {
-        warning = upload.error
+        screenshotError = upload.error
       }
     } else {
-      warning = "Could not resolve workspace for screenshot upload."
+      screenshotError = "Could not resolve workspace for screenshot upload."
     }
   }
+
+  warning = [warning, screenshotError].filter(Boolean).join(" ") || undefined
 
   await patchMark(mark.id, {
     remoteMarkId: createdMark.id,
@@ -392,7 +419,7 @@ export async function pushMarkToWorkspace(
     screenshotUrl,
     pendingSyncOps: [],
     syncState: screenshotDataUrl ? "pending" : "synced",
-    syncError: warning
+    syncError: screenshotError
   })
 
   return { ok: true, skipped: false, warning }
@@ -416,12 +443,19 @@ async function syncQueuedOpsForMark(mark: Mark): Promise<{
     attempted++
     const result =
       op.type === "status"
-        ? await patchRemoteMark(mark, { status: op.status })
+        ? await patchRemoteMark(mark, {
+            status: op.status,
+            operationId: op.id
+          })
         : op.type === "comment"
-          ? await patchRemoteMark(mark, { commentBody: op.body })
+          ? await patchRemoteMark(mark, {
+              commentBody: op.body,
+              operationId: op.id
+            })
           : await patchRemoteMark(mark, {
               title: op.title,
-              openingBody: op.openingBody
+              openingBody: op.openingBody,
+              operationId: op.id
             })
 
     if (result.ok || result.skipped) {
@@ -526,6 +560,7 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
     | Mark["domSnapshot"]
     | undefined
   const rect = snapshot?.selectedElement?.boundingRect
+  const captureRect = mark.bbox ?? rect
   const createdAt =
     new Date(mark.capturedAt || mark.createdAt).getTime() || Date.now()
   const updatedAt = new Date(mark.updatedAt).getTime() || createdAt
@@ -533,17 +568,20 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
     id: `remote_${mark.id}`,
     remoteMarkId: mark.id,
     projectId: mark.projectId || "",
+    captureKind: mark.captureKind === "region" ? "region" : "element",
     url: raw,
+    pageTitle: mark.pageTitle || undefined,
+    elementFingerprint: mark.elementFingerprint || undefined,
     origin,
     pathname,
     selector: mark.selector || snapshot?.selectedElement?.selector || "body",
     strategy: snapshot?.selectedElement?.strategy ?? "path",
-    bbox: rect
+    bbox: captureRect
       ? {
-          x: Number(rect.x) || 0,
-          y: Number(rect.y) || 0,
-          width: Number(rect.width) || 0,
-          height: Number(rect.height) || 0
+          x: Number(captureRect.x) || 0,
+          y: Number(captureRect.y) || 0,
+          width: Number(captureRect.width) || 0,
+          height: Number(captureRect.height) || 0
         }
       : { x: 0, y: 0, width: 0, height: 0 },
     viewport: parseViewport(mark.viewport),
@@ -564,7 +602,12 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
 export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
   const remoteUpdatedAt = new Date(mark.updatedAt).getTime() || Date.now()
   if (local.remoteUpdatedAt && remoteUpdatedAt <= local.remoteUpdatedAt) {
-    return local
+    // Signed screenshot URLs are volatile and refresh on every pull even when
+    // the underlying mark row has not changed.
+    return {
+      ...local,
+      screenshotUrl: mark.screenshotUrl || local.screenshotUrl
+    }
   }
 
   const hasPendingStatus = local.pendingSyncOps?.some(
@@ -581,6 +624,11 @@ export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
     ...local,
     title: hasPendingEdit ? local.title : mark.title || local.title,
     projectId: mark.projectId || local.projectId,
+    captureKind: mark.captureKind === "region" ? "region" : local.captureKind,
+    pageTitle: mark.pageTitle || local.pageTitle,
+    elementFingerprint:
+      mark.elementFingerprint || local.elementFingerprint,
+    bbox: mark.bbox ?? local.bbox,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
     screenshotUrl: mark.screenshotUrl || local.screenshotUrl,
@@ -604,7 +652,8 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
     return { ok: true, attempted: 0, synced: 0, failed: 0 }
   }
 
-  let res: Response
+  const remoteMarks: RemoteMark[] = []
+  let syncedProjectId = ""
   try {
     const context = await fetchActiveWorkspaceContext()
     if (!context) {
@@ -617,18 +666,44 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
           "No workspace found for this user. Use the web app once to finish setup."
       }
     }
-    const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
-    const activeProjectId = await ensureActiveProjectForProjects(
+    syncedProjectId = await ensureActiveProjectForProjects(
       context.projects
     )
-    if (isUuidLike(activeProjectId)) {
-      url.searchParams.set("projectId", activeProjectId)
-    }
-    res = await fetch(url.toString(), {
-      headers: {
-        authorization: `Bearer ${session.access_token}`
+    let offset = 0
+    for (let page = 0; page < MAX_REMOTE_MARK_PAGES; page++) {
+      const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
+      if (isUuidLike(syncedProjectId)) {
+        url.searchParams.set("projectId", syncedProjectId)
       }
-    })
+      url.searchParams.set("offset", String(offset))
+      const res = await fetch(url.toString(), {
+        headers: {
+          authorization: `Bearer ${session.access_token}`
+        }
+      })
+      if (!res.ok) {
+        const message = await responseErrorMessage(res, "Could not fetch marks.")
+        return { ok: false, attempted: 1, synced: 0, failed: 1, error: message }
+      }
+      const body = (await res.json()) as {
+        marks?: RemoteMark[]
+        hasMore?: boolean
+        nextOffset?: number | null
+      }
+      remoteMarks.push(...(body.marks ?? []))
+      if (!body.hasMore) break
+      if (
+        !Number.isSafeInteger(body.nextOffset) ||
+        body.nextOffset == null ||
+        body.nextOffset <= offset
+      ) {
+        throw new Error("The web app returned an invalid sync cursor.")
+      }
+      offset = body.nextOffset
+      if (page === MAX_REMOTE_MARK_PAGES - 1) {
+        throw new Error("This project is too large to sync safely.")
+      }
+    }
   } catch {
     return {
       ok: false,
@@ -639,13 +714,6 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
     }
   }
 
-  if (!res.ok) {
-    const message = await responseErrorMessage(res, "Could not fetch marks.")
-    return { ok: false, attempted: 1, synced: 0, failed: 1, error: message }
-  }
-
-  const body = (await res.json()) as { marks?: RemoteMark[] }
-  const remoteMarks = body.marks ?? []
   const marks = await getMarks()
   const byRemoteId = new Map(
     marks
@@ -656,7 +724,14 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
   const next: Mark[] = []
 
   for (const mark of marks) {
-    if (!mark.remoteMarkId || !remoteIds.has(mark.remoteMarkId)) {
+    const belongsToSyncedProject = mark.projectId === syncedProjectId
+    const wasDeletedRemotely =
+      belongsToSyncedProject &&
+      Boolean(mark.remoteMarkId) &&
+      !remoteIds.has(mark.remoteMarkId!) &&
+      !mark.pendingSyncOps?.length &&
+      !mark.screenshotDataUrl
+    if (!wasDeletedRemotely && !remoteIds.has(mark.remoteMarkId ?? "")) {
       next.push(mark)
     }
   }

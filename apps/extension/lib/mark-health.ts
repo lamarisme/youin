@@ -1,4 +1,6 @@
 import type { Mark } from "./storage"
+import { elementMatchesFingerprint } from "./element-fingerprint"
+import { resolveSelector } from "./selector"
 
 export type MarkHealth = "attached" | "approximate" | "stale" | "screenshot-only"
 
@@ -47,8 +49,8 @@ export function computeMarkHealth(mark: Mark): MarkHealthResult {
   }
 
   try {
-    const el = mark.selector ? document.querySelector(mark.selector) : null
-    if (el) {
+    const el = mark.selector ? resolveSelector(mark.selector) : null
+    if (el && elementMatchesFingerprint(el, mark.elementFingerprint)) {
       const rect = el.getBoundingClientRect()
       if (rect.width >= 1 || rect.height >= 1) {
         return {
@@ -88,7 +90,7 @@ export function scrollMarkIntoView(mark: Mark): void {
   const result = computeMarkHealth(mark)
   if (result.attached && mark.selector) {
     try {
-      document.querySelector(mark.selector)?.scrollIntoView({
+      resolveSelector(mark.selector)?.scrollIntoView({
         block: "center",
         inline: "center",
         behavior: "smooth"

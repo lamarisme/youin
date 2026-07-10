@@ -22,6 +22,17 @@ PLASMO_PUBLIC_WEB_APP_URL=http://localhost:3000
 
 Use the same development Supabase project as the web app. Keep `apps/extension/.env` out of commits.
 
+Google sign-in uses Chrome's extension-bound PKCE redirect. Add the URL returned
+by `chrome.identity.getRedirectURL("auth/callback")` to the Supabase Auth redirect
+allowlist. It has this shape:
+
+```text
+https://<extension-id>.chromiumapp.org/auth/callback
+```
+
+Use the unpacked extension ID for local development and the Chrome Web Store ID
+for production.
+
 ## Run
 
 Start the web app first when testing sign-in:
@@ -60,7 +71,7 @@ Run `build` before opening a PR that changes extension runtime code. Run `packag
 | Path                         | Purpose                                                     |
 | ---------------------------- | ----------------------------------------------------------- |
 | `popup.tsx`                  | Popup UI, auth states, and entry points into review mode.   |
-| `background/index.ts`        | Background service worker and OAuth bridge receiver.        |
+| `background/index.ts`        | Background service worker, PKCE auth, sync, and capture.     |
 | `contents/review-mode.ts`    | Content-script review mode orchestration.                   |
 | `contents/widget.tsx`        | Floating review widget.                                     |
 | `contents/capture-panel.tsx` | Docked capture, feedback list, and thread UI.               |
@@ -78,6 +89,7 @@ The extension runs on `http://*/*` and `https://*/*` because the core workflow i
 Required permissions:
 
 - `storage`: persists local-first feedback, workspace mirrors, auth session state, privacy settings, and retry queues.
+- `identity`: completes Google OAuth at a redirect bound to this extension ID.
 - `tabs`: starts review mode from the popup on the active tab and reads the current page URL for page-scoped counts.
 - `scripting`: injects the review UI into an already-open tab when Chrome has not loaded the content scripts yet.
 - `host_permissions` for HTTP/HTTPS pages: injects the review UI and captures selected elements on pages the user reviews.

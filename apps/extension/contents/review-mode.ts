@@ -7,6 +7,7 @@ import {
   dispatchCaptureUpdateToPanel
 } from "../lib/capture-panel-bridge"
 import { captureElementDomSnapshot } from "../lib/dom-snapshot"
+import { captureElementFingerprint } from "../lib/element-fingerprint"
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_EXIT,
@@ -18,6 +19,7 @@ import {
   MESSAGE_FORWARD_CAPTURE,
   MESSAGE_REVIEW_PING_CONTENT,
   type ReviewCaptureDetail,
+  type ReviewCaptureUpdate,
   type ReviewMode,
   type ReviewStartDetail,
   type ReviewStateDetail
@@ -28,6 +30,7 @@ import {
   isInternalEvent
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
+import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
   CAPTURE_PANEL_SCRIPT,
   MESSAGE_ENSURE_REVIEW_SCRIPTS
@@ -41,9 +44,11 @@ import {
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
+  KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_WIDGET_SETTINGS
+  KEY_WIDGET_SETTINGS,
+  STORAGE_LIMITS
 } from "../lib/storage"
 import {
   TAB_CAPTURE_CROP,
@@ -62,6 +67,12 @@ const YOUIN_UI_ATTR = "data-youin-extension-ui"
 const Z_TOP = EXTENSION_LAYER.reviewOverlay
 const MIN_REGION_SIZE = 8
 const SCREENSHOT_CAPTURE_TIMEOUT_MS = 3000
+
+function makeCaptureId(): string {
+  return typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `capture_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+}
 
 type Mode = "inactive" | "active" | "paused" | "region"
 
@@ -118,6 +129,7 @@ function subscribeToolbarRefresh() {
   >[0] = (changes, area) => {
     if (area !== "local") return
     if (
+      changes[KEY_DATA_SCOPE] ||
       changes[KEY_MARKS] ||
       changes[KEY_PROJECTS] ||
       changes[KEY_ACTIVE_PROJECT] ||
@@ -420,6 +432,12 @@ function isYouInExtensionEvent(e: Event): boolean {
   )
 }
 
+function actualEventElement(event: Event): Element | null {
+  const first = event.composedPath()[0]
+  if (first instanceof Element) return first
+  return event.target instanceof Element ? event.target : null
+}
+
 function cancelHoverRaf() {
   if (hoverRaf != null) {
     cancelAnimationFrame(hoverRaf)
@@ -464,6 +482,73 @@ function withTimeout<T>(
   })
 }
 
+function hideYouInUiForCapture(): () => void {
+  const candidates = new Set<HTMLElement>()
+  if (host) candidates.add(host)
+  for (const element of document.querySelectorAll<HTMLElement>(
+    `[${YOUIN_UI_ATTR}]`
+  )) {
+    candidates.add(element)
+    const root = element.getRootNode()
+    if (root instanceof ShadowRoot && root.host instanceof HTMLElement) {
+      candidates.add(root.host)
+    }
+  }
+  for (const element of Array.from(document.body?.children ?? [])) {
+    if (
+      element instanceof HTMLElement &&
+      element.shadowRoot?.querySelector(`[${YOUIN_UI_ATTR}]`)
+    ) {
+      candidates.add(element)
+    }
+  }
+
+  const previous = Array.from(candidates, (element) => ({
+    element,
+    visibility: element.style.visibility
+  }))
+  for (const { element } of previous) element.style.visibility = "hidden"
+  return () => {
+    for (const { element, visibility } of previous) {
+      element.style.visibility = visibility
+    }
+  }
+}
+
+async function compressScreenshotDataUrl(
+  dataUrl: string
+): Promise<string | undefined> {
+  if (dataUrl.length <= STORAGE_LIMITS.screenshotDataUrl) return dataUrl
+  try {
+    const response = await fetch(dataUrl)
+    const bitmap = await createImageBitmap(await response.blob())
+    let scale = Math.min(
+      1,
+      1600 / bitmap.width,
+      1600 / bitmap.height,
+      Math.sqrt(1800000 / (bitmap.width * bitmap.height))
+    )
+    for (const quality of [0.82, 0.68, 0.54]) {
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+      const context = canvas.getContext("2d")
+      if (!context) break
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      const compressed = canvas.toDataURL("image/webp", quality)
+      if (compressed.length <= STORAGE_LIMITS.screenshotDataUrl) {
+        bitmap.close()
+        return compressed
+      }
+      scale *= 0.72
+    }
+    bitmap.close()
+  } catch {
+    /* the caller will keep text and DOM context when compression fails */
+  }
+  return undefined
+}
+
 /**
  * Snapshot via `captureVisibleTab` in the background, cropped to the element’s
  * on-screen rect. Hides the review overlay so it is not included in the image.
@@ -474,9 +559,8 @@ async function captureElementViaTab(
   const crop = intersectViewportRect(rect)
   if (!crop) return undefined
 
-  const prevVisibility = host?.style.visibility
+  const restoreUi = hideYouInUiForCapture()
   try {
-    if (host) host.style.visibility = "hidden"
     await waitNext2Frames()
 
     const res = (await withTimeout(
@@ -491,7 +575,7 @@ async function captureElementViaTab(
     if (res?.ok === true && typeof res.dataUrl === "string") return res.dataUrl
     return undefined
   } finally {
-    if (host) host.style.visibility = prevVisibility ?? ""
+    restoreUi()
   }
 }
 
@@ -501,9 +585,8 @@ async function captureRegionViaTab(rect: {
   width: number
   height: number
 }): Promise<{ dataUrl?: string; error?: string }> {
-  const prevVisibility = host?.style.visibility
+  const restoreUi = hideYouInUiForCapture()
   try {
-    if (host) host.style.visibility = "hidden"
     await waitNext2Frames()
 
     const res = (await withTimeout(
@@ -526,7 +609,7 @@ async function captureRegionViaTab(rect: {
       error: e instanceof Error ? e.message : "Could not capture that area."
     }
   } finally {
-    if (host) host.style.visibility = prevVisibility ?? ""
+    restoreUi()
   }
 }
 
@@ -546,7 +629,7 @@ function flushHoverRect() {
 }
 
 function onMouseOver(e: MouseEvent) {
-  const target = e.target as Element | null
+  const target = actualEventElement(e)
   if (!target || isYouInExtensionEvent(e) || !highlight) return
 
   const rect = target.getBoundingClientRect()
@@ -596,6 +679,7 @@ async function dispatchReviewCapture(detail: ReviewCaptureDetail) {
 }
 
 function enrichCaptureAsync(
+  captureId: string,
   target: Element,
   rect: DOMRectReadOnly,
   settings: Awaited<ReturnType<typeof getWidgetSettings>>
@@ -613,7 +697,7 @@ function enrichCaptureAsync(
     }
     if (!elementScreenshotDataUrl && target instanceof HTMLElement) {
       try {
-        elementScreenshotDataUrl = await withTimeout(
+        const fallbackDataUrl = await withTimeout(
           toPng(target, {
             backgroundColor: getElementScreenshotBackground(target),
             pixelRatio: Math.max(1, window.devicePixelRatio || 1),
@@ -621,13 +705,23 @@ function enrichCaptureAsync(
           }),
           SCREENSHOT_CAPTURE_TIMEOUT_MS
         )
+        if (fallbackDataUrl) {
+          elementScreenshotDataUrl = await compressScreenshotDataUrl(
+            fallbackDataUrl
+          )
+          if (!elementScreenshotDataUrl) {
+            screenshotCaptureError =
+              "The screenshot was too large to save safely."
+          }
+        }
       } catch (e) {
         screenshotCaptureError =
           e instanceof Error ? e.message : "Could not capture screenshot."
         /* DOM / CORS snapshot fallback not possible */
       }
     }
-    const patch: Partial<ReviewCaptureDetail> = {
+    const patch: ReviewCaptureUpdate = {
+      captureId,
       elementScreenshotDataUrl,
       screenshotPending: false,
       screenshotCaptureError: elementScreenshotDataUrl
@@ -639,6 +733,7 @@ function enrichCaptureAsync(
 }
 
 async function captureAndDispatch(target: Element) {
+  const captureId = makeCaptureId()
   const settings = await getWidgetSettings()
   const rect = target.getBoundingClientRect()
   const result = generateSelector(target)
@@ -663,6 +758,7 @@ async function captureAndDispatch(target: Element) {
   }
 
   const detail: ReviewCaptureDetail = {
+    captureId,
     selector: result.selector,
     strategy: result.strategy,
     captureKind: "element",
@@ -673,14 +769,16 @@ async function captureAndDispatch(target: Element) {
       height: Math.round(rect.height)
     },
     viewport,
-    url: location.href,
-    outerHTML: target.outerHTML.slice(0, 400),
+    url: normalizePageUrlForMatch(location.href),
+    pageTitle: document.title,
+    elementFingerprint: captureElementFingerprint(target),
+    outerHTML: domSnapshot?.selectedElement.outerHTML.slice(0, 400) ?? "",
     domSnapshot,
     screenshotPending: settings.captureScreenshots
   }
 
   await dispatchReviewCapture(detail)
-  enrichCaptureAsync(target, rect, settings)
+  enrichCaptureAsync(captureId, target, rect, settings)
 }
 
 async function captureRegionAndDispatch(rect: {
@@ -695,7 +793,9 @@ async function captureRegionAndDispatch(rect: {
     dpr: window.devicePixelRatio
   }
 
+  const captureId = makeCaptureId()
   const detail: ReviewCaptureDetail = {
+    captureId,
     captureKind: "region",
     selector: "[screenshot region]",
     strategy: "path",
@@ -706,7 +806,7 @@ async function captureRegionAndDispatch(rect: {
       height: Math.round(rect.height)
     },
     viewport,
-    url: location.href,
+    url: normalizePageUrlForMatch(location.href),
     pageTitle: document.title,
     outerHTML: "",
     screenshotPending: true
@@ -716,7 +816,8 @@ async function captureRegionAndDispatch(rect: {
 
   void (async () => {
     const captureResult = await captureRegionViaTab(rect)
-    const patch: Partial<ReviewCaptureDetail> = {
+    const patch: ReviewCaptureUpdate = {
+      captureId,
       elementScreenshotDataUrl: captureResult.dataUrl,
       screenshotPending: false,
       screenshotCaptureError: captureResult.error
@@ -726,7 +827,7 @@ async function captureRegionAndDispatch(rect: {
 }
 
 function onClick(e: MouseEvent) {
-  const target = e.target as Element | null
+  const target = actualEventElement(e)
   if (!target || isYouInExtensionEvent(e)) return
 
   e.preventDefault()

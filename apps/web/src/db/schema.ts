@@ -268,8 +268,22 @@ export const marks = pgTable(
      */
     seq: integer("seq").notNull().default(0),
     legacyDisplayKey: text("legacy_display_key"),
+    /** Stable client-generated id used to make extension retries idempotent. */
+    clientMutationId: text("client_mutation_id"),
     selector: text("selector"),
     viewport: text("viewport"),
+    captureKind: text("capture_kind"),
+    captureBbox: jsonb("capture_bbox").$type<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>(),
+    pageTitle: text("page_title"),
+    elementFingerprint: jsonb("element_fingerprint").$type<Record<
+      string,
+      unknown
+    > | null>(),
     browser: text("browser"),
     os: text("os"),
     domSnapshot: jsonb("dom_snapshot").$type<Record<string, unknown> | null>(),
@@ -287,6 +301,9 @@ export const marks = pgTable(
   },
   (table) => [
     uniqueIndex("marks_workspace_seq_unique").on(table.workspaceId, table.seq),
+    uniqueIndex("marks_extension_mutation_unique")
+      .on(table.workspaceId, table.createdByUserId, table.clientMutationId)
+      .where(sql`${table.clientMutationId} IS NOT NULL`),
     index("marks_project_status_priority_idx").on(
       table.projectId,
       table.status,
@@ -372,6 +389,8 @@ export const markComments = pgTable(
     type: markCommentTypeEnum("type").notNull().default("text"),
     body: text("body"),
     imageUrl: text("image_url"),
+    /** Stable extension operation id; null for comments from other clients. */
+    clientMutationId: text("client_mutation_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -382,6 +401,9 @@ export const markComments = pgTable(
       table.createdAt,
     ),
     index("mark_comments_author_idx").on(table.authorUserId),
+    uniqueIndex("mark_comments_extension_mutation_unique")
+      .on(table.authorUserId, table.clientMutationId)
+      .where(sql`${table.clientMutationId} IS NOT NULL`),
     check(
       "mark_comments_body_or_image",
       sql`(${table.type} = 'text' AND ${table.body} IS NOT NULL)

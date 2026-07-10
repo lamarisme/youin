@@ -67,7 +67,7 @@ Run `lint`, `test`, and `build` before asking for review on web app changes. For
 | --- | --- |
 | `src/app` | App Router routes, layouts, loading states, error states, and route handlers. |
 | `src/app/(workspace)` | Authenticated product surfaces: dashboard, inbox, projects, views, and account. |
-| `src/app/auth/extension-bridge` | Bridge page used by the Chrome extension to complete Supabase auth. |
+| `src/app/auth/extension-bridge` | Retired bridge notice; extension auth now uses Chrome Identity PKCE. |
 | `src/components` | Shared UI and product components. |
 | `src/db` | Drizzle client and schema. |
 | `src/lib/supabase` | Supabase browser and server helpers. |

@@ -232,6 +232,13 @@
       "when": 1782158400000,
       "tag": "0032_retire_legacy_inbox_realtime",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1783628622000,
+      "tag": "0033_extension_sync_idempotency",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,14 @@
 
 import type { Session, User } from "@supabase/supabase-js"
 
+import {
+  accountDataScope,
+  LOCAL_DATA_SCOPE,
+  setDataScope
+} from "./storage"
 import { getSupabase, SUPABASE_AUTH_STORAGE_KEY } from "./supabase"
+
+export const MESSAGE_SIGN_IN_WITH_GOOGLE = "youin:auth-google"
 
 export type AuthSession = Session
 export type AuthUser = User
@@ -20,43 +27,99 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function getUser(): Promise<User | null> {
-  const session = await getSession()
-  return session?.user ?? null
+  const { data, error } = await getSupabase().auth.getUser()
+  if (error) return null
+  return data.user
 }
 
 export async function signInWithPassword(
   email: string,
   password: string
 ): Promise<SignInResult> {
-  const { error } = await getSupabase().auth.signInWithPassword({
+  const { data, error } = await getSupabase().auth.signInWithPassword({
     email: email.trim(),
     password
   })
   if (error) return { ok: false, error: error.message }
+  if (data.session?.user.id) {
+    await setDataScope(accountDataScope(data.session.user.id))
+  }
   return { ok: true }
 }
 
 export async function signOut(): Promise<void> {
-  await getSupabase().auth.signOut()
+  try {
+    await getSupabase().auth.signOut()
+  } finally {
+    await setDataScope(LOCAL_DATA_SCOPE)
+  }
+}
+
+export function getGoogleOAuthRedirectUrl(): string {
+  return chrome.identity.getRedirectURL("auth/callback")
+}
+
+async function launchGoogleAuthFlow(url: string): Promise<string> {
+  const redirectUrl = await chrome.identity.launchWebAuthFlow({
+    url,
+    interactive: true
+  })
+  if (!redirectUrl) {
+    throw new Error("Google sign-in did not return to the extension.")
+  }
+  return redirectUrl
 }
 
 /**
- * Persist a session that arrived from the web app OAuth bridge. Both tokens
- * are required; refresh keeps the session alive past the access TTL.
+ * Complete Google OAuth inside Chrome's extension-bound identity window.
+ * Supabase's PKCE verifier remains in chrome.storage and the final redirect
+ * can only target this installed extension's chromiumapp.org origin.
  */
-export async function setSessionFromBridge(payload: {
-  access_token: string
-  refresh_token: string
-}): Promise<SignInResult> {
-  if (!payload.access_token || !payload.refresh_token) {
-    return { ok: false, error: "Missing tokens from bridge." }
-  }
-  const { error } = await getSupabase().auth.setSession({
-    access_token: payload.access_token,
-    refresh_token: payload.refresh_token
+export async function signInWithGoogle(): Promise<SignInResult> {
+  const redirectTo = getGoogleOAuthRedirectUrl()
+  const supabase = getSupabase()
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true
+    }
   })
   if (error) return { ok: false, error: error.message }
-  return { ok: true }
+  if (!data.url) {
+    return { ok: false, error: "Google sign-in could not be started." }
+  }
+
+  try {
+    const callbackUrl = new URL(await launchGoogleAuthFlow(data.url))
+    const oauthError =
+      callbackUrl.searchParams.get("error_description") ??
+      callbackUrl.searchParams.get("error")
+    if (oauthError) return { ok: false, error: oauthError }
+
+    const code = callbackUrl.searchParams.get("code")
+    if (!code) {
+      return {
+        ok: false,
+        error: "Google sign-in returned without an authorization code."
+      }
+    }
+    const { data: exchangeData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code)
+    if (exchangeError) return { ok: false, error: exchangeError.message }
+    if (exchangeData.session?.user.id) {
+      await setDataScope(accountDataScope(exchangeData.session.user.id))
+    }
+    return { ok: true }
+  } catch (flowError) {
+    return {
+      ok: false,
+      error:
+        flowError instanceof Error
+          ? flowError.message
+          : "Google sign-in was cancelled."
+    }
+  }
 }
 
 /**

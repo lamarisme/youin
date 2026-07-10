@@ -22,6 +22,7 @@ import {
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
+  KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_WIDGET_SETTINGS,
@@ -204,6 +205,7 @@ const PinBadges = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_MARKS] ||
         changes[KEY_ACTIVE_PROJECT] ||
         changes[KEY_PROJECTS] ||
@@ -217,6 +219,7 @@ const PinBadges = () => {
   }, [refresh])
 
   useLayoutEffect(() => {
+    let mutationTimer: ReturnType<typeof setTimeout> | undefined
     const onViewport = () => scheduleViewportRefresh()
     const onLocationChange = (e: Event) => {
       if (isInternalEvent(e)) onViewport()
@@ -224,10 +227,26 @@ const PinBadges = () => {
     window.addEventListener("scroll", onViewport, true)
     window.addEventListener("resize", onViewport)
     window.addEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
+    const mutationObserver = new MutationObserver(() => {
+      if (mutationTimer) clearTimeout(mutationTimer)
+      mutationTimer = setTimeout(scheduleViewportRefresh, 100)
+    })
+    mutationObserver.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["class", "hidden", "open", "style"]
+    })
+    const resizeObserver = new ResizeObserver(scheduleViewportRefresh)
+    resizeObserver.observe(document.documentElement)
+    if (document.body) resizeObserver.observe(document.body)
     return () => {
       window.removeEventListener("scroll", onViewport, true)
       window.removeEventListener("resize", onViewport)
       window.removeEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
+      mutationObserver.disconnect()
+      resizeObserver.disconnect()
+      if (mutationTimer) clearTimeout(mutationTimer)
       if (rafRef.current != null) {
         cancelAnimationFrame(rafRef.current)
         rafRef.current = null

@@ -8,9 +8,11 @@ import {
   normalizeMarkPriority,
   normalizeMarkStatus,
 } from "@youin/domain";
+import { and, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getDb } from "@/db/client";
+import { markComments, marks } from "@/db/schema";
 import {
   markDescriptionPlainText,
   normalizeCommentForStorage,
@@ -39,6 +41,7 @@ export const dynamic = "force-dynamic";
 
 type ExtensionMarkCommentInput = {
   body?: unknown;
+  clientMutationId?: unknown;
 };
 
 type ExtensionMarkInput = {
@@ -50,9 +53,14 @@ type ExtensionMarkInput = {
   priority?: unknown;
   selector?: unknown;
   viewport?: unknown;
+  captureKind?: unknown;
+  bbox?: unknown;
+  pageTitle?: unknown;
+  elementFingerprint?: unknown;
   domSnapshot?: unknown;
   capturedAt?: unknown;
   comments?: unknown;
+  clientMutationId?: unknown;
   screenshotDataUrl?: unknown;
 };
 
@@ -62,6 +70,7 @@ type ExtensionMarkPatchInput = {
   commentBody?: unknown;
   title?: unknown;
   openingBody?: unknown;
+  operationId?: unknown;
 };
 
 type ExtensionAuthResult =
@@ -75,7 +84,7 @@ type PersistedTextComment = {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
@@ -90,6 +99,16 @@ function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+const CLIENT_MUTATION_ID_RE = /^[a-zA-Z0-9:_-]{1,160}$/;
+
+function normalizeClientMutationId(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !CLIENT_MUTATION_ID_RE.test(value)) {
+    throw new Error("Client mutation id is invalid.");
+  }
+  return value;
+}
+
 const DOM_SNAPSHOT_LIMIT = 30000;
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024;
@@ -98,6 +117,7 @@ const MAX_SCREENSHOT_BASE64_LENGTH =
 const MAX_MARK_POST_BYTES =
   MAX_SCREENSHOT_BASE64_LENGTH + DOM_SNAPSHOT_LIMIT + 128 * 1024;
 const MAX_MARK_PATCH_BYTES = 32 * 1024;
+const EXTENSION_MARK_PAGE_SIZE = 200;
 
 type JsonValue =
   | string
@@ -172,6 +192,55 @@ function normalizeDomSnapshotForStorage(value: unknown): JsonValue | null {
 
   json = JSON.stringify(snapshot);
   return json.length <= DOM_SNAPSHOT_LIMIT ? snapshot : null;
+}
+
+function normalizeCaptureBbox(value: unknown): {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+} | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  const numbers = [row.x, row.y, row.width, row.height];
+  if (!numbers.every((item) => typeof item === "number" && Number.isFinite(item))) {
+    return null;
+  }
+  const [x, y, width, height] = numbers as number[];
+  if (
+    Math.abs(x) > 10_000_000 ||
+    Math.abs(y) > 10_000_000 ||
+    width < 0 ||
+    height < 0 ||
+    width > 10_000_000 ||
+    height > 10_000_000
+  ) {
+    return null;
+  }
+  return { x, y, width, height };
+}
+
+function normalizeElementFingerprintForStorage(
+  value: unknown,
+): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (row.version !== 1 || typeof row.tagName !== "string") return null;
+  const tagName = row.tagName.trim().toLowerCase().slice(0, 80);
+  if (!/^[a-z][a-z0-9-]*$/.test(tagName)) return null;
+  const bounded = (item: unknown, max: number) =>
+    typeof item === "string" && item.trim()
+      ? item.trim().slice(0, max)
+      : undefined;
+  return {
+    version: 1,
+    tagName,
+    ...(bounded(row.role, 80) ? { role: bounded(row.role, 80) } : {}),
+    ...(bounded(row.ariaLabelHash, 24)
+      ? { ariaLabelHash: bounded(row.ariaLabelHash, 24) }
+      : {}),
+    ...(bounded(row.textHash, 24) ? { textHash: bounded(row.textHash, 24) } : {}),
+  };
 }
 
 async function createAuthorizedClient(
@@ -371,6 +440,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const projectId =
     request.nextUrl.searchParams.get("projectId") ??
     request.nextUrl.searchParams.get("project");
+  const requestedOffset = Number(request.nextUrl.searchParams.get("offset") ?? 0);
+  const offset =
+    Number.isSafeInteger(requestedOffset) && requestedOffset >= 0
+      ? Math.min(requestedOffset, 100_000)
+      : 0;
 
   if (projectId) {
     const { data: project, error: projectError } = await supabase
@@ -387,20 +461,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   let marksQuery = supabase
     .from("marks")
     .select(
-      "id,project_id,title,page,status,priority,selector,viewport,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
+      "id,project_id,title,page,status,priority,selector,viewport,capture_kind,capture_bbox,page_title,element_fingerprint,screenshot_url,created_at,updated_at,captured_at,dom_snapshot",
     )
     .eq("workspace_id", workspaceId);
   if (projectId) {
     marksQuery = marksQuery.eq("project_id", projectId);
   }
 
-  const { data: marks, error: markError } = await marksQuery
+  const { data: markRows, error: markError } = await marksQuery
     .order("updated_at", { ascending: false })
-    .limit(500);
+    .order("id", { ascending: false })
+    .range(offset, offset + EXTENSION_MARK_PAGE_SIZE);
 
   if (markError) return jsonError(markError.message, 400);
 
-  const markIds = (marks ?? []).map((mark) => mark.id as string);
+  const hasMore = (markRows?.length ?? 0) > EXTENSION_MARK_PAGE_SIZE;
+  const marksPage = (markRows ?? []).slice(0, EXTENSION_MARK_PAGE_SIZE);
+
+  const markIds = marksPage.map((mark) => mark.id as string);
   const { data: comments, error: commentError } = markIds.length
     ? await supabase
         .from("mark_comments")
@@ -431,7 +509,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       String(profile.full_name || profile.email || "Team"),
     ]),
   );
-  const screenshotPaths = (marks ?? [])
+  const screenshotPaths = marksPage
     .map((mark) => mark.screenshot_url as string | null | undefined)
     .filter((path): path is string => isMarkImageStoragePath(path));
   const signedScreenshotByPath = await resolveImageUrls(
@@ -455,12 +533,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   return NextResponse.json(
     {
-      marks: (marks ?? []).map((mark) => ({
+      marks: marksPage.map((mark) => ({
         screenshotUrl: isMarkImageStoragePath(
           mark.screenshot_url as string | null | undefined,
         )
-          ? signedScreenshotByPath.get(mark.screenshot_url as string) ??
-            (mark.screenshot_url as string)
+          ? signedScreenshotByPath.get(mark.screenshot_url as string)
           : (mark.screenshot_url as string | null) ?? undefined,
         id: mark.id as string,
         projectId: mark.project_id as string,
@@ -470,12 +547,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         priority: String(mark.priority ?? "medium"),
         selector: String(mark.selector ?? ""),
         viewport: String(mark.viewport ?? ""),
+        captureKind: mark.capture_kind === "region" ? "region" : "element",
+        bbox: mark.capture_bbox ?? null,
+        pageTitle: String(mark.page_title ?? "") || null,
+        elementFingerprint: mark.element_fingerprint ?? null,
         createdAt: mark.created_at as string,
         updatedAt: mark.updated_at as string,
         capturedAt: mark.captured_at as string | null,
         domSnapshot: mark.dom_snapshot ?? null,
         comments: commentsByMark.get(mark.id as string) ?? [],
       })),
+      hasMore,
+      nextOffset: hasMore ? offset + marksPage.length : null,
     },
     { headers: CORS_HEADERS },
   );
@@ -532,38 +615,204 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     asString(input.description),
   );
   const domSnapshot = normalizeDomSnapshotForStorage(input.domSnapshot);
+  const captureKind = input.captureKind === "region" ? "region" : "element";
+  const captureBbox = normalizeCaptureBbox(input.bbox);
+  const pageTitle = asString(input.pageTitle).trim().slice(0, 280) || null;
+  const elementFingerprint = normalizeElementFingerprintForStorage(
+    input.elementFingerprint,
+  );
   const capturedAt = asString(input.capturedAt);
   const capturedDate = capturedAt ? new Date(capturedAt) : null;
-
-  const { data: mark, error: markError } = await supabase
-    .from("marks")
-    .insert({
-      workspace_id: workspaceId,
-      project_id: projectId,
-      title,
-      description,
-      page,
-      status,
-      workflow_status_id: workflowStatusId,
-      priority: normalizeMarkPriority(asString(input.priority)),
-      pinned: false,
-      created_by_user_id: user.id,
-      selector: asString(input.selector) || null,
-      viewport: asString(input.viewport) || null,
-      dom_snapshot: domSnapshot,
-      captured_at:
-        capturedDate && !Number.isNaN(capturedDate.getTime())
-          ? capturedDate.toISOString()
-          : null,
-    })
-    .select("id, seq, created_at")
-    .single();
-
-  if (markError || !mark) {
-    return jsonError(markError?.message ?? "Could not create mark.", 400);
+  let clientMutationId: string | null;
+  let comments: Array<{ body: string; clientMutationId: string | null }>;
+  try {
+    clientMutationId = normalizeClientMutationId(input.clientMutationId);
+    if (Array.isArray(input.comments) && input.comments.length > 100) {
+      return jsonError("A mark can include at most 100 initial comments.", 400);
+    }
+    comments = Array.isArray(input.comments)
+      ? input.comments.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const comment = item as ExtensionMarkCommentInput;
+          const body = normalizeCommentForStorage(
+            asString(comment.body).trim().slice(0, 4000),
+          );
+          if (!body) return [];
+          return [
+            {
+              body,
+              clientMutationId: normalizeClientMutationId(
+                comment.clientMutationId,
+              ),
+            },
+          ];
+        })
+      : [];
+  } catch (error) {
+    return jsonError(
+      error instanceof Error ? error.message : "Comment is invalid.",
+      400,
+    );
   }
 
-  const markId = mark.id as string;
+  const db = getDb();
+  let persisted: {
+    mark: { id: string; seq: number; createdAt: Date };
+    comments: PersistedTextComment[];
+  };
+  try {
+    persisted = await db.transaction(async (tx) => {
+      await setDbRequestUser(tx, user.id);
+
+      let mark = clientMutationId
+        ? (
+            await tx
+              .select({
+                id: marks.id,
+                seq: marks.seq,
+                createdAt: marks.createdAt,
+              })
+              .from(marks)
+              .where(
+                and(
+                  eq(marks.workspaceId, workspaceId),
+                  eq(marks.createdByUserId, user.id),
+                  eq(marks.clientMutationId, clientMutationId),
+                ),
+              )
+              .limit(1)
+          )[0]
+        : undefined;
+
+      if (!mark) {
+        const insert = tx.insert(marks).values({
+          workspaceId,
+          projectId,
+          title,
+          description,
+          page,
+          status,
+          workflowStatusId,
+          priority: normalizeMarkPriority(asString(input.priority)),
+          pinned: false,
+          createdByUserId: user.id,
+          clientMutationId,
+          selector: asString(input.selector).slice(0, 2048) || null,
+          viewport: asString(input.viewport).slice(0, 160) || null,
+          captureKind,
+          captureBbox,
+          pageTitle,
+          elementFingerprint,
+          domSnapshot: domSnapshot as Record<string, unknown> | null,
+          capturedAt:
+            capturedDate && !Number.isNaN(capturedDate.getTime())
+              ? capturedDate
+              : null,
+        });
+        const inserted = clientMutationId
+          ? await insert.onConflictDoNothing().returning({
+              id: marks.id,
+              seq: marks.seq,
+              createdAt: marks.createdAt,
+            })
+          : await insert.returning({
+              id: marks.id,
+              seq: marks.seq,
+              createdAt: marks.createdAt,
+            });
+        mark = inserted[0];
+      }
+
+      if (!mark && clientMutationId) {
+        mark = (
+          await tx
+            .select({
+              id: marks.id,
+              seq: marks.seq,
+              createdAt: marks.createdAt,
+            })
+            .from(marks)
+            .where(
+              and(
+                eq(marks.workspaceId, workspaceId),
+                eq(marks.createdByUserId, user.id),
+                eq(marks.clientMutationId, clientMutationId),
+              ),
+            )
+            .limit(1)
+        )[0];
+      }
+      if (!mark) throw new Error("Could not create mark.");
+
+      const createdComments: PersistedTextComment[] = [];
+      for (const comment of comments) {
+        let row = comment.clientMutationId
+          ? (
+              await tx
+                .select({ id: markComments.id, body: markComments.body })
+                .from(markComments)
+                .where(
+                  and(
+                    eq(markComments.authorUserId, user.id),
+                    eq(
+                      markComments.clientMutationId,
+                      comment.clientMutationId,
+                    ),
+                  ),
+                )
+                .limit(1)
+            )[0]
+          : undefined;
+        if (!row) {
+          const insert = tx.insert(markComments).values({
+            markId: mark.id,
+            authorUserId: user.id,
+            type: "text",
+            body: comment.body,
+            clientMutationId: comment.clientMutationId,
+          });
+          const inserted = comment.clientMutationId
+            ? await insert.onConflictDoNothing().returning({
+                id: markComments.id,
+                body: markComments.body,
+              })
+            : await insert.returning({
+                id: markComments.id,
+                body: markComments.body,
+              });
+          row = inserted[0];
+        }
+        if (!row && comment.clientMutationId) {
+          row = (
+            await tx
+              .select({ id: markComments.id, body: markComments.body })
+              .from(markComments)
+              .where(
+                and(
+                  eq(markComments.authorUserId, user.id),
+                  eq(
+                    markComments.clientMutationId,
+                    comment.clientMutationId,
+                  ),
+                ),
+              )
+              .limit(1)
+          )[0];
+        }
+        if (!row) throw new Error("Could not create mark comment.");
+        createdComments.push({ id: row.id, body: row.body ?? comment.body });
+      }
+
+      return { mark, comments: createdComments };
+    });
+  } catch (error) {
+    return jsonError(
+      error instanceof Error ? error.message : "Could not create mark.",
+      400,
+    );
+  }
+
+  const markId = persisted.mark.id;
   const screenshotDataUrl = asString(input.screenshotDataUrl);
   if (screenshotDataUrl.startsWith("data:")) {
     const image = parseDataUrlImage(screenshotDataUrl);
@@ -584,70 +833,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
-  let comments: string[] = [];
-  try {
-    comments = Array.isArray(input.comments)
-      ? input.comments
-          .map((item) =>
-            item && typeof item === "object"
-              ? normalizeCommentForStorage(
-                  asString((item as ExtensionMarkCommentInput).body)
-                    .trim()
-                    .slice(0, 4000),
-                )
-              : "",
-          )
-          .filter(Boolean)
-          .slice(0, 20)
-      : [];
-  } catch (e) {
-    return jsonError(
-      e instanceof Error ? e.message : "Comment is invalid.",
-      400,
-    );
-  }
-
   let warning: string | undefined;
-  let createdComments: PersistedTextComment[] = [];
-  if (comments.length) {
-    const { data: commentRows, error: commentError } = await supabase
-      .from("mark_comments")
-      .insert(
-        comments.map((body) => ({
-          mark_id: markId,
-          author_user_id: user.id,
-          type: "text" as const,
-          body,
-        })),
-      )
-      .select("id,body");
-    if (commentError) {
-      warning = commentError.message;
-    } else {
-      createdComments = (commentRows ?? []).map((comment) => ({
-        id: comment.id as string,
-        body: String(comment.body ?? ""),
-      }));
-    }
+  try {
+    await syncExtensionMentionSources({
+      workspaceId,
+      actorUserId: user.id,
+      markId,
+      description,
+      comments: persisted.comments,
+    });
+    await syncCanonicalInboxActivitiesForWorkspace({ db, workspaceId });
+  } catch (error) {
+    warning =
+      error instanceof Error
+        ? error.message
+        : "Feedback was saved, but workspace activity needs to be rebuilt.";
   }
-
-  await syncExtensionMentionSources({
-    workspaceId,
-    actorUserId: user.id,
-    markId,
-    description,
-    comments: createdComments,
-  });
-  await syncCanonicalInboxActivitiesForWorkspace({
-    db: getDb(),
-    workspaceId,
-  });
 
   return NextResponse.json(
     {
       id: markId,
-      seq: Number(mark.seq ?? 0),
-      createdAt: mark.created_at as string,
+      seq: Number(persisted.mark.seq ?? 0),
+      createdAt: persisted.mark.createdAt.toISOString(),
       warning,
     },
     { headers: CORS_HEADERS },
@@ -674,6 +881,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   const auth = await createAuthorizedClient(request);
   if ("error" in auth) return auth.error;
   const { supabase, user, workspaceId } = auth;
+  const db = getDb();
   let shouldSyncCanonicalInbox = false;
 
   const { data: mark, error: markReadError } = await supabase
@@ -729,10 +937,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   }
 
   let commentBody = "";
+  let operationId: string | null = null;
   try {
     commentBody = normalizeCommentForStorage(
       asString(input.commentBody).trim().slice(0, 4000),
     );
+    operationId = normalizeClientMutationId(input.operationId);
   } catch (e) {
     return jsonError(
       e instanceof Error ? e.message : "Comment is invalid.",
@@ -740,17 +950,81 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     );
   }
   if (commentBody) {
-    const { data: comment, error: commentError } = await supabase
-      .from("mark_comments")
-      .insert({
-        mark_id: markId,
-        author_user_id: user.id,
-        type: "text" as const,
-        body: commentBody,
-      })
-      .select("id,body")
-      .single();
-    if (commentError) return jsonError(commentError.message, 400);
+    let comment: { id: string; body: string | null };
+    try {
+      comment = await db.transaction(async (tx) => {
+        await setDbRequestUser(tx, user.id);
+        let existing = operationId
+          ? (
+              await tx
+                .select({
+                  id: markComments.id,
+                  markId: markComments.markId,
+                  body: markComments.body,
+                })
+                .from(markComments)
+                .where(
+                  and(
+                    eq(markComments.authorUserId, user.id),
+                    eq(markComments.clientMutationId, operationId),
+                  ),
+                )
+                .limit(1)
+            )[0]
+          : undefined;
+        if (existing && existing.markId !== markId) {
+          throw new Error("Comment operation belongs to another mark.");
+        }
+        if (!existing) {
+          const insert = tx.insert(markComments).values({
+            markId,
+            authorUserId: user.id,
+            type: "text",
+            body: commentBody,
+            clientMutationId: operationId,
+          });
+          const inserted = operationId
+            ? await insert.onConflictDoNothing().returning({
+                id: markComments.id,
+                markId: markComments.markId,
+                body: markComments.body,
+              })
+            : await insert.returning({
+                id: markComments.id,
+                markId: markComments.markId,
+                body: markComments.body,
+              });
+          existing = inserted[0];
+        }
+        if (!existing && operationId) {
+          existing = (
+            await tx
+              .select({
+                id: markComments.id,
+                markId: markComments.markId,
+                body: markComments.body,
+              })
+              .from(markComments)
+              .where(
+                and(
+                  eq(markComments.authorUserId, user.id),
+                  eq(markComments.clientMutationId, operationId),
+                ),
+              )
+              .limit(1)
+          )[0];
+        }
+        if (!existing || existing.markId !== markId) {
+          throw new Error("Could not create mark comment.");
+        }
+        return { id: existing.id, body: existing.body };
+      });
+    } catch (error) {
+      return jsonError(
+        error instanceof Error ? error.message : "Could not add comment.",
+        400,
+      );
+    }
     await syncExtensionMentionSources({
       workspaceId,
       actorUserId: user.id,
@@ -809,10 +1083,59 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
   if (shouldSyncCanonicalInbox) {
     await syncCanonicalInboxActivitiesForWorkspace({
-      db: getDb(),
+      db,
       workspaceId,
     });
   }
 
   return NextResponse.json({ ok: true }, { headers: CORS_HEADERS });
+}
+
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  const markId = asString(request.nextUrl.searchParams.get("markId")).trim();
+  if (!markId) return jsonError("Mark is required.", 400);
+
+  const auth = await createAuthorizedClient(request);
+  if ("error" in auth) return auth.error;
+  const { supabase, workspaceId } = auth;
+
+  const { data: mark, error: readError } = await supabase
+    .from("marks")
+    .select("id,screenshot_url")
+    .eq("id", markId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  if (readError) return jsonError(readError.message, 400);
+
+  if (mark) {
+    const { error: deleteError } = await supabase
+      .from("marks")
+      .delete()
+      .eq("id", markId)
+      .eq("workspace_id", workspaceId);
+    if (deleteError) return jsonError(deleteError.message, 400);
+
+    const screenshotPath = mark.screenshot_url as string | null;
+    if (isMarkImageStoragePath(screenshotPath)) {
+      await supabase.storage.from("mark-images").remove([screenshotPath]);
+    }
+  }
+
+  let warning: string | undefined;
+  try {
+    await syncCanonicalInboxActivitiesForWorkspace({
+      db: getDb(),
+      workspaceId,
+    });
+  } catch (error) {
+    warning =
+      error instanceof Error
+        ? error.message
+        : "Feedback was deleted, but workspace activity needs to be rebuilt.";
+  }
+
+  return NextResponse.json(
+    { ok: true, alreadyDeleted: !mark, warning },
+    { headers: CORS_HEADERS },
+  );
 }

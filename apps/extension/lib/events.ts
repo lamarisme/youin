@@ -10,6 +10,10 @@ export const EVENT_REVIEW_OPEN_PIN_LEGACY = "youin:review:open-pin"
 export const EVENT_REVIEW_TOGGLE_FEEDBACK_LIST =
   "youin:review:toggle-feedback-list"
 export const EVENT_LOCATION_CHANGE = "youin:location-change"
+/** Public DOM signal emitted by the main-world history hook. */
+export const EVENT_PAGE_LOCATION_CHANGE = "youin:page-location-change"
+export const MESSAGE_ENSURE_NAVIGATION_HOOK =
+  "youin:ensure-navigation-hook"
 export const MESSAGE_REVIEW_PING_CONTENT = "youin:ping-content"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL = "youin:ping-capture-panel"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY =
@@ -36,6 +40,8 @@ export interface OpenMarkDetail {
 }
 
 export interface ReviewCaptureDetail {
+  /** Correlates async screenshot work with the capture that requested it. */
+  captureId: string
   captureKind?: "element" | "region"
   selector: string
   strategy: "test-id" | "id" | "aria" | "path"
@@ -43,6 +49,7 @@ export interface ReviewCaptureDetail {
   viewport: { width: number; height: number; dpr: number }
   url: string
   pageTitle?: string
+  elementFingerprint?: import("./element-fingerprint").ElementFingerprint
   outerHTML: string
   domSnapshot?: import("./dom-snapshot").ElementDomSnapshot
   /** Element screenshot (PNG data URL), when capture succeeds. */
@@ -50,3 +57,6 @@ export interface ReviewCaptureDetail {
   screenshotPending?: boolean
   screenshotCaptureError?: string
 }
+
+export type ReviewCaptureUpdate = Pick<ReviewCaptureDetail, "captureId"> &
+  Partial<Omit<ReviewCaptureDetail, "captureId">>

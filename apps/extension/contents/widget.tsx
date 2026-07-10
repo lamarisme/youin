@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from "react"
 
 import {
   EVENT_LOCATION_CHANGE,
+  EVENT_PAGE_LOCATION_CHANGE,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
   EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
+  MESSAGE_ENSURE_NAVIGATION_HOOK,
   type ReviewMode,
   type ReviewStateDetail
 } from "../lib/events"
@@ -24,6 +26,7 @@ import {
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
+  KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
   type WidgetCorner,
@@ -50,12 +53,6 @@ const DEFAULT_SETTINGS: WidgetSettings = {
   captureScreenshots: true,
   captureDomSnapshots: true,
   disabledHosts: []
-}
-
-declare global {
-  interface Window {
-    __youinHistoryPatched?: boolean
-  }
 }
 
 function cornerClass(corner: WidgetCorner): string {
@@ -160,22 +157,7 @@ function Widget() {
   }, [])
 
   useEffect(() => {
-    if (!window.__youinHistoryPatched) {
-      window.__youinHistoryPatched = true
-      const notify = () => dispatchInternalEvent(EVENT_LOCATION_CHANGE)
-      const pushState = history.pushState
-      const replaceState = history.replaceState
-      history.pushState = function (...args) {
-        const result = pushState.apply(this, args)
-        queueMicrotask(notify)
-        return result
-      }
-      history.replaceState = function (...args) {
-        const result = replaceState.apply(this, args)
-        queueMicrotask(notify)
-        return result
-      }
-    }
+    void chrome.runtime.sendMessage({ type: MESSAGE_ENSURE_NAVIGATION_HOOK })
 
     void refreshSettings()
     void refreshCount()
@@ -186,6 +168,7 @@ function Widget() {
       if (area !== "local") return
       void refreshSettings()
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_MARKS] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT]
@@ -204,10 +187,14 @@ function Widget() {
     const onLocationChange = (e: Event) => {
       if (isInternalEvent(e)) void refreshCount()
     }
+    const onMainLocationChange = () => {
+      dispatchInternalEvent(EVENT_LOCATION_CHANGE)
+    }
 
     chrome.storage.onChanged.addListener(onStorage)
     window.addEventListener(EVENT_REVIEW_STATE, onState)
     window.addEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
+    document.addEventListener(EVENT_PAGE_LOCATION_CHANGE, onMainLocationChange)
     window.addEventListener("hashchange", refreshCount)
     window.addEventListener("popstate", refreshCount)
 
@@ -215,6 +202,10 @@ function Widget() {
       chrome.storage.onChanged.removeListener(onStorage)
       window.removeEventListener(EVENT_REVIEW_STATE, onState)
       window.removeEventListener(EVENT_LOCATION_CHANGE, onLocationChange)
+      document.removeEventListener(
+        EVENT_PAGE_LOCATION_CHANGE,
+        onMainLocationChange
+      )
       window.removeEventListener("hashchange", refreshCount)
       window.removeEventListener("popstate", refreshCount)
     }

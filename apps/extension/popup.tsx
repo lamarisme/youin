@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 
 import {
   getSession,
+  MESSAGE_SIGN_IN_WITH_GOOGLE,
   onAuthChange,
   onSessionStorageChange,
   signInWithPassword,
@@ -33,6 +34,7 @@ import {
   hostForUrl,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
+  KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SYNC_STATUS,
@@ -332,15 +334,22 @@ function IndexPopup() {
       if (area !== "local") return
       void refreshWidgetSettings()
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT]
       )
         void refreshProjects()
-      if (changes[KEY_MARKS] || changes[KEY_ACTIVE_PROJECT]) {
+      if (
+        changes[KEY_DATA_SCOPE] ||
+        changes[KEY_MARKS] ||
+        changes[KEY_ACTIVE_PROJECT]
+      ) {
         void refreshCounts()
         void refreshSyncSummary()
       }
-      if (changes[KEY_SYNC_STATUS]) void refreshSyncStatus()
+      if (changes[KEY_DATA_SCOPE] || changes[KEY_SYNC_STATUS]) {
+        void refreshSyncStatus()
+      }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
@@ -1080,10 +1089,24 @@ function SignInBlock({ onClose }: { onClose: () => void }) {
   function handleGoogle() {
     setError(null)
     setWaitingGoogle(true)
-    const url = new URL("/auth/extension-bridge", WEB_APP_URL)
-    url.searchParams.set("ext", chrome.runtime.id)
-    url.searchParams.set("provider", "google")
-    chrome.tabs.create({ url: url.toString() })
+    void (async () => {
+      try {
+        const result = (await chrome.runtime.sendMessage({
+          type: MESSAGE_SIGN_IN_WITH_GOOGLE
+        })) as { ok?: boolean; error?: string } | undefined
+        if (!result?.ok) {
+          setWaitingGoogle(false)
+          setError(result?.error ?? t("extension.popup.signInFailed"))
+        }
+      } catch (authError) {
+        setWaitingGoogle(false)
+        setError(
+          authError instanceof Error
+            ? authError.message
+            : t("extension.popup.signInFailed")
+        )
+      }
+    })()
   }
 
   return (

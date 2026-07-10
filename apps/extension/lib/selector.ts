@@ -5,81 +5,112 @@ export interface SelectorResult {
   strategy: SelectorStrategy
 }
 
+const SHADOW_SEPARATOR = " >>> "
+type SelectorRoot = Document | ShadowRoot
+
 const FRAMEWORK_ID_RE = /^:r\d+:$/i
 const HASH_LIKE_ID_RE = /^[a-f0-9]{6,}$/i
 const TEST_ID_ATTRS = ["data-testid", "data-test", "data-cy"] as const
+const SENSITIVE_SELECTOR_VALUE =
+  /(?:@|bearer|credential|password|secret|session|token|\b(?:\d[ -]*?){13,19}\b)/i
+
+function isSafeSelectorValue(value: string): boolean {
+  return value.length <= 160 && !SENSITIVE_SELECTOR_VALUE.test(value)
+}
 
 export function generateSelector(
   el: Element,
   doc: Document = el.ownerDocument ?? document
 ): SelectorResult {
-  const stable = stableSelectorFor(el, doc)
+  const rootNode = el.getRootNode()
+  const root: SelectorRoot =
+    rootNode instanceof ShadowRoot ? rootNode : doc
+  const local = generateSelectorWithinRoot(el, root)
+  if (root instanceof ShadowRoot) {
+    const host = generateSelector(root.host, doc)
+    return {
+      selector: `${host.selector}${SHADOW_SEPARATOR}${local.selector}`,
+      strategy: local.strategy
+    }
+  }
+  return local
+}
+
+function generateSelectorWithinRoot(
+  el: Element,
+  root: SelectorRoot
+): SelectorResult {
+  const stable = stableSelectorFor(el, root)
   if (stable) return { selector: stable.selector, strategy: stable.strategy }
 
-  const aria = ariaSelectorFor(el, doc)
+  const aria = ariaSelectorFor(el, root)
   if (aria) return { selector: aria, strategy: "aria" }
 
-  return { selector: nthOfTypePath(el, doc), strategy: "path" }
+  return { selector: nthOfTypePath(el, root), strategy: "path" }
 }
 
 function stableSelectorFor(
   el: Element,
-  doc: Document
+  root: SelectorRoot
 ): { selector: string; strategy: SelectorStrategy } | null {
   for (const attr of TEST_ID_ATTRS) {
     const value = el.getAttribute(attr)
-    if (!value) continue
+    if (!value || !isSafeSelectorValue(value)) continue
     const sel = `[${attr}="${escapeAttr(value)}"]`
-    if (isUnique(sel, doc)) return { selector: sel, strategy: "test-id" }
+    if (isUnique(sel, root)) return { selector: sel, strategy: "test-id" }
   }
 
   const id = el.id
-  if (id && !FRAMEWORK_ID_RE.test(id) && !HASH_LIKE_ID_RE.test(id)) {
+  if (
+    id &&
+    isSafeSelectorValue(id) &&
+    !FRAMEWORK_ID_RE.test(id) &&
+    !HASH_LIKE_ID_RE.test(id)
+  ) {
     const sel = `#${cssEscape(id)}`
-    if (isUnique(sel, doc)) return { selector: sel, strategy: "id" }
+    if (isUnique(sel, root)) return { selector: sel, strategy: "id" }
   }
 
   return null
 }
 
-function ariaSelectorFor(el: Element, doc: Document): string | null {
+function ariaSelectorFor(el: Element, root: SelectorRoot): string | null {
   const tag = el.tagName.toLowerCase()
   const label = el.getAttribute("aria-label")
-  if (label) {
+  if (label && isSafeSelectorValue(label)) {
     const sel = `${tag}[aria-label="${escapeAttr(label)}"]`
-    if (isUnique(sel, doc)) return sel
+    if (isUnique(sel, root)) return sel
   }
   const role = el.getAttribute("role")
   if (role) {
     const sel = `${tag}[role="${escapeAttr(role)}"]`
-    if (isUnique(sel, doc)) return sel
+    if (isUnique(sel, root)) return sel
   }
   return null
 }
 
-function nthOfTypePath(el: Element, doc: Document): string {
+function nthOfTypePath(el: Element, rootNode: SelectorRoot): string {
   const parts: string[] = []
   let current: Element | null = el
-  let root = "body"
+  let prefix = rootNode instanceof Document ? "body" : ""
 
   while (
     current &&
-    current !== doc.body &&
-    current !== doc.documentElement
+    (!(rootNode instanceof Document) ||
+      (current !== rootNode.body && current !== rootNode.documentElement))
   ) {
     if (current !== el) {
-      const stable = stableSelectorFor(current, doc)
+      const stable = stableSelectorFor(current, rootNode)
       if (stable) {
-        root = stable.selector
+        prefix = stable.selector
         break
       }
     }
 
     const parent = current.parentElement
-    if (!parent) break
-
     const tag = current.tagName.toLowerCase()
-    const sameTag = Array.from(parent.children).filter(
+    const siblings = parent?.children ?? rootNode.children
+    const sameTag = Array.from(siblings).filter(
       (c) => c.tagName === current!.tagName
     )
     parts.unshift(
@@ -87,17 +118,43 @@ function nthOfTypePath(el: Element, doc: Document): string {
         ? `${tag}:nth-of-type(${sameTag.indexOf(current) + 1})`
         : tag
     )
+    if (!parent) break
     current = parent
   }
 
-  return parts.length > 0 ? `${root} > ${parts.join(" > ")}` : root
+  if (!parts.length) return prefix || el.tagName.toLowerCase()
+  return prefix ? `${prefix} > ${parts.join(" > ")}` : parts.join(" > ")
 }
 
-function isUnique(selector: string, doc: Document): boolean {
+function isUnique(selector: string, root: SelectorRoot): boolean {
   try {
-    return doc.querySelectorAll(selector).length === 1
+    return root.querySelectorAll(selector).length === 1
   } catch {
     return false
+  }
+}
+
+/** Resolves selectors that cross one or more open shadow roots. */
+export function resolveSelector(
+  selector: string,
+  root: Document | ShadowRoot = document
+): Element | null {
+  const parts = selector.split(SHADOW_SEPARATOR).map((part) => part.trim())
+  if (!parts.length || parts.some((part) => !part)) return null
+  let currentRoot: Document | ShadowRoot = root
+  let element: Element | null = null
+  try {
+    for (let index = 0; index < parts.length; index++) {
+      element = currentRoot.querySelector(parts[index])
+      if (!element) return null
+      if (index < parts.length - 1) {
+        if (!(element instanceof HTMLElement) || !element.shadowRoot) return null
+        currentRoot = element.shadowRoot
+      }
+    }
+    return element
+  } catch {
+    return null
   }
 }
 

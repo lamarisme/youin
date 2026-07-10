@@ -11,7 +11,9 @@ import {
 } from "@youin/domain"
 
 import type { ElementDomSnapshot } from "./dom-snapshot"
+import type { ElementFingerprint } from "./element-fingerprint"
 import { normalizePageUrlForMatch } from "./page-url"
+import { withStorageMutationLock } from "./storage-lock"
 
 export const KEY_PROJECTS = "youin:projects"
 export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
@@ -19,6 +21,24 @@ export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
 export const KEY_MARKS = "youin:pins"
 export const KEY_WIDGET_SETTINGS = "youin:widget-settings"
 export const KEY_SYNC_STATUS = "youin:sync-status"
+export const KEY_DATA_SCOPE = "youin:data-scope"
+
+export const LOCAL_DATA_SCOPE = "local"
+const SCOPED_STORAGE_VERSION = 1
+
+interface ScopedStorageEnvelope<T> {
+  __youinScoped: typeof SCOPED_STORAGE_VERSION
+  values: Record<string, T>
+}
+
+export function accountDataScope(
+  userId: string,
+  workspaceId?: string | null
+): string {
+  const user = userId.trim().slice(0, 180)
+  const workspace = workspaceId?.trim().slice(0, 180) || "pending"
+  return user ? `account:${user}:workspace:${workspace}` : LOCAL_DATA_SCOPE
+}
 
 export type WidgetCorner =
   | "bottom-right"
@@ -80,6 +100,13 @@ export interface SyncStatus {
 export type MarkSyncOperation =
   | {
       id: string
+      type: "delete"
+      createdAt: number
+      attempts: number
+      lastError?: string
+    }
+  | {
+      id: string
       type: "status"
       status: MarkStatus
       createdAt: number
@@ -115,6 +142,8 @@ export interface Mark {
   url: string
   /** Browser tab title at capture time. */
   pageTitle?: string
+  /** Non-reversible identity signals used to reject false selector matches. */
+  elementFingerprint?: ElementFingerprint
   origin: string
   pathname: string
   selector: string
@@ -173,6 +202,7 @@ export const STORAGE_LIMITS = {
 const MAX_LAYOUT_COORDINATE = 10000000
 const MAX_VIEWPORT_SIZE = 100000
 const MAX_DPR = 10
+const MAX_PENDING_SYNC_OPS = 200
 
 const WIDGET_CORNERS: WidgetCorner[] = [
   "bottom-right",
@@ -293,7 +323,7 @@ function normalizeDisabledHosts(value: unknown): string[] {
 function normalizeSyncOps(value: unknown): MarkSyncOperation[] {
   if (!Array.isArray(value)) return []
   const out: MarkSyncOperation[] = []
-  for (const item of value.slice(0, 50)) {
+  for (const item of value.slice(0, MAX_PENDING_SYNC_OPS)) {
     if (!item || typeof item !== "object") continue
     const row = item as Record<string, unknown>
     const id =
@@ -317,6 +347,8 @@ function normalizeSyncOps(value: unknown): MarkSyncOperation[] {
         typeof row.status === "string" ? row.status : undefined
       )
       out.push({ id, type: "status", status, createdAt, attempts, lastError })
+    } else if (row.type === "delete") {
+      out.push({ id, type: "delete", createdAt, attempts, lastError })
     } else if (row.type === "comment" && typeof row.body === "string") {
       const body = row.body.trim().slice(0, STORAGE_LIMITS.threadBody)
       if (body)
@@ -392,6 +424,24 @@ function normalizeDomSnapshot(value: unknown): ElementDomSnapshot | undefined {
       : undefined
   } catch {
     return undefined
+  }
+}
+
+function normalizeElementFingerprint(
+  value: unknown
+): ElementFingerprint | undefined {
+  if (!isRecord(value) || value.version !== 1) return undefined
+  const tagName = boundedString(value.tagName, 80)?.trim().toLowerCase()
+  if (!tagName || !/^[a-z][a-z0-9-]*$/.test(tagName)) return undefined
+  const role = boundedString(value.role, 80)?.trim().toLowerCase()
+  const ariaLabelHash = boundedString(value.ariaLabelHash, 24)?.trim()
+  const textHash = boundedString(value.textHash, 24)?.trim()
+  return {
+    version: 1,
+    tagName,
+    role: role || undefined,
+    ariaLabelHash: ariaLabelHash || undefined,
+    textHash: textHash || undefined
   }
 }
 
@@ -503,6 +553,7 @@ function migrateRawMark(raw: unknown): Mark {
       typeof p.pageTitle === "string" && p.pageTitle
         ? p.pageTitle.slice(0, 280)
         : undefined,
+    elementFingerprint: normalizeElementFingerprint(p.elementFingerprint),
     origin: boundedString(p.origin, 4096) ?? "",
     pathname: boundedString(p.pathname, 4096) ?? "",
     selector: boundedString(p.selector, 2048) ?? "",
@@ -549,11 +600,6 @@ async function read<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-async function readArray(key: string): Promise<unknown[]> {
-  const stored = await read<unknown>(key, [])
-  return Array.isArray(stored) ? stored : []
-}
-
 async function write(key: string, value: unknown): Promise<boolean> {
   try {
     await chrome.storage.local.set({ [key]: value })
@@ -563,15 +609,81 @@ async function write(key: string, value: unknown): Promise<boolean> {
   }
 }
 
-export async function getProjects(): Promise<Project[]> {
-  const stored = await read<unknown>(KEY_PROJECTS, null)
+function isScopedEnvelope<T>(value: unknown): value is ScopedStorageEnvelope<T> {
+  if (!value || typeof value !== "object") return false
+  const row = value as Record<string, unknown>
+  return (
+    row.__youinScoped === SCOPED_STORAGE_VERSION &&
+    Boolean(row.values && typeof row.values === "object")
+  )
+}
+
+export async function getDataScope(): Promise<string> {
+  const scope = await read<string | null>(KEY_DATA_SCOPE, null)
+  return typeof scope === "string" && scope.trim()
+    ? scope.slice(0, 512)
+    : LOCAL_DATA_SCOPE
+}
+
+export async function setDataScope(scope: string): Promise<boolean> {
+  const normalized = scope.trim().slice(0, 512) || LOCAL_DATA_SCOPE
+  return withStorageMutationLock(() => write(KEY_DATA_SCOPE, normalized))
+}
+
+async function readScoped<T>(
+  key: string,
+  fallback: T,
+  scope?: string
+): Promise<T> {
+  const resolvedScope = scope ?? (await getDataScope())
+  const stored = await read<unknown>(key, undefined)
+  if (isScopedEnvelope<T>(stored)) {
+    const value = stored.values[resolvedScope]
+    return value === undefined || value === null ? fallback : value
+  }
+  if (resolvedScope !== LOCAL_DATA_SCOPE) return fallback
+  return stored === undefined || stored === null ? fallback : (stored as T)
+}
+
+async function writeScoped<T>(
+  key: string,
+  value: T,
+  scope?: string
+): Promise<boolean> {
+  const resolvedScope = scope ?? (await getDataScope())
+  const stored = await read<unknown>(key, undefined)
+  const values: Record<string, T> = isScopedEnvelope<T>(stored)
+    ? { ...stored.values }
+    : stored === undefined || stored === null
+      ? {}
+      : { [LOCAL_DATA_SCOPE]: stored as T }
+  values[resolvedScope] = value
+  return write(key, {
+    __youinScoped: SCOPED_STORAGE_VERSION,
+    values
+  } satisfies ScopedStorageEnvelope<T>)
+}
+
+async function readScopedArray(
+  key: string,
+  scope?: string
+): Promise<unknown[]> {
+  const stored = await readScoped<unknown>(key, [], scope)
+  return Array.isArray(stored) ? stored : []
+}
+
+function defaultProjectsForScope(scope: string): Project[] {
+  return scope === LOCAL_DATA_SCOPE ? DEFAULT_PROJECTS : []
+}
+
+export async function getProjectsForScope(scope: string): Promise<Project[]> {
+  const fallback = defaultProjectsForScope(scope)
+  const stored = await readScoped<unknown>(KEY_PROJECTS, null, scope)
   if (stored == null) {
-    await write(KEY_PROJECTS, DEFAULT_PROJECTS)
-    return DEFAULT_PROJECTS
+    return fallback
   }
   if (!Array.isArray(stored)) {
-    await write(KEY_PROJECTS, DEFAULT_PROJECTS)
-    return DEFAULT_PROJECTS
+    return fallback
   }
   const projects = stored
     .map(normalizeStoredProject)
@@ -579,31 +691,68 @@ export async function getProjects(): Promise<Project[]> {
   return projects
 }
 
-export async function setProjects(projects: Project[]): Promise<boolean> {
-  return write(
+export async function getProjects(): Promise<Project[]> {
+  return getProjectsForScope(await getDataScope())
+}
+
+async function setProjectsForScopeUnlocked(
+  scope: string,
+  projects: Project[]
+): Promise<boolean> {
+  return writeScoped(
     KEY_PROJECTS,
     projects
       .map(normalizeStoredProject)
-      .filter((project): project is Project => Boolean(project))
+      .filter((project): project is Project => Boolean(project)),
+    scope
   )
 }
 
+export async function setProjectsForScope(
+  scope: string,
+  projects: Project[]
+): Promise<boolean> {
+  return withStorageMutationLock(() =>
+    setProjectsForScopeUnlocked(scope, projects)
+  )
+}
+
+export async function setProjects(projects: Project[]): Promise<boolean> {
+  return setProjectsForScope(await getDataScope(), projects)
+}
+
 export async function addProject(project: Project): Promise<boolean> {
-  const projects = await getProjects()
   const normalized = normalizeStoredProject(project)
   if (!normalized) return false
-  return write(KEY_PROJECTS, [...projects, normalized])
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const projects = await getProjectsForScope(scope)
+    return setProjectsForScopeUnlocked(scope, [...projects, normalized])
+  })
+}
+
+export async function getActiveProjectIdForScope(scope: string): Promise<string> {
+  const id = await readScoped<string | null>(KEY_ACTIVE_PROJECT, null, scope)
+  const projects = await getProjectsForScope(scope)
+  if (id && projects.some((project) => project.id === id)) return id
+  return projects[0]?.id ?? (scope === LOCAL_DATA_SCOPE ? DEFAULT_PROJECTS[0].id : "")
 }
 
 export async function getActiveProjectId(): Promise<string> {
-  const id = await read<string | null>(KEY_ACTIVE_PROJECT, null)
-  const projects = await getProjects()
-  if (id && projects.some((project) => project.id === id)) return id
-  return projects[0]?.id ?? DEFAULT_PROJECTS[0].id
+  return getActiveProjectIdForScope(await getDataScope())
+}
+
+export async function setActiveProjectIdForScope(
+  scope: string,
+  id: string
+): Promise<boolean> {
+  return withStorageMutationLock(() =>
+    writeScoped(KEY_ACTIVE_PROJECT, id, scope)
+  )
 }
 
 export async function setActiveProjectId(id: string): Promise<boolean> {
-  return write(KEY_ACTIVE_PROJECT, id)
+  return setActiveProjectIdForScope(await getDataScope(), id)
 }
 
 export async function getWidgetSettings(): Promise<WidgetSettings> {
@@ -639,32 +788,34 @@ export async function getWidgetSettings(): Promise<WidgetSettings> {
 export async function setWidgetSettings(
   patch: Partial<WidgetSettings>
 ): Promise<{ settings: WidgetSettings; saved: boolean }> {
-  const prev = await getWidgetSettings()
-  const merged: WidgetSettings = {
-    corner: isWidgetCorner(patch.corner) ? patch.corner : prev.corner,
-    fabVisible:
-      typeof patch.fabVisible === "boolean"
-        ? patch.fabVisible
-        : prev.fabVisible,
-    captureScreenshots:
-      typeof patch.captureScreenshots === "boolean"
-        ? patch.captureScreenshots
-        : prev.captureScreenshots,
-    captureDomSnapshots:
-      typeof patch.captureDomSnapshots === "boolean"
-        ? patch.captureDomSnapshots
-        : prev.captureDomSnapshots,
-    disabledHosts:
-      patch.disabledHosts === undefined
-        ? prev.disabledHosts
-        : normalizeDisabledHosts(patch.disabledHosts)
-  }
-  const saved = await write(KEY_WIDGET_SETTINGS, merged)
-  return { settings: merged, saved }
+  return withStorageMutationLock(async () => {
+    const prev = await getWidgetSettings()
+    const merged: WidgetSettings = {
+      corner: isWidgetCorner(patch.corner) ? patch.corner : prev.corner,
+      fabVisible:
+        typeof patch.fabVisible === "boolean"
+          ? patch.fabVisible
+          : prev.fabVisible,
+      captureScreenshots:
+        typeof patch.captureScreenshots === "boolean"
+          ? patch.captureScreenshots
+          : prev.captureScreenshots,
+      captureDomSnapshots:
+        typeof patch.captureDomSnapshots === "boolean"
+          ? patch.captureDomSnapshots
+          : prev.captureDomSnapshots,
+      disabledHosts:
+        patch.disabledHosts === undefined
+          ? prev.disabledHosts
+          : normalizeDisabledHosts(patch.disabledHosts)
+    }
+    const saved = await write(KEY_WIDGET_SETTINGS, merged)
+    return { settings: merged, saved }
+  })
 }
 
 export async function getSyncStatus(): Promise<SyncStatus> {
-  const stored = await read<unknown>(KEY_SYNC_STATUS, null)
+  const stored = await readScoped<unknown>(KEY_SYNC_STATUS, null)
   if (!stored || typeof stored !== "object") return DEFAULT_SYNC_STATUS
   const row = stored as Record<string, unknown>
   return {
@@ -689,35 +840,37 @@ export async function getSyncStatus(): Promise<SyncStatus> {
 export async function setSyncStatus(
   patch: Partial<SyncStatus> & { state?: SyncStatusState }
 ): Promise<SyncStatus> {
-  const prev = await getSyncStatus()
-  const next: SyncStatus = {
-    state: patch.state ?? prev.state,
-    lastAttemptAt:
-      patch.lastAttemptAt === undefined
-        ? prev.lastAttemptAt
-        : finiteNumber(
-            patch.lastAttemptAt,
-            Date.now(),
-            0,
-            Number.MAX_SAFE_INTEGER
-          ),
-    lastSuccessAt:
-      patch.lastSuccessAt === undefined
-        ? prev.lastSuccessAt
-        : finiteNumber(
-            patch.lastSuccessAt,
-            Date.now(),
-            0,
-            Number.MAX_SAFE_INTEGER
-          ),
-    lastError: !("lastError" in patch)
-      ? prev.lastError
-      : patch.lastError
-        ? patch.lastError.slice(0, 300)
-        : undefined
-  }
-  await write(KEY_SYNC_STATUS, next)
-  return next
+  return withStorageMutationLock(async () => {
+    const prev = await getSyncStatus()
+    const next: SyncStatus = {
+      state: patch.state ?? prev.state,
+      lastAttemptAt:
+        patch.lastAttemptAt === undefined
+          ? prev.lastAttemptAt
+          : finiteNumber(
+              patch.lastAttemptAt,
+              Date.now(),
+              0,
+              Number.MAX_SAFE_INTEGER
+            ),
+      lastSuccessAt:
+        patch.lastSuccessAt === undefined
+          ? prev.lastSuccessAt
+          : finiteNumber(
+              patch.lastSuccessAt,
+              Date.now(),
+              0,
+              Number.MAX_SAFE_INTEGER
+            ),
+      lastError: !("lastError" in patch)
+        ? prev.lastError
+        : patch.lastError
+          ? patch.lastError.slice(0, 300)
+          : undefined
+    }
+    await writeScoped(KEY_SYNC_STATUS, next)
+    return next
+  })
 }
 
 export async function markSyncAttemptStarted(): Promise<SyncStatus> {
@@ -764,8 +917,8 @@ export function isHostDisabled(
   )
 }
 
-export async function getMarks(): Promise<Mark[]> {
-  const stored = await readArray(KEY_MARKS)
+export async function getMarksForScope(scope: string): Promise<Mark[]> {
+  const stored = await readScopedArray(KEY_MARKS, scope)
   const out: Mark[] = []
   for (const row of stored) {
     try {
@@ -775,6 +928,10 @@ export async function getMarks(): Promise<Mark[]> {
     }
   }
   return out
+}
+
+export async function getMarks(): Promise<Mark[]> {
+  return getMarksForScope(await getDataScope())
 }
 
 export async function addMark(mark: Mark): Promise<boolean> {
@@ -804,6 +961,7 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
     projectId,
     url: normalizePageUrlForMatch(mark.url) || mark.url,
     pageTitle: mark.pageTitle?.slice(0, 280),
+    elementFingerprint: normalizeElementFingerprint(mark.elementFingerprint),
     origin: mark.origin.slice(0, 4096),
     pathname: mark.pathname.slice(0, 4096),
     selector: mark.selector.slice(0, 2048),
@@ -844,34 +1002,45 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
 }
 
 export async function addMarkWithFallback(mark: Mark): Promise<AddMarkResult> {
-  const marks = await getMarks()
-  const sanitized = sanitizeMarkForStorage(mark)
-  const attempts: Array<{ mark: Mark; warning?: string }> = [
-    { mark: sanitized },
-    {
-      mark: { ...sanitized, domSnapshot: undefined },
-      warning: "Saved without DOM context because local storage was full."
-    },
-    {
-      mark: {
-        ...sanitized,
-        domSnapshot: undefined,
-        screenshotDataUrl: undefined,
-        screenshotUrl: undefined
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const screenshotTooLarge =
+      Boolean(mark.screenshotDataUrl) &&
+      mark.screenshotDataUrl!.length > STORAGE_LIMITS.screenshotDataUrl
+    const sanitized = sanitizeMarkForStorage(mark)
+    const attempts: Array<{ mark: Mark; warning?: string }> = [
+      {
+        mark: sanitized,
+        warning: screenshotTooLarge
+          ? "Saved without a screenshot because the image was too large."
+          : undefined
       },
-      warning:
-        "Saved as text-only feedback because local screenshot storage was full."
-    }
-  ]
+      {
+        mark: { ...sanitized, domSnapshot: undefined },
+        warning: "Saved without DOM context because local storage was full."
+      },
+      {
+        mark: {
+          ...sanitized,
+          domSnapshot: undefined,
+          screenshotDataUrl: undefined,
+          screenshotUrl: undefined
+        },
+        warning:
+          "Saved as text-only feedback because local screenshot storage was full."
+      }
+    ]
 
-  for (const attempt of attempts) {
-    const ok = await write(
-      KEY_MARKS,
-      serializeMarksForStorage([...marks, attempt.mark])
-    )
-    if (ok) return { ok: true, mark: attempt.mark, warning: attempt.warning }
-  }
-  return { ok: false }
+    for (const attempt of attempts) {
+      const ok = await saveMarksForScopeUnlocked(scope, [
+        ...marks,
+        attempt.mark
+      ])
+      if (ok) return { ok: true, mark: attempt.mark, warning: attempt.warning }
+    }
+    return { ok: false }
+  })
 }
 
 /** Strip deprecated field on write */
@@ -905,8 +1074,26 @@ function serializeMarksForStorage(marks: Mark[]): unknown[] {
   })
 }
 
+async function saveMarksForScopeUnlocked(
+  scope: string,
+  marks: Mark[]
+): Promise<boolean> {
+  return writeScoped(KEY_MARKS, serializeMarksForStorage(marks), scope)
+}
+
+export async function saveMarksForScope(
+  scope: string,
+  marks: Mark[]
+): Promise<boolean> {
+  return withStorageMutationLock(() =>
+    saveMarksForScopeUnlocked(scope, marks)
+  )
+}
+
 export async function saveMarks(marks: Mark[]): Promise<boolean> {
-  return write(KEY_MARKS, serializeMarksForStorage(marks))
+  return withStorageMutationLock(async () =>
+    saveMarksForScopeUnlocked(await getDataScope(), marks)
+  )
 }
 
 /** Apply fields to one mark by id; no-op when missing */
@@ -914,36 +1101,54 @@ export async function patchMark(
   markId: string,
   patch: Partial<Mark>
 ): Promise<boolean> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return false
-  const projectId = patch.projectId ?? marks[ix].projectId
-  const merged = { ...marks[ix], ...patch, projectId }
-  marks[ix] = merged
-  return saveMarks(marks)
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return false
+    const projectId = patch.projectId ?? marks[ix].projectId
+    marks[ix] = { ...marks[ix], ...patch, projectId }
+    return saveMarksForScopeUnlocked(scope, marks)
+  })
 }
 
 export async function removeMark(markId: string): Promise<Mark | undefined> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return undefined
-  const mark = marks[ix]
-  if (mark.remoteMarkId) {
-    marks[ix] = { ...mark, localHiddenAt: Date.now(), updatedAt: Date.now() }
-  } else {
-    marks.splice(ix, 1)
-  }
-  const ok = await saveMarks(marks)
-  return ok ? mark : undefined
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return undefined
+    const mark = marks[ix]
+    if (mark.remoteMarkId) {
+      marks[ix] = { ...mark, localHiddenAt: Date.now(), updatedAt: Date.now() }
+    } else {
+      marks.splice(ix, 1)
+    }
+    const ok = await saveMarksForScopeUnlocked(scope, marks)
+    return ok ? mark : undefined
+  })
 }
 
 export async function restoreMark(mark: Mark): Promise<boolean> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === mark.id)
-  const restored = { ...mark, localHiddenAt: undefined, updatedAt: Date.now() }
-  if (ix >= 0) marks[ix] = restored
-  else marks.push(restored)
-  return saveMarks(marks)
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === mark.id)
+    const pendingSyncOps = (mark.pendingSyncOps ?? []).filter(
+      (operation) => operation.type !== "delete"
+    )
+    const restored = {
+      ...mark,
+      localHiddenAt: undefined,
+      pendingSyncOps,
+      syncError: undefined,
+      updatedAt: Date.now()
+    }
+    restored.syncState = computeSyncState(restored)
+    if (ix >= 0) marks[ix] = restored
+    else marks.push(restored)
+    return saveMarksForScopeUnlocked(scope, marks)
+  })
 }
 
 export async function appendThreadComment(
@@ -953,25 +1158,28 @@ export async function appendThreadComment(
 ): Promise<Mark[] | undefined> {
   const trimmed = body.trim().slice(0, STORAGE_LIMITS.threadBody)
   if (!trimmed) return undefined
-  const marks = await getMarks()
-  const idx = marks.findIndex((x) => x.id === markId)
-  if (idx < 0) return undefined
-  const mark = marks[idx]
-  const label = (authorLabel || "You").slice(0, 80)
-  const msg: LocalThreadMessage = {
-    id: makeThreadMessageId(),
-    body: trimmed,
-    createdAt: Date.now(),
-    authorLabel: label
-  }
-  const updated: Mark = {
-    ...mark,
-    thread: [...mark.thread, msg],
-    updatedAt: Date.now()
-  }
-  const next = [...marks.slice(0, idx), updated, ...marks.slice(idx + 1)]
-  const ok = await write(KEY_MARKS, serializeMarksForStorage(next))
-  return ok ? next : undefined
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const idx = marks.findIndex((x) => x.id === markId)
+    if (idx < 0) return undefined
+    const mark = marks[idx]
+    const label = (authorLabel || "You").slice(0, 80)
+    const msg: LocalThreadMessage = {
+      id: makeThreadMessageId(),
+      body: trimmed,
+      createdAt: Date.now(),
+      authorLabel: label
+    }
+    const updated: Mark = {
+      ...mark,
+      thread: [...mark.thread, msg],
+      updatedAt: Date.now()
+    }
+    const next = [...marks.slice(0, idx), updated, ...marks.slice(idx + 1)]
+    const ok = await saveMarksForScopeUnlocked(scope, next)
+    return ok ? next : undefined
+  })
 }
 
 function computeSyncState(mark: Mark): MarkSyncState {
@@ -989,16 +1197,21 @@ function computeSyncState(mark: Mark): MarkSyncState {
 export async function enqueueMarkSyncOp(
   markId: string,
   op:
+    | { type: "delete" }
     | { type: "status"; status: MarkStatus }
     | { type: "comment"; body: string }
     | { type: "edit"; title: string; openingBody: string }
 ): Promise<MarkSyncOperation | undefined> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return undefined
   const now = Date.now()
   let nextOp: MarkSyncOperation
-  if (op.type === "status") {
+  if (op.type === "delete") {
+    nextOp = {
+      id: makeSyncOpId(),
+      type: "delete",
+      createdAt: now,
+      attempts: 0
+    }
+  } else if (op.type === "status") {
     nextOp = {
       id: makeSyncOpId(),
       type: "status",
@@ -1028,37 +1241,74 @@ export async function enqueueMarkSyncOp(
   if (nextOp.type === "edit" && (!nextOp.title || !nextOp.openingBody)) {
     return undefined
   }
-  const mark = marks[ix]
-  marks[ix] = {
-    ...mark,
-    syncState: "pending",
-    syncError: undefined,
-    pendingSyncOps: [...(mark.pendingSyncOps ?? []), nextOp],
-    updatedAt: now
-  }
-  const ok = await saveMarks(marks)
-  return ok ? nextOp : undefined
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return undefined
+    const mark = marks[ix]
+    let pendingSyncOps = mark.pendingSyncOps ?? []
+    if (nextOp.type === "delete") {
+      pendingSyncOps = []
+    } else if (nextOp.type === "status") {
+      pendingSyncOps = pendingSyncOps.filter((op) => op.type !== "status")
+    } else if (nextOp.type === "edit") {
+      pendingSyncOps = pendingSyncOps.filter((op) => op.type !== "edit")
+    }
+    if (pendingSyncOps.length >= MAX_PENDING_SYNC_OPS) {
+      marks[ix] = {
+        ...mark,
+        syncState: "failed",
+        syncError:
+          "Too many offline changes are waiting. Reconnect and sync before adding more."
+      }
+      await saveMarksForScopeUnlocked(scope, marks)
+      return undefined
+    }
+    marks[ix] = {
+      ...mark,
+      syncState: "pending",
+      syncError: undefined,
+      pendingSyncOps: [...pendingSyncOps, nextOp],
+      updatedAt: now
+    }
+    const ok = await saveMarksForScopeUnlocked(scope, marks)
+    return ok ? nextOp : undefined
+  })
+}
+
+export async function purgeMark(markId: string): Promise<boolean> {
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const next = marks.filter((mark) => mark.id !== markId)
+    if (next.length === marks.length) return true
+    return saveMarksForScopeUnlocked(scope, next)
+  })
 }
 
 export async function removeMarkSyncOp(
   markId: string,
   opId: string
 ): Promise<boolean> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return false
-  const mark = marks[ix]
-  const pendingSyncOps = (mark.pendingSyncOps ?? []).filter(
-    (op) => op.id !== opId
-  )
-  const next: Mark = {
-    ...mark,
-    pendingSyncOps,
-    syncError: undefined
-  }
-  next.syncState = computeSyncState(next)
-  marks[ix] = next
-  return saveMarks(marks)
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return false
+    const mark = marks[ix]
+    const pendingSyncOps = (mark.pendingSyncOps ?? []).filter(
+      (op) => op.id !== opId
+    )
+    const next: Mark = {
+      ...mark,
+      pendingSyncOps,
+      syncError: undefined
+    }
+    next.syncState = computeSyncState(next)
+    marks[ix] = next
+    return saveMarksForScopeUnlocked(scope, marks)
+  })
 }
 
 export async function markSyncFailure(
@@ -1066,35 +1316,41 @@ export async function markSyncFailure(
   error: string,
   opId?: string
 ): Promise<boolean> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return false
-  const mark = marks[ix]
-  const message = error.slice(0, 300)
-  marks[ix] = {
-    ...mark,
-    syncState: "failed",
-    syncError: message,
-    pendingSyncOps: (mark.pendingSyncOps ?? []).map((op) =>
-      !opId || op.id === opId
-        ? { ...op, attempts: op.attempts + 1, lastError: message }
-        : op
-    )
-  }
-  return saveMarks(marks)
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return false
+    const mark = marks[ix]
+    const message = error.slice(0, 300)
+    marks[ix] = {
+      ...mark,
+      syncState: "failed",
+      syncError: message,
+      pendingSyncOps: (mark.pendingSyncOps ?? []).map((op) =>
+        !opId || op.id === opId
+          ? { ...op, attempts: op.attempts + 1, lastError: message }
+          : op
+      )
+    }
+    return saveMarksForScopeUnlocked(scope, marks)
+  })
 }
 
 export async function markSynced(markId: string): Promise<boolean> {
-  const marks = await getMarks()
-  const ix = marks.findIndex((p) => p.id === markId)
-  if (ix < 0) return false
-  const mark = marks[ix]
-  marks[ix] = {
-    ...mark,
-    syncState: computeSyncState({ ...mark, syncError: undefined }),
-    syncError: undefined
-  }
-  return saveMarks(marks)
+  return withStorageMutationLock(async () => {
+    const scope = await getDataScope()
+    const marks = await getMarksForScope(scope)
+    const ix = marks.findIndex((p) => p.id === markId)
+    if (ix < 0) return false
+    const mark = marks[ix]
+    marks[ix] = {
+      ...mark,
+      syncState: computeSyncState({ ...mark, syncError: undefined }),
+      syncError: undefined
+    }
+    return saveMarksForScopeUnlocked(scope, marks)
+  })
 }
 
 export async function getMarksForPage(
@@ -1102,7 +1358,7 @@ export async function getMarksForPage(
   url: string
 ): Promise<Mark[]> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await readArray(KEY_MARKS)
+  const stored = await readScopedArray(KEY_MARKS)
   const matching: unknown[] = []
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
@@ -1140,7 +1396,7 @@ export async function getMarkStatusCountsForPage(
   url: string
 ): Promise<PageMarkStatusCounts> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await readArray(KEY_MARKS)
+  const stored = await readScopedArray(KEY_MARKS)
   let open = 0
   let closed = 0
   for (const row of stored) {
@@ -1158,13 +1414,21 @@ export async function getMarkStatusCountsForPage(
 }
 
 export async function getMarkSyncSummary(): Promise<MarkSyncSummary> {
-  const stored = await readArray(KEY_MARKS)
+  const stored = await readScopedArray(KEY_MARKS)
   let pending = 0
   let failed = 0
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
     const p = row as Record<string, unknown>
-    if (isLocallyHiddenRow(p)) continue
+    const hasPendingDelete = Array.isArray(p.pendingSyncOps)
+      ? p.pendingSyncOps.some(
+          (operation) =>
+            operation &&
+            typeof operation === "object" &&
+            (operation as { type?: unknown }).type === "delete"
+        )
+      : false
+    if (isLocallyHiddenRow(p) && !hasPendingDelete) continue
     const pendingOps = Array.isArray(p.pendingSyncOps)
       ? p.pendingSyncOps.length
       : 0
@@ -1185,7 +1449,7 @@ export async function getMarkCountsByPage(
   url: string
 ): Promise<Map<string, number>> {
   const n = normalizePageUrlForMatch(url)
-  const stored = await readArray(KEY_MARKS)
+  const stored = await readScopedArray(KEY_MARKS)
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue
@@ -1201,7 +1465,7 @@ export async function getMarkCountsByPage(
 }
 
 export async function getMarkCountsByProject(): Promise<Map<string, number>> {
-  const stored = await readArray(KEY_MARKS)
+  const stored = await readScopedArray(KEY_MARKS)
   const counts = new Map<string, number>()
   for (const row of stored) {
     if (!row || typeof row !== "object") continue

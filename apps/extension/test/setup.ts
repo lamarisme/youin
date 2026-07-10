@@ -66,6 +66,7 @@ beforeEach(() => {
       runtime: {
         id: "test-extension",
         getURL: (path = "") => `chrome-extension://test-extension/${path}`,
+        lastError: undefined,
         onMessage: {
           addListener: vi.fn(),
           removeListener: vi.fn()
@@ -74,6 +75,13 @@ beforeEach(() => {
           addListener: vi.fn(),
           removeListener: vi.fn()
         }
+      },
+      identity: {
+        getRedirectURL: vi.fn(
+          (path = "") =>
+            `https://test-extension.chromiumapp.org/${path.replace(/^\//, "")}`
+        ),
+        launchWebAuthFlow: vi.fn()
       },
       storage: {
         local: {

@@ -127,4 +127,18 @@ describe("sync merge", () => {
     expect(merged.status).toBe("open")
     expect(merged.pendingSyncOps).toHaveLength(2)
   })
+
+  it("refreshes an expiring screenshot URL without requiring a mark update", () => {
+    const local = localMark({
+      remoteUpdatedAt: new Date("2026-01-01T00:01:00.000Z").getTime(),
+      screenshotUrl: "https://storage.example/expired"
+    })
+
+    const merged = mergeRemoteMark(
+      local,
+      remoteMark({ screenshotUrl: "https://storage.example/fresh" })
+    )
+
+    expect(merged.screenshotUrl).toBe("https://storage.example/fresh")
+  })
 })

@@ -50,6 +50,26 @@ describe("computeMarkHealth", () => {
     expect(result.rect?.width).toBe(80)
   })
 
+  it("rejects a selector that now resolves to a different element identity", () => {
+    document.body.innerHTML = `<button id="target">Delete</button>`
+    const button = document.querySelector("button")!
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(10, 20, 90, 40)
+    )
+
+    expect(
+      computeMarkHealth(
+        mark({
+          elementFingerprint: {
+            version: 1,
+            tagName: "button",
+            textHash: "different"
+          }
+        })
+      ).health
+    ).toBe("approximate")
+  })
+
   it("returns stale when selector and saved bbox are missing", () => {
     document.body.innerHTML = ""
 

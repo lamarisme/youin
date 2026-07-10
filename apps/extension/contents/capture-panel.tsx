@@ -47,6 +47,7 @@ import {
   getWidgetSettings,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
+  KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SYNC_STATUS,
@@ -226,6 +227,7 @@ function buildMarkFromCapture(
     projectId,
     url: href,
     pageTitle: detail.pageTitle,
+    elementFingerprint: detail.elementFingerprint,
     origin,
     pathname,
     selector: detail.selector,
@@ -1172,6 +1174,10 @@ const CapturePanel = () => {
   const panelRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const reattachMarkIdRef = useRef<string | null>(null)
+  const reattachCaptureRef = useRef<{
+    captureId: string
+    markId: string
+  } | null>(null)
   const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -1190,7 +1196,7 @@ const CapturePanel = () => {
           setIsSignedIn(Boolean(session?.user?.id))
         )
       }
-      if (changes[KEY_SYNC_STATUS]) {
+      if (changes[KEY_DATA_SCOPE] || changes[KEY_SYNC_STATUS]) {
         void getSyncStatus().then(setSyncStatusState)
       }
     }
@@ -1280,6 +1286,7 @@ const CapturePanel = () => {
     setReturnToList(false)
     setReattachMarkId(null)
     reattachMarkIdRef.current = null
+    reattachCaptureRef.current = null
     setPendingListDeleteMarkId(null)
     setFullImage(null)
     setPageMarks([])
@@ -1319,12 +1326,16 @@ const CapturePanel = () => {
     const onCap = (detail: ReviewCaptureDetail) => {
       const reattachId = reattachMarkIdRef.current
       if (reattachId) {
+        reattachCaptureRef.current = detail.screenshotPending
+          ? { captureId: detail.captureId, markId: reattachId }
+          : null
         void (async () => {
           const now = Date.now()
-          await patchMark(reattachId, {
+          const markPatch: Partial<Mark> = {
             captureKind: detail.captureKind ?? "element",
             url: normalizePageUrlForMatch(detail.url) || detail.url,
             pageTitle: detail.pageTitle,
+            elementFingerprint: detail.elementFingerprint,
             selector: detail.selector,
             strategy: detail.strategy,
             bbox: detail.bbox,
@@ -1334,10 +1345,13 @@ const CapturePanel = () => {
                 ? detail.outerHTML.slice(0, STORAGE_LIMITS.outerHTMLPreview)
                 : "",
             domSnapshot: detail.domSnapshot,
-            screenshotDataUrl: detail.elementScreenshotDataUrl,
             updatedAt: now,
             syncError: undefined
-          })
+          }
+          if (detail.elementScreenshotDataUrl) {
+            markPatch.screenshotDataUrl = detail.elementScreenshotDataUrl
+          }
+          await patchMark(reattachId, markPatch)
           reattachMarkIdRef.current = null
           setReattachMarkId(null)
           await reloadMark(reattachId)
@@ -1372,10 +1386,26 @@ const CapturePanel = () => {
 
   useEffect(() => {
     registerCaptureUpdateHandler((patch) => {
-      setCapture((current) => (current ? { ...current, ...patch } : current))
+      const reattach = reattachCaptureRef.current
+      if (reattach?.captureId === patch.captureId) {
+        if (!patch.screenshotPending) reattachCaptureRef.current = null
+        if (patch.elementScreenshotDataUrl) {
+          void patchMark(reattach.markId, {
+            screenshotDataUrl: patch.elementScreenshotDataUrl,
+            updatedAt: Date.now(),
+            syncError: undefined
+          }).then(() => reloadMark(reattach.markId))
+        }
+        return
+      }
+      setCapture((current) =>
+        current?.captureId === patch.captureId
+          ? { ...current, ...patch }
+          : current
+      )
     })
     return () => registerCaptureUpdateHandler(null)
-  }, [])
+  }, [reloadMark])
 
   useEffect(() => {
     const onToggleFeedbackList = (e: Event) => {
@@ -1435,12 +1465,13 @@ const CapturePanel = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT]
       ) {
         void loadProjects()
       }
-      if (changes[KEY_MARKS]) {
+      if (changes[KEY_DATA_SCOPE] || changes[KEY_MARKS]) {
         void reloadMark(viewingMark.id)
         scheduleReloadPageMarks(viewingMark.url, viewingMark.projectId)
       }
@@ -1456,12 +1487,14 @@ const CapturePanel = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT]
       ) {
         void loadProjects()
       }
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_MARKS] ||
         changes[KEY_ACTIVE_PROJECT] ||
         changes[KEY_WIDGET_SETTINGS]
@@ -1480,12 +1513,15 @@ const CapturePanel = () => {
     >[0] = (changes, area) => {
       if (area !== "local") return
       if (
+        changes[KEY_DATA_SCOPE] ||
         changes[KEY_PROJECTS] ||
         changes[KEY_ACTIVE_PROJECT]
       ) {
         void loadProjects()
       }
-      if (changes[KEY_MARKS]) scheduleReloadPageMarks(capture.url)
+      if (changes[KEY_DATA_SCOPE] || changes[KEY_MARKS]) {
+        scheduleReloadPageMarks(capture.url)
+      }
     }
     chrome.storage.onChanged.addListener(onStorage)
     return () => chrome.storage.onChanged.removeListener(onStorage)
@@ -1681,7 +1717,7 @@ const CapturePanel = () => {
       const op = viewingMark.remoteMarkId
         ? await enqueueMarkSyncOp(viewingMark.id, { type: "comment", body })
         : undefined
-      const synced = await pushMarkCommentToWorkspace(viewingMark, body)
+      const synced = await pushMarkCommentToWorkspace(viewingMark, body, op?.id)
       if ((synced.ok || synced.skipped) && op) {
         await removeMarkSyncOp(viewingMark.id, op.id)
       }
@@ -1706,7 +1742,7 @@ const CapturePanel = () => {
       const op = mark.remoteMarkId
         ? await enqueueMarkSyncOp(mark.id, { type: "status", status })
         : undefined
-      const synced = await pushMarkStatusToWorkspace(mark, status)
+      const synced = await pushMarkStatusToWorkspace(mark, status, op?.id)
       if ((synced.ok || synced.skipped) && op) {
         await removeMarkSyncOp(mark.id, op.id)
       }
@@ -1794,7 +1830,7 @@ const CapturePanel = () => {
       const synced = await pushMarkEditToWorkspace(viewingMark, {
         title,
         openingBody
-      })
+      }, op?.id)
       if ((synced.ok || synced.skipped) && op) {
         await removeMarkSyncOp(viewingMark.id, op.id)
       }

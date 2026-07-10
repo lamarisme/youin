@@ -1,4 +1,5 @@
 import type { SelectorStrategy } from "./selector"
+import { normalizePageUrlForMatch } from "./page-url"
 
 export interface ElementDomSnapshot {
   version: 1
@@ -211,7 +212,15 @@ function collectAttributes(target: Element): Record<string, string> {
     0,
     LIMITS.attributes
   )) {
-    const value = sanitizeAttribute(attr.name, attr.value)
+    const attrName = attr.name.toLowerCase()
+    const isPrivateFormValue =
+      (target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement) &&
+      (attrName === "value" || attrName === "placeholder")
+    const value = isPrivateFormValue
+      ? "[redacted]"
+      : sanitizeAttribute(attr.name, attr.value)
     if (value != null) out[attr.name] = value
   }
   return out
@@ -219,10 +228,16 @@ function collectAttributes(target: Element): Record<string, string> {
 
 function elementLabel(el: Element): string {
   const tag = el.tagName.toLowerCase()
-  const id = el.id ? `#${el.id}` : ""
+  const safeId = el.id ? sanitizeAttribute("id", el.id) : null
+  const id = safeId ? `#${safeId}` : ""
   const className =
     typeof el.className === "string" && el.className.trim()
-      ? `.${el.className.trim().split(/\s+/).slice(0, 3).join(".")}`
+      ? `.${el.className
+          .trim()
+          .split(/\s+/)
+          .slice(0, 3)
+          .map((part) => sanitizeAttribute("class", part) || "[redacted]")
+          .join(".")}`
       : ""
   return `${tag}${id}${className}`
 }
@@ -282,7 +297,7 @@ export function captureElementDomSnapshot(
 
   return {
     version: 1,
-    url: location.href,
+    url: normalizePageUrlForMatch(location.href),
     title: document.title,
     capturedAt: new Date().toISOString(),
     selectedElement: {
@@ -296,12 +311,14 @@ export function captureElementDomSnapshot(
       ),
       outerHTML: serializeElement(target, LIMITS.outerHTML),
       attributes: collectAttributes(target),
-      id: target.id || undefined,
+      id: target.id
+        ? sanitizeAttribute("id", target.id) || undefined
+        : undefined,
       className:
         typeof target.className === "string"
-          ? target.className || undefined
+          ? sanitizeAttribute("class", target.className) || undefined
           : undefined,
-      role,
+      role: role ? sanitizeAttribute("role", role) || undefined : undefined,
       ariaLabel: ariaLabel
         ? truncate(redactText(ariaLabel), LIMITS.attributeValue)
         : undefined,

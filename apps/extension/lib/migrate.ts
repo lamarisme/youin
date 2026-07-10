@@ -6,13 +6,17 @@ import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
 import { uploadMarkScreenshot } from "./mark-screenshot-upload"
 import {
-  getMarks,
-  getProjects,
-  saveMarks,
+  accountDataScope,
+  getMarksForScope,
+  getProjectsForScope,
+  LOCAL_DATA_SCOPE,
+  saveMarksForScope,
+  setDataScope,
   type LocalThreadMessage,
   type Project
 } from "./storage"
 import { getSupabase } from "./supabase"
+import { fetchActiveWorkspaceContext } from "./workspace-context"
 
 const KEY_MIGRATION_DONE = "youin:migration:done-for-user"
 
@@ -41,15 +45,21 @@ async function firstWorkspaceProjectId(
 }
 
 export async function isMigrationDoneForUser(userId: string): Promise<boolean> {
-  const r = await chrome.storage.local.get(KEY_MIGRATION_DONE)
-  const map = (r[KEY_MIGRATION_DONE] ?? {}) as Record<string, boolean>
-  return Boolean(map[userId])
+  const context = await fetchActiveWorkspaceContext()
+  if (!context) return false
+  return isMigrationDoneForScope(accountDataScope(userId, context.workspaceId))
 }
 
-async function markMigrationDone(userId: string): Promise<void> {
+async function isMigrationDoneForScope(scope: string): Promise<boolean> {
   const r = await chrome.storage.local.get(KEY_MIGRATION_DONE)
   const map = (r[KEY_MIGRATION_DONE] ?? {}) as Record<string, boolean>
-  map[userId] = true
+  return Boolean(map[scope])
+}
+
+async function markMigrationDone(scope: string): Promise<void> {
+  const r = await chrome.storage.local.get(KEY_MIGRATION_DONE)
+  const map = (r[KEY_MIGRATION_DONE] ?? {}) as Record<string, boolean>
+  map[scope] = true
   await chrome.storage.local.set({ [KEY_MIGRATION_DONE]: map })
 }
 
@@ -66,35 +76,8 @@ async function markMigrationDone(userId: string): Promise<void> {
 export async function migrateLocalDataToWorkspace(
   userId: string
 ): Promise<MigrationResult> {
-  if (await isMigrationDoneForUser(userId)) {
-    return {
-      ok: true,
-      projectsCreated: 0,
-      projectsMatched: 0,
-      marksImported: 0,
-      commentsImported: 0
-    }
-  }
-
-  const supabase = getSupabase()
-
-  const { data: membership, error: memberErr } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle()
-  if (memberErr) {
-    return {
-      ok: false,
-      projectsCreated: 0,
-      projectsMatched: 0,
-      marksImported: 0,
-      commentsImported: 0,
-      error: memberErr.message
-    }
-  }
-  if (!membership) {
+  const context = await fetchActiveWorkspaceContext()
+  if (!context) {
     return {
       ok: false,
       projectsCreated: 0,
@@ -105,14 +88,29 @@ export async function migrateLocalDataToWorkspace(
         "No workspace found for this user. Open the web app once to set one up."
     }
   }
-  const workspaceId = membership.workspace_id as string
+  const workspaceId = context.workspaceId
+  const accountScope = accountDataScope(userId, workspaceId)
+  await setDataScope(accountScope)
+
+  if (await isMigrationDoneForScope(accountScope)) {
+    return {
+      ok: true,
+      projectsCreated: 0,
+      projectsMatched: 0,
+      marksImported: 0,
+      commentsImported: 0
+    }
+  }
+
+  const supabase = getSupabase()
   const [localProjects, localMarks] = await Promise.all([
-    getProjects(),
-    getMarks()
+    getProjectsForScope(LOCAL_DATA_SCOPE),
+    getMarksForScope(LOCAL_DATA_SCOPE)
   ])
   const migratableMarks = localMarks.filter((mark) => !mark.remoteMarkId)
   if (!migratableMarks.length) {
-    await markMigrationDone(userId)
+    await saveMarksForScope(LOCAL_DATA_SCOPE, [])
+    await markMigrationDone(accountScope)
     return {
       ok: true,
       projectsCreated: 0,
@@ -242,6 +240,7 @@ export async function migrateLocalDataToWorkspace(
     projectId: string
     remoteMarkId: string
     screenshotUploaded: boolean
+    screenshotUrl?: string
   }> = []
 
   for (const localMark of migratableMarks) {
@@ -253,34 +252,70 @@ export async function migrateLocalDataToWorkspace(
     const status = normalizeMarkStatus(localMark.status)
     const workflowStatusId = defaultStatusByLifecycle.get(status)
     if (!workflowStatusId) continue
-    const { data: createdMark, error: markErr } = await supabase
-      .from("marks")
-      .insert({
-        workspace_id: workspaceId,
-        project_id: remoteProjectId,
-        workflow_status_id: workflowStatusId,
-        title: localMark.title.trim() || "Untitled mark",
-        description: "",
-        page: localMark.url,
-        status,
-        priority: normalizeMarkPriority(localMark.priority),
-        pinned: false,
-        created_by_user_id: userId,
-        selector: localMark.selector,
-        viewport: `${localMark.viewport.width}x${localMark.viewport.height}@${localMark.viewport.dpr}`,
-        dom_snapshot: localMark.domSnapshot ?? null,
-        captured_at: new Date(localMark.createdAt).toISOString()
-      })
-      .select("id")
-      .single()
-    if (markErr || !createdMark) {
+    const existingMarkQuery = () =>
+      supabase
+        .from("marks")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("created_by_user_id", userId)
+        .eq("client_mutation_id", localMark.id)
+        .maybeSingle()
+    const { data: existingMark, error: existingMarkError } =
+      await existingMarkQuery()
+    if (existingMarkError) {
       return {
         ok: false,
         projectsCreated,
         projectsMatched,
         marksImported,
         commentsImported,
-        error: markErr?.message ?? "Failed to import a mark."
+        error: existingMarkError.message
+      }
+    }
+    let createdMark = existingMark
+    if (!createdMark) {
+      const { data, error: markErr } = await supabase
+        .from("marks")
+        .insert({
+          workspace_id: workspaceId,
+          project_id: remoteProjectId,
+          workflow_status_id: workflowStatusId,
+          title: localMark.title.trim() || "Untitled mark",
+          description: "",
+          page: localMark.url,
+          status,
+          priority: normalizeMarkPriority(localMark.priority),
+          pinned: false,
+          created_by_user_id: userId,
+          client_mutation_id: localMark.id,
+          selector: localMark.selector,
+          viewport: `${localMark.viewport.width}x${localMark.viewport.height}@${localMark.viewport.dpr}`,
+          capture_kind: localMark.captureKind ?? "element",
+          capture_bbox: localMark.bbox,
+          page_title: localMark.pageTitle ?? null,
+          element_fingerprint: localMark.elementFingerprint ?? null,
+          dom_snapshot: localMark.domSnapshot ?? null,
+          captured_at: new Date(localMark.createdAt).toISOString()
+        })
+        .select("id")
+        .single()
+      createdMark = data
+      if (markErr || !createdMark) {
+        const retry = await existingMarkQuery()
+        createdMark = retry.data
+        if (retry.error || !createdMark) {
+          return {
+            ok: false,
+            projectsCreated,
+            projectsMatched,
+            marksImported,
+            commentsImported,
+            error:
+              retry.error?.message ??
+              markErr?.message ??
+              "Failed to import a mark."
+          }
+        }
       }
     }
     marksImported++
@@ -298,57 +333,108 @@ export async function migrateLocalDataToWorkspace(
         localMark.screenshotDataUrl
       )
       if ("path" in upload) {
-        await supabase
+        const { error: screenshotLinkError } = await supabase
           .from("marks")
           .update({ screenshot_url: upload.path })
           .eq("id", createdMark.id as string)
           .eq("workspace_id", workspaceId)
-        linked[linked.length - 1].screenshotUploaded = true
+        if (screenshotLinkError) {
+          await supabase.storage.from("mark-images").remove([upload.path])
+        } else {
+          linked[linked.length - 1].screenshotUploaded = true
+          linked[linked.length - 1].screenshotUrl = upload.signedUrl
+        }
       }
     }
 
     const messages: LocalThreadMessage[] = localMark.thread ?? []
-    if (messages.length) {
-      const rows = messages.map((m) => ({
-        mark_id: createdMark.id as string,
-        author_user_id: userId,
-        type: "text" as const,
-        body: m.body
-      }))
-      const { error: cErr } = await supabase.from("mark_comments").insert(rows)
-      if (cErr) {
+    for (const message of messages) {
+      const existingCommentQuery = () =>
+        supabase
+          .from("mark_comments")
+          .select("id")
+          .eq("author_user_id", userId)
+          .eq("client_mutation_id", message.id)
+          .maybeSingle()
+      const existingComment = await existingCommentQuery()
+      if (existingComment.error) {
         return {
           ok: false,
           projectsCreated,
           projectsMatched,
           marksImported,
           commentsImported,
-          error: cErr.message
+          error: existingComment.error.message
         }
       }
-      commentsImported += rows.length
+      if (!existingComment.data) {
+        const { error: commentError } = await supabase
+          .from("mark_comments")
+          .insert({
+            mark_id: createdMark.id as string,
+            author_user_id: userId,
+            client_mutation_id: message.id,
+            type: "text" as const,
+            body: message.body
+          })
+        if (commentError) {
+          const retry = await existingCommentQuery()
+          if (retry.error || !retry.data) {
+            return {
+              ok: false,
+              projectsCreated,
+              projectsMatched,
+              marksImported,
+              commentsImported,
+              error: retry.error?.message ?? commentError.message
+            }
+          }
+        }
+      }
+      commentsImported++
     }
   }
 
   if (linked.length) {
-    const current = await getMarks()
+    const currentLocal = await getMarksForScope(LOCAL_DATA_SCOPE)
+    const currentAccount = await getMarksForScope(accountScope)
     const byId = new Map(linked.map((l) => [l.markId, l]))
-    const next = current.map((p) => {
+    const migrated = currentLocal.flatMap((p) => {
       const upd = byId.get(p.id)
-      if (!upd) return p
-      return {
+      if (!upd) return []
+      return [{
         ...p,
         projectId: upd.projectId,
         remoteMarkId: upd.remoteMarkId,
         screenshotDataUrl: upd.screenshotUploaded
           ? undefined
-          : p.screenshotDataUrl
-      }
+          : p.screenshotDataUrl,
+        screenshotUrl: upd.screenshotUrl ?? p.screenshotUrl,
+        syncState: upd.screenshotUploaded || !p.screenshotDataUrl
+          ? "synced" as const
+          : "pending" as const,
+        syncError: undefined
+      }]
     })
-    await saveMarks(next)
+    const migratedRemoteIds = new Set(
+      migrated.map((mark) => mark.remoteMarkId).filter(Boolean)
+    )
+    const nextAccount = [
+      ...currentAccount.filter(
+        (mark) => !mark.remoteMarkId || !migratedRemoteIds.has(mark.remoteMarkId)
+      ),
+      ...migrated
+    ]
+    const remainingLocal = currentLocal.filter(
+      (mark) => !mark.remoteMarkId && !byId.has(mark.id)
+    )
+    // Both scopes share one envelope key, so preserve write order until the
+    // storage mutation queue serializes these operations globally.
+    await saveMarksForScope(LOCAL_DATA_SCOPE, remainingLocal)
+    await saveMarksForScope(accountScope, nextAccount)
   }
 
-  await markMigrationDone(userId)
+  await markMigrationDone(accountScope)
   return {
     ok: true,
     projectsCreated,

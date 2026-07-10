@@ -1,14 +1,17 @@
-// Background service worker: auth bridge from the web app, plus tab
-// screenshot capture for review mode (Chrome-rendered crop).
+// Background service worker: extension-bound auth, workspace sync, and
+// Chrome-rendered screenshot capture for review mode.
 
-import { getSession, setSessionFromBridge } from "../lib/auth"
 import {
-  bridgeOriginsForWebApp,
-  isAllowedBridgeSender as isAllowedBridgeSenderUrl,
-  isBridgeMessage,
+  getSession,
+  MESSAGE_SIGN_IN_WITH_GOOGLE,
+  signInWithGoogle,
+  type SignInResult
+} from "../lib/auth"
+import {
   isExtensionPageSender as isExtensionPageSenderGuard
 } from "../lib/background-guards"
 import {
+  MESSAGE_ENSURE_NAVIGATION_HOOK,
   MESSAGE_FORWARD_CAPTURE,
   MESSAGE_OPEN_CAPTURE_PANEL
 } from "../lib/events"
@@ -23,12 +26,17 @@ import {
   type EnsureReviewScriptsResponse
 } from "../lib/review-scripts"
 import {
+  LOCAL_DATA_SCOPE,
   markSyncAttemptFailed,
   markSyncAttemptStarted,
   markSyncAttemptSucceeded,
+  setDataScope,
   STORAGE_LIMITS
 } from "../lib/storage"
-import { WEB_APP_URL } from "../lib/supabase"
+import {
+  enableStorageLockCoordinator,
+  handleStorageLockMessage
+} from "../lib/storage-lock"
 import {
   markWorkspaceRemoteSyncComplete,
   syncPendingMarksToWorkspace,
@@ -44,29 +52,45 @@ import {
 const SYNC_NOW = "youin:sync-now"
 const MAX_URL_LENGTH = 4096
 const MAX_SELECTOR_LENGTH = 2048
+const MAX_CAPTURE_ID_LENGTH = 160
 const MAX_PAGE_TITLE_LENGTH = 280
 const MAX_CAPTURE_PIXELS = 16000000
+const MAX_SCREENSHOT_OUTPUT_PIXELS = 2400000
+const MAX_SCREENSHOT_OUTPUT_EDGE = 1920
 const MAX_LAYOUT_COORDINATE = 10000000
 const MAX_VIEWPORT_SIZE = 100000
 const MAX_DPR = 10
-const ALLOWED_BRIDGE_ORIGINS = bridgeOriginsForWebApp(WEB_APP_URL)
 const ALLOWED_REVIEW_SCRIPT_MARKERS = new Set([
   REVIEW_MODE_SCRIPT.fileMarker,
   CAPTURE_PANEL_SCRIPT.fileMarker
 ])
 const REVIEW_CAPTURE_STRATEGIES = new Set(["test-id", "id", "aria", "path"])
 
+enableStorageLockCoordinator()
+
+function installMainWorldNavigationHook() {
+  const state = window as Window & { __youinMainNavigationHook?: boolean }
+  if (state.__youinMainNavigationHook) return
+  state.__youinMainNavigationHook = true
+  const notify = () =>
+    document.dispatchEvent(new CustomEvent("youin:page-location-change"))
+  const pushState = history.pushState
+  const replaceState = history.replaceState
+  history.pushState = function (...args) {
+    const result = pushState.apply(this, args)
+    queueMicrotask(notify)
+    return result
+  }
+  history.replaceState = function (...args) {
+    const result = replaceState.apply(this, args)
+    queueMicrotask(notify)
+    return result
+  }
+}
+
 interface SyncNowResponse {
   ok: boolean
   error?: string
-}
-
-function isAllowedBridgeSender(sender: chrome.runtime.MessageSender): boolean {
-  return isAllowedBridgeSenderUrl(
-    sender.url,
-    sender.origin,
-    ALLOWED_BRIDGE_ORIGINS
-  )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -193,6 +217,8 @@ function isReviewCaptureDetail(value: unknown): value is ReviewCaptureDetail {
   const captureKind = value.captureKind
   const screenshot = value.elementScreenshotDataUrl
   return (
+    isStringWithMax(value.captureId, MAX_CAPTURE_ID_LENGTH) &&
+    value.captureId.length > 0 &&
     (captureKind === undefined ||
       captureKind === "element" ||
       captureKind === "region") &&
@@ -205,6 +231,7 @@ function isReviewCaptureDetail(value: unknown): value is ReviewCaptureDetail {
     isOptionalStringWithMax(value.pageTitle, MAX_PAGE_TITLE_LENGTH) &&
     isStringWithMax(value.outerHTML, STORAGE_LIMITS.outerHTMLPreview) &&
     hasBoundedJson(value.domSnapshot, STORAGE_LIMITS.domSnapshot) &&
+    hasBoundedJson(value.elementFingerprint, 1000) &&
     (screenshot === undefined || isDataImageUrl(screenshot)) &&
     (value.screenshotPending === undefined ||
       typeof value.screenshotPending === "boolean") &&
@@ -241,7 +268,9 @@ function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 async function canvasToImageDataUrl(canvas: OffscreenCanvas): Promise<string> {
-  return blobToDataUrl(await canvas.convertToBlob({ type: "image/png" }))
+  return blobToDataUrl(
+    await canvas.convertToBlob({ type: "image/webp", quality: 0.82 })
+  )
 }
 
 /** Avoid `fetch(data:...)` in the service worker — support is inconsistent; decode locally. */
@@ -260,14 +289,17 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([decodeURIComponent(payload)], { type: mime })
 }
 
-async function runBackgroundSync(): Promise<SyncNowResponse> {
-  await markSyncAttemptStarted()
+let backgroundSyncPromise: Promise<SyncNowResponse> | null = null
+
+async function performBackgroundSync(): Promise<SyncNowResponse> {
   try {
     const session = await getSession()
     if (!session?.user?.id) {
+      await setDataScope(LOCAL_DATA_SCOPE)
       await markSyncAttemptSucceeded()
       return { ok: true }
     }
+    await markSyncAttemptStarted()
     const workspace = await syncWorkspaceFromRemote(session.user.id)
     if (!workspace.ok) {
       const error = workspace.error ?? "Could not sync workspace."
@@ -293,6 +325,14 @@ async function runBackgroundSync(): Promise<SyncNowResponse> {
   }
 }
 
+function runBackgroundSync(): Promise<SyncNowResponse> {
+  if (backgroundSyncPromise) return backgroundSyncPromise
+  backgroundSyncPromise = performBackgroundSync().finally(() => {
+    backgroundSyncPromise = null
+  })
+  return backgroundSyncPromise
+}
+
 interface ForwardCaptureMessage {
   type: typeof MESSAGE_FORWARD_CAPTURE
   detail: ReviewCaptureDetail
@@ -310,6 +350,7 @@ chrome.runtime.onMessage.addListener(
       r:
         | TabCaptureCropResponse
         | SyncNowResponse
+        | SignInResult
         | EnsureReviewScriptsResponse
         | ForwardCaptureResponse
     ) => void
@@ -319,6 +360,29 @@ chrome.runtime.onMessage.addListener(
     }
 
     const type = (message as { type?: unknown }).type
+    if (handleStorageLockMessage(message, sendResponse)) return true
+    if (type === MESSAGE_SIGN_IN_WITH_GOOGLE) {
+      if (!isExtensionPageSender(sender)) {
+        sendResponse({
+          ok: false,
+          error: "Google sign-in can only start from extension UI."
+        })
+        return false
+      }
+      void signInWithGoogle()
+        .then((result) => {
+          if (result.ok) void runBackgroundSync()
+          sendResponse(result)
+        })
+        .catch((error) => {
+          sendResponse({
+            ok: false,
+            error:
+              error instanceof Error ? error.message : "Google sign-in failed."
+          })
+        })
+      return true
+    }
     if (type === SYNC_NOW) {
       if (!isExtensionPageSender(sender)) {
         sendResponse({
@@ -328,6 +392,22 @@ chrome.runtime.onMessage.addListener(
         return false
       }
       void runBackgroundSync().then(sendResponse)
+      return true
+    }
+    if (type === MESSAGE_ENSURE_NAVIGATION_HOOK) {
+      const tabId = sender.tab?.id
+      if (tabId == null || !isReviewableUrl(sender.tab?.url)) {
+        sendResponse({ ok: false })
+        return false
+      }
+      void chrome.scripting
+        .executeScript({
+          target: { tabId },
+          world: "MAIN",
+          func: installMainWorldNavigationHook
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }))
       return true
     }
     if (type === MESSAGE_ENSURE_REVIEW_SCRIPTS) {
@@ -393,9 +473,31 @@ chrome.runtime.onMessage.addListener(
     void (async () => {
       try {
         const tab = await chrome.tabs.get(tabId)
+        const [activeBefore] = await chrome.tabs.query({
+          active: true,
+          windowId: tab.windowId
+        })
+        if (activeBefore?.id !== tabId || tab.url !== sender.tab?.url) {
+          sendResponse({
+            ok: false,
+            error: "The reviewed tab changed before capture. Try again."
+          })
+          return
+        }
         const fullDataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
           format: "png"
         })
+        const [activeAfter] = await chrome.tabs.query({
+          active: true,
+          windowId: tab.windowId
+        })
+        if (activeAfter?.id !== tabId) {
+          sendResponse({
+            ok: false,
+            error: "The active tab changed during capture. Try again."
+          })
+          return
+        }
         const blob = dataUrlToBlob(fullDataUrl)
         const img = await createImageBitmap(blob)
 
@@ -423,13 +525,20 @@ chrome.runtime.onMessage.addListener(
           return
         }
 
-        const outWidth = sw
-        const outHeight = sh
-        if (outWidth * outHeight > MAX_CAPTURE_PIXELS) {
+        if (sw * sh > MAX_CAPTURE_PIXELS) {
           img.close()
           sendResponse({ ok: false, error: "Capture area is too large." })
           return
         }
+
+        const outputScale = Math.min(
+          1,
+          MAX_SCREENSHOT_OUTPUT_EDGE / sw,
+          MAX_SCREENSHOT_OUTPUT_EDGE / sh,
+          Math.sqrt(MAX_SCREENSHOT_OUTPUT_PIXELS / (sw * sh))
+        )
+        const outWidth = Math.max(1, Math.round(sw * outputScale))
+        const outHeight = Math.max(1, Math.round(sh * outputScale))
 
         const canvas = new OffscreenCanvas(outWidth, outHeight)
         const ctx = canvas.getContext("2d")
@@ -452,33 +561,6 @@ chrome.runtime.onMessage.addListener(
       }
     })()
 
-    return true
-  }
-)
-
-chrome.runtime.onMessageExternal.addListener(
-  (message, sender, sendResponse) => {
-    if (!isAllowedBridgeSender(sender)) {
-      sendResponse({ ok: false, error: "Unauthorized bridge sender." })
-      return false
-    }
-    if (!isBridgeMessage(message)) {
-      sendResponse({ ok: false, error: "Unrecognized message." })
-      return false
-    }
-    if (message.type === "youin:ping") {
-      sendResponse({ ok: true })
-      return false
-    }
-    void (async () => {
-      const result = await setSessionFromBridge({
-        access_token: message.access_token,
-        refresh_token: message.refresh_token
-      })
-      if (result.ok) void runBackgroundSync()
-      sendResponse(result)
-    })()
-    // Async response.
     return true
   }
 )

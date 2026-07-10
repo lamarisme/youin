@@ -22,12 +22,9 @@ if ((manifest.description ?? "").length > 132) {
 }
 
 const externalMatches = manifest.externally_connectable?.matches ?? [];
-const localExternalMatches = externalMatches.filter(
-  (match) => match.includes("localhost") || match.includes("127.0.0.1"),
-);
-if (localExternalMatches.length > 0) {
+if (externalMatches.length > 0) {
   errors.push(
-    `Production externally_connectable contains local origins: ${localExternalMatches.join(", ")}`,
+    `Production manifest must not expose external messaging: ${externalMatches.join(", ")}`,
   );
 }
 

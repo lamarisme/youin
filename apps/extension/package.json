@@ -39,6 +39,7 @@
   "manifest": {
     "permissions": [
       "activeTab",
+      "identity",
       "scripting",
       "storage",
       "tabs"
@@ -47,13 +48,6 @@
       "https://*/*",
       "http://*/*"
     ],
-    "externally_connectable": {
-      "matches": [
-        "http://localhost:3000/*",
-        "https://youin.click/*",
-        "https://www.youin.click/*"
-      ]
-    },
     "homepage_url": "https://youin.click"
   }
 }

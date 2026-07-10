@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  accountDataScope,
+  appendThreadComment,
   getMarks,
   getSyncStatus,
   getWidgetSettings,
@@ -10,6 +12,9 @@ import {
   markSyncAttemptFailed,
   markSyncAttemptStarted,
   markSyncAttemptSucceeded,
+  LOCAL_DATA_SCOPE,
+  patchMark,
+  setDataScope,
   STORAGE_LIMITS
 } from "./storage"
 
@@ -37,11 +42,37 @@ describe("storage normalization", () => {
     expect(marks).toHaveLength(1)
     expect(marks[0].thread[0]?.body).toBe("Legacy feedback body")
     expect(marks[0].title).toBe("Legacy feedback body")
-    expect(marks[0].url).toBe("https://example.com/path?x=1#hash")
+    expect(marks[0].url).toBe("https://example.com/path?x=1")
     expect(marks[0].outerHTMLPreview).toHaveLength(
       STORAGE_LIMITS.outerHTMLPreview
     )
     expect(marks[0].syncState).toBe("pending")
+  })
+
+  it("keeps anonymous drafts isolated from account workspace caches", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        {
+          comment: "Anonymous draft",
+          createdAt: 100,
+          projectId: "local-general",
+          url: "https://example.com/",
+          selector: "#target",
+          strategy: "id",
+          bbox: { x: 10, y: 20, width: 30, height: 40 },
+          viewport: { width: 1440, height: 900, dpr: 2 },
+          outerHTMLPreview: ""
+        }
+      ]
+    })
+
+    await setDataScope(accountDataScope("user-1", "workspace-1"))
+    expect(await getMarks()).toEqual([])
+
+    await setDataScope(LOCAL_DATA_SCOPE)
+    expect((await getMarks()).map((mark) => mark.title)).toEqual([
+      "Anonymous draft"
+    ])
   })
 
   it("normalizes widget settings and hidden marks", async () => {
@@ -86,5 +117,37 @@ describe("storage normalization", () => {
       state: "idle",
       lastError: "kept short"
     })
+  })
+
+  it("serializes concurrent mark mutations without dropping either edit", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        {
+          id: "mark-1",
+          title: "Original",
+          thread: [],
+          createdAt: 100,
+          updatedAt: 100,
+          projectId: "local-general",
+          url: "https://example.com/",
+          selector: "#target",
+          strategy: "id",
+          bbox: { x: 10, y: 20, width: 30, height: 40 },
+          viewport: { width: 1440, height: 900, dpr: 2 },
+          outerHTMLPreview: ""
+        }
+      ]
+    })
+
+    await Promise.all([
+      patchMark("mark-1", { title: "Edited" }),
+      appendThreadComment("mark-1", "Keep this comment", "You")
+    ])
+
+    const [mark] = await getMarks()
+    expect(mark.title).toBe("Edited")
+    expect(mark.thread.map((message) => message.body)).toEqual([
+      "Keep this comment"
+    ])
   })
 })

@@ -2,9 +2,8 @@
 
 import type { ReactNode } from "react";
 import {
-  AlertCircle,
   CalendarClock,
-  CheckCircle2,
+  ChevronDown,
   Code2,
   Globe2,
   Laptop,
@@ -41,13 +40,14 @@ export function MarkDetailCapture({
   const domContext = getDomSnapshotContext(cap?.domSnapshot);
   const isHero = variant === "hero";
   const screenshotSrc = markImageSrc(cap?.screenshotUrl);
-  const readiness = [
-    { label: "Page", ready: hasPage },
-    { label: "Selector", ready: Boolean(cap?.selector?.trim()) },
-    { label: "Screenshot", ready: Boolean(cap?.screenshotUrl?.trim()) },
-    { label: "DOM", ready: Boolean(domContext) },
-    { label: "Viewport", ready: Boolean(cap?.viewport?.trim()) },
+  const captureSignals = [
+    hasPage,
+    Boolean(cap?.selector?.trim()),
+    Boolean(cap?.screenshotUrl?.trim()),
+    Boolean(domContext),
+    Boolean(cap?.viewport?.trim()),
   ];
+  const capturedContextCount = captureSignals.filter(Boolean).length;
 
   if (!cap) {
     return (
@@ -104,9 +104,14 @@ export function MarkDetailCapture({
             />
           ) : null}
         </div>
-        <div className="relative px-3 pb-3">
+        <div className="px-3 pb-3">
           {screenshotSrc ? (
-            <div className={cn("mx-auto overflow-hidden rounded-md bg-paper-3", isHero ? "max-w-4xl" : "max-w-2xl")}>
+            <div
+              className={cn(
+                "mx-auto overflow-hidden rounded-md bg-paper-3",
+                isHero ? "max-w-4xl" : "max-w-2xl",
+              )}
+            >
               <FullImagePreview
                 src={screenshotSrc}
                 alt={`Captured element for ${mark.displayKey}`}
@@ -140,102 +145,84 @@ export function MarkDetailCapture({
               ) : null}
             </div>
           )}
-          {cap?.selector ? (
-            <div className="absolute bottom-4 left-4 max-w-[calc(100%-2rem)] truncate rounded bg-ink/85 px-2 py-0.5 font-mono text-ui-2xs text-paper">
-              {cap.selector}
-            </div>
-          ) : null}
         </div>
       </div>
 
-      {cap ? (
-        <>
-          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-ui-xs text-ink-3">
+      <details className="group mt-2 border-y border-rule/55">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md px-1 text-ui-xs outline-none transition-colors hover:bg-paper-2 focus-visible:ring-2 focus-visible:ring-mark/20 [&::-webkit-details-marker]:hidden">
+          <Code2 className="size-3.5 shrink-0 text-ink-3" aria-hidden />
+          <span className="min-w-0 flex-1 font-medium text-ink-2">
+            Technical details
+          </span>
+          <span className="text-ink-3">
+            {capturedContextCount} of {captureSignals.length} captured
+          </span>
+          <ChevronDown
+            className="size-3.5 shrink-0 text-ink-3 transition-transform duration-150 group-open:rotate-180"
+            aria-hidden
+          />
+        </summary>
+
+        <div className="pb-3 pt-2">
+          <dl className="grid gap-x-6 gap-y-3 text-ui-xs sm:grid-cols-2 lg:grid-cols-3">
             {pageOrigin ? (
               <MetaCell
                 label="Origin"
                 value={pageOrigin}
-                icon={<Globe2 className="size-3" aria-hidden />}
+                icon={<Globe2 className="size-3.5" aria-hidden />}
               />
             ) : null}
             <MetaCell
               label="Selector"
-              value={cap.selector ?? "None"}
-              icon={<Code2 className="size-3" aria-hidden />}
+              value={cap.selector ?? "Not captured"}
+              icon={<Code2 className="size-3.5" aria-hidden />}
               mono
             />
             <MetaCell
               label="Viewport"
-              value={cap.viewport ?? "Unknown"}
-              icon={<Monitor className="size-3" aria-hidden />}
+              value={cap.viewport ?? "Not captured"}
+              icon={<Monitor className="size-3.5" aria-hidden />}
             />
             <MetaCell
               label="Browser"
-              value={cap.browser ?? "Unknown"}
-              icon={<PanelTop className="size-3" aria-hidden />}
+              value={cap.browser ?? "Not captured"}
+              icon={<PanelTop className="size-3.5" aria-hidden />}
             />
             {cap.os ? (
               <MetaCell
                 label="OS"
                 value={cap.os}
-                icon={<Laptop className="size-3" aria-hidden />}
+                icon={<Laptop className="size-3.5" aria-hidden />}
               />
             ) : null}
             {cap.capturedAt ? (
               <MetaCell
                 label="Captured"
                 value={formatDateTime(cap.capturedAt)}
-                icon={<CalendarClock className="size-3" aria-hidden />}
+                icon={<CalendarClock className="size-3.5" aria-hidden />}
               />
             ) : null}
           </dl>
 
-          <div className="mt-3 grid gap-1.5 sm:grid-cols-5">
-            {readiness.map((item) => (
-              <ContextSignal key={item.label} label={item.label} ready={item.ready} />
-            ))}
-          </div>
-
           {domContext ? (
-            <div className="mt-3 overflow-hidden rounded-md bg-paper-2 ring-1 ring-rule/45">
-              <div className="flex items-center gap-2 px-3 py-2 text-ui-xs font-medium text-ink-2">
+            <div className="mt-4 border-t border-rule/55 pt-3">
+              <div className="flex items-center gap-2 text-ui-xs font-medium text-ink-2">
                 <Code2 className="size-3.5 text-ink-3" aria-hidden />
                 <span>DOM context</span>
               </div>
-              <pre className="max-h-56 overflow-auto bg-paper-2 px-3 py-2 font-mono text-ui-xs leading-relaxed text-ink-2 [overflow-wrap:anywhere] whitespace-pre-wrap">
+              <pre className="mt-2 max-h-48 overflow-auto rounded-md bg-paper-2 px-3 py-2 font-mono text-ui-xs leading-relaxed text-ink-2 [overflow-wrap:anywhere] whitespace-pre-wrap">
                 {domContext.outerHTML}
               </pre>
               {domContext.nearbyText ? (
-                <p className="px-3 py-2 text-ui-xs leading-relaxed text-ink-3">
+                <p className="mt-2 text-ui-xs leading-relaxed text-ink-3">
                   {domContext.nearbyText}
                 </p>
               ) : null}
             </div>
           ) : null}
-        </>
-      ) : null}
+        </div>
+      </details>
     </>
-  );
-}
-
-function ContextSignal({ label, ready }: { label: string; ready: boolean }) {
-  return (
-    <div
-      className={cn(
-        "inline-flex min-h-8 items-center gap-1.5 rounded-md px-2 text-ui-xs ring-1",
-        ready
-          ? "bg-ok-soft text-ok ring-ok/15"
-          : "bg-paper-2 text-ink-3 ring-rule/45",
-      )}
-      title={ready ? `${label} captured` : `${label} missing`}
-    >
-      {ready ? (
-        <CheckCircle2 className="size-3.5" aria-hidden />
-      ) : (
-        <AlertCircle className="size-3.5" aria-hidden />
-      )}
-      <span className="truncate">{label}</span>
-    </div>
   );
 }
 
@@ -277,21 +264,17 @@ function MetaCell({
   mono?: boolean;
 }) {
   return (
-    <div className="inline-flex min-w-0 items-center gap-1.5">
-      <dt
-        className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-ink-3"
-        title={label}
-      >
-        <span className="sr-only">{label}</span>
+    <div className="grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-2 gap-y-0.5">
+      <span className="row-span-2 mt-0.5 text-ink-3" aria-hidden>
         {icon}
-      </dt>
+      </span>
+      <dt className="text-ink-3">{label}</dt>
       <dd
         title={title ?? value}
-        className={
-          mono
-            ? "max-w-[18rem] truncate font-mono text-ui-xs text-ink-2"
-            : "max-w-[18rem] truncate text-ink-2"
-        }
+        className={cn(
+          "truncate text-ink-2",
+          mono && "font-mono",
+        )}
       >
         {value}
       </dd>

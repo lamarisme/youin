@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { generateSelector } from "./selector"
+import { generateSelector, resolveSelector } from "./selector"
 
 describe("generateSelector", () => {
   it("prefers stable test ids", () => {
@@ -42,5 +42,28 @@ describe("generateSelector", () => {
       selector: "body > main > section > button",
       strategy: "path"
     })
+  })
+
+  it("does not persist selector values that resemble personal or secret data", () => {
+    document.body.innerHTML = `<main><button id="person@example.com" aria-label="token-secret-value">Save</button></main>`
+    const button = document.querySelector("button")!
+
+    expect(generateSelector(button)).toEqual({
+      selector: "body > main > button",
+      strategy: "path"
+    })
+  })
+
+  it("generates and resolves selectors through open shadow roots", () => {
+    document.body.innerHTML = `<div id="host"></div>`
+    const host = document.querySelector<HTMLElement>("#host")!
+    const shadow = host.attachShadow({ mode: "open" })
+    shadow.innerHTML = `<section><button data-testid="save">Save</button></section>`
+    const button = shadow.querySelector("button")!
+
+    const result = generateSelector(button)
+
+    expect(result.selector).toBe('#host >>> [data-testid="save"]')
+    expect(resolveSelector(result.selector)).toBe(button)
   })
 })

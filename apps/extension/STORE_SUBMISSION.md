@@ -59,7 +59,8 @@ Declare that Youin does not sell user data, does not use extension data for adve
 - `pnpm --filter @youin/extension package`
 - `pnpm --filter @youin/web test`
 - `pnpm --filter @youin/web build`
-- Confirm the packaged manifest has no localhost `externally_connectable` origin.
+- Confirm the packaged manifest has no `externally_connectable` entry.
+- Confirm the production `chromiumapp.org/auth/callback` URL is allowlisted in Supabase Auth.
 - Confirm `https://youin.click/privacy` and `https://youin.click/terms` are deployed before submitting.
 - Confirm production `PLASMO_PUBLIC_SUPABASE_URL`, `PLASMO_PUBLIC_SUPABASE_KEY`, and `PLASMO_PUBLIC_WEB_APP_URL=https://youin.click` are used for the submitted package.
 - Confirm `SUBMIT_KEYS` is configured before running `.github/workflows/submit.yml`.
