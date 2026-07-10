@@ -125,9 +125,11 @@ test("shell refresh updates navigation while keeping route payload arrays", () =
         },
       ],
     }),
+    "2026-05-03T00:00:00.000Z",
   );
   const next = mergeShellIntoWorkspaceBootstrap(current, {
     ...shell,
+    loadedAt: "2026-05-04T00:00:00.000Z",
     workspace: {
       ...shell.workspace,
       name: "Youin renamed",
@@ -136,6 +138,7 @@ test("shell refresh updates navigation while keeping route payload arrays", () =
   assert.equal(next.workspace.name, "Youin renamed");
   assert.equal(next.workspace.marks.length, 1);
   assert.equal(next.workspace.projects[0]?.markCount, 3);
+  assert.equal(next.loadedAt, "2026-05-04T00:00:00.000Z");
 });
 
 test("route snapshots win over same-timestamp shell snapshots", () => {

@@ -10,9 +10,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-mark bg-mark text-paper hover:border-mark-bright hover:bg-mark-bright",
+          "border-mark bg-mark text-paper hover:border-mark-hover hover:bg-mark-hover",
         mark:
-          "border-mark bg-mark text-paper hover:border-mark-bright hover:bg-mark-bright",
+          "border-mark bg-mark text-paper hover:border-mark-hover hover:bg-mark-hover",
         outline:
           "border-rule/80 bg-paper-elevated text-ink-2 hover:border-rule-strong/70 hover:bg-paper-2 hover:text-ink aria-expanded:border-rule-strong/70 aria-expanded:bg-paper-2 aria-expanded:text-ink",
         secondary:
@@ -21,7 +21,7 @@ const buttonVariants = cva(
           "text-ink-2 hover:bg-paper-2 hover:text-ink aria-expanded:bg-paper-2 aria-expanded:text-ink",
         destructive:
           "bg-destructive-soft text-destructive-token hover:bg-destructive-soft/80 focus-visible:border-destructive-token/40 focus-visible:ring-destructive-token/20",
-        link: "text-mark underline-offset-4 hover:text-mark-bright hover:underline",
+        link: "text-mark underline-offset-4 hover:text-mark-hover hover:underline",
       },
       size: {
         default:

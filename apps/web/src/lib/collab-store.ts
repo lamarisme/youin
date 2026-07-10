@@ -1,9 +1,11 @@
 "use client";
 
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-
-import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
 
 export type Theme = "light" | "dark";
 
@@ -14,17 +16,14 @@ interface WorkspaceUiPersistedState {
 
 interface WorkspaceUiStoreState {
   commandPaletteOpen: boolean;
-  optimisticWorkspace: WorkspaceBootstrap | null;
   pendingOptimisticMutationIds: string[];
   sidebarCollapsed: boolean;
   selectedMarkIds: string[];
   theme: Theme;
   beginOptimisticMutation: (id: string) => void;
-  clearOptimisticWorkspace: () => void;
   clearSelectedMarks: () => void;
   finishOptimisticMutation: (id: string) => void;
   setCommandPaletteOpen: (open: boolean) => void;
-  setOptimisticWorkspace: (workspace: WorkspaceBootstrap | null) => void;
   setSelectedMarkIds: (ids: Iterable<string>) => void;
   openCommandPalette: () => void;
   pruneSelectedMarkIds: (validIds: Iterable<string>) => void;
@@ -54,15 +53,25 @@ function readLegacyTheme(): Theme {
   }
 }
 
+const serverStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+  removeItem: () => undefined,
+};
+
+function workspaceUiStorage(): StateStorage {
+  return typeof window === "undefined" ? serverStorage : window.localStorage;
+}
+
 /**
- * Zustand owns ephemeral client intent: UI state, selections, and optimistic
- * workspace overlays. Canonical workspace data lives in the TanStack Query cache.
+ * Zustand owns ephemeral client intent: UI state, selections, and pending
+ * mutation coordination. Canonical and optimistic server data live together in
+ * the TanStack Query cache.
  */
 export const useWorkspaceUiStore = create<WorkspaceUiStoreState>()(
   persist(
     (set) => ({
       commandPaletteOpen: false,
-      optimisticWorkspace: null,
       pendingOptimisticMutationIds: [],
       sidebarCollapsed: readLegacySidebarCollapsed(),
       selectedMarkIds: [],
@@ -78,7 +87,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStoreState>()(
                 ],
               },
         ),
-      clearOptimisticWorkspace: () => set({ optimisticWorkspace: null }),
       clearSelectedMarks: () => set({ selectedMarkIds: [] }),
       finishOptimisticMutation: (id) =>
         set((state) => ({
@@ -86,8 +94,6 @@ export const useWorkspaceUiStore = create<WorkspaceUiStoreState>()(
             state.pendingOptimisticMutationIds.filter((item) => item !== id),
         })),
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
-      setOptimisticWorkspace: (workspace) =>
-        set({ optimisticWorkspace: workspace }),
       setSelectedMarkIds: (ids) =>
         set({ selectedMarkIds: Array.from(new Set(ids)) }),
       openCommandPalette: () => set({ commandPaletteOpen: true }),
@@ -123,7 +129,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiStoreState>()(
     }),
     {
       name: "youin:workspace-ui",
-      storage: createJSONStorage(() => window.localStorage),
+      storage: createJSONStorage(workspaceUiStorage),
       partialize: (state): WorkspaceUiPersistedState => ({
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,

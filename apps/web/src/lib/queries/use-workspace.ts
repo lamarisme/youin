@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import { getWorkspaceShellBootstrap } from "@/lib/workspace/actions";
@@ -101,16 +100,8 @@ export function useWorkspaceData<T>(
   selector: (bundle: WorkspaceBootstrap) => T,
 ): T {
   const snapshot = useContext(WorkspaceSnapshotContext);
-  const optimisticWorkspace = useWorkspaceUiStore(
-    (state) => state.optimisticWorkspace,
-  );
   const { data } = useWorkspaceQuery();
-  const canonical = snapshot ?? data ?? emptyWorkspaceBootstrap();
-  const workspace =
-    optimisticWorkspace?.workspaceId === canonical.workspaceId
-      ? optimisticWorkspace
-      : canonical;
-  return selector(workspace);
+  return selector(snapshot ?? data ?? emptyWorkspaceBootstrap());
 }
 
 export function getWorkspaceQueryData(

@@ -300,6 +300,7 @@ export const marks = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("marks_workspace_id_id_unique").on(table.workspaceId, table.id),
     uniqueIndex("marks_workspace_seq_unique").on(table.workspaceId, table.seq),
     uniqueIndex("marks_extension_mutation_unique")
       .on(table.workspaceId, table.createdByUserId, table.clientMutationId)
@@ -353,6 +354,10 @@ export const markLabels = pgTable(
       .defaultNow(),
   },
   (table) => [
+    uniqueIndex("mark_labels_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
     uniqueIndex("mark_labels_workspace_name_unique").on(
       table.workspaceId,
       table.name,
@@ -363,6 +368,9 @@ export const markLabels = pgTable(
 export const marksToLabels = pgTable(
   "marks_to_labels",
   {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     markId: uuid("mark_id")
       .notNull()
       .references(() => marks.id, { onDelete: "cascade" }),
@@ -372,7 +380,18 @@ export const marksToLabels = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.markId, table.labelId] }),
+    index("marks_to_labels_workspace_idx").on(table.workspaceId),
     index("marks_to_labels_label_idx").on(table.labelId),
+    foreignKey({
+      columns: [table.workspaceId, table.markId],
+      foreignColumns: [marks.workspaceId, marks.id],
+      name: "marks_to_labels_mark_workspace_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.workspaceId, table.labelId],
+      foreignColumns: [markLabels.workspaceId, markLabels.id],
+      name: "marks_to_labels_label_workspace_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -380,6 +399,9 @@ export const markComments = pgTable(
   "mark_comments",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     markId: uuid("mark_id")
       .notNull()
       .references(() => marks.id, { onDelete: "cascade" }),
@@ -396,6 +418,7 @@ export const markComments = pgTable(
       .defaultNow(),
   },
   (table) => [
+    index("mark_comments_workspace_idx").on(table.workspaceId),
     index("mark_comments_mark_created_at_idx").on(
       table.markId,
       table.createdAt,
@@ -404,6 +427,11 @@ export const markComments = pgTable(
     uniqueIndex("mark_comments_extension_mutation_unique")
       .on(table.authorUserId, table.clientMutationId)
       .where(sql`${table.clientMutationId} IS NOT NULL`),
+    foreignKey({
+      columns: [table.workspaceId, table.markId],
+      foreignColumns: [marks.workspaceId, marks.id],
+      name: "mark_comments_mark_workspace_fk",
+    }).onDelete("cascade"),
     check(
       "mark_comments_body_or_image",
       sql`(${table.type} = 'text' AND ${table.body} IS NOT NULL)

@@ -8,6 +8,7 @@ import type {
   WorkspaceShellBootstrap,
   WorkspaceShellProject,
 } from "./workspace-types.ts";
+import { isLoadedAtNewer } from "../queries/cache-policy.ts";
 
 function emptyWorkspace(): Workspace {
   return {
@@ -116,6 +117,9 @@ export function mergeShellIntoWorkspaceBootstrap(
   if (!current || current.workspaceId !== shell.workspaceId) return nextShell;
   return {
     ...current,
+    loadedAt: isLoadedAtNewer(shell.loadedAt, current.loadedAt)
+      ? shell.loadedAt
+      : current.loadedAt,
     userId: shell.userId,
     workspaceMemberships: shell.workspaceMemberships,
     profile: shell.profile,

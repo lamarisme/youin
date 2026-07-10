@@ -5,14 +5,17 @@ import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import { workspaceKeys } from "@/lib/queries/keys";
-import { WORKSPACE_INVALIDATED_EVENT } from "@/lib/queries/workspace-optimistic";
+import {
+  WORKSPACE_INVALIDATED_EVENT,
+  type WorkspaceInvalidatedEvent,
+} from "@/lib/queries/workspace-optimistic";
 import { createClient } from "@/lib/supabase/client";
 import {
-  INBOX_REALTIME_TABLES,
-  WORKSPACE_REALTIME_TABLES,
+  isInboxRealtimeTable,
+  isWorkspaceRealtimeTable,
   queryKeysForInboxTableChange,
   queryKeysForWorkspaceTableChange,
-  type RealtimeRow,
+  realtimeTableFromBroadcast,
 } from "@/components/providers/workspace-realtime-routing";
 
 const REALTIME_INVALIDATION_DELAY_MS = 150;
@@ -55,7 +58,6 @@ export function WorkspaceRealtimeProvider({
   );
   const queuedInvalidationRef = useRef(false);
   const queuedInvalidationKeysRef = useRef<QueryKey[] | null>(null);
-  const queuedInvalidationCoveredRef = useRef(false);
   const scheduledInvalidationKeysRef = useRef<QueryKey[] | null>(null);
   const invalidateTimerRef = useRef<number | null>(null);
 
@@ -98,24 +100,26 @@ export function WorkspaceRealtimeProvider({
     pendingOptimisticMutationCountRef.current = pendingOptimisticMutationCount;
 
     if (pendingOptimisticMutationCount === 0 && queuedInvalidationRef.current) {
-      const covered = queuedInvalidationCoveredRef.current;
       const queryKeys = queuedInvalidationKeysRef.current ?? [workspaceKeys.all];
       queuedInvalidationRef.current = false;
       queuedInvalidationKeysRef.current = null;
-      queuedInvalidationCoveredRef.current = false;
-      if (!covered) {
-        scheduleInvalidation(queryKeys);
-      }
+      scheduleInvalidation(queryKeys);
     }
   }, [pendingOptimisticMutationCount, scheduleInvalidation]);
 
   useEffect(() => {
-    function handleWorkspaceInvalidated() {
+    function handleWorkspaceInvalidated(event: Event) {
       if (
         pendingOptimisticMutationCountRef.current > 0 &&
         queuedInvalidationRef.current
       ) {
-        queuedInvalidationCoveredRef.current = true;
+        const invalidatedKeys = (event as WorkspaceInvalidatedEvent).detail;
+        const invalidatedIds = new Set(invalidatedKeys.map(queryKeyId));
+        const remaining = (queuedInvalidationKeysRef.current ?? []).filter(
+          (queryKey) => !invalidatedIds.has(queryKeyId(queryKey)),
+        );
+        queuedInvalidationKeysRef.current = remaining.length ? remaining : null;
+        queuedInvalidationRef.current = remaining.length > 0;
       }
     }
 
@@ -130,93 +134,46 @@ export function WorkspaceRealtimeProvider({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase.channel(`workspace:${workspaceId}:changes`);
-
-    channel.on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "workspaces",
-        filter: `id=eq.${workspaceId}`,
-      },
-      () => scheduleInvalidation(),
+    let cancelled = false;
+    const workspaceChannel = supabase.channel(`workspace:${workspaceId}`, {
+      config: { private: true },
+    });
+    const inboxChannel = supabase.channel(
+      `workspace:${workspaceId}:user:${userId}`,
+      { config: { private: true } },
     );
 
-    channel.on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "profiles",
-        filter: `id=eq.${userId}`,
-      },
-      () => scheduleInvalidation(),
-    );
-
-    for (const table of WORKSPACE_REALTIME_TABLES) {
-      channel.on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table,
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        () => {
-          scheduleInvalidation(
-            queryKeysForWorkspaceTableChange({ table, workspaceId, userId }),
-          );
-        },
+    workspaceChannel.on("broadcast", { event: "change" }, (payload) => {
+      const table = realtimeTableFromBroadcast(payload);
+      if (!table || !isWorkspaceRealtimeTable(table)) return;
+      scheduleInvalidation(
+        queryKeysForWorkspaceTableChange({ table, workspaceId, userId }),
       );
-    }
+    });
 
-    for (const table of INBOX_REALTIME_TABLES) {
-      channel.on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table,
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        (payload) => {
-          const nextRow =
-            payload.new && typeof payload.new === "object"
-              ? payload.new as RealtimeRow
-              : {};
-          const previousRow =
-            payload.old && typeof payload.old === "object"
-              ? payload.old as RealtimeRow
-              : {};
-          const queryKeys = mergeQueryKeys(
-            queryKeysForInboxTableChange({
-              table,
-              row: nextRow,
-              workspaceId,
-              userId,
-            }),
-            queryKeysForInboxTableChange({
-              table,
-              row: previousRow,
-              workspaceId,
-              userId,
-            }),
-          );
-          if (queryKeys.length > 0) scheduleInvalidation(queryKeys);
-        },
+    inboxChannel.on("broadcast", { event: "change" }, (payload) => {
+      const table = realtimeTableFromBroadcast(payload);
+      if (!table || !isInboxRealtimeTable(table)) return;
+      scheduleInvalidation(
+        queryKeysForInboxTableChange({ table, workspaceId, userId }),
       );
-    }
+    });
 
-    channel.subscribe();
+    void supabase.realtime.setAuth().then(() => {
+      if (cancelled) return;
+      workspaceChannel.subscribe();
+      inboxChannel.subscribe();
+    });
 
     return () => {
+      cancelled = true;
       if (invalidateTimerRef.current !== null) {
         window.clearTimeout(invalidateTimerRef.current);
         invalidateTimerRef.current = null;
         scheduledInvalidationKeysRef.current = null;
       }
-      void supabase.removeChannel(channel);
+      void supabase.removeChannel(workspaceChannel);
+      void supabase.removeChannel(inboxChannel);
     };
   }, [queryClient, scheduleInvalidation, userId, workspaceId]);
 

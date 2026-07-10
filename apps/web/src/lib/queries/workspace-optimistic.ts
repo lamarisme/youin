@@ -1,13 +1,12 @@
 "use client";
 
-import type { QueryClient } from "@tanstack/react-query";
+import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { actionErrorMessage } from "@/lib/action-error";
 import { useWorkspaceUiStore } from "@/lib/collab-store";
 import type { Workspace } from "@/lib/collab-types";
 import { workspaceKeys } from "@/lib/queries/keys";
-import { getWorkspaceQueryData } from "@/lib/queries/use-workspace";
 import type { WorkspaceBootstrap } from "@/lib/workspace/workspace-types";
 
 export type MutationContext = {
@@ -18,29 +17,59 @@ export type MutationContext = {
 
 export const WORKSPACE_INVALIDATED_EVENT = "youin:workspace-invalidated";
 
-export function invalidateWorkspace(queryClient: QueryClient) {
-  return queryClient
-    .invalidateQueries({ queryKey: workspaceKeys.all })
-    .finally(() => {
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event(WORKSPACE_INVALIDATED_EVENT));
-      }
-    });
+export type WorkspaceInvalidatedEvent = CustomEvent<readonly QueryKey[]>;
+
+const ALL_WORKSPACE_QUERY_KEYS: readonly QueryKey[] = [workspaceKeys.all];
+const pendingInvalidationKeys = new WeakMap<QueryClient, QueryKey[]>();
+
+function mergeQueryKeys(
+  current: readonly QueryKey[],
+  next: readonly QueryKey[],
+): QueryKey[] {
+  const seen = new Set(current.map((queryKey) => JSON.stringify(queryKey)));
+  const merged = [...current];
+  for (const queryKey of next) {
+    const id = JSON.stringify(queryKey);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    merged.push(queryKey);
+  }
+  return merged;
 }
 
-export function restoreWorkspace(context: MutationContext | undefined) {
-  useWorkspaceUiStore
-    .getState()
-    .setOptimisticWorkspace(context?.previous ?? null);
+export async function invalidateWorkspace(
+  queryClient: QueryClient,
+  queryKeys: readonly QueryKey[] = ALL_WORKSPACE_QUERY_KEYS,
+) {
+  await Promise.all(
+    queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(WORKSPACE_INVALIDATED_EVENT, { detail: queryKeys }),
+    );
+  }
+}
+
+export function restoreWorkspace(
+  queryClient: QueryClient,
+  context: MutationContext | undefined,
+) {
+  if (!context?.previous) return;
+  const pendingIds = useWorkspaceUiStore.getState().pendingOptimisticMutationIds;
+  if (
+    context.mutationId &&
+    pendingIds.at(-1) !== context.mutationId
+  ) {
+    return;
+  }
+  queryClient.setQueryData(workspaceKeys.bootstrap(), context.previous);
 }
 
 function getWorkspaceMutationBase(
   queryClient: QueryClient,
 ): WorkspaceBootstrap | undefined {
-  return (
-    useWorkspaceUiStore.getState().optimisticWorkspace ??
-    getWorkspaceQueryData(queryClient)
-  );
+  return queryClient.getQueryData<WorkspaceBootstrap>(workspaceKeys.bootstrap());
 }
 
 export function updateBundle(
@@ -49,7 +78,10 @@ export function updateBundle(
 ) {
   const current = getWorkspaceMutationBase(queryClient);
   if (!current) return;
-  useWorkspaceUiStore.getState().setOptimisticWorkspace(updater(current));
+  queryClient.setQueryData<WorkspaceBootstrap>(
+    workspaceKeys.bootstrap(),
+    updater(current),
+  );
 }
 
 export function updateWorkspace(
@@ -80,24 +112,44 @@ export async function prepareOptimisticMutation(
 export async function settleWorkspaceMutation(
   queryClient: QueryClient,
   context: unknown,
+  queryKeys: readonly QueryKey[] = ALL_WORKSPACE_QUERY_KEYS,
 ) {
-  await invalidateWorkspace(queryClient);
+  pendingInvalidationKeys.set(
+    queryClient,
+    mergeQueryKeys(pendingInvalidationKeys.get(queryClient) ?? [], queryKeys),
+  );
 
+  let mutationId: string | undefined;
   if (context && typeof context === "object" && "mutationId" in context) {
-    const mutationId = (context as MutationContext).mutationId;
+    mutationId = (context as MutationContext).mutationId;
+  }
+
+  const pendingIds = useWorkspaceUiStore.getState().pendingOptimisticMutationIds;
+  if (mutationId && pendingIds.length > 1) {
+    useWorkspaceUiStore.getState().finishOptimisticMutation(mutationId);
+    return;
+  }
+  if (!mutationId && pendingIds.length > 0) {
+    return;
+  }
+
+  const keysToInvalidate = pendingInvalidationKeys.get(queryClient) ?? [
+    workspaceKeys.all,
+  ];
+  pendingInvalidationKeys.delete(queryClient);
+  try {
+    await invalidateWorkspace(queryClient, keysToInvalidate);
+  } finally {
     if (mutationId) {
       useWorkspaceUiStore.getState().finishOptimisticMutation(mutationId);
     }
-  }
-
-  if (useWorkspaceUiStore.getState().pendingOptimisticMutationIds.length === 0) {
-    useWorkspaceUiStore.getState().clearOptimisticWorkspace();
   }
 }
 
 export function workspaceMutationHandlers(
   queryClient: QueryClient,
   fallbackErrorMessage: string,
+  queryKeys: readonly QueryKey[] = ALL_WORKSPACE_QUERY_KEYS,
 ) {
   return {
     onError: (
@@ -105,7 +157,7 @@ export function workspaceMutationHandlers(
       _variables: unknown,
       context: MutationContext | undefined,
     ) => {
-      restoreWorkspace(context);
+      restoreWorkspace(queryClient, context);
       toast.error(actionErrorMessage(error, fallbackErrorMessage));
     },
     onSettled: (
@@ -113,6 +165,6 @@ export function workspaceMutationHandlers(
       _error: unknown,
       _variables: unknown,
       context: unknown,
-    ) => settleWorkspaceMutation(queryClient, context),
+    ) => settleWorkspaceMutation(queryClient, context, queryKeys),
   };
 }

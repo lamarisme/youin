@@ -9,18 +9,19 @@
 html:has(#__plasmo),
 :host {
   --yi-paper: oklch(98.81% 0.0005 197);
-  --yi-paper-2: oklch(97.24% 0.0011 197.14);
-  --yi-paper-3: oklch(96.04% 0.0011 197.14);
-  --yi-paper-elevated: oklch(99.25% 0.0005 197);
+  --yi-paper-2: oklch(96% 0.002 264);
+  --yi-paper-3: oklch(92.5% 0.0035 264);
+  --yi-paper-elevated: oklch(99.4% 0.0005 197);
   --yi-ink: oklch(23.20% 0.0057 285.95);
   --yi-ink-hover: oklch(28% 0.007 285.95);
-  --yi-ink-2: oklch(52.71% 0.0135 264.45);
-  --yi-ink-3: oklch(64.88% 0.0146 262.36);
-  --yi-rule: oklch(88% 0.004 264 / 0.62);
-  --yi-rule-strong: oklch(80% 0.006 264 / 0.76);
+  --yi-ink-2: oklch(48% 0.014 264.45);
+  --yi-ink-3: oklch(56% 0.015 262.36);
+  --yi-rule: oklch(82% 0.005 264 / 0.78);
+  --yi-rule-strong: oklch(74% 0.007 264 / 0.86);
   --yi-mark: oklch(56.74% 0.1585 275.21);
   --yi-mark-bright: oklch(69.06% 0.1637 276.24);
-  --yi-mark-soft: oklch(94.6% 0.035 276);
+  --yi-mark-hover: oklch(52.5% 0.17 275.5);
+  --yi-mark-soft: oklch(92.5% 0.045 276);
   --yi-mark-ink: oklch(45% 0.135 275.21);
   --yi-destructive: oklch(48% 0.16 28);
   --yi-destructive-soft: oklch(96% 0.03 28);
@@ -30,7 +31,7 @@ html:has(#__plasmo),
   --yi-warn-soft: oklch(95.2% 0.045 82);
   --yi-info: oklch(48% 0.04 62);
   --yi-info-soft: oklch(95.5% 0.012 62);
-  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.42);
+  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.52);
 
   --yi-ext-border-hairline: color-mix(
     in oklch,
@@ -73,7 +74,7 @@ html:has(#__plasmo),
     var(--yi-ink-3) 55%,
     var(--yi-paper)
   );
-  --yi-ext-open-emphasis: var(--yi-mark-bright);
+  --yi-ext-open-emphasis: var(--yi-mark-hover);
   --yi-ext-danger-border: color-mix(
     in oklch,
     var(--yi-destructive) 38%,
@@ -83,7 +84,7 @@ html:has(#__plasmo),
   --yi-ext-danger-text: var(--yi-destructive);
   --yi-ext-btn-primary-bg: var(--yi-mark);
   --yi-ext-btn-primary-text: var(--yi-paper);
-  --yi-ext-btn-primary-hover: var(--yi-mark-bright);
+  --yi-ext-btn-primary-hover: var(--yi-mark-hover);
   --yi-ext-link: var(--yi-mark);
   --yi-ext-shadow-panel: var(--yi-shadow-hairline), var(--yi-shadow-panel);
   /* Dock: soft cast to the left + leading hairline (Linear-light, not heavy card shadow). */
@@ -141,6 +142,7 @@ html:has(#__plasmo),
     --yi-ink-3: oklch(64.88% 0.0146 262.36);
     --yi-rule: oklch(26.45% 0.0098 268.31);
     --yi-rule-strong: oklch(32.74% 0.0105 285.81);
+    --yi-mark-hover: oklch(69.06% 0.1637 276.24);
     --yi-mark-soft: oklch(27% 0.075 276);
     --yi-mark-ink: oklch(78% 0.095 276);
     --yi-destructive: oklch(62% 0.17 28);

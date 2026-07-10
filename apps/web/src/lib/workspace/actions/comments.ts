@@ -39,6 +39,7 @@ export async function addMarkCommentsAction(
       const body = normalizeCommentForStorage(item.body ?? "");
       if (body) {
         inserts.push({
+          workspaceId: ctx.workspaceId,
           markId: markId,
           authorUserId: ctx.userId,
           type: "text",
@@ -57,6 +58,7 @@ export async function addMarkCommentsAction(
       throw new Error("Image upload is invalid.");
     }
     inserts.push({
+      workspaceId: ctx.workspaceId,
       markId: markId,
       authorUserId: ctx.userId,
       type: "image",

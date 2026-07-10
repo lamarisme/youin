@@ -765,6 +765,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           : undefined;
         if (!row) {
           const insert = tx.insert(markComments).values({
+            workspaceId,
             markId: mark.id,
             authorUserId: user.id,
             type: "text",
@@ -977,6 +978,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         }
         if (!existing) {
           const insert = tx.insert(markComments).values({
+            workspaceId,
             markId,
             authorUserId: user.id,
             type: "text",

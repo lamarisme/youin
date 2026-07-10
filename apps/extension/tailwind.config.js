@@ -16,6 +16,7 @@ module.exports = {
         "rule-strong": "var(--yi-rule-strong)",
         mark: "var(--yi-mark)",
         "mark-bright": "var(--yi-mark-bright)",
+        "mark-hover": "var(--yi-mark-hover)",
         "mark-soft": "var(--yi-mark-soft)",
         "mark-ink": "var(--yi-mark-ink)",
         destructive: "var(--yi-destructive)",

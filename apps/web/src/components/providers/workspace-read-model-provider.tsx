@@ -14,7 +14,11 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 
-import { QUERY_CACHE, updatedAtFromIso } from "@/lib/queries/cache-policy";
+import {
+  isLoadedAtNewer,
+  QUERY_CACHE,
+  updatedAtFromIso,
+} from "@/lib/queries/cache-policy";
 import { workspaceKeys } from "@/lib/queries/keys";
 import {
   composeWorkspaceBootstrap,
@@ -31,6 +35,7 @@ import {
   getViewsIndexReadModelAction,
 } from "@/lib/workspace/actions";
 import { actionErrorMessage } from "@/lib/action-error";
+import { useWorkspaceUiStore } from "@/lib/collab-store";
 import type { Workspace } from "@/lib/collab-types";
 import type {
   AccountReadModel,
@@ -94,13 +99,7 @@ function isRouteReadModelNewer<TReadModel extends { loadedAt: string }>(
   cachedData: TReadModel | undefined,
 ): boolean {
   if (!cachedData) return false;
-  const routeUpdatedAt = readModelUpdatedAt(routeData.loadedAt);
-  const cachedUpdatedAt = readModelUpdatedAt(cachedData.loadedAt);
-  return (
-    typeof routeUpdatedAt === "number" &&
-    typeof cachedUpdatedAt === "number" &&
-    routeUpdatedAt > cachedUpdatedAt
-  );
+  return isLoadedAtNewer(routeData.loadedAt, cachedData.loadedAt);
 }
 
 function useWorkspaceReadModelQuery<TReadModel extends { loadedAt: string }>({
@@ -157,6 +156,22 @@ function useSeedReadModelWorkspace(
   return snapshot;
 }
 
+function useRouteWorkspaceSnapshot(
+  snapshot: ReturnType<typeof useSeedReadModelWorkspace>,
+) {
+  const hasPendingOptimisticMutation = useWorkspaceUiStore(
+    (state) => state.pendingOptimisticMutationIds.length > 0,
+  );
+  const current = useWorkspaceQuery(snapshot);
+  if (
+    hasPendingOptimisticMutation &&
+    current.data?.workspaceId === snapshot?.workspaceId
+  ) {
+    return current.data;
+  }
+  return selectRouteWorkspaceBootstrap(current.data, snapshot);
+}
+
 export function DashboardReadModelProvider({
   initialData,
   request,
@@ -182,8 +197,7 @@ export function DashboardReadModelProvider({
     dashboardData?.workspace,
     dashboardData?.loadedAt,
   );
-  const current = useWorkspaceQuery(snapshot);
-  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
+  const workspaceSnapshot = useRouteWorkspaceSnapshot(snapshot);
   const dashboardState = useMemo(
     () => ({
       selectedProjectId: dashboardData?.selectedProjectId ?? initialData.selectedProjectId,
@@ -245,8 +259,7 @@ export function AccountReadModelProvider({
     query.data?.workspace,
     query.data?.loadedAt,
   );
-  const current = useWorkspaceQuery(snapshot);
-  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
+  const workspaceSnapshot = useRouteWorkspaceSnapshot(snapshot);
   return (
     <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}
@@ -270,8 +283,7 @@ export function ViewsIndexReadModelProvider({
     [query.data],
   );
   const snapshot = useSeedReadModelWorkspace(workspace, query.data?.loadedAt);
-  const current = useWorkspaceQuery(snapshot);
-  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
+  const workspaceSnapshot = useRouteWorkspaceSnapshot(snapshot);
   return (
     <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}
@@ -296,8 +308,7 @@ export function ViewDetailReadModelProvider({
     query.data?.workspace,
     query.data?.loadedAt,
   );
-  const current = useWorkspaceQuery(snapshot);
-  const workspaceSnapshot = selectRouteWorkspaceBootstrap(current.data, snapshot);
+  const workspaceSnapshot = useRouteWorkspaceSnapshot(snapshot);
   return (
     <WorkspaceSnapshotProvider value={workspaceSnapshot}>
       {children}

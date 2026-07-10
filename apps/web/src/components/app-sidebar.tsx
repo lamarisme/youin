@@ -167,7 +167,6 @@ export function AppSidebar() {
       const supabase = createClient();
       await supabase.auth.signOut();
       queryClient.clear();
-      useWorkspaceUiStore.getState().clearOptimisticWorkspace();
       router.replace("/login");
       router.refresh();
     } finally {

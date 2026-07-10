@@ -18,7 +18,7 @@ const badgeVariants = cva(
           "border-rule/70 bg-paper-elevated text-ink-2 [a]:hover:bg-paper-2 [a]:hover:text-ink",
         ghost:
           "text-ink-2 hover:bg-paper-2 hover:text-ink",
-        link: "text-mark underline-offset-4 hover:text-mark-bright hover:underline",
+        link: "text-mark underline-offset-4 hover:text-mark-hover hover:underline",
         mark: "border-mark/15 bg-mark-soft/75 text-mark [a]:hover:bg-mark-soft",
         ok: "border-ok/15 bg-ok-soft/75 text-ok [a]:hover:bg-ok-soft",
         warning: "border-warn/20 bg-warn-soft text-ink [a]:hover:bg-warn-soft/80",

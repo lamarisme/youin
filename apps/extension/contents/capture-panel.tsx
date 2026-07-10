@@ -2666,7 +2666,7 @@ const CapturePanel = () => {
                 <button
                   type="button"
                   disabled={saving || !replyDraft.trim()}
-                  className="rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-mark-bright)] disabled:opacity-40"
+                  className="rounded-md border border-[color:var(--yi-ext-btn-primary-bg)] bg-[color:var(--yi-ext-accent)] px-4 py-2 text-[12px] font-semibold text-[color:var(--yi-ext-btn-primary-text)] outline-none transition-colors hover:border-[color:var(--yi-ext-btn-primary-hover)] hover:bg-[color:var(--yi-mark-hover)] disabled:opacity-40"
                   onClick={() => void sendReply()}>
                   {t("extension.panel.sendReply")}
                 </button>

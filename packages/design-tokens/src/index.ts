@@ -12,25 +12,26 @@
 export const color = {
   /* Paper — Linear-inspired inverse surfaces for light product UI */
   paper:   "oklch(98.81% 0.0005 197)",
-  paper2:  "oklch(97.24% 0.0011 197.14)",
-  paper3:  "oklch(96.04% 0.0011 197.14)",
-  paperElevated: "oklch(99.25% 0.0005 197)",
+  paper2:  "oklch(96% 0.002 264)",
+  paper3:  "oklch(92.5% 0.0035 264)",
+  paperElevated: "oklch(99.4% 0.0005 197)",
 
   /* Ink — foreground text */
   ink:     "oklch(23.20% 0.0057 285.95)",
   /** Filled control hover (primary buttons on paper) */
   inkHover: "oklch(28% 0.007 285.95)",
-  ink2:    "oklch(52.71% 0.0135 264.45)",
-  ink3:    "oklch(64.88% 0.0146 262.36)",
+  ink2:    "oklch(48% 0.014 264.45)",
+  ink3:    "oklch(56% 0.015 262.36)",
 
   /* Rule — hairline dividers; panels use ruleStrong */
-  rule:    "oklch(88% 0.004 264 / 0.62)",
-  ruleStrong: "oklch(80% 0.006 264 / 0.76)",
+  rule:    "oklch(82% 0.005 264 / 0.78)",
+  ruleStrong: "oklch(74% 0.007 264 / 0.86)",
 
   /* Mark — Linear lavender accent, used sparingly for primary/focus/active */
   mark:       "oklch(56.74% 0.1585 275.21)",
   markBright: "oklch(69.06% 0.1637 276.24)",
-  markSoft:   "oklch(94.6% 0.035 276)",
+  markHover:  "oklch(52.5% 0.17 275.5)",
+  markSoft:   "oklch(92.5% 0.045 276)",
   markInk:    "oklch(45% 0.135 275.21)",
 
   /* Destructive — separate from brand mark */
@@ -45,7 +46,7 @@ export const color = {
   info:     "oklch(48% 0.04 62)",
   infoSoft: "oklch(95.5% 0.012 62)",
 
-  focusRing: "oklch(56.48% 0.1585 275.56 / 0.42)",
+  focusRing: "oklch(56.48% 0.1585 275.56 / 0.52)",
 } as const;
 
 export const colorDark = {
@@ -64,6 +65,7 @@ export const colorDark = {
 
   mark:       "oklch(56.74% 0.1585 275.21)",
   markBright: "oklch(69.06% 0.1637 276.24)",
+  markHover:  "oklch(69.06% 0.1637 276.24)",
   markSoft:   "oklch(27% 0.075 276)",
   markInk:    "oklch(78% 0.095 276)",
 
@@ -179,6 +181,7 @@ const tokenToVar: Record<string, string> = {
   ruleStrong: "--yi-rule-strong",
   mark:       "--yi-mark",
   markBright: "--yi-mark-bright",
+  markHover:  "--yi-mark-hover",
   markSoft:   "--yi-mark-soft",
   markInk:    "--yi-mark-ink",
   destructive: "--yi-destructive",

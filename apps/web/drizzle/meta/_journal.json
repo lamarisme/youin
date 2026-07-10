@@ -239,6 +239,20 @@
       "when": 1783628622000,
       "tag": "0033_extension_sync_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1783718711093,
+      "tag": "0034_workspace_realtime_broadcast",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783719267950,
+      "tag": "0035_drop_legacy_mark_label_policies",
+      "breakpoints": true
     }
   ]
 }

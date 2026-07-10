@@ -4,12 +4,14 @@ export const workspaceKeys = {
   all: ["workspace"] as const,
   shell: () => [...workspaceKeys.all, "shell"] as const,
   bootstrap: () => [...workspaceKeys.all, "bootstrap"] as const,
+  dashboards: () => [...workspaceKeys.all, "dashboard"] as const,
   dashboard: (request: DashboardReadModelRequest = {}) =>
-    [...workspaceKeys.all, "dashboard", request] as const,
+    [...workspaceKeys.dashboards(), request] as const,
   account: () => [...workspaceKeys.all, "account"] as const,
   viewsIndex: () => [...workspaceKeys.all, "views-index"] as const,
+  viewDetails: () => [...workspaceKeys.all, "view-detail"] as const,
   viewDetail: (viewId: string) =>
-    [...workspaceKeys.all, "view-detail", viewId] as const,
+    [...workspaceKeys.viewDetails(), viewId] as const,
   commandPaletteIndex: () =>
     [...workspaceKeys.all, "command-palette-index"] as const,
   projects: () => [...workspaceKeys.all, "projects"] as const,

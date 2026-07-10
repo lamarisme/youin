@@ -12,3 +12,15 @@ export function updatedAtFromIso(value: string | null | undefined): number | und
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
+
+export function isLoadedAtNewer(
+  candidate: string | null | undefined,
+  current: string | null | undefined,
+): boolean {
+  const candidateUpdatedAt = updatedAtFromIso(candidate);
+  const currentUpdatedAt = updatedAtFromIso(current);
+  return (
+    typeof candidateUpdatedAt === "number" &&
+    (typeof currentUpdatedAt !== "number" || candidateUpdatedAt > currentUpdatedAt)
+  );
+}

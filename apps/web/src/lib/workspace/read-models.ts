@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain";
+import { cache } from "react";
 import {
   and,
   asc,
@@ -136,7 +137,7 @@ async function resolveImageUrls(
   return out;
 }
 
-async function loadWorkspaceIdentity(
+const loadWorkspaceIdentity = cache(async function loadWorkspaceIdentity(
   workspaceId: string,
 ): Promise<{ id: string; name: string }> {
   const db = getDb();
@@ -147,7 +148,7 @@ async function loadWorkspaceIdentity(
     .limit(1);
   if (!row) throw new Error("Workspace not found.");
   return row;
-}
+});
 
 export async function loadUserProfile(userId: string): Promise<UserProfile> {
   const db = getDb();
@@ -180,7 +181,7 @@ export async function loadUserProfile(userId: string): Promise<UserProfile> {
   };
 }
 
-async function loadProjectsWithCounts(
+const loadProjectsWithCounts = cache(async function loadProjectsWithCounts(
   workspaceId: string,
 ): Promise<WorkspaceShellProject[]> {
   const db = getDb();
@@ -209,9 +210,11 @@ async function loadProjectsWithCounts(
     createdAt: toIso(project.createdAt),
     markCount: countByProjectId.get(project.id) ?? 0,
   }));
-}
+});
 
-async function loadViews(workspaceId: string): Promise<WorkspaceView[]> {
+const loadViews = cache(async function loadViews(
+  workspaceId: string,
+): Promise<WorkspaceView[]> {
   const db = getDb();
   const rows = await db
     .select()
@@ -232,7 +235,7 @@ async function loadViews(workspaceId: string): Promise<WorkspaceView[]> {
       updatedAt: toIso(view.updatedAt),
     };
   });
-}
+});
 
 async function loadLabels(workspaceId: string): Promise<WorkspaceLabel[]> {
   const db = getDb();
@@ -276,7 +279,9 @@ async function loadWorkflowStatuses(
   }));
 }
 
-async function loadMembers(workspaceId: string): Promise<TeamMember[]> {
+const loadMembers = cache(async function loadMembers(
+  workspaceId: string,
+): Promise<TeamMember[]> {
   const db = getDb();
   const memberRows = await db
     .select({
@@ -320,7 +325,7 @@ async function loadMembers(workspaceId: string): Promise<TeamMember[]> {
       role: (row.role as TeamRole) ?? "member",
     };
   });
-}
+});
 
 async function loadWorkspaceMemberships(
   userId: string,
@@ -359,7 +364,7 @@ async function loadWorkspaceMemberships(
   }));
 }
 
-export async function loadWorkspaceShell(
+export const loadWorkspaceShell = cache(async function loadWorkspaceShell(
   workspaceId: string,
 ): Promise<WorkspaceShell> {
   const [identity, projectsOut, views, members] = await Promise.all([
@@ -375,7 +380,7 @@ export async function loadWorkspaceShell(
     views,
     members,
   };
-}
+});
 
 export async function loadWorkspaceShellBootstrap(
   workspaceId: string,
@@ -1054,7 +1059,9 @@ async function loadMarks(
   return { marks: marksOut, comments, markEvents: markEventsOut, pagination };
 }
 
-async function loadWorkspaceCore(workspaceId: string) {
+const loadWorkspaceCore = cache(async function loadWorkspaceCore(
+  workspaceId: string,
+) {
   const [
     identity,
     projectsWithCounts,
@@ -1078,7 +1085,7 @@ async function loadWorkspaceCore(workspaceId: string) {
     workflowStatuses,
     members,
   };
-}
+});
 
 export async function loadDashboardReadModel(
   workspaceId: string,

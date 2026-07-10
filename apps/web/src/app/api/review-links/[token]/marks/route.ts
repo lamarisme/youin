@@ -226,6 +226,7 @@ export async function POST(
 
       if (commentBody) {
         await tx.insert(markComments).values({
+          workspaceId: link.workspaceId,
           markId: mark.id,
           authorUserId: link.createdByUserId,
           type: "text",

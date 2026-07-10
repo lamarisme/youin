@@ -8,24 +8,25 @@
 :root {
   /* ── Paper ── */
   --yi-paper:      oklch(98.81% 0.0005 197);
-  --yi-paper-2:    oklch(97.24% 0.0011 197.14);
-  --yi-paper-3:    oklch(96.04% 0.0011 197.14);
-  --yi-paper-elevated: oklch(99.25% 0.0005 197);
+  --yi-paper-2:    oklch(96% 0.002 264);
+  --yi-paper-3:    oklch(92.5% 0.0035 264);
+  --yi-paper-elevated: oklch(99.4% 0.0005 197);
 
   /* ── Ink ── */
   --yi-ink:        oklch(23.20% 0.0057 285.95);
   --yi-ink-hover:  oklch(28% 0.007 285.95);
-  --yi-ink-2:      oklch(52.71% 0.0135 264.45);
-  --yi-ink-3:      oklch(64.88% 0.0146 262.36);
+  --yi-ink-2:      oklch(48% 0.014 264.45);
+  --yi-ink-3:      oklch(56% 0.015 262.36);
 
   /* ── Rule (visible hairlines) ── */
-  --yi-rule:       oklch(88% 0.004 264 / 0.62);
-  --yi-rule-strong: oklch(80% 0.006 264 / 0.76);
+  --yi-rule:       oklch(82% 0.005 264 / 0.78);
+  --yi-rule-strong: oklch(74% 0.007 264 / 0.86);
 
   /* ── Mark ── */
   --yi-mark:       oklch(56.74% 0.1585 275.21);
   --yi-mark-bright: oklch(69.06% 0.1637 276.24);
-  --yi-mark-soft:  oklch(94.6% 0.035 276);
+  --yi-mark-hover: oklch(52.5% 0.17 275.5);
+  --yi-mark-soft:  oklch(92.5% 0.045 276);
   --yi-mark-ink:   oklch(45% 0.135 275.21);
 
   /* ── Destructive (not brand mark) ── */
@@ -40,7 +41,7 @@
   --yi-info:       oklch(48% 0.04 62);
   --yi-info-soft:  oklch(95.5% 0.012 62);
 
-  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.42);
+  --yi-focus-ring: oklch(56.48% 0.1585 275.56 / 0.52);
 
   /* ── Typography scale ── */
   --yi-font-ui-2xs: 0.5625rem;
@@ -109,6 +110,7 @@
 
   --yi-mark:       oklch(56.74% 0.1585 275.21);
   --yi-mark-bright: oklch(69.06% 0.1637 276.24);
+  --yi-mark-hover: oklch(69.06% 0.1637 276.24);
   --yi-mark-soft:  oklch(27% 0.075 276);
   --yi-mark-ink:   oklch(78% 0.095 276);
 

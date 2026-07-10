@@ -32,6 +32,7 @@
   --color-ink-3: var(--yi-ink-3);
   --color-mark: var(--yi-mark);
   --color-mark-bright: var(--yi-mark-bright);
+  --color-mark-hover: var(--yi-mark-hover);
   --color-mark-soft: var(--yi-mark-soft);
   --color-ok: var(--yi-ok);
   --color-ok-soft: var(--yi-ok-soft);

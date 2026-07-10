@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { WorkspaceRealtimeProvider } from "@/components/providers/workspace-realtime-provider";
+import { isLoadedAtNewer, updatedAtFromIso } from "@/lib/queries/cache-policy";
 import {
   mergeShellIntoWorkspaceBootstrap,
   selectShellWorkspaceBootstrap,
@@ -37,6 +38,18 @@ export function WorkspaceDataProvider({
     snapshotQuery.data,
     shellSnapshot,
   );
+
+  useEffect(() => {
+    const cached = queryClient.getQueryData<WorkspaceShellBootstrap>(
+      workspaceKeys.shell(),
+    );
+    if (!cached || !isLoadedAtNewer(bootstrap.loadedAt, cached.loadedAt)) return;
+    queryClient.setQueryData<WorkspaceShellBootstrap>(
+      workspaceKeys.shell(),
+      bootstrap,
+      { updatedAt: updatedAtFromIso(bootstrap.loadedAt) },
+    );
+  }, [bootstrap, queryClient]);
 
   useEffect(() => {
     if (!data) return;

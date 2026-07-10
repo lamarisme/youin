@@ -30,6 +30,10 @@ import {
   updateWorkspace,
   workspaceMutationHandlers,
 } from "@/lib/queries/workspace-optimistic";
+import {
+  queryKeysForWorkspaceTable,
+  queryKeysForWorkspaceTables,
+} from "@/lib/queries/workspace-invalidation";
 import { labelColorClass } from "@/lib/workspace/label-styles";
 import { formatMarkDisplayKey } from "@/lib/workspace/mark-display-id";
 import { normalizeMarkPageUrl } from "@/lib/workspace/mark-page-url";
@@ -197,7 +201,11 @@ export function useCreateWorkspaceViewMutation() {
         ).items,
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create this view."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create this view.",
+      queryKeysForWorkspaceTable("workspace_views"),
+    ),
   });
 }
 
@@ -240,7 +248,11 @@ export function useUpdateWorkspaceViewMutation() {
         views: workspace.views.map((item) => (item.id === view.id ? view : item)),
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't save this view."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't save this view.",
+      queryKeysForWorkspaceTable("workspace_views"),
+    ),
   });
 }
 
@@ -258,7 +270,11 @@ export function useDeleteWorkspaceViewMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't delete this view."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't delete this view.",
+      queryKeysForWorkspaceTable("workspace_views"),
+    ),
     onSuccess: (_data, { viewId }) => {
       updateWorkspace(queryClient, (workspace) => ({
         ...workspace,
@@ -312,7 +328,11 @@ export function useCreateProjectMutation() {
         ).items,
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create this project."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create this project.",
+      queryKeysForWorkspaceTable("projects"),
+    ),
   });
 }
 
@@ -359,7 +379,11 @@ export function useUpdateProjectMutation() {
         ),
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't save this project."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't save this project.",
+      queryKeysForWorkspaceTable("projects"),
+    ),
   });
 }
 
@@ -376,7 +400,11 @@ export function useDeleteProjectMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't delete this project."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't delete this project.",
+      queryKeysForWorkspaceTable("projects"),
+    ),
   });
 }
 
@@ -473,7 +501,11 @@ export function useCreateMarkMutation() {
         };
       });
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create this mark."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create this mark.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -500,7 +532,11 @@ export function useToggleMarkStatusMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update mark status."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update mark status.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -518,7 +554,11 @@ export function useToggleMarkPinnedMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update pinned state."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update pinned state.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -542,7 +582,11 @@ export function useUpdateMarkPriorityMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update priority."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update priority.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -573,14 +617,18 @@ export function useDeleteMarkMutation() {
       return context;
     },
     onSuccess: (result, _vars, context) => {
-      if (result.undone) restoreWorkspace(context);
+      if (result.undone) restoreWorkspace(queryClient, context);
     },
     onError: (e, _vars, context) => {
-      restoreWorkspace(context);
+      restoreWorkspace(queryClient, context);
       toast.error(actionErrorMessage(e, "Couldn't delete this mark."));
     },
     onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+      settleWorkspaceMutation(
+        queryClient,
+        context,
+        queryKeysForWorkspaceTable("marks"),
+      ),
   });
 }
 
@@ -638,7 +686,11 @@ export function useUpdateMarkMutation() {
       });
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't save changes."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't save changes.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -662,7 +714,11 @@ export function useAssignMarkMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update assignee."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update assignee.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -682,7 +738,11 @@ export function useSetMarkLabelsMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update labels."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update labels.",
+      queryKeysForWorkspaceTable("marks_to_labels"),
+    ),
   });
 }
 
@@ -718,7 +778,11 @@ export function useSetMarkWorkflowStatusMutation() {
       });
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update workflow status."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update workflow status.",
+      queryKeysForWorkspaceTable("marks"),
+    ),
   });
 }
 
@@ -740,7 +804,11 @@ export function useLogMarkPromptCopyMutation() {
       });
     },
     onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+      settleWorkspaceMutation(
+        queryClient,
+        context,
+        queryKeysForWorkspaceTable("mark_events"),
+      ),
   });
 }
 
@@ -779,7 +847,11 @@ export function useAddCommentsMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't post your comment."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't post your comment.",
+      queryKeysForWorkspaceTable("mark_comments"),
+    ),
   });
 }
 
@@ -798,7 +870,11 @@ export function useUpdateCommentMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update your comment."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update your comment.",
+      queryKeysForWorkspaceTable("mark_comments"),
+    ),
   });
 }
 
@@ -824,7 +900,11 @@ export function useDeleteCommentMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't delete this comment."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't delete this comment.",
+      queryKeysForWorkspaceTable("mark_comments"),
+    ),
   });
 }
 
@@ -863,7 +943,11 @@ export function useUpdateProfileMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't save profile."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't save profile.",
+      queryKeysForWorkspaceTable("profiles"),
+    ),
   });
 }
 
@@ -882,7 +966,11 @@ export function useUpdateMyWorkspaceUsernameMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't update username."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't update username.",
+      queryKeysForWorkspaceTable("workspace_members"),
+    ),
   });
 }
 
@@ -898,7 +986,11 @@ export function useUpdateWorkspaceMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't rename workspace."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't rename workspace.",
+      queryKeysForWorkspaceTable("workspaces"),
+    ),
   });
 }
 
@@ -945,7 +1037,11 @@ export function useCreateWorkflowStatusMutation() {
         ).items,
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create this workflow status."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create this workflow status.",
+      queryKeysForWorkspaceTable("mark_workflow_statuses"),
+    ),
   });
 }
 
@@ -990,7 +1086,11 @@ export function useUpdateWorkflowStatusMutation() {
         ),
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't save this workflow status."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't save this workflow status.",
+      queryKeysForWorkspaceTable("mark_workflow_statuses"),
+    ),
   });
 }
 
@@ -1029,7 +1129,11 @@ export function useArchiveWorkflowStatusMutation() {
       });
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't archive this workflow status."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't archive this workflow status.",
+      queryKeysForWorkspaceTables("mark_workflow_statuses", "marks"),
+    ),
   });
 }
 
@@ -1065,7 +1169,11 @@ export function useInviteMemberMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create invitation."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create invitation.",
+      queryKeysForWorkspaceTable("workspace_invites"),
+    ),
   });
 }
 
@@ -1084,7 +1192,11 @@ export function useCancelInviteMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't revoke invite."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't revoke invite.",
+      queryKeysForWorkspaceTable("workspace_invites"),
+    ),
   });
 }
 
@@ -1103,7 +1215,11 @@ export function useCreateReviewLinkMutation() {
     onError: (e) =>
       toast.error(actionErrorMessage(e, "Couldn't create review link.")),
     onSettled: (_data, _error, _vars, context) =>
-      settleWorkspaceMutation(queryClient, context),
+      settleWorkspaceMutation(
+        queryClient,
+        context,
+        queryKeysForWorkspaceTable("workspace_review_links"),
+      ),
   });
 }
 
@@ -1124,7 +1240,11 @@ export function useRevokeReviewLinkMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't revoke review link."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't revoke review link.",
+      queryKeysForWorkspaceTable("workspace_review_links"),
+    ),
   });
 }
 
@@ -1148,7 +1268,11 @@ export function useRemoveMemberMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't remove member."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't remove member.",
+      queryKeysForWorkspaceTables("workspace_members", "marks"),
+    ),
   });
 }
 
@@ -1229,7 +1353,11 @@ export function useCreateLabelMutation() {
         ).items,
       }));
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't create this label."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't create this label.",
+      queryKeysForWorkspaceTable("mark_labels"),
+    ),
   });
 }
 
@@ -1251,6 +1379,10 @@ export function useDeleteLabelMutation() {
       }));
       return context;
     },
-    ...workspaceMutationHandlers(queryClient, "Couldn't delete label."),
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't delete label.",
+      queryKeysForWorkspaceTables("mark_labels", "marks_to_labels"),
+    ),
   });
 }

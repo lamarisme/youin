@@ -7,7 +7,7 @@ test("keeps custom text size and text color utilities together", () => {
   const className = cn(
     "bg-mark text-paper",
     "text-ui-sm",
-    "hover:bg-mark-bright",
+    "hover:bg-mark-hover",
   );
 
   assert.match(className, /\btext-paper\b/);

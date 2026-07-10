@@ -291,66 +291,38 @@ CREATE POLICY marks_delete_member ON public.marks
   FOR DELETE TO authenticated
   USING (public.user_workspace_member(workspace_id));
 
+DROP POLICY IF EXISTS marks_to_tags_select ON public.marks_to_labels;
+DROP POLICY IF EXISTS marks_to_tags_write ON public.marks_to_labels;
+DROP POLICY IF EXISTS marks_to_tags_delete ON public.marks_to_labels;
+
 CREATE POLICY marks_to_labels_select ON public.marks_to_labels
   FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_labels.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
-  );
+  USING (public.user_workspace_member(workspace_id));
 
 CREATE POLICY marks_to_labels_write ON public.marks_to_labels
   FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_labels.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
-  );
+  WITH CHECK (public.user_workspace_member(workspace_id));
 
 CREATE POLICY marks_to_labels_delete ON public.marks_to_labels
   FOR DELETE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = marks_to_labels.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
-  );
+  USING (public.user_workspace_member(workspace_id));
 
 CREATE POLICY mark_comments_select ON public.mark_comments
   FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = mark_comments.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
-  );
+  USING (public.user_workspace_member(workspace_id));
 
 CREATE POLICY mark_comments_insert ON public.mark_comments
   FOR INSERT TO authenticated
   WITH CHECK (
-    author_user_id = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = mark_comments.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
+    author_user_id = (SELECT auth.uid())
+    AND public.user_workspace_member(workspace_id)
   );
 
 CREATE POLICY mark_comments_delete_own ON public.mark_comments
   FOR DELETE TO authenticated
   USING (
     author_user_id = (SELECT auth.uid())
-    AND EXISTS (
-      SELECT 1 FROM public.marks m
-      WHERE m.id = mark_comments.mark_id
-        AND public.user_workspace_member(m.workspace_id)
-    )
+    AND public.user_workspace_member(workspace_id)
   );
 
 CREATE POLICY mark_events_select ON public.mark_events
@@ -456,53 +428,186 @@ CREATE POLICY inbox_activity_read_states_update_own ON public.inbox_activity_rea
     )
   );
 
--- ── 4. Realtime publication ─────────────────────────────────────────────────
+-- ── 4. Workspace-scoped Realtime broadcasts ─────────────────────────────────
+CREATE OR REPLACE FUNCTION public.broadcast_workspace_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  changed_row jsonb;
+  changed_workspace_id text;
+BEGIN
+  changed_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  changed_workspace_id := changed_row ->> 'workspace_id';
+  IF changed_workspace_id IS NOT NULL THEN
+    PERFORM realtime.send(
+      jsonb_build_object('table', TG_TABLE_NAME, 'operation', TG_OP),
+      'change',
+      'workspace:' || changed_workspace_id,
+      true
+    );
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.broadcast_workspace_identity_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  changed_row jsonb;
+  changed_workspace_id text;
+BEGIN
+  changed_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  changed_workspace_id := changed_row ->> 'id';
+  IF changed_workspace_id IS NOT NULL THEN
+    PERFORM realtime.send(
+      jsonb_build_object('table', TG_TABLE_NAME, 'operation', TG_OP),
+      'change',
+      'workspace:' || changed_workspace_id,
+      true
+    );
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.broadcast_profile_workspace_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  changed_row jsonb;
+  changed_user_id uuid;
+  member_workspace_id uuid;
+BEGIN
+  changed_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  changed_user_id := (changed_row ->> 'id')::uuid;
+  FOR member_workspace_id IN
+    SELECT member.workspace_id
+    FROM public.workspace_members AS member
+    WHERE member.user_id = changed_user_id
+  LOOP
+    PERFORM realtime.send(
+      jsonb_build_object('table', TG_TABLE_NAME, 'operation', TG_OP),
+      'change',
+      'workspace:' || member_workspace_id::text,
+      true
+    );
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.broadcast_inbox_change()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  changed_row jsonb;
+  changed_workspace_id text;
+  recipient_user_id text;
+BEGIN
+  changed_row := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  changed_workspace_id := changed_row ->> 'workspace_id';
+  recipient_user_id := COALESCE(
+    changed_row ->> 'recipient_user_id',
+    changed_row ->> 'user_id'
+  );
+  IF changed_workspace_id IS NOT NULL AND recipient_user_id IS NOT NULL THEN
+    PERFORM realtime.send(
+      jsonb_build_object('table', TG_TABLE_NAME, 'operation', TG_OP),
+      'change',
+      'workspace:' || changed_workspace_id || ':user:' || recipient_user_id,
+      true
+    );
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.broadcast_workspace_change() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.broadcast_workspace_identity_change() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.broadcast_profile_workspace_change() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.broadcast_inbox_change() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS broadcast_workspaces_change ON public.workspaces;
+CREATE TRIGGER broadcast_workspaces_change
+  AFTER INSERT OR UPDATE OR DELETE ON public.workspaces
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_workspace_identity_change();
+DROP TRIGGER IF EXISTS broadcast_profiles_change ON public.profiles;
+CREATE TRIGGER broadcast_profiles_change
+  AFTER INSERT OR UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_profile_workspace_change();
+
 DO $$
 DECLARE
   realtime_table text;
   realtime_tables text[] := ARRAY[
-    'profiles',
-    'workspaces',
-    'workspace_members',
-    'workspace_invites',
     'projects',
     'mark_labels',
     'mark_workflow_statuses',
     'marks',
+    'marks_to_labels',
+    'mark_comments',
     'mark_events',
-    'inbox_activities',
-    'inbox_activity_read_states',
+    'workspace_members',
+    'workspace_invites',
     'workspace_views',
     'workspace_review_links'
   ];
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_publication
-    WHERE pubname = 'supabase_realtime'
-  ) THEN
-    RETURN;
-  END IF;
-
   FOREACH realtime_table IN ARRAY realtime_tables LOOP
-    IF to_regclass(format('public.%I', realtime_table)) IS NULL THEN
-      CONTINUE;
-    END IF;
-
-    IF NOT EXISTS (
-      SELECT 1
-      FROM pg_publication_tables
-      WHERE pubname = 'supabase_realtime'
-        AND schemaname = 'public'
-        AND tablename = realtime_table
-    ) THEN
-      EXECUTE format(
-        'ALTER PUBLICATION supabase_realtime ADD TABLE public.%I',
-        realtime_table
-      );
-    END IF;
+    EXECUTE format(
+      'DROP TRIGGER IF EXISTS %I ON public.%I',
+      'broadcast_' || realtime_table || '_change',
+      realtime_table
+    );
+    EXECUTE format(
+      'CREATE TRIGGER %I AFTER INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.broadcast_workspace_change()',
+      'broadcast_' || realtime_table || '_change',
+      realtime_table
+    );
   END LOOP;
 END $$;
+
+DROP TRIGGER IF EXISTS broadcast_inbox_activities_change ON public.inbox_activities;
+CREATE TRIGGER broadcast_inbox_activities_change
+  AFTER INSERT OR UPDATE OR DELETE ON public.inbox_activities
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_inbox_change();
+DROP TRIGGER IF EXISTS broadcast_inbox_activity_read_states_change ON public.inbox_activity_read_states;
+CREATE TRIGGER broadcast_inbox_activity_read_states_change
+  AFTER INSERT OR UPDATE OR DELETE ON public.inbox_activity_read_states
+  FOR EACH ROW EXECUTE FUNCTION public.broadcast_inbox_change();
+
+DROP POLICY IF EXISTS youin_workspace_broadcast_select ON realtime.messages;
+CREATE POLICY youin_workspace_broadcast_select ON realtime.messages
+  FOR SELECT TO authenticated
+  USING (
+    realtime.messages.extension = 'broadcast'
+    AND EXISTS (
+      SELECT 1
+      FROM public.workspace_members AS member
+      WHERE member.workspace_id::text = split_part((SELECT realtime.topic()), ':', 2)
+        AND member.user_id = (SELECT auth.uid())
+        AND (
+          split_part((SELECT realtime.topic()), ':', 3) = ''
+          OR (
+            split_part((SELECT realtime.topic()), ':', 3) = 'user'
+            AND split_part((SELECT realtime.topic()), ':', 4) = (SELECT auth.uid())::text
+          )
+        )
+    )
+  );
 
 -- ── 5. Storage bucket + policies ────────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)

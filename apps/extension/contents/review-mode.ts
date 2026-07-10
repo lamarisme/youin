@@ -267,7 +267,7 @@ function ensureHost() {
       border-radius: 999px;
       background: color-mix(in oklch, var(--yi-mark) 10%, transparent);
       font-variant-numeric: tabular-nums;
-      color: var(--yi-mark-bright);
+      color: var(--yi-mark-hover);
       font-weight: 700;
       white-space: nowrap;
     }

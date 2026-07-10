@@ -198,6 +198,7 @@ export async function createMarkAction(input: {
     if (labelIds.length) {
       await tx.insert(marksToLabels).values(
         labelIds.map((labelId) => ({
+          workspaceId: ctx.workspaceId,
           markId: created.id,
           labelId,
         })),
@@ -433,7 +434,13 @@ export async function setMarkLabelsAction(
     if (toAdd.length) {
       await tx
         .insert(marksToLabels)
-        .values(toAdd.map((labelId) => ({ markId: markId, labelId })));
+        .values(
+          toAdd.map((labelId) => ({
+            workspaceId: ctx.workspaceId,
+            markId: markId,
+            labelId,
+          })),
+        );
     }
     await tx.insert(markEvents).values({
       workspaceId: ctx.workspaceId,
