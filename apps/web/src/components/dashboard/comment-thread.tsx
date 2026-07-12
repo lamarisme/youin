@@ -210,7 +210,17 @@ export function CommentThread({
       </div>
 
       <div className="mt-3 rounded-md bg-paper-2/70 p-2 ring-1 ring-rule/35">
-        <div>
+        <div
+          onPaste={(event) => {
+            const imageItem = Array.from(event.clipboardData.items).find((item) =>
+              item.type.startsWith("image/"),
+            );
+            const file = imageItem?.getAsFile();
+            if (!file) return;
+            event.preventDefault();
+            setImageFile(file);
+          }}
+        >
           <MarkDescriptionEditor
             id="comment-composer"
             value={text}
