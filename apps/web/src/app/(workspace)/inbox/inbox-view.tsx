@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { formatDistance } from "date-fns";
 import {
   ArrowRight,
+  AlertTriangle,
   AtSign,
   CheckCheck,
   CircleDot,
@@ -39,6 +40,7 @@ import { accountHref, markHref } from "@/lib/workspace/routes";
 import { inboxContextParamsForGroup } from "@/lib/workspace/inbox-navigation";
 
 import { useInbox, type InboxEvent, type InboxGroup } from "./use-inbox";
+import { InboxListSkeleton } from "./inbox-loading";
 import type { InboxSnapshot } from "@/lib/workspace/inbox-model";
 import { PageContainer } from "@/components/page-container";
 import { updatedAtFromIso } from "@/lib/queries/cache-policy";
@@ -123,13 +125,13 @@ export function InboxView({
       <BreadcrumbHeader
         items={[{ label: "Inbox", current: true }]}
         actions={(
-          <>
+          <div className="flex items-center gap-1.5" aria-live="polite">
             {inbox.unreadCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-mark-soft px-2.5 py-1 text-ui-xs font-medium tabular-nums text-mark">
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-md border border-mark/15 bg-mark-soft/75 px-2 text-ui-xs font-medium tabular-nums text-mark">
                 {formatCount(inbox.unreadCount)} new
               </span>
             ) : null}
-            {inbox.totalEvents > 0 ? (
+            {inbox.totalEvents > 0 && inbox.unreadCount > 0 ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -139,10 +141,15 @@ export function InboxView({
                 className="h-7 gap-1.5 rounded-md px-2 text-ui-sm text-ink-2 hover:bg-paper-2 hover:text-ink"
               >
                 <CheckCheck className="size-3.5" aria-hidden />
-                {inbox.unreadCount === 0 ? "All caught up" : "Mark all read"}
+                Mark all as read
               </Button>
+            ) : inbox.totalEvents > 0 ? (
+              <span className="inline-flex h-7 items-center gap-1.5 px-1.5 text-ui-xs text-ink-3">
+                <CheckCheck className="size-3.5 text-ok" aria-hidden />
+                Caught up
+              </span>
             ) : null}
-          </>
+          </div>
         )}
       />
       <h1 className="sr-only">Inbox</h1>
@@ -152,7 +159,10 @@ export function InboxView({
           role="alert"
           className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-ui-xs leading-snug text-destructive"
         >
-          <span>Workspace invitations could not be checked. Inbox activity is still available.</span>
+          <span className="flex min-w-0 items-start gap-2">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>Workspace invitations could not be checked. Inbox activity is still available.</span>
+          </span>
           <Button
             type="button"
             size="sm"
@@ -182,7 +192,7 @@ export function InboxView({
       {inbox.isError ? (
         <EmptyState
           icon={Inbox}
-          title="Inbox unavailable."
+          title="Inbox unavailable"
           description="The latest inbox activity could not be loaded."
           action={
             <Button type="button" size="sm" variant="outline" className="h-10 sm:h-8" onClick={inbox.refetch}>
@@ -191,10 +201,12 @@ export function InboxView({
           }
           className="mt-1"
         />
-      ) : inbox.isPending ? null : !hasInboxGroups && !hasInvitationCards ? (
+      ) : inbox.isPending ? (
+        <InboxListSkeleton />
+      ) : !hasInboxGroups && !hasInvitationCards ? (
         <EmptyState
           icon={Inbox}
-          title={userId ? "Inbox empty." : "Sign in to see your inbox."}
+          title={userId ? "No inbox activity yet" : "Sign in to see your inbox"}
           description={
             userId
               ? "When teammates act on marks you're assigned to or have commented on, those updates land here."
@@ -259,19 +271,19 @@ function InboxInvitations({
 
   return (
     <section className={className} aria-label="Workspace invitations">
-      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 px-1">
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2 px-1">
         <div>
-          <p className="text-eyebrow">Workspace invitations</p>
-          <p className="mt-0.5 text-ui-xs text-ink-3">
+          <h2 className="text-ui-sm font-semibold text-ink">Workspace invitations</h2>
+          <p className="mt-0.5 max-w-[62ch] text-ui-xs leading-snug text-ink-3">
             {invites.length === 1
               ? "Join the workspace when you are ready."
               : "Choose one workspace to join. The other invitations will remain available."}
           </p>
         </div>
         {invites.length > 1 ? (
-          <span className="text-ui-xs tabular-nums text-ink-3">
+          <Badge variant="default" className="tabular-nums text-ui-xs text-ink-3">
             {invites.length} pending
-          </span>
+          </Badge>
         ) : null}
       </div>
       <ProductList>
@@ -297,10 +309,15 @@ function InboxInvitations({
                         {invite.workspaceName}
                       </h2>
                     </div>
+                    <p className="min-w-0 text-ui-sm leading-snug text-ink-2 sm:col-start-1">
+                      Invited by {invite.invitedBy}
+                      {invite.invitedByEmail ? ` (${invite.invitedByEmail})` : ""}.
+                      <span className="text-ink-3"> Expires {formatDate(invite.expiresAt)}.</span>
+                    </p>
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 min-w-[132px] sm:col-start-2 sm:row-span-2"
+                      className="h-10 w-full min-w-[132px] sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:h-8 sm:w-auto"
                       onClick={() => void handleAccept(invite)}
                       disabled={Boolean(acceptingInviteId)}
                     >
@@ -316,11 +333,6 @@ function InboxInvitations({
                         </>
                       )}
                     </Button>
-                    <p className="min-w-0 text-ui-sm text-ink-2 sm:col-start-1">
-                      Invited by {invite.invitedBy}
-                      {invite.invitedByEmail ? ` (${invite.invitedByEmail})` : ""}.
-                      <span className="text-ink-3"> Expires {formatDate(invite.expiresAt)}.</span>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -367,26 +379,26 @@ function InboxGroupRow({
 
   if (isDeletedSource) {
     return (
-      <ProductListItem interactive={false} className="bg-destructive-soft/10 p-0">
+      <ProductListItem interactive={false} className="bg-destructive-soft/20 p-0">
         <div
           aria-label={rowLabel}
-          className="flex cursor-default items-start gap-3 border-l-2 border-destructive/45 px-4 py-2.5"
+          className="flex cursor-default items-start gap-3 px-4 py-3 sm:py-2.5"
         >
           <UnreadDot active={false} />
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="grid min-w-0 gap-x-2 gap-y-0.5 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <div className="flex min-w-0 items-baseline gap-1.5 text-ui-md font-semibold text-destructive">
+              <div className="flex min-w-0 items-baseline gap-1.5 text-ui-md font-semibold text-ink-2">
                 {group.markDisplayKey ? (
-                  <span className="shrink-0 font-mono text-ui-xs font-medium text-destructive/80">
+                  <span className="shrink-0 font-mono text-ui-xs font-medium text-ink-3">
                     {group.markDisplayKey}
                   </span>
                 ) : null}
-                <span className="min-w-0 truncate">{title}</span>
+                <span className="min-w-0 flex-1 line-clamp-2 sm:line-clamp-1">{title}</span>
                 {projectName ? (
                   <Badge
                     variant="default"
                     title={projectName}
-                    className="max-w-[9rem] text-ui-2xs text-ink-3"
+                    className="hidden max-w-[9rem] text-ui-2xs text-ink-3 sm:inline-flex"
                   >
                     {projectName}
                   </Badge>
@@ -398,12 +410,22 @@ function InboxGroupRow({
                   Deleted
                 </Badge>
               </div>
-              <time
-                className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
-                dateTime={group.latestAt}
+              <div
+                className="flex min-w-0 items-center gap-1.5 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
               >
-                {formatRelative(group.latestAt, dataUpdatedAt)}
-              </time>
+                <time dateTime={group.latestAt}>
+                  {formatRelative(group.latestAt, dataUpdatedAt)}
+                </time>
+                {projectName ? (
+                  <Badge
+                    variant="default"
+                    title={projectName}
+                    className="max-w-[9rem] text-ui-2xs text-ink-3 sm:hidden"
+                  >
+                    {projectName}
+                  </Badge>
+                ) : null}
+              </div>
             </div>
             <p className="truncate text-ui-sm text-destructive">
               {visibleEventSummary}
@@ -418,11 +440,14 @@ function InboxGroupRow({
   }
 
   return (
-    <ProductListItem className="p-0">
+    <ProductListItem
+      interactive={false}
+      className={cn("p-0", group.unreadCount > 0 && "bg-mark-soft/20")}
+    >
       <Link
         href={inboxGroupHref(group)}
         aria-label={rowLabel}
-        className="group flex items-start gap-3 rounded-md px-4 py-2.5 transition-colors hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset"
+        className="group flex items-start gap-3 rounded-md px-4 py-3 transition-colors duration-[var(--yi-duration-fast)] ease-[var(--ease-out-quart)] hover:bg-paper-3/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mark/35 focus-visible:ring-inset sm:py-2.5"
       >
         <UnreadDot active={group.unreadCount > 0} />
         <div className="min-w-0 flex-1 space-y-0.5">
@@ -438,12 +463,12 @@ function InboxGroupRow({
                   {group.markDisplayKey}
                 </span>
               ) : null}
-              <span className="min-w-0 truncate">{title}</span>
+              <span className="min-w-0 flex-1 line-clamp-2 sm:line-clamp-1">{title}</span>
               {!isInvitationAccepted && projectName ? (
                 <Badge
                   variant="default"
                   title={projectName}
-                  className="max-w-[9rem] text-ui-2xs text-ink-3"
+                  className="hidden max-w-[9rem] text-ui-2xs text-ink-3 sm:inline-flex"
                 >
                   {projectName}
                 </Badge>
@@ -458,15 +483,25 @@ function InboxGroupRow({
                 </Badge>
               ) : null}
             </div>
-            <time
-              className="shrink-0 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
-              dateTime={group.latestAt}
+            <div
+              className="flex min-w-0 items-center gap-1.5 text-ui-xs tabular-nums text-ink-3 sm:col-start-2 sm:row-start-1"
             >
-              {formatRelative(group.latestAt, dataUpdatedAt)}
-            </time>
+              <time dateTime={group.latestAt}>
+                {formatRelative(group.latestAt, dataUpdatedAt)}
+              </time>
+              {!isInvitationAccepted && projectName ? (
+                <Badge
+                  variant="default"
+                  title={projectName}
+                  className="max-w-[9rem] text-ui-2xs text-ink-3 sm:hidden"
+                >
+                  {projectName}
+                </Badge>
+              ) : null}
+            </div>
           </div>
 
-          <p className="truncate text-ui-sm text-ink-2">
+          <p className="truncate text-ui-xs text-ink-2 sm:text-ui-sm">
             {isInvitationAccepted ? (
               visibleEventSummary
             ) : (
@@ -481,7 +516,7 @@ function InboxGroupRow({
             ) : null}
           </p>
         </div>
-        <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-ink-3 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-ink-3 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" aria-hidden />
       </Link>
     </ProductListItem>
   );
@@ -566,7 +601,7 @@ function ActorChip({
 }) {
   const parts = rosterDisplayParts(event.actorName, event.actorUsername, preference);
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5 align-baseline">
+    <span className="inline-flex min-w-0 max-w-[9rem] items-center gap-1.5 align-baseline sm:max-w-none">
       <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-paper-3 text-ui-2xs font-semibold text-ink-2">
         {event.actorInitials}
       </span>

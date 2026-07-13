@@ -25,6 +25,7 @@ import {
   MESSAGE_TOGGLE_FEEDBACK_LIST,
   type OpenMarkDetail,
   type ReviewCaptureDetail,
+  type ReviewCaptureUpdate,
   type ReviewStartDetail
 } from "../lib/events"
 import {
@@ -84,7 +85,8 @@ import {
 import { createViewportLayerStyle } from "../lib/viewport-layer"
 
 export const config: PlasmoCSConfig = {
-  matches: ["http://*/*", "https://*/*"],
+  // Packaged as an injectable content script and loaded on first use.
+  matches: ["https://youin.invalid/*"],
   run_at: "document_idle",
   all_frames: false
 }
@@ -139,6 +141,15 @@ type PanelMode = "create" | "list" | "thread"
 type UndoAction =
   | { kind: "created"; mark: Mark; message: string }
   | { kind: "deleted"; mark: Mark; message: string }
+
+type PendingElementScreenshot = {
+  captureId: string
+  markId: string
+  saved: boolean
+  initialPushComplete: boolean
+  latest?: ReviewCaptureUpdate
+  persistPromise?: Promise<void>
+}
 
 function truncateMiddle(s: string, max: number): string {
   if (s.length <= max) return s
@@ -257,6 +268,20 @@ function buildMarkFromCapture(
     domSnapshot: detail.domSnapshot,
     screenshotDataUrl: detail.elementScreenshotDataUrl
   }
+}
+
+async function persistLateElementScreenshot(
+  markId: string,
+  dataUrl: string,
+  syncNow: boolean
+): Promise<void> {
+  const saved = await patchMark(markId, {
+    screenshotDataUrl: dataUrl,
+    syncState: "pending",
+    syncError: undefined,
+    updatedAt: Date.now()
+  })
+  if (saved && syncNow) await syncPendingMarksToWorkspace()
 }
 
 function buildAiPromptFromMark(mark: Mark): string {
@@ -1214,6 +1239,9 @@ const CapturePanel = () => {
     captureId: string
     markId: string
   } | null>(null)
+  const pendingElementScreenshotRef = useRef<PendingElementScreenshot | null>(
+    null
+  )
   const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
@@ -1433,6 +1461,30 @@ const CapturePanel = () => {
 
   useEffect(() => {
     registerCaptureUpdateHandler((patch) => {
+      const pendingElement = pendingElementScreenshotRef.current
+      if (pendingElement?.captureId === patch.captureId) {
+        pendingElement.latest = patch
+        if (patch.elementScreenshotDataUrl && pendingElement.saved) {
+          pendingElement.persistPromise = persistLateElementScreenshot(
+            pendingElement.markId,
+            patch.elementScreenshotDataUrl,
+            pendingElement.initialPushComplete
+          )
+          if (pendingElement.initialPushComplete) {
+            void pendingElement.persistPromise.finally(() => {
+              if (
+                pendingElementScreenshotRef.current?.captureId ===
+                patch.captureId
+              ) {
+                pendingElementScreenshotRef.current = null
+              }
+            })
+          }
+        } else if (!patch.screenshotPending) {
+          pendingElementScreenshotRef.current = null
+        }
+        return
+      }
       const reattach = reattachCaptureRef.current
       if (reattach?.captureId === patch.captureId) {
         if (!patch.screenshotPending) reattachCaptureRef.current = null
@@ -1641,7 +1693,7 @@ const CapturePanel = () => {
 
   const handleSave = async () => {
     if (!capture || !body.trim() || saving) return
-    if (capture.screenshotPending) {
+    if (capture.captureKind === "region" && capture.screenshotPending) {
       setSaveError(t("extension.panel.waitForScreenshot"))
       return
     }
@@ -1661,11 +1713,38 @@ const CapturePanel = () => {
     setSaveWarning(null)
     try {
       await setActiveProjectId(projectId)
-      const mark = buildMarkFromCapture(capture, projectId, body.trim(), priority)
+      const mark = buildMarkFromCapture(
+        capture,
+        projectId,
+        body.trim(),
+        priority
+      )
+      if (capture.captureKind !== "region" && capture.screenshotPending) {
+        pendingElementScreenshotRef.current = {
+          captureId: capture.captureId,
+          markId: mark.id,
+          saved: false,
+          initialPushComplete: false
+        }
+      }
       const saved = await addMarkWithFallback(mark)
       if (!saved.ok || !saved.mark) {
+        if (pendingElementScreenshotRef.current?.markId === mark.id) {
+          pendingElementScreenshotRef.current = null
+        }
         setSaveError(t("extension.panel.couldNotSave"))
         return
+      }
+      const pendingElement = pendingElementScreenshotRef.current
+      if (pendingElement?.markId === saved.mark.id) {
+        pendingElement.saved = true
+        if (pendingElement.latest?.elementScreenshotDataUrl) {
+          pendingElement.persistPromise = persistLateElementScreenshot(
+            pendingElement.markId,
+            pendingElement.latest.elementScreenshotDataUrl,
+            false
+          )
+        }
       }
       if (saved.warning) {
         setSaveWarning(saved.warning)
@@ -1681,6 +1760,14 @@ const CapturePanel = () => {
       const push = await pushMarkToWorkspace(saved.mark, {
         screenshotDataUrl: saved.mark.screenshotDataUrl
       })
+      if (pendingElement?.markId === saved.mark.id) {
+        pendingElement.initialPushComplete = true
+        await pendingElement.persistPromise
+        if (pendingElement.latest?.elementScreenshotDataUrl) {
+          await syncPendingMarksToWorkspace()
+          pendingElementScreenshotRef.current = null
+        }
+      }
       if (!push.skipped && !push.ok && push.error) {
         setSaveError(
           t("extension.panel.savedLocallySync", { error: push.error })
@@ -1874,10 +1961,14 @@ const CapturePanel = () => {
             openingBody
           })
         : undefined
-      const synced = await pushMarkEditToWorkspace(viewingMark, {
-        title,
-        openingBody
-      }, op?.id)
+      const synced = await pushMarkEditToWorkspace(
+        viewingMark,
+        {
+          title,
+          openingBody
+        },
+        op?.id
+      )
       if ((synced.ok || synced.skipped) && op) {
         await removeMarkSyncOp(viewingMark.id, op.id)
       }
@@ -2201,6 +2292,18 @@ const CapturePanel = () => {
 
           <div className="min-h-0 flex-1 overflow-y-auto [contain:layout] [scrollbar-gutter:stable]">
             <div className="flex flex-col gap-5 px-4 pb-6 pt-4">
+              <CommentComposer
+                id="capture-body"
+                label={t("extension.panel.feedback")}
+                value={body}
+                rows={5}
+                disabled={saving}
+                invalid={Boolean(saveError)}
+                placeholder={t("extension.panel.whatShouldChange")}
+                onChange={setBody}
+                onSubmit={() => void handleSave()}
+              />
+
               {screenshotPending ? (
                 <div
                   role="status"
@@ -2268,18 +2371,6 @@ const CapturePanel = () => {
                   outerHTML={capture.outerHTML}
                 />
               ) : null}
-
-              <CommentComposer
-                id="capture-body"
-                label={t("extension.panel.feedback")}
-                value={body}
-                rows={5}
-                disabled={saving}
-                invalid={Boolean(saveError)}
-                placeholder={t("extension.panel.whatShouldChange")}
-                onChange={setBody}
-                onSubmit={() => void handleSave()}
-              />
 
               {pageMarks.filter((mark) => mark.status !== "closed").length >
               0 ? (
@@ -2398,12 +2489,15 @@ const CapturePanel = () => {
                 <button
                   type="button"
                   disabled={
-                    saving || screenshotPending || !body.trim() || !projectId
+                    saving ||
+                    (isRegionCapture && screenshotPending) ||
+                    !body.trim() ||
+                    !projectId
                   }
                   aria-busy={saving}
                   className={btnPrimary}
                   onClick={() => void handleSave()}>
-                  {screenshotPending
+                  {isRegionCapture && screenshotPending
                     ? t("extension.panel.capturing")
                     : saving
                       ? t("extension.panel.posting")

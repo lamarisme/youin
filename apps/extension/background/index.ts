@@ -7,25 +7,27 @@ import {
   signInWithGoogle,
   type SignInResult
 } from "../lib/auth"
-import {
-  isExtensionPageSender as isExtensionPageSenderGuard
-} from "../lib/background-guards"
+import { isExtensionPageSender as isExtensionPageSenderGuard } from "../lib/background-guards"
 import {
   MESSAGE_ENSURE_NAVIGATION_HOOK,
   MESSAGE_FORWARD_CAPTURE,
-  MESSAGE_OPEN_CAPTURE_PANEL
+  MESSAGE_OPEN_CAPTURE_PANEL,
+  MESSAGE_SYNC_NOW
 } from "../lib/events"
 import type { ReviewCaptureDetail } from "../lib/events"
 import {
   CAPTURE_PANEL_SCRIPT,
   ensureReviewContentScripts,
   MESSAGE_ENSURE_REVIEW_SCRIPTS,
+  PIN_BADGES_SCRIPT,
   requirementsForFileMarkers,
   REVIEW_MODE_SCRIPT,
   type EnsureReviewScriptsMessage,
   type EnsureReviewScriptsResponse
 } from "../lib/review-scripts"
 import {
+  getMarkSyncSummary,
+  KEY_MARKS,
   LOCAL_DATA_SCOPE,
   markSyncAttemptFailed,
   markSyncAttemptStarted,
@@ -49,7 +51,10 @@ import {
   type TabCaptureCropResponse
 } from "../lib/tab-capture"
 
-const SYNC_NOW = "youin:sync-now"
+const SYNC_RETRY_ALARM = "youin:sync-retry"
+const SYNC_PERIODIC_ALARM = "youin:sync-periodic"
+const SYNC_RETRY_DELAY_MINUTES = 0.5
+const SYNC_RETRY_PERIOD_MINUTES = 5
 const MAX_URL_LENGTH = 4096
 const MAX_SELECTOR_LENGTH = 2048
 const MAX_CAPTURE_ID_LENGTH = 160
@@ -62,7 +67,8 @@ const MAX_VIEWPORT_SIZE = 100000
 const MAX_DPR = 10
 const ALLOWED_REVIEW_SCRIPT_MARKERS = new Set([
   REVIEW_MODE_SCRIPT.fileMarker,
-  CAPTURE_PANEL_SCRIPT.fileMarker
+  CAPTURE_PANEL_SCRIPT.fileMarker,
+  PIN_BADGES_SCRIPT.fileMarker
 ])
 const REVIEW_CAPTURE_STRATEGIES = new Set(["test-id", "id", "aria", "path"])
 
@@ -231,7 +237,7 @@ function isReviewCaptureDetail(value: unknown): value is ReviewCaptureDetail {
     isOptionalStringWithMax(value.pageTitle, MAX_PAGE_TITLE_LENGTH) &&
     isStringWithMax(value.outerHTML, STORAGE_LIMITS.outerHTMLPreview) &&
     hasBoundedJson(value.domSnapshot, STORAGE_LIMITS.domSnapshot) &&
-    hasBoundedJson(value.elementFingerprint, 1000) &&
+    hasBoundedJson(value.elementFingerprint, 4000) &&
     (screenshot === undefined || isDataImageUrl(screenshot)) &&
     (value.screenshotPending === undefined ||
       typeof value.screenshotPending === "boolean") &&
@@ -333,6 +339,17 @@ function runBackgroundSync(): Promise<SyncNowResponse> {
   return backgroundSyncPromise
 }
 
+function scheduleSyncRetry(delayInMinutes = SYNC_RETRY_DELAY_MINUTES): void {
+  chrome.alarms.create(SYNC_RETRY_ALARM, { delayInMinutes })
+}
+
+function ensurePeriodicSyncRetry(): void {
+  chrome.alarms.create(SYNC_PERIODIC_ALARM, {
+    delayInMinutes: SYNC_RETRY_DELAY_MINUTES,
+    periodInMinutes: SYNC_RETRY_PERIOD_MINUTES
+  })
+}
+
 interface ForwardCaptureMessage {
   type: typeof MESSAGE_FORWARD_CAPTURE
   detail: ReviewCaptureDetail
@@ -383,7 +400,7 @@ chrome.runtime.onMessage.addListener(
         })
       return true
     }
-    if (type === SYNC_NOW) {
+    if (type === MESSAGE_SYNC_NOW) {
       if (!isExtensionPageSender(sender)) {
         sendResponse({
           ok: false,
@@ -565,15 +582,41 @@ chrome.runtime.onMessage.addListener(
   }
 )
 
+chrome.commands?.onCommand.addListener((command) => {
+  if (command !== "youin-start-review") return
+  void (async () => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id || !isReviewableUrl(tab.url)) return
+    const ready = await ensureReviewContentScripts(tab.id, tab.url, [
+      REVIEW_MODE_SCRIPT
+    ])
+    if (!ready) return
+    await chrome.tabs.sendMessage(tab.id, { type: "youin:toggle-review" })
+  })()
+})
+
 chrome.runtime.onStartup?.addListener(() => {
+  ensurePeriodicSyncRetry()
   void runBackgroundSync()
 })
 
 chrome.runtime.onInstalled?.addListener(() => {
+  ensurePeriodicSyncRetry()
   void runBackgroundSync()
+})
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === SYNC_RETRY_ALARM || alarm.name === SYNC_PERIODIC_ALARM) {
+    void runBackgroundSync()
+  }
 })
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return
   if (changes["youin:supabase-auth"]) void runBackgroundSync()
+  if (changes[KEY_MARKS]) {
+    void getMarkSyncSummary().then((summary) => {
+      if (summary.pending > 0 || summary.failed > 0) scheduleSyncRetry()
+    })
+  }
 })

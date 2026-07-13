@@ -9,11 +9,12 @@ import {
   KEY_MARKS,
   KEY_SYNC_STATUS,
   KEY_WIDGET_SETTINGS,
+  LOCAL_DATA_SCOPE,
   markSyncAttemptFailed,
   markSyncAttemptStarted,
   markSyncAttemptSucceeded,
-  LOCAL_DATA_SCOPE,
   patchMark,
+  removeMark,
   setDataScope,
   STORAGE_LIMITS
 } from "./storage"
@@ -47,6 +48,46 @@ describe("storage normalization", () => {
       STORAGE_LIMITS.outerHTMLPreview
     )
     expect(marks[0].syncState).toBe("pending")
+  })
+
+  it("normalizes versioned element anchors without losing click position", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        {
+          comment: "Anchored feedback",
+          createdAt: 100,
+          projectId: "project-1",
+          url: "https://example.com/",
+          selector: "#target",
+          strategy: "id",
+          bbox: { x: 10, y: 20, width: 30, height: 40 },
+          viewport: { width: 1440, height: 900, dpr: 2 },
+          outerHTMLPreview: "",
+          elementFingerprint: {
+            version: 2,
+            tagName: "BUTTON",
+            selectorCandidates: [
+              { selector: "#target", strategy: "id" },
+              { selector: "x".repeat(600), strategy: "path" }
+            ],
+            anchorPoint: { x: 1.4, y: -0.2 }
+          }
+        }
+      ]
+    })
+
+    const [mark] = await getMarks()
+
+    expect(mark.elementFingerprint).toMatchObject({
+      version: 2,
+      tagName: "button",
+      anchorPoint: { x: 1, y: 0 }
+    })
+    expect(
+      mark.elementFingerprint?.version === 2
+        ? mark.elementFingerprint.selectorCandidates[1].selector
+        : ""
+    ).toHaveLength(512)
   })
 
   it("keeps anonymous drafts isolated from account workspace caches", async () => {
@@ -148,6 +189,38 @@ describe("storage normalization", () => {
     expect(mark.title).toBe("Edited")
     expect(mark.thread.map((message) => message.body)).toEqual([
       "Keep this comment"
+    ])
+  })
+
+  it("hides workspace marks locally and queues an idempotent remote delete", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        {
+          id: "mark-remote",
+          remoteMarkId: "00000000-0000-4000-8000-000000000001",
+          title: "Remove me",
+          thread: [],
+          createdAt: 100,
+          updatedAt: 100,
+          projectId: "00000000-0000-4000-8000-000000000002",
+          url: "https://example.com/",
+          selector: "#target",
+          strategy: "id",
+          bbox: { x: 10, y: 20, width: 30, height: 40 },
+          viewport: { width: 1440, height: 900, dpr: 2 },
+          outerHTMLPreview: ""
+        }
+      ]
+    })
+
+    const removed = await removeMark("mark-remote")
+    const [stored] = await getMarks()
+
+    expect(removed?.localHiddenAt).toEqual(expect.any(Number))
+    expect(stored.localHiddenAt).toEqual(expect.any(Number))
+    expect(stored.syncState).toBe("pending")
+    expect(stored.pendingSyncOps).toEqual([
+      expect.objectContaining({ type: "delete", attempts: 0 })
     ])
   })
 })

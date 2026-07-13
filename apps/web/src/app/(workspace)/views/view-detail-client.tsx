@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import {
   ArrowLeft,
+  CheckCircle2,
   CircleDashed,
+  GripVertical,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -14,6 +16,7 @@ import {
 
 import { BreadcrumbHeader } from "@/components/breadcrumbs";
 import { EmptyState } from "@/components/empty-state";
+import { FilterSelect } from "@/components/filter-select";
 import { MarkTable } from "@/components/dashboard/mark-table";
 import { NewMarkForm } from "@/components/dashboard/new-mark-form";
 import { useMarkTableModel } from "@/components/dashboard/use-mark-table-model";
@@ -46,18 +49,26 @@ import type {
   Workspace,
   WorkspaceView,
   WorkspaceViewFilters,
+  WorkspaceWorkflowStatus,
 } from "@/lib/collab-types";
 import { formatRelative } from "@/lib/dates";
 import { isOptimisticId } from "@/lib/optimistic-id";
 import {
   useCreateMarkMutation,
   useDeleteWorkspaceViewMutation,
+  useSetMarkWorkflowStatusMutation,
   useUpdateWorkspaceViewMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import { markHref } from "@/lib/workspace/routes";
 import { filterMarksForWorkspaceView } from "@/lib/workspace/views";
-import { defaultWorkflowStatusForLifecycle } from "@/lib/workspace/workflow-statuses";
+import { memberPickerLabel } from "@/lib/workspace/member-label";
+import {
+  defaultWorkflowStatusForLifecycle,
+  workflowStatusDotClass,
+  workflowStatusSurfaceClass,
+} from "@/lib/workspace/workflow-statuses";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { ViewEditorDialog, type ViewEditorValue } from "./view-editor-dialog";
@@ -493,76 +504,209 @@ function StatusBoard({
   displayNamePreference: DisplayNamePreference;
   markHrefFor: (mark: MarkItem) => string;
 }) {
-  const columns = workspace.workflowStatuses.length
-    ? workspace.workflowStatuses.map((status) => ({
-        id: status.id,
-        title: status.name,
-        marks: marks.filter((mark) => mark.workflowStatusId === status.id),
-      }))
-    : [
-        {
-          id: "open",
-          title: "Open",
-          marks: marks.filter((mark) => mark.status === "open"),
-        },
-        {
-          id: "closed",
-          title: "Closed",
-          marks: marks.filter((mark) => mark.status === "closed"),
-        },
-      ];
+  const { mutateAsync: setMarkWorkflowStatus, isPending } =
+    useSetMarkWorkflowStatusMutation();
+  const [draggedMarkId, setDraggedMarkId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const columns = workspace.workflowStatuses.map((status) => ({
+    status,
+    marks: marks.filter((mark) => mark.workflowStatusId === status.id),
+  }));
+
+  async function moveMark(mark: MarkItem, status: WorkspaceWorkflowStatus) {
+    if (isPending || mark.workflowStatusId === status.id) return;
+    try {
+      await setMarkWorkflowStatus({
+        markId: mark.id,
+        workflowStatusId: status.id,
+      });
+    } catch {
+      // The mutation restores the previous column and shows the failure toast.
+    }
+  }
+
+  function handleDrop(
+    event: DragEvent<HTMLElement>,
+    status: WorkspaceWorkflowStatus,
+  ) {
+    event.preventDefault();
+    const markId =
+      event.dataTransfer.getData("application/x-youin-mark") || draggedMarkId;
+    setDraggedMarkId(null);
+    setDropTargetId(null);
+    const mark = marks.find((item) => item.id === markId);
+    if (mark) void moveMark(mark, status);
+  }
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {columns.map((column) => (
-        <BoardColumn
-          key={column.id}
-          title={column.title}
-          marks={column.marks}
-          workspace={workspace}
-          displayNamePreference={displayNamePreference}
-          markHrefFor={markHrefFor}
-        />
-      ))}
+    <div>
+      <p className="mb-2 text-ui-xs text-ink-3">
+        Drag cards between stages, or use each card&apos;s stage menu.
+      </p>
+      <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 [scrollbar-gutter:stable]">
+        {columns.map((column) => (
+          <BoardColumn
+            key={column.status.id}
+            status={column.status}
+            marks={column.marks}
+            workspace={workspace}
+            displayNamePreference={displayNamePreference}
+            markHrefFor={markHrefFor}
+            draggedMarkId={draggedMarkId}
+            isDropTarget={dropTargetId === column.status.id}
+            isMoving={isPending}
+            onMoveMark={moveMark}
+            onDragStart={(event, mark) => {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("application/x-youin-mark", mark.id);
+              event.dataTransfer.setData("text/plain", mark.id);
+              setDraggedMarkId(mark.id);
+            }}
+            onDragEnd={() => {
+              setDraggedMarkId(null);
+              setDropTargetId(null);
+            }}
+            onDragEnter={() => setDropTargetId(column.status.id)}
+            onDrop={(event) => handleDrop(event, column.status)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 function BoardColumn({
-  title,
+  status,
   marks,
   workspace,
   displayNamePreference,
   markHrefFor,
+  draggedMarkId,
+  isDropTarget,
+  isMoving,
+  onMoveMark,
+  onDragStart,
+  onDragEnd,
+  onDragEnter,
+  onDrop,
 }: {
-  title: string;
+  status: WorkspaceWorkflowStatus;
   marks: MarkItem[];
   workspace: Workspace;
   displayNamePreference: DisplayNamePreference;
   markHrefFor: (mark: MarkItem) => string;
+  draggedMarkId: string | null;
+  isDropTarget: boolean;
+  isMoving: boolean;
+  onMoveMark: (
+    mark: MarkItem,
+    status: WorkspaceWorkflowStatus,
+  ) => void | Promise<void>;
+  onDragStart: (event: DragEvent<HTMLElement>, mark: MarkItem) => void;
+  onDragEnd: () => void;
+  onDragEnter: () => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
 }) {
-  const labelsById = useMemo(() => new Map(workspace.labels.map((label) => [label.id, label])), [workspace.labels]);
+  const labelsById = useMemo(
+    () => new Map(workspace.labels.map((label) => [label.id, label])),
+    [workspace.labels],
+  );
+  const membersById = useMemo(
+    () => new Map(workspace.members.map((member) => [member.id, member])),
+    [workspace.members],
+  );
+  const workflowStatusOptions = workspace.workflowStatuses.map((item) => ({
+    value: item.id,
+    label: item.name,
+  }));
   return (
-    <section className="min-h-[18rem] overflow-hidden rounded-md bg-paper-elevated">
-      <div className="flex items-center justify-between border-b border-rule/70 bg-paper-2 px-3 py-2">
-        <h2 className="text-ui-sm font-medium text-ink">{title}</h2>
+    <section
+      className={cn(
+        "min-h-[20rem] w-[min(84vw,19rem)] shrink-0 snap-start overflow-hidden rounded-md bg-paper-elevated ring-1 ring-rule/60 transition-[box-shadow,background-color] duration-150 sm:w-[19rem] xl:min-w-[17rem] xl:flex-1 xl:basis-0",
+        isDropTarget && draggedMarkId && "bg-paper-2 ring-2 ring-mark/35",
+      )}
+      aria-label={`${status.name} workflow stage`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+      }}
+      onDragEnter={onDragEnter}
+      onDrop={onDrop}
+    >
+      <div
+        className={cn(
+          "flex items-center justify-between border-b border-rule/70 px-3 py-2.5",
+          workflowStatusSurfaceClass(status.color),
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn(
+              "size-2.5 shrink-0 rounded-full",
+              workflowStatusDotClass(status.color),
+            )}
+            aria-hidden
+          />
+          <h2 className="truncate text-ui-sm font-semibold text-ink">
+            {status.name}
+          </h2>
+          {status.lifecycleStatus === "open" ? (
+            <CircleDashed
+              className="size-3.5 shrink-0 text-ink-3"
+              aria-hidden
+            />
+          ) : (
+            <CheckCircle2
+              className="size-3.5 shrink-0 text-ok"
+              aria-hidden
+            />
+          )}
+          <span className="sr-only">
+            {status.lifecycleStatus === "open" ? "Open" : "Closed"} lifecycle
+          </span>
+        </div>
         <Badge variant="default" className="font-mono text-ui-2xs tabular-nums">
           {marks.length}
         </Badge>
       </div>
       {marks.length === 0 ? (
-        <div className="px-3 py-8 text-center text-ui-sm text-ink-3">No marks here.</div>
+        <div className="mx-2 mt-2 rounded-md border border-dashed border-rule/70 px-3 py-8 text-center text-ui-sm text-ink-3">
+          {draggedMarkId ? `Drop in ${status.name}` : "No marks in this stage."}
+        </div>
       ) : (
         <div className="space-y-2 p-2">
-          {marks.map((mark) => (
-            <Link
-              key={mark.id}
-              href={markHrefFor(mark)}
-              prefetch
-              className="block w-full rounded-md bg-paper-2 px-3 py-2.5 text-left transition-colors hover:bg-paper-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              <span className="block text-ui-sm font-medium leading-snug text-ink">{mark.title}</span>
-              <span className="mt-1 block truncate font-mono text-ui-2xs text-ink-3">{mark.displayKey}</span>
-              <span className="mt-2 flex flex-wrap items-center gap-1.5">
+          {marks.map((mark) => {
+            const assignee = mark.assigneeId
+              ? membersById.get(mark.assigneeId)
+              : undefined;
+            return (
+              <article
+                key={mark.id}
+                draggable={!isMoving && !isOptimisticId(mark.id)}
+                onDragStart={(event) => onDragStart(event, mark)}
+                onDragEnd={onDragEnd}
+                className={cn(
+                  "group rounded-md bg-paper-2 ring-1 ring-transparent transition-[opacity,background-color,box-shadow] duration-150 hover:bg-paper-3 focus-within:ring-focus-ring/50",
+                  draggedMarkId === mark.id && "opacity-45",
+                )}
+              >
+              <Link
+                href={markHrefFor(mark)}
+                prefetch
+                className="block rounded-t-md px-3 pb-2 pt-2.5 text-left focus-visible:outline-none"
+              >
+                <span className="flex items-start gap-2">
+                  <GripVertical
+                    className="mt-0.5 size-3.5 shrink-0 text-ink-4 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-ui-sm font-medium leading-snug text-ink">{mark.title}</span>
+                    <span className="mt-1 block truncate font-mono text-ui-2xs text-ink-3">{mark.displayKey}</span>
+                  </span>
+                </span>
+              </Link>
+              <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
                 <PriorityBadge priority={mark.priority} size="sm" />
                 {mark.pinned ? <Pill size="sm">Pinned</Pill> : null}
                 {mark.labelIds.slice(0, 2).map((labelId) => {
@@ -574,14 +718,31 @@ function BoardColumn({
                     </Pill>
                   );
                 })}
-                {mark.assigneeId ? (
-                  <span className="text-ui-2xs text-ink-3">
-                    {displayNamePreference === "username" ? "Assigned" : "Assigned"}
-                  </span>
+                {assignee ? (
+                  <Pill size="sm" className="max-w-[9rem] truncate">
+                    {memberPickerLabel(assignee, displayNamePreference)}
+                  </Pill>
                 ) : null}
-              </span>
-            </Link>
-          ))}
+              </div>
+              <div className="border-t border-rule/55 px-2 py-1.5">
+                <FilterSelect
+                  value={status.id}
+                  onValueChange={(workflowStatusId) => {
+                    const target = workspace.workflowStatuses.find(
+                      (item) => item.id === workflowStatusId,
+                    );
+                    if (target) void onMoveMark(mark, target);
+                  }}
+                  options={workflowStatusOptions}
+                  ariaLabel={`Move ${mark.title} to workflow stage`}
+                  variant="inline"
+                  triggerClassName="h-8 w-full justify-between rounded-sm px-1.5 text-ui-xs text-ink-3 hover:text-ink"
+                  disabled={isMoving}
+                />
+              </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>

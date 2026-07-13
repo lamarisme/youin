@@ -13,6 +13,44 @@ export const WORKFLOW_STATUS_COLORS = [
   "violet",
 ] as const;
 
+export const WORKFLOW_STATUS_COLOR_OPTIONS: ReadonlyArray<{
+  value: WorkflowStatusColor;
+  label: string;
+}> = [
+  { value: "gray", label: "Gray" },
+  { value: "blue", label: "Blue" },
+  { value: "amber", label: "Amber" },
+  { value: "green", label: "Green" },
+  { value: "red", label: "Red" },
+  { value: "violet", label: "Violet" },
+];
+
+const WORKFLOW_STATUS_DOT_CLASSES: Record<WorkflowStatusColor, string> = {
+  gray: "bg-zinc-400",
+  blue: "bg-blue-500",
+  amber: "bg-amber-500",
+  green: "bg-emerald-500",
+  red: "bg-red-500",
+  violet: "bg-violet-500",
+};
+
+const WORKFLOW_STATUS_SURFACE_CLASSES: Record<WorkflowStatusColor, string> = {
+  gray: "bg-zinc-500/10",
+  blue: "bg-blue-500/10",
+  amber: "bg-amber-500/10",
+  green: "bg-emerald-500/10",
+  red: "bg-red-500/10",
+  violet: "bg-violet-500/10",
+};
+
+export function workflowStatusDotClass(color: WorkflowStatusColor): string {
+  return WORKFLOW_STATUS_DOT_CLASSES[color];
+}
+
+export function workflowStatusSurfaceClass(color: WorkflowStatusColor): string {
+  return WORKFLOW_STATUS_SURFACE_CLASSES[color];
+}
+
 export function normalizeWorkflowStatusColor(
   value: unknown,
 ): WorkflowStatusColor {

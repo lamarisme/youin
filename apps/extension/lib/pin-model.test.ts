@@ -46,6 +46,7 @@ describe("createPinModel", () => {
         kind: "element",
         captureKind: "element",
         selector: "#target",
+        strategy: "id",
         savedBounds: { x: 100, y: 120, width: 80, height: 30 },
         fingerprint
       }

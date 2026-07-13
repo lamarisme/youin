@@ -12,15 +12,16 @@ export const EVENT_REVIEW_TOGGLE_FEEDBACK_LIST =
 export const EVENT_LOCATION_CHANGE = "youin:location-change"
 /** Public DOM signal emitted by the main-world history hook. */
 export const EVENT_PAGE_LOCATION_CHANGE = "youin:page-location-change"
-export const MESSAGE_ENSURE_NAVIGATION_HOOK =
-  "youin:ensure-navigation-hook"
+export const MESSAGE_ENSURE_NAVIGATION_HOOK = "youin:ensure-navigation-hook"
 export const MESSAGE_REVIEW_PING_CONTENT = "youin:ping-content"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL = "youin:ping-capture-panel"
 export const MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY =
   "youin:capture-panel-ready"
+export const MESSAGE_REVIEW_PING_PIN_BADGES = "youin:ping-pin-badges"
 export const MESSAGE_OPEN_CAPTURE_PANEL = "youin:open-capture-panel"
 export const MESSAGE_TOGGLE_FEEDBACK_LIST = "youin:toggle-feedback-list"
 export const MESSAGE_FORWARD_CAPTURE = "youin:forward-capture"
+export const MESSAGE_SYNC_NOW = "youin:sync-now"
 
 export type ReviewMode = "inspect" | "screenshot"
 

@@ -13,7 +13,8 @@ import {
   EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_OPEN_PAGE_MARKS,
-  EVENT_REVIEW_PAUSE
+  EVENT_REVIEW_PAUSE,
+  MESSAGE_REVIEW_PING_PIN_BADGES
 } from "../lib/events"
 import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
@@ -33,6 +34,14 @@ import {
   type ElementPinRuntime
 } from "../lib/pin-runtime"
 import {
+  computeMarkerPosition,
+  isAnchorNearViewport
+} from "../lib/mark-position"
+import {
+  CAPTURE_PANEL_SCRIPT,
+  MESSAGE_ENSURE_REVIEW_SCRIPTS
+} from "../lib/review-scripts"
+import {
   getActiveProjectId,
   getMarksForPage,
   getWidgetSettings,
@@ -44,7 +53,6 @@ import {
   KEY_WIDGET_SETTINGS
 } from "../lib/storage"
 import {
-  computeElementPinPosition,
   computePagePinPosition,
   createViewportLayerStyle,
   getViewportBounds,
@@ -52,7 +60,9 @@ import {
 } from "../lib/viewport-layer"
 
 export const config: PlasmoCSConfig = {
-  matches: ["http://*/*", "https://*/*"],
+  // The lightweight widget checks page counts and injects badges only when the
+  // current page has open marks.
+  matches: ["https://youin.invalid/*"],
   run_at: "document_idle",
   all_frames: false
 }
@@ -67,6 +77,27 @@ export const getStyle: PlasmoGetStyle = () => {
 const HIT = 44
 /** Matches `--yi-space-md`; keeps the page pin clear of viewport chrome. */
 const PAGE_PIN_INSET = 16
+
+declare global {
+  interface Window {
+    __youinPinBadgesMessageListener?: boolean
+  }
+}
+
+if (!window.__youinPinBadgesMessageListener) {
+  window.__youinPinBadgesMessageListener = true
+  chrome.runtime.onMessage.addListener((message: unknown, _sender, respond) => {
+    if (
+      message &&
+      typeof message === "object" &&
+      (message as { type?: unknown }).type === MESSAGE_REVIEW_PING_PIN_BADGES
+    ) {
+      respond({ ok: true })
+      return true
+    }
+    return false
+  })
+}
 
 type PinLayout = {
   renderKey: string
@@ -112,16 +143,22 @@ function computeElementLayout(
   viewport: ViewportBounds
 ): ElementBadgeItem[] {
   const out: ElementBadgeItem[] = []
-  for (const runtime of runtimes) {
+  const occupied: Array<{ x: number; y: number }> = []
+  const sortedRuntimes = runtimes
+    .slice()
+    .sort((a, b) => a.pin.createdAt - b.pin.createdAt)
+  for (const runtime of sortedRuntimes) {
     try {
       const { health, pin } = runtime
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
-      const position = computeElementPinPosition(r, viewport, HIT, -8)
-      if (!position) continue
       const stackOrder = stackOrders.get(pin.markId) ?? 0
       if (!stackOrder) continue
+      const point = health.anchorPoint ?? { x: 1, y: 0 }
+      if (!isAnchorNearViewport(r, point, viewport)) continue
+      const position = computeMarkerPosition(r, point, viewport, occupied, HIT)
+      occupied.push(position.center)
       out.push({
         kind: "element",
         pin,
@@ -212,8 +249,21 @@ function markerTone(health: ElementPinHealth): MarkerTone {
 type SharedPinRendererProps = Omit<PinLayout, "renderKey"> & {
   label: string
   markerShapeClassName: string
-  onActivate: () => void
+  onActivate: () => void | Promise<void>
   tone: MarkerTone
+}
+
+async function ensureCapturePanel(): Promise<boolean> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: MESSAGE_ENSURE_REVIEW_SCRIPTS,
+      fileMarkers: [CAPTURE_PANEL_SCRIPT.fileMarker],
+      requireReady: true
+    })) as { ok?: boolean } | undefined
+    return response?.ok === true
+  } catch {
+    return false
+  }
 }
 
 function SharedPinRenderer({
@@ -230,18 +280,17 @@ function SharedPinRenderer({
       type="button"
       aria-label={label}
       title={label}
-      className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+      className="pointer-events-auto absolute left-0 top-0 flex cursor-pointer items-center justify-center border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
       style={{
-        left,
-        top,
         width: HIT,
         height: HIT,
-        zIndex: stackOrder
+        zIndex: stackOrder,
+        transform: `translate3d(${left}px, ${top}px, 0)`
       }}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        onActivate()
+        void onActivate()
       }}>
       <span
         className={`relative flex h-4 w-4 select-none items-center justify-center ${markerShapeClassName} border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
@@ -268,7 +317,8 @@ function ElementPinRenderer({
       tone={markerTone(health)}
       label={annotationLabel(pin, healthLabel)}
       markerShapeClassName="rounded-full"
-      onActivate={() => {
+      onActivate={async () => {
+        if (!(await ensureCapturePanel())) return
         dispatchInternalEvent(EVENT_REVIEW_PAUSE)
         dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
           markId: pin.markId
@@ -293,7 +343,8 @@ function PagePinRenderer({ collection, stackOrder, left, top }: PageBadgeItem) {
       tone={DEFAULT_MARKER_TONE}
       label={label}
       markerShapeClassName="rounded-[var(--yi-radius-xs)]"
-      onActivate={() => {
+      onActivate={async () => {
+        if (!(await ensureCapturePanel())) return
         dispatchInternalEvent(EVENT_REVIEW_PAUSE)
         dispatchInternalEvent(EVENT_REVIEW_OPEN_PAGE_MARKS)
       }}
@@ -374,6 +425,7 @@ const PinBadges = () => {
   }, [refresh])
 
   useLayoutEffect(() => {
+    if (disabled || items.length === 0) return
     let mutationTimer: ReturnType<typeof setTimeout> | undefined
     const onViewport = () => scheduleViewportRefresh()
     const onLocationChange = (e: Event) => {
@@ -407,14 +459,14 @@ const PinBadges = () => {
         rafRef.current = null
       }
     }
-  }, [scheduleViewportRefresh])
+  }, [disabled, items.length, scheduleViewportRefresh])
 
   if (disabled || items.length === 0) return null
 
   return (
     <div
       data-youin-extension-ui=""
-      className="pointer-events-none fixed inset-0"
+      className="pointer-events-none fixed inset-0 h-screen w-screen overflow-visible"
       style={{ zIndex: Z_BADGES }}>
       {items.map((item) => (
         <PinRenderer key={item.renderKey} {...item} />

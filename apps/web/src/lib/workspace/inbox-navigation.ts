@@ -93,6 +93,8 @@ export function inboxRouteContextVisibleTargetId(
 export function inboxRouteContextAcknowledgementAttempts(
   context: InboxRouteContext,
 ): InboxRouteContext[] {
+  if (context.activityIds.length === 1) return [context];
+
   const commentContextId = commentContextIdFromTargetId(context.targetId);
   if (!commentContextId) return [context];
 

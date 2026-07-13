@@ -2,12 +2,12 @@
   "name": "@youin/extension",
   "displayName": "Youin",
   "version": "0.0.1",
-  "description": "A visual feedback layer for the live web. Click any element, leave a comment, ship a ticket — without leaving the browser.",
+  "description": "Pin product work to the live UI with the exact element, context, and discussion attached.",
   "author": "opmarq@gmail.com",
   "scripts": {
     "dev": "plasmo dev --src-path=.",
-    "build": "plasmo build --src-path=. && node scripts/finalize-extension-build.mjs",
-    "package": "plasmo build --src-path=. && node scripts/finalize-extension-build.mjs && plasmo package --src-path=. && node scripts/verify-extension-build.mjs",
+    "build": "pnpm typecheck && plasmo build --src-path=. && node scripts/finalize-extension-build.mjs",
+    "package": "pnpm typecheck && pnpm test && plasmo build --src-path=. && node scripts/finalize-extension-build.mjs && plasmo package --src-path=. && node scripts/verify-extension-build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "verify:package": "node scripts/verify-extension-build.mjs"
@@ -37,8 +37,18 @@
     "vitest": "4.0.16"
   },
   "manifest": {
+    "commands": {
+      "youin-start-review": {
+        "suggested_key": {
+          "default": "Alt+Shift+Y",
+          "mac": "Alt+Shift+Y"
+        },
+        "description": "Start or stop marking the current page"
+      }
+    },
     "permissions": [
       "activeTab",
+      "alarms",
       "identity",
       "scripting",
       "storage",

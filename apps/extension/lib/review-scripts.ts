@@ -1,7 +1,8 @@
 import {
   MESSAGE_REVIEW_PING_CAPTURE_PANEL,
   MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY,
-  MESSAGE_REVIEW_PING_CONTENT
+  MESSAGE_REVIEW_PING_CONTENT,
+  MESSAGE_REVIEW_PING_PIN_BADGES
 } from "./events"
 
 export const MESSAGE_ENSURE_REVIEW_SCRIPTS = "youin:ensure-review-scripts"
@@ -15,6 +16,7 @@ export type ReviewPingType =
   | typeof MESSAGE_REVIEW_PING_CONTENT
   | typeof MESSAGE_REVIEW_PING_CAPTURE_PANEL
   | typeof MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY
+  | typeof MESSAGE_REVIEW_PING_PIN_BADGES
 
 export type ReviewPingMessage = { type: ReviewPingType }
 
@@ -36,9 +38,15 @@ export const CAPTURE_PANEL_SCRIPT: ReviewScriptRequirement = {
   readyPing: MESSAGE_REVIEW_PING_CAPTURE_PANEL_READY
 }
 
+export const PIN_BADGES_SCRIPT: ReviewScriptRequirement = {
+  fileMarker: "pin-badges",
+  ping: MESSAGE_REVIEW_PING_PIN_BADGES
+}
+
 const SCRIPT_BY_MARKER: Record<string, ReviewScriptRequirement> = {
   [REVIEW_MODE_SCRIPT.fileMarker]: REVIEW_MODE_SCRIPT,
-  [CAPTURE_PANEL_SCRIPT.fileMarker]: CAPTURE_PANEL_SCRIPT
+  [CAPTURE_PANEL_SCRIPT.fileMarker]: CAPTURE_PANEL_SCRIPT,
+  [PIN_BADGES_SCRIPT.fileMarker]: PIN_BADGES_SCRIPT
 }
 
 export interface EnsureReviewScriptsMessage {
@@ -85,7 +93,9 @@ function reviewContentScriptFiles(
   return Array.from(
     new Set(
       contentScripts
-        .filter((script) => contentScriptMatchesUrl(script, url))
+        .filter((script) =>
+          fileMarkers?.length ? true : contentScriptMatchesUrl(script, url)
+        )
         .flatMap((script) => script.js ?? [])
         .filter((file) =>
           fileMarkers?.length
@@ -176,14 +186,8 @@ export async function ensureReviewContentScripts(
   const missing: ReviewScriptRequirement[] = []
 
   for (const requirement of requirements) {
-    const ready = await waitForRequirement(tabId, requirement, requireReady)
-    if (!ready) {
-      const loaded = await waitForReviewScript(
-        tabId,
-        requirement.ping,
-        REVIEW_COMMAND_RETRY_ATTEMPTS
-      )
-      if (!loaded) missing.push(requirement)
+    if (!(await pingReviewScript(tabId, { type: requirement.ping }))) {
+      missing.push(requirement)
     }
   }
 
