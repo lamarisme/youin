@@ -16,6 +16,7 @@ import {
 import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
 import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
+import { createPinModel, type PinModel } from "../lib/pin-model"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -45,8 +46,13 @@ const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
 
-type BadgeItem = {
+type PinSource = {
   mark: Mark
+  pin: PinModel
+}
+
+type BadgeItem = {
+  pin: PinModel
   stackOrder: number
   left: number
   top: number
@@ -81,38 +87,38 @@ function pageSize(): PageSize {
   }
 }
 
-function sortMarksForDisplay(marks: Mark[]): Mark[] {
-  return marks.slice().sort((a, b) => a.createdAt - b.createdAt)
+function sortPinsForDisplay(pins: PinModel[]): PinModel[] {
+  return pins.slice().sort((a, b) => a.createdAt - b.createdAt)
 }
 
-function markStackOrderMap(marks: Mark[]): Map<string, number> {
-  const sorted = sortMarksForDisplay(marks)
+function pinStackOrderMap(pins: PinModel[]): Map<string, number> {
+  const sorted = sortPinsForDisplay(pins)
   const m = new Map<string, number>()
-  sorted.forEach((p, i) => m.set(p.id, i + 1))
+  sorted.forEach((pin, i) => m.set(pin.markId, i + 1))
   return m
 }
 
-function annotationLabel(mark: Mark, healthLabel: string): string {
-  const t = mark.title.trim() || "Annotation"
+function annotationLabel(pin: PinModel, healthLabel: string): string {
+  const t = pin.title.trim() || "Annotation"
   const short = t.length > 72 ? `${t.slice(0, 69)}...` : t
   return `Open feedback: ${short}. ${healthLabel}.`
 }
 
 function computeLayout(
-  marks: Mark[],
+  sources: PinSource[],
   stackOrders: Map<string, number>
 ): BadgeItem[] {
   const out: BadgeItem[] = []
-  for (const mark of marks) {
+  for (const { mark, pin } of sources) {
     try {
       const health = computeMarkHealth(mark)
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
-      const stackOrder = stackOrders.get(mark.id) ?? 0
+      const stackOrder = stackOrders.get(pin.markId) ?? 0
       if (!stackOrder) continue
       out.push({
-        mark,
+        pin,
         stackOrder,
         left: Math.round(Math.max(0, r.right + window.scrollX - HIT)),
         top: Math.round(Math.max(4, r.top + window.scrollY - 8)),
@@ -168,6 +174,68 @@ function markerTone(health: MarkHealth): {
   }
 }
 
+type PinRendererProps = BadgeItem
+
+function SharedPinRenderer({
+  pin,
+  stackOrder,
+  left,
+  top,
+  attached,
+  health,
+  healthLabel
+}: PinRendererProps) {
+  const tone = markerTone(health)
+
+  return (
+    <button
+      type="button"
+      aria-label={annotationLabel(pin, healthLabel)}
+      title={annotationLabel(pin, healthLabel)}
+      className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+      style={{
+        left,
+        top,
+        width: HIT,
+        height: HIT,
+        zIndex: stackOrder
+      }}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+        dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
+          markId: pin.markId,
+          pinId: pin.markId,
+          attached
+        })
+      }}>
+      <span
+        className={`relative flex h-4 w-4 select-none items-center justify-center rounded-full border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
+        aria-hidden>
+        <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
+      </span>
+    </button>
+  )
+}
+
+function ElementPinRenderer(props: PinRendererProps) {
+  return <SharedPinRenderer {...props} />
+}
+
+function PagePinRenderer(props: PinRendererProps) {
+  return <SharedPinRenderer {...props} />
+}
+
+function PinRenderer(props: PinRendererProps) {
+  switch (props.pin.anchor.kind) {
+    case "element":
+      return <ElementPinRenderer {...props} />
+    case "page":
+      return <PagePinRenderer {...props} />
+  }
+}
+
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
   const [size, setSize] = useState<PageSize>({ width: 0, height: 0 })
@@ -186,8 +254,12 @@ const PinBadges = () => {
     const projectId = await getActiveProjectId()
     const marks = await getMarksForPage(projectId, location.href)
     const openMarks = marks.filter((p) => p.status !== "closed")
-    const stackOrders = markStackOrderMap(openMarks)
-    setItems(computeLayout(openMarks, stackOrders))
+    const sources = openMarks.map((mark) => ({
+      mark,
+      pin: createPinModel(mark)
+    }))
+    const stackOrders = pinStackOrderMap(sources.map(({ pin }) => pin))
+    setItems(computeLayout(sources, stackOrders))
   }, [])
 
   const scheduleViewportRefresh = useCallback(() => {
@@ -261,43 +333,9 @@ const PinBadges = () => {
       data-youin-extension-ui=""
       className="pointer-events-none absolute left-0 top-0"
       style={{ zIndex: Z_BADGES, width: size.width, height: size.height }}>
-      {items.map(
-        ({ mark, stackOrder, left, top, attached, health, healthLabel }) => {
-          const tone = markerTone(health)
-
-          return (
-            <button
-              key={mark.id}
-              type="button"
-              aria-label={annotationLabel(mark, healthLabel)}
-              title={annotationLabel(mark, healthLabel)}
-              className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
-              style={{
-                left,
-                top,
-                width: HIT,
-                height: HIT,
-                zIndex: stackOrder
-              }}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                dispatchInternalEvent(EVENT_REVIEW_PAUSE)
-                dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
-                  markId: mark.id,
-                  pinId: mark.id,
-                  attached
-                })
-              }}>
-              <span
-                className={`relative flex h-4 w-4 select-none items-center justify-center rounded-full border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
-                aria-hidden>
-                <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
-              </span>
-            </button>
-          )
-        }
-      )}
+      {items.map((item) => (
+        <PinRenderer key={item.pin.markId} {...item} />
+      ))}
     </div>
   )
 }
