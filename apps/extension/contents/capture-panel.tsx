@@ -14,6 +14,7 @@ import {
 import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_OPEN_MARK,
+  EVENT_REVIEW_OPEN_PAGE_MARKS,
   EVENT_REVIEW_OPEN_PIN_LEGACY,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
@@ -33,6 +34,7 @@ import {
   isInternalEvent
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
+import { classifyMarkAnchor } from "../lib/mark-anchor"
 import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
 import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
@@ -1141,6 +1143,9 @@ const CapturePanel = () => {
   const [capture, setCapture] = useState<ReviewCaptureDetail | null>(null)
   const [viewingMark, setViewingMark] = useState<Mark | null>(null)
   const [pageMarks, setPageMarks] = useState<Mark[]>([])
+  const [feedbackListAnchorKind, setFeedbackListAnchorKind] = useState<
+    "page" | null
+  >(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
   const [body, setBody] = useState("")
@@ -1290,37 +1295,43 @@ const CapturePanel = () => {
     setPendingListDeleteMarkId(null)
     setFullImage(null)
     setPageMarks([])
+    setFeedbackListAnchorKind(null)
     previousFocusRef.current?.focus?.()
     dispatchInternalEvent(EVENT_REVIEW_RESUME)
   }, [])
 
-  const openFeedbackList = useCallback(async () => {
-    if (open && mode === "list") {
+  const openFeedbackList = useCallback(
+    async (anchorKind?: "page", toggle = true) => {
+      if (open && mode === "list") {
+        setPendingListDeleteMarkId(null)
+        if (toggle) resume()
+        else setFeedbackListAnchorKind(anchorKind ?? null)
+        return
+      }
+
+      const canOpen = await refreshFeedbackList()
+      if (!canOpen) return
+
+      await loadProjects()
+      setMode("list")
+      setCapture(null)
+      setViewingMark(null)
+      setBody("")
+      setReplyDraft("")
+      setEditing(false)
+      setSaveError(null)
+      setSaveWarning(null)
+      setConfirmDelete(false)
+      setReturnToList(false)
+      setReattachMarkId(null)
+      reattachMarkIdRef.current = null
       setPendingListDeleteMarkId(null)
-      resume()
-      return
-    }
-
-    const canOpen = await refreshFeedbackList()
-    if (!canOpen) return
-
-    await loadProjects()
-    setMode("list")
-    setCapture(null)
-    setViewingMark(null)
-    setBody("")
-    setReplyDraft("")
-    setEditing(false)
-    setSaveError(null)
-    setSaveWarning(null)
-    setConfirmDelete(false)
-    setReturnToList(false)
-    setReattachMarkId(null)
-    reattachMarkIdRef.current = null
-    setPendingListDeleteMarkId(null)
-    previousFocusRef.current = document.activeElement as HTMLElement
-    setOpen(true)
-  }, [loadProjects, mode, open, refreshFeedbackList, resume])
+      setFeedbackListAnchorKind(anchorKind ?? null)
+      previousFocusRef.current = document.activeElement as HTMLElement
+      setOpen(true)
+    },
+    [loadProjects, mode, open, refreshFeedbackList, resume]
+  )
 
   useEffect(() => {
     const onCap = (detail: ReviewCaptureDetail) => {
@@ -1411,15 +1422,21 @@ const CapturePanel = () => {
     const onToggleFeedbackList = (e: Event) => {
       if (isInternalEvent(e)) void openFeedbackList()
     }
+    const onOpenPageMarks = (e: Event) => {
+      if (isInternalEvent(e)) void openFeedbackList("page", false)
+    }
     window.addEventListener(
       EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
       onToggleFeedbackList
     )
-    return () =>
+    window.addEventListener(EVENT_REVIEW_OPEN_PAGE_MARKS, onOpenPageMarks)
+    return () => {
       window.removeEventListener(
         EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
         onToggleFeedbackList
       )
+      window.removeEventListener(EVENT_REVIEW_OPEN_PAGE_MARKS, onOpenPageMarks)
+    }
   }, [openFeedbackList])
 
   useEffect(() => {
@@ -1951,8 +1968,14 @@ const CapturePanel = () => {
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "list") {
-    const openMarks = pageMarks.filter((mark) => mark.status !== "closed")
-    const resolvedMarks = pageMarks.filter((mark) => mark.status === "closed")
+    const visibleMarks =
+      feedbackListAnchorKind === "page"
+        ? pageMarks.filter((mark) => classifyMarkAnchor(mark) === "page")
+        : pageMarks
+    const openMarks = visibleMarks.filter((mark) => mark.status !== "closed")
+    const resolvedMarks = visibleMarks.filter(
+      (mark) => mark.status === "closed"
+    )
 
     return (
       <div
@@ -1989,7 +2012,7 @@ const CapturePanel = () => {
         <SyncStatusNotice status={syncStatus} />
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
-          {pageMarks.length === 0 ? (
+          {visibleMarks.length === 0 ? (
             <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-8 text-center ring-1 ring-[color:var(--yi-ext-border-hairline)]">
               <p className="text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
                 {t("extension.drawer.empty")}

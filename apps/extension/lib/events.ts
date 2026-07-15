@@ -6,6 +6,7 @@ export const EVENT_REVIEW_CAPTURE_UPDATE = "youin:review:capture-update"
 export const EVENT_REVIEW_RESUME = "youin:review:resume"
 export const EVENT_REVIEW_PAUSE = "youin:review:pause"
 export const EVENT_REVIEW_OPEN_MARK = "youin:review:open-mark"
+export const EVENT_REVIEW_OPEN_PAGE_MARKS = "youin:review:open-page-marks"
 export const EVENT_REVIEW_OPEN_PIN_LEGACY = "youin:review:open-pin"
 export const EVENT_REVIEW_TOGGLE_FEEDBACK_LIST =
   "youin:review:toggle-feedback-list"
