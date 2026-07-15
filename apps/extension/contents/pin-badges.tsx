@@ -176,6 +176,10 @@ function markerTone(health: MarkHealth): {
 
 type PinRendererProps = BadgeItem
 
+type SharedPinRendererProps = PinRendererProps & {
+  markerShapeClassName: string
+}
+
 function SharedPinRenderer({
   pin,
   stackOrder,
@@ -183,8 +187,9 @@ function SharedPinRenderer({
   top,
   attached,
   health,
-  healthLabel
-}: PinRendererProps) {
+  healthLabel,
+  markerShapeClassName
+}: SharedPinRendererProps) {
   const tone = markerTone(health)
 
   return (
@@ -211,7 +216,7 @@ function SharedPinRenderer({
         })
       }}>
       <span
-        className={`relative flex h-4 w-4 select-none items-center justify-center rounded-full border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
+        className={`relative flex h-4 w-4 select-none items-center justify-center ${markerShapeClassName} border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
         aria-hidden>
         <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
       </span>
@@ -220,11 +225,16 @@ function SharedPinRenderer({
 }
 
 function ElementPinRenderer(props: PinRendererProps) {
-  return <SharedPinRenderer {...props} />
+  return <SharedPinRenderer {...props} markerShapeClassName="rounded-full" />
 }
 
 function PagePinRenderer(props: PinRendererProps) {
-  return <SharedPinRenderer {...props} />
+  return (
+    <SharedPinRenderer
+      {...props}
+      markerShapeClassName="rounded-[var(--yi-radius-xs)]"
+    />
+  )
 }
 
 function PinRenderer(props: PinRendererProps) {
