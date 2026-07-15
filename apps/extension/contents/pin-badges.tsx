@@ -55,6 +55,8 @@ export const getStyle: PlasmoGetStyle = () => {
 const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
+/** Matches `--yi-space-md`; keeps the page pin clear of viewport chrome. */
+const PAGE_PIN_INSET = 16
 
 type PinLayout = {
   renderKey: string
@@ -163,13 +165,21 @@ function computePageLayout(
     )
     if (!stackOrder) return undefined
 
+    const visiblePageRight = Math.min(rect.right, window.innerWidth)
+    const visiblePageTop = Math.max(rect.top, 0)
+
     return {
       kind: "page",
       collection,
       renderKey: "page",
       stackOrder,
-      left: Math.round(Math.max(0, rect.right + window.scrollX - HIT)),
-      top: Math.round(Math.max(4, rect.top + window.scrollY - 8))
+      left: Math.round(
+        Math.max(
+          window.scrollX,
+          visiblePageRight + window.scrollX - HIT - PAGE_PIN_INSET
+        )
+      ),
+      top: Math.round(visiblePageTop + window.scrollY + PAGE_PIN_INSET)
     }
   } catch {
     return undefined

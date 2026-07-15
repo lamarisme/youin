@@ -513,6 +513,33 @@ function XIcon() {
   )
 }
 
+function DashboardPageIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="size-3"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.4"
+      aria-hidden="true">
+      <rect x="2.25" y="2.75" width="11.5" height="10.5" rx="1.5" />
+      <path d="M2.75 6h10.5M6 6v6.75" />
+    </svg>
+  )
+}
+
+function DashboardPageIndicator() {
+  return (
+    <span
+      className={`${threadBadge} gap-1 bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]`}>
+      <DashboardPageIcon />
+      {t("extension.drawer.dashboardPageLevel")}
+    </span>
+  )
+}
+
 function PageFeedbackRow({
   mark,
   disabled,
@@ -532,7 +559,8 @@ function PageFeedbackRow({
   onConfirmDelete: (mark: Mark) => void
   onCancelDelete: () => void
 }) {
-  const health = computeMarkHealth(mark)
+  const isDashboardPageFeedback = classifyMarkAnchor(mark) === "page"
+  const health = isDashboardPageFeedback ? null : computeMarkHealth(mark)
   const image = mark.screenshotUrl ?? mark.screenshotDataUrl
   const closed = mark.status === "closed"
   const syncFailed = mark.syncState === "failed"
@@ -562,10 +590,14 @@ function PageFeedbackRow({
                 ? t("extension.panel.resolved")
                 : t("extension.panel.open")}
             </span>
-            <span
-              className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-              {markHealthLabel(health.label)}
-            </span>
+            {isDashboardPageFeedback ? (
+              <DashboardPageIndicator />
+            ) : health ? (
+              <span
+                className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
+                {markHealthLabel(health.label)}
+              </span>
+            ) : null}
             <span
               className={`${threadBadge} ${
                 syncFailed
@@ -1181,6 +1213,8 @@ const CapturePanel = () => {
   const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  // Prevent a late async open from undoing an immediate drawer close.
+  const feedbackListRequestRef = useRef(0)
 
   useEffect(() => {
     void getSyncStatus().then(setSyncStatusState)
@@ -1266,6 +1300,7 @@ const CapturePanel = () => {
   }, [])
 
   const resume = useCallback(() => {
+    feedbackListRequestRef.current += 1
     if (refreshMarksDebounceRef.current != null) {
       clearTimeout(refreshMarksDebounceRef.current)
       refreshMarksDebounceRef.current = null
@@ -1297,6 +1332,7 @@ const CapturePanel = () => {
 
   const openFeedbackList = useCallback(
     async (anchorKind?: "page", toggle = true) => {
+      const requestId = ++feedbackListRequestRef.current
       if (open && mode === "list") {
         setPendingListDeleteMarkId(null)
         if (toggle) resume()
@@ -1305,9 +1341,10 @@ const CapturePanel = () => {
       }
 
       const canOpen = await refreshFeedbackList()
-      if (!canOpen) return
+      if (!canOpen || requestId !== feedbackListRequestRef.current) return
 
       await loadProjects()
+      if (requestId !== feedbackListRequestRef.current) return
       setMode("list")
       setCapture(null)
       setViewingMark(null)
@@ -2386,7 +2423,10 @@ const CapturePanel = () => {
   }
 
   if (mode === "thread" && viewingMark) {
-    const health = computeMarkHealth(viewingMark)
+    const isDashboardPageFeedback = classifyMarkAnchor(viewingMark) === "page"
+    const health = isDashboardPageFeedback
+      ? null
+      : computeMarkHealth(viewingMark)
     const threads = viewingMark.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -2445,13 +2485,19 @@ const CapturePanel = () => {
                     {t("extension.panel.syncFailed")}
                   </span>
                 ) : null}
-                <span
-                  className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-                  {markHealthLabel(health.label)}
-                </span>
+                {isDashboardPageFeedback ? (
+                  <DashboardPageIndicator />
+                ) : health ? (
+                  <span
+                    className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
+                    {markHealthLabel(health.label)}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                {health.description}
+                {isDashboardPageFeedback
+                  ? t("extension.drawer.dashboardPageDescription")
+                  : health?.description}
               </p>
             </div>
             <button
