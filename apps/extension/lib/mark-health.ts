@@ -1,5 +1,10 @@
 import type { Mark } from "./storage"
 import { elementMatchesFingerprint } from "./element-fingerprint"
+import type {
+  ElementPinAnchor,
+  ElementPinModel,
+  PinBounds
+} from "./pin-model"
 import { resolveSelector } from "./selector"
 
 export type MarkHealth = "attached" | "approximate" | "stale" | "screenshot-only"
@@ -12,13 +17,13 @@ export interface MarkHealthResult {
   rect?: DOMRectReadOnly
 }
 
-function savedRect(mark: Mark): DOMRectReadOnly | undefined {
-  if (mark.bbox.width < 1 || mark.bbox.height < 1) return undefined
+function savedRect(bounds: PinBounds): DOMRectReadOnly | undefined {
+  if (bounds.width < 1 || bounds.height < 1) return undefined
   return new DOMRect(
-    mark.bbox.x - window.scrollX,
-    mark.bbox.y - window.scrollY,
-    mark.bbox.width,
-    mark.bbox.height
+    bounds.x - window.scrollX,
+    bounds.y - window.scrollY,
+    bounds.width,
+    bounds.height
   )
 }
 
@@ -37,20 +42,22 @@ export function healthTone(
   }
 }
 
-export function computeMarkHealth(mark: Mark): MarkHealthResult {
-  if (mark.captureKind === "region") {
+function computeElementAnchorHealth(
+  anchor: ElementPinAnchor
+): MarkHealthResult {
+  if (anchor.captureKind === "region") {
     return {
       health: "screenshot-only",
       label: "Screenshot",
       description: "This feedback is tied to a captured area.",
       attached: false,
-      rect: savedRect(mark)
+      rect: savedRect(anchor.savedBounds)
     }
   }
 
   try {
-    const el = mark.selector ? resolveSelector(mark.selector) : null
-    if (el && elementMatchesFingerprint(el, mark.elementFingerprint)) {
+    const el = anchor.selector ? resolveSelector(anchor.selector) : null
+    if (el && elementMatchesFingerprint(el, anchor.fingerprint)) {
       const rect = el.getBoundingClientRect()
       if (rect.width >= 1 || rect.height >= 1) {
         return {
@@ -66,7 +73,7 @@ export function computeMarkHealth(mark: Mark): MarkHealthResult {
     /* invalid or stale selector */
   }
 
-  const rect = savedRect(mark)
+  const rect = savedRect(anchor.savedBounds)
   if (rect) {
     return {
       health: "approximate",
@@ -84,6 +91,20 @@ export function computeMarkHealth(mark: Mark): MarkHealthResult {
       "The original element and saved position are no longer available.",
     attached: false
   }
+}
+
+export function computeElementPinHealth(pin: ElementPinModel): MarkHealthResult {
+  return computeElementAnchorHealth(pin.anchor)
+}
+
+export function computeMarkHealth(mark: Mark): MarkHealthResult {
+  return computeElementAnchorHealth({
+    kind: "element",
+    captureKind: mark.captureKind,
+    selector: mark.selector,
+    savedBounds: mark.bbox,
+    fingerprint: mark.elementFingerprint
+  })
 }
 
 export function scrollMarkIntoView(mark: Mark): void {

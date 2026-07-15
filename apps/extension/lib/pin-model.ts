@@ -9,25 +9,47 @@ export interface PinBounds {
   height: number
 }
 
-export type PinAnchor =
-  | {
-      kind: "element"
-      captureKind?: "element" | "region"
-      selector: string
-      savedBounds: PinBounds
-      fingerprint?: ElementFingerprint
-    }
-  | {
-      kind: "page"
-    }
+export interface ElementPinAnchor {
+  kind: "element"
+  captureKind?: "element" | "region"
+  selector: string
+  savedBounds: PinBounds
+  fingerprint?: ElementFingerprint
+}
+
+export interface PagePinAnchor {
+  kind: "page"
+}
+
+export type PinAnchor = ElementPinAnchor | PagePinAnchor
 
 /** Presentation data shared by pin renderers, independent of persisted marks. */
-export interface PinModel {
+interface PinModelBase {
   markId: string
   title: string
   status: MarkStatus
   createdAt: number
-  anchor: PinAnchor
+}
+
+export interface ElementPinModel extends PinModelBase {
+  anchor: ElementPinAnchor
+}
+
+/** A per-mark presentation model whose anchor belongs to the page. */
+export interface PageAnchoredPinModel extends PinModelBase {
+  anchor: PagePinAnchor
+}
+
+export type PinModel = ElementPinModel | PageAnchoredPinModel
+
+export function isElementPinModel(pin: PinModel): pin is ElementPinModel {
+  return pin.anchor.kind === "element"
+}
+
+export function isPageAnchoredPinModel(
+  pin: PinModel
+): pin is PageAnchoredPinModel {
+  return pin.anchor.kind === "page"
 }
 
 export function createPinModel(mark: Mark): PinModel {

@@ -15,7 +15,6 @@ import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_OPEN_MARK,
   EVENT_REVIEW_OPEN_PAGE_MARKS,
-  EVENT_REVIEW_OPEN_PIN_LEGACY,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
@@ -91,10 +90,6 @@ export const getStyle: PlasmoGetStyle = () => {
 
 const Z_PANEL = EXTENSION_LAYER.panel
 const Z_MODAL = EXTENSION_LAYER.modal
-const OPEN_MARK_EVENTS = [
-  EVENT_REVIEW_OPEN_MARK,
-  EVENT_REVIEW_OPEN_PIN_LEGACY
-] as const
 
 ensureCapturePanelBridgeListeners()
 
@@ -1442,7 +1437,7 @@ const CapturePanel = () => {
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = getInternalEventDetail<Partial<OpenMarkDetail>>(e)
-      const markId = detail?.markId ?? detail?.pinId
+      const markId = detail?.markId
       if (!markId) return
       void (async () => {
         await loadProjects()
@@ -1465,14 +1460,8 @@ const CapturePanel = () => {
         void reloadPageMarks(mark.url, mark.projectId)
       })()
     }
-    for (const eventName of OPEN_MARK_EVENTS) {
-      window.addEventListener(eventName, onOpen)
-    }
-    return () => {
-      for (const eventName of OPEN_MARK_EVENTS) {
-        window.removeEventListener(eventName, onOpen)
-      }
-    }
+    window.addEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
+    return () => window.removeEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
   }, [loadProjects, reloadPageMarks])
 
   useEffect(() => {

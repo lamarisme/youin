@@ -17,12 +17,17 @@ import {
 } from "../lib/events"
 import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
+import { computeElementPinHealth, type MarkHealth } from "../lib/mark-health"
 import {
   createPagePinCollection,
   type PagePinCollection
 } from "../lib/page-pin-collection"
-import { createPinModel, type PinModel } from "../lib/pin-model"
+import {
+  createPinModel,
+  isElementPinModel,
+  type ElementPinModel,
+  type PinModel
+} from "../lib/pin-model"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -32,8 +37,7 @@ import {
   KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_WIDGET_SETTINGS,
-  type Mark
+  KEY_WIDGET_SETTINGS
 } from "../lib/storage"
 
 export const config: PlasmoCSConfig = {
@@ -52,23 +56,17 @@ const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
 
-type PinSource = {
-  mark: Mark
-  pin: PinModel
-}
-
 type PinLayout = {
   renderKey: string
   stackOrder: number
   left: number
   top: number
-  health: MarkHealth
 }
 
 type ElementBadgeItem = PinLayout & {
   kind: "element"
-  pin: PinModel
-  attached: boolean
+  pin: ElementPinModel
+  health: MarkHealth
   healthLabel: string
 }
 
@@ -116,21 +114,20 @@ function pinStackOrderMap(pins: PinModel[]): Map<string, number> {
   return m
 }
 
-function annotationLabel(pin: PinModel, healthLabel: string): string {
+function annotationLabel(pin: ElementPinModel, healthLabel: string): string {
   const t = pin.title.trim() || "Annotation"
   const short = t.length > 72 ? `${t.slice(0, 69)}...` : t
   return `Open feedback: ${short}. ${healthLabel}.`
 }
 
 function computeElementLayout(
-  sources: PinSource[],
+  pins: ElementPinModel[],
   stackOrders: Map<string, number>
 ): ElementBadgeItem[] {
   const out: ElementBadgeItem[] = []
-  for (const { mark, pin } of sources) {
-    if (pin.anchor.kind !== "element" || pin.status === "closed") continue
+  for (const pin of pins) {
     try {
-      const health = computeMarkHealth(mark)
+      const health = computeElementPinHealth(pin)
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
@@ -143,7 +140,6 @@ function computeElementLayout(
         stackOrder,
         left: Math.round(Math.max(0, r.right + window.scrollX - HIT)),
         top: Math.round(Math.max(4, r.top + window.scrollY - 8)),
-        attached: health.attached,
         health: health.health,
         healthLabel: health.label
       })
@@ -161,7 +157,7 @@ function computePageLayout(
   try {
     const rect = document.body?.getBoundingClientRect()
     if (!rect || (rect.width < 1 && rect.height < 1)) return undefined
-    const stackOrder = collection.openPins.reduce(
+    const stackOrder = collection.openMembers.reduce(
       (highest, pin) => Math.max(highest, stackOrders.get(pin.markId) ?? 0),
       0
     )
@@ -173,28 +169,31 @@ function computePageLayout(
       renderKey: "page",
       stackOrder,
       left: Math.round(Math.max(0, rect.right + window.scrollX - HIT)),
-      top: Math.round(Math.max(4, rect.top + window.scrollY - 8)),
-      health: "attached"
+      top: Math.round(Math.max(4, rect.top + window.scrollY - 8))
     }
   } catch {
     return undefined
   }
 }
 
-function markerTone(health: MarkHealth): {
+type MarkerTone = {
   borderClass: string
   dotClass: string
   haloClass: string
-} {
+}
+
+const DEFAULT_MARKER_TONE: MarkerTone = {
+  borderClass:
+    "border-[color:color-mix(in_oklch,var(--yi-mark)_48%,var(--yi-paper))]",
+  dotClass: "bg-[color:var(--yi-mark)]",
+  haloClass:
+    "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
+}
+
+function markerTone(health: MarkHealth): MarkerTone {
   switch (health) {
     case "attached":
-      return {
-        borderClass:
-          "border-[color:color-mix(in_oklch,var(--yi-mark)_48%,var(--yi-paper))]",
-        dotClass: "bg-[color:var(--yi-mark)]",
-        haloClass:
-          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
-      }
+      return DEFAULT_MARKER_TONE
     case "approximate":
       return {
         borderClass:
@@ -226,19 +225,18 @@ type SharedPinRendererProps = Omit<PinLayout, "renderKey"> & {
   label: string
   markerShapeClassName: string
   onActivate: () => void
+  tone: MarkerTone
 }
 
 function SharedPinRenderer({
   stackOrder,
   left,
   top,
-  health,
   label,
   markerShapeClassName,
-  onActivate
+  onActivate,
+  tone
 }: SharedPinRendererProps) {
-  const tone = markerTone(health)
-
   return (
     <button
       type="button"
@@ -268,7 +266,6 @@ function SharedPinRenderer({
 
 function ElementPinRenderer({
   pin,
-  attached,
   healthLabel,
   stackOrder,
   left,
@@ -280,15 +277,13 @@ function ElementPinRenderer({
       stackOrder={stackOrder}
       left={left}
       top={top}
-      health={health}
+      tone={markerTone(health)}
       label={annotationLabel(pin, healthLabel)}
       markerShapeClassName="rounded-full"
       onActivate={() => {
         dispatchInternalEvent(EVENT_REVIEW_PAUSE)
         dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
-          markId: pin.markId,
-          pinId: pin.markId,
-          attached
+          markId: pin.markId
         })
       }}
     />
@@ -299,10 +294,9 @@ function PagePinRenderer({
   collection,
   stackOrder,
   left,
-  top,
-  health
+  top
 }: PageBadgeItem) {
-  const count = collection.openPins.length
+  const count = collection.openMembers.length
   const label = t("extension.widget.openFeedbackAria", {
     count,
     plural: count === 1 ? "" : "s"
@@ -313,7 +307,7 @@ function PagePinRenderer({
       stackOrder={stackOrder}
       left={left}
       top={top}
-      health={health}
+      tone={DEFAULT_MARKER_TONE}
       label={label}
       markerShapeClassName="rounded-[var(--yi-radius-xs)]"
       onActivate={() => {
@@ -350,14 +344,11 @@ const PinBadges = () => {
     }
     const projectId = await getActiveProjectId()
     const marks = await getMarksForPage(projectId, location.href)
-    const sources = marks.map((mark) => ({
-      mark,
-      pin: createPinModel(mark)
-    }))
-    const pins = sources.map(({ pin }) => pin)
+    const pins = marks.map(createPinModel)
     const openPins = pins.filter((pin) => pin.status !== "closed")
     const stackOrders = pinStackOrderMap(openPins)
-    const items: BadgeItem[] = computeElementLayout(sources, stackOrders)
+    const elementPins = openPins.filter(isElementPinModel)
+    const items: BadgeItem[] = computeElementLayout(elementPins, stackOrders)
     const pageCollection = createPagePinCollection(pins)
     if (pageCollection) {
       const pageItem = computePageLayout(pageCollection, stackOrders)

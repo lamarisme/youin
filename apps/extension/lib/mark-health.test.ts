@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { computeMarkHealth } from "./mark-health"
+import { computeElementPinHealth, computeMarkHealth } from "./mark-health"
+import { createPinModel, isElementPinModel } from "./pin-model"
 import type { Mark } from "./storage"
 
 function mark(patch: Partial<Mark> = {}): Mark {
@@ -87,5 +88,14 @@ describe("computeMarkHealth", () => {
       attached: false,
       label: "Screenshot"
     })
+  })
+
+  it("preserves health behavior through the PinModel rendering boundary", () => {
+    document.body.innerHTML = ""
+    const source = mark()
+    const pin = createPinModel(source)
+    if (!isElementPinModel(pin)) throw new Error("Expected element pin")
+
+    expect(computeElementPinHealth(pin)).toEqual(computeMarkHealth(source))
   })
 })

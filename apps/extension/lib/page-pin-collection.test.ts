@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest"
 
 import { createPagePinCollection } from "./page-pin-collection"
-import type { PinModel } from "./pin-model"
+import type {
+  ElementPinModel,
+  PageAnchoredPinModel
+} from "./pin-model"
 
 function pagePin(
   markId: string,
-  status: PinModel["status"] = "open"
-): PinModel {
+  status: PageAnchoredPinModel["status"] = "open"
+): PageAnchoredPinModel {
   return {
     markId,
     title: markId,
@@ -16,7 +19,7 @@ function pagePin(
   }
 }
 
-function elementPin(markId: string): PinModel {
+function elementPin(markId: string): ElementPinModel {
   return {
     markId,
     title: markId,
@@ -39,9 +42,8 @@ describe("createPagePinCollection", () => {
     ])
 
     expect(collection).toEqual({
-      anchor: { kind: "page" },
-      pins: [pagePin("page-open"), pagePin("page-closed", "closed")],
-      openPins: [pagePin("page-open")]
+      members: [pagePin("page-open"), pagePin("page-closed", "closed")],
+      openMembers: [pagePin("page-open")]
     })
     expect(collection).not.toHaveProperty("markId")
   })
