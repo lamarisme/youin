@@ -32,6 +32,7 @@ import {
   type WidgetCorner,
   type WidgetSettings
 } from "../lib/storage"
+import { createViewportLayerStyle } from "../lib/viewport-layer"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -39,13 +40,11 @@ export const config: PlasmoCSConfig = {
   all_frames: false
 }
 
-export const getStyle: PlasmoGetStyle = () => {
-  const style = document.createElement("style")
-  style.textContent = `:host{all:initial;}${tailwindCss}`
-  return style
-}
-
 const Z_WIDGET = EXTENSION_LAYER.widget
+
+export const getStyle: PlasmoGetStyle = () => {
+  return createViewportLayerStyle(tailwindCss, Z_WIDGET)
+}
 
 const DEFAULT_SETTINGS: WidgetSettings = {
   corner: "bottom-right",

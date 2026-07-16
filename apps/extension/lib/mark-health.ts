@@ -1,16 +1,15 @@
-import type { Mark } from "./storage"
 import { elementMatchesFingerprint } from "./element-fingerprint"
-import type {
-  ElementPinAnchor,
-  ElementPinModel,
-  PinBounds
-} from "./pin-model"
+import type { ElementPinAnchor, ElementPinModel, PinBounds } from "./pin-model"
 import { resolveSelector } from "./selector"
 
-export type MarkHealth = "attached" | "approximate" | "stale" | "screenshot-only"
+export type ElementPinHealth =
+  | "attached"
+  | "approximate"
+  | "stale"
+  | "screenshot-only"
 
-export interface MarkHealthResult {
-  health: MarkHealth
+export interface ElementPinHealthResult {
+  health: ElementPinHealth
   label: string
   description: string
   attached: boolean
@@ -27,24 +26,9 @@ function savedRect(bounds: PinBounds): DOMRectReadOnly | undefined {
   )
 }
 
-export function healthTone(
-  health: MarkHealth
-): "ok" | "warn" | "danger" | "muted" {
-  switch (health) {
-    case "attached":
-      return "ok"
-    case "approximate":
-      return "warn"
-    case "stale":
-      return "danger"
-    case "screenshot-only":
-      return "muted"
-  }
-}
-
 function computeElementAnchorHealth(
   anchor: ElementPinAnchor
-): MarkHealthResult {
+): ElementPinHealthResult {
   if (anchor.captureKind === "region") {
     return {
       health: "screenshot-only",
@@ -93,25 +77,17 @@ function computeElementAnchorHealth(
   }
 }
 
-export function computeElementPinHealth(pin: ElementPinModel): MarkHealthResult {
+export function computeElementPinHealth(
+  pin: ElementPinModel
+): ElementPinHealthResult {
   return computeElementAnchorHealth(pin.anchor)
 }
 
-export function computeMarkHealth(mark: Mark): MarkHealthResult {
-  return computeElementAnchorHealth({
-    kind: "element",
-    captureKind: mark.captureKind,
-    selector: mark.selector,
-    savedBounds: mark.bbox,
-    fingerprint: mark.elementFingerprint
-  })
-}
-
-export function scrollMarkIntoView(mark: Mark): void {
-  const result = computeMarkHealth(mark)
-  if (result.attached && mark.selector) {
+export function scrollElementPinIntoView(pin: ElementPinModel): void {
+  const result = computeElementPinHealth(pin)
+  if (result.attached && pin.anchor.selector) {
     try {
-      resolveSelector(mark.selector)?.scrollIntoView({
+      resolveSelector(pin.anchor.selector)?.scrollIntoView({
         block: "center",
         inline: "center",
         behavior: "smooth"
@@ -122,9 +98,10 @@ export function scrollMarkIntoView(mark: Mark): void {
     }
   }
   if (result.rect) {
+    const bounds = pin.anchor.savedBounds
     window.scrollTo({
-      left: Math.max(0, mark.bbox.x - window.innerWidth / 2),
-      top: Math.max(0, mark.bbox.y - window.innerHeight / 2),
+      left: Math.max(0, bounds.x - window.innerWidth / 2),
+      top: Math.max(0, bounds.y - window.innerHeight / 2),
       behavior: "smooth"
     })
   }

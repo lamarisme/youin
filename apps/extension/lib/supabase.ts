@@ -73,17 +73,41 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   )
 }
 
-const chromeStorageAdapter = {
+export function isExtensionContextInvalidatedError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : ""
+
+  return /^Extension context invalidated\.?$/i.test(message.trim())
+}
+
+export const chromeStorageAdapter = {
   async getItem(key: string): Promise<string | null> {
-    const r = await chrome.storage.local.get(key)
-    const v = r[key]
-    return typeof v === "string" ? v : null
+    try {
+      const r = await chrome.storage.local.get(key)
+      const v = r[key]
+      return typeof v === "string" ? v : null
+    } catch (error) {
+      if (isExtensionContextInvalidatedError(error)) return null
+      throw error
+    }
   },
   async setItem(key: string, value: string): Promise<void> {
-    await chrome.storage.local.set({ [key]: value })
+    try {
+      await chrome.storage.local.set({ [key]: value })
+    } catch (error) {
+      if (!isExtensionContextInvalidatedError(error)) throw error
+    }
   },
   async removeItem(key: string): Promise<void> {
-    await chrome.storage.local.remove(key)
+    try {
+      await chrome.storage.local.remove(key)
+    } catch (error) {
+      if (!isExtensionContextInvalidatedError(error)) throw error
+    }
   }
 }
 

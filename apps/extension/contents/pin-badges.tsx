@@ -17,17 +17,21 @@ import {
 } from "../lib/events"
 import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computeElementPinHealth, type MarkHealth } from "../lib/mark-health"
+import type { ElementPinHealth } from "../lib/mark-health"
 import {
   createPagePinCollection,
   type PagePinCollection
 } from "../lib/page-pin-collection"
 import {
   createPinModel,
-  isElementPinModel,
   type ElementPinModel,
   type PinModel
 } from "../lib/pin-model"
+import {
+  createPinRuntime,
+  isElementPinRuntime,
+  type ElementPinRuntime
+} from "../lib/pin-runtime"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -39,6 +43,13 @@ import {
   KEY_PROJECTS,
   KEY_WIDGET_SETTINGS
 } from "../lib/storage"
+import {
+  computeElementPinPosition,
+  computePagePinPosition,
+  createViewportLayerStyle,
+  getViewportBounds,
+  type ViewportBounds
+} from "../lib/viewport-layer"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -46,13 +57,12 @@ export const config: PlasmoCSConfig = {
   all_frames: false
 }
 
+const Z_BADGES = EXTENSION_LAYER.badges
+
 export const getStyle: PlasmoGetStyle = () => {
-  const style = document.createElement("style")
-  style.textContent = `:host{all:initial;}${tailwindCss}`
-  return style
+  return createViewportLayerStyle(tailwindCss, Z_BADGES)
 }
 
-const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
 /** Matches `--yi-space-md`; keeps the page pin clear of viewport chrome. */
@@ -68,7 +78,7 @@ type PinLayout = {
 type ElementBadgeItem = PinLayout & {
   kind: "element"
   pin: ElementPinModel
-  health: MarkHealth
+  health: ElementPinHealth
   healthLabel: string
 }
 
@@ -78,32 +88,6 @@ type PageBadgeItem = PinLayout & {
 }
 
 type BadgeItem = ElementBadgeItem | PageBadgeItem
-
-type PageSize = {
-  width: number
-  height: number
-}
-
-function pageSize(): PageSize {
-  const doc = document.documentElement
-  const body = document.body
-  return {
-    width: Math.max(
-      window.innerWidth,
-      doc.clientWidth,
-      doc.scrollWidth,
-      body?.clientWidth ?? 0,
-      body?.scrollWidth ?? 0
-    ),
-    height: Math.max(
-      window.innerHeight,
-      doc.clientHeight,
-      doc.scrollHeight,
-      body?.clientHeight ?? 0,
-      body?.scrollHeight ?? 0
-    )
-  }
-}
 
 function sortPinsForDisplay(pins: PinModel[]): PinModel[] {
   return pins.slice().sort((a, b) => a.createdAt - b.createdAt)
@@ -123,16 +107,19 @@ function annotationLabel(pin: ElementPinModel, healthLabel: string): string {
 }
 
 function computeElementLayout(
-  pins: ElementPinModel[],
-  stackOrders: Map<string, number>
+  runtimes: ElementPinRuntime[],
+  stackOrders: Map<string, number>,
+  viewport: ViewportBounds
 ): ElementBadgeItem[] {
   const out: ElementBadgeItem[] = []
-  for (const pin of pins) {
+  for (const runtime of runtimes) {
     try {
-      const health = computeElementPinHealth(pin)
+      const { health, pin } = runtime
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
+      const position = computeElementPinPosition(r, viewport, HIT, -8)
+      if (!position) continue
       const stackOrder = stackOrders.get(pin.markId) ?? 0
       if (!stackOrder) continue
       out.push({
@@ -140,8 +127,7 @@ function computeElementLayout(
         pin,
         renderKey: pin.markId,
         stackOrder,
-        left: Math.round(Math.max(0, r.right + window.scrollX - HIT)),
-        top: Math.round(Math.max(4, r.top + window.scrollY - 8)),
+        ...position,
         health: health.health,
         healthLabel: health.label
       })
@@ -154,32 +140,24 @@ function computeElementLayout(
 
 function computePageLayout(
   collection: PagePinCollection,
-  stackOrders: Map<string, number>
+  stackOrders: Map<string, number>,
+  viewport: ViewportBounds
 ): PageBadgeItem | undefined {
   try {
-    const rect = document.body?.getBoundingClientRect()
-    if (!rect || (rect.width < 1 && rect.height < 1)) return undefined
     const stackOrder = collection.openMembers.reduce(
       (highest, pin) => Math.max(highest, stackOrders.get(pin.markId) ?? 0),
       0
     )
     if (!stackOrder) return undefined
-
-    const visiblePageRight = Math.min(rect.right, window.innerWidth)
-    const visiblePageTop = Math.max(rect.top, 0)
+    const position = computePagePinPosition(viewport, HIT, PAGE_PIN_INSET)
+    if (!position) return undefined
 
     return {
       kind: "page",
       collection,
       renderKey: "page",
       stackOrder,
-      left: Math.round(
-        Math.max(
-          window.scrollX,
-          visiblePageRight + window.scrollX - HIT - PAGE_PIN_INSET
-        )
-      ),
-      top: Math.round(visiblePageTop + window.scrollY + PAGE_PIN_INSET)
+      ...position
     }
   } catch {
     return undefined
@@ -200,7 +178,7 @@ const DEFAULT_MARKER_TONE: MarkerTone = {
     "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
 }
 
-function markerTone(health: MarkHealth): MarkerTone {
+function markerTone(health: ElementPinHealth): MarkerTone {
   switch (health) {
     case "attached":
       return DEFAULT_MARKER_TONE
@@ -300,12 +278,7 @@ function ElementPinRenderer({
   )
 }
 
-function PagePinRenderer({
-  collection,
-  stackOrder,
-  left,
-  top
-}: PageBadgeItem) {
+function PagePinRenderer({ collection, stackOrder, left, top }: PageBadgeItem) {
   const count = collection.openMembers.length
   const label = t("extension.widget.openFeedbackAria", {
     count,
@@ -339,12 +312,10 @@ function PinRenderer(props: BadgeItem) {
 
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
-  const [size, setSize] = useState<PageSize>({ width: 0, height: 0 })
   const [disabled, setDisabled] = useState(false)
   const rafRef = useRef<number | null>(null)
 
   const refresh = useCallback(async () => {
-    setSize(pageSize())
     const settings = await getWidgetSettings()
     const hostDisabled = isHostDisabled(location.href, settings)
     setDisabled(hostDisabled)
@@ -357,11 +328,18 @@ const PinBadges = () => {
     const pins = marks.map(createPinModel)
     const openPins = pins.filter((pin) => pin.status !== "closed")
     const stackOrders = pinStackOrderMap(openPins)
-    const elementPins = openPins.filter(isElementPinModel)
-    const items: BadgeItem[] = computeElementLayout(elementPins, stackOrders)
+    const elementRuntimes = openPins
+      .map(createPinRuntime)
+      .filter(isElementPinRuntime)
+    const viewport = getViewportBounds()
+    const items: BadgeItem[] = computeElementLayout(
+      elementRuntimes,
+      stackOrders,
+      viewport
+    )
     const pageCollection = createPagePinCollection(pins)
     if (pageCollection) {
-      const pageItem = computePageLayout(pageCollection, stackOrders)
+      const pageItem = computePageLayout(pageCollection, stackOrders, viewport)
       if (pageItem) items.push(pageItem)
     }
     setItems(items)
@@ -436,8 +414,8 @@ const PinBadges = () => {
   return (
     <div
       data-youin-extension-ui=""
-      className="pointer-events-none absolute left-0 top-0"
-      style={{ zIndex: Z_BADGES, width: size.width, height: size.height }}>
+      className="pointer-events-none fixed inset-0"
+      style={{ zIndex: Z_BADGES }}>
       {items.map((item) => (
         <PinRenderer key={item.renderKey} {...item} />
       ))}

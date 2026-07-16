@@ -33,9 +33,15 @@ import {
   isInternalEvent
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { classifyMarkAnchor } from "../lib/mark-anchor"
-import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
+import { scrollElementPinIntoView } from "../lib/mark-health"
 import { normalizePageUrlForMatch } from "../lib/page-url"
+import {
+  createPinModel,
+  isElementPinModel,
+  isPageAnchoredPinModel,
+  type ElementPinModel
+} from "../lib/pin-model"
+import { createPinRuntime } from "../lib/pin-runtime"
 import {
   addMarkWithFallback,
   appendThreadComment,
@@ -75,6 +81,7 @@ import {
   pushMarkToWorkspace,
   syncPendingMarksToWorkspace
 } from "../lib/sync"
+import { createViewportLayerStyle } from "../lib/viewport-layer"
 
 export const config: PlasmoCSConfig = {
   matches: ["http://*/*", "https://*/*"],
@@ -82,14 +89,12 @@ export const config: PlasmoCSConfig = {
   all_frames: false
 }
 
-export const getStyle: PlasmoGetStyle = () => {
-  const style = document.createElement("style")
-  style.textContent = `:host{all:initial;}${tailwindCss}`
-  return style
-}
-
 const Z_PANEL = EXTENSION_LAYER.panel
 const Z_MODAL = EXTENSION_LAYER.modal
+
+export const getStyle: PlasmoGetStyle = () => {
+  return createViewportLayerStyle(tailwindCss, Z_PANEL)
+}
 
 ensureCapturePanelBridgeListeners()
 
@@ -559,8 +564,7 @@ function PageFeedbackRow({
   onConfirmDelete: (mark: Mark) => void
   onCancelDelete: () => void
 }) {
-  const isDashboardPageFeedback = classifyMarkAnchor(mark) === "page"
-  const health = isDashboardPageFeedback ? null : computeMarkHealth(mark)
+  const runtime = createPinRuntime(createPinModel(mark))
   const image = mark.screenshotUrl ?? mark.screenshotDataUrl
   const closed = mark.status === "closed"
   const syncFailed = mark.syncState === "failed"
@@ -590,14 +594,14 @@ function PageFeedbackRow({
                 ? t("extension.panel.resolved")
                 : t("extension.panel.open")}
             </span>
-            {isDashboardPageFeedback ? (
+            {runtime.kind === "page" ? (
               <DashboardPageIndicator />
-            ) : health ? (
+            ) : (
               <span
-                className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-                {markHealthLabel(health.label)}
+                className={`${threadBadge} ${threadHealthBadgeClass(runtime.health.label)}`}>
+                {markHealthLabel(runtime.health.label)}
               </span>
-            ) : null}
+            )}
             <span
               className={`${threadBadge} ${
                 syncFailed
@@ -1708,9 +1712,9 @@ const CapturePanel = () => {
     window.setTimeout(() => setPromptCopyState("idle"), 1600)
   }
 
-  const startReattachMark = (mark: Mark) => {
-    reattachMarkIdRef.current = mark.id
-    setReattachMarkId(mark.id)
+  const startReattachPin = (pin: ElementPinModel) => {
+    reattachMarkIdRef.current = pin.markId
+    setReattachMarkId(pin.markId)
     setOpen(false)
     setSaveError(null)
     setSaveWarning(null)
@@ -1961,7 +1965,8 @@ const CapturePanel = () => {
   }
 
   const openMarkFromList = (mark: Mark) => {
-    scrollMarkIntoView(mark)
+    const pin = createPinModel(mark)
+    if (isElementPinModel(pin)) scrollElementPinIntoView(pin)
     dispatchInternalEvent(EVENT_REVIEW_PAUSE)
     setViewingMark(mark)
     setEditTitle(mark.title)
@@ -1996,7 +2001,9 @@ const CapturePanel = () => {
   if (mode === "list") {
     const visibleMarks =
       feedbackListAnchorKind === "page"
-        ? pageMarks.filter((mark) => classifyMarkAnchor(mark) === "page")
+        ? pageMarks.filter((mark) =>
+            isPageAnchoredPinModel(createPinModel(mark))
+          )
         : pageMarks
     const openMarks = visibleMarks.filter((mark) => mark.status !== "closed")
     const resolvedMarks = visibleMarks.filter(
@@ -2423,10 +2430,7 @@ const CapturePanel = () => {
   }
 
   if (mode === "thread" && viewingMark) {
-    const isDashboardPageFeedback = classifyMarkAnchor(viewingMark) === "page"
-    const health = isDashboardPageFeedback
-      ? null
-      : computeMarkHealth(viewingMark)
+    const runtime = createPinRuntime(createPinModel(viewingMark))
     const threads = viewingMark.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -2485,19 +2489,19 @@ const CapturePanel = () => {
                     {t("extension.panel.syncFailed")}
                   </span>
                 ) : null}
-                {isDashboardPageFeedback ? (
+                {runtime.kind === "page" ? (
                   <DashboardPageIndicator />
-                ) : health ? (
+                ) : (
                   <span
-                    className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-                    {markHealthLabel(health.label)}
+                    className={`${threadBadge} ${threadHealthBadgeClass(runtime.health.label)}`}>
+                    {markHealthLabel(runtime.health.label)}
                   </span>
-                ) : null}
+                )}
               </div>
               <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                {isDashboardPageFeedback
+                {runtime.kind === "page"
                   ? t("extension.drawer.dashboardPageDescription")
-                  : health?.description}
+                  : runtime.health.description}
               </p>
             </div>
             <button
@@ -2562,18 +2566,19 @@ const CapturePanel = () => {
                   {opener?.body ?? viewingMark.title}
                 </div>
               )}
-              {health.health !== "attached" ? (
+              {runtime.kind === "element" &&
+              runtime.health.health !== "attached" ? (
                 <div className="mt-3 rounded-[var(--yi-radius-md)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-2 text-[11px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                  <p>{health.description}</p>
+                  <p>{runtime.health.description}</p>
                   <p className="mt-1">
                     {t("extension.panel.reattachLimitHint")}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {health.rect ? (
+                    {runtime.health.rect ? (
                       <button
                         type="button"
                         className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]"
-                        onClick={() => scrollMarkIntoView(viewingMark)}>
+                        onClick={() => scrollElementPinIntoView(runtime.pin)}>
                         {t("extension.panel.scrollToSavedPosition")}
                       </button>
                     ) : null}
@@ -2581,7 +2586,7 @@ const CapturePanel = () => {
                       type="button"
                       disabled={reattachMarkId === viewingMark.id}
                       className="inline-flex min-h-8 items-center rounded-md px-2 text-[11px] font-semibold text-[color:var(--yi-ext-link)] outline-none hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] disabled:opacity-50"
-                      onClick={() => startReattachMark(viewingMark)}>
+                      onClick={() => startReattachPin(runtime.pin)}>
                       {reattachMarkId === viewingMark.id
                         ? t("extension.panel.reattachWaiting")
                         : t("extension.panel.reattachElement")}

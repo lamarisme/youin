@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { computeElementPinHealth, computeMarkHealth } from "./mark-health"
-import { createPinModel, isElementPinModel } from "./pin-model"
+import { computeElementPinHealth } from "./mark-health"
+import {
+  createPinModel,
+  isElementPinModel,
+  type ElementPinModel
+} from "./pin-model"
 import type { Mark } from "./storage"
 
 function mark(patch: Partial<Mark> = {}): Mark {
@@ -26,7 +30,13 @@ function mark(patch: Partial<Mark> = {}): Mark {
   }
 }
 
-describe("computeMarkHealth", () => {
+function elementPin(patch: Partial<Mark> = {}): ElementPinModel {
+  const pin = createPinModel(mark(patch))
+  if (!isElementPinModel(pin)) throw new Error("Expected element pin")
+  return pin
+}
+
+describe("computeElementPinHealth", () => {
   it("returns attached when the selector resolves", () => {
     document.body.innerHTML = `<button id="target">Save</button>`
     const button = document.querySelector("button")!
@@ -34,7 +44,7 @@ describe("computeMarkHealth", () => {
       new DOMRect(10, 20, 90, 40)
     )
 
-    expect(computeMarkHealth(mark())).toMatchObject({
+    expect(computeElementPinHealth(elementPin())).toMatchObject({
       health: "attached",
       attached: true,
       label: "Attached"
@@ -44,7 +54,7 @@ describe("computeMarkHealth", () => {
   it("returns approximate when selector is stale but saved bbox exists", () => {
     document.body.innerHTML = ""
 
-    const result = computeMarkHealth(mark())
+    const result = computeElementPinHealth(elementPin())
 
     expect(result.health).toBe("approximate")
     expect(result.attached).toBe(false)
@@ -59,8 +69,8 @@ describe("computeMarkHealth", () => {
     )
 
     expect(
-      computeMarkHealth(
-        mark({
+      computeElementPinHealth(
+        elementPin({
           elementFingerprint: {
             version: 1,
             tagName: "button",
@@ -75,7 +85,9 @@ describe("computeMarkHealth", () => {
     document.body.innerHTML = ""
 
     expect(
-      computeMarkHealth(mark({ bbox: { x: 0, y: 0, width: 0, height: 0 } }))
+      computeElementPinHealth(
+        elementPin({ bbox: { x: 0, y: 0, width: 0, height: 0 } })
+      )
     ).toMatchObject({
       health: "stale",
       attached: false
@@ -83,19 +95,12 @@ describe("computeMarkHealth", () => {
   })
 
   it("returns screenshot-only for region captures", () => {
-    expect(computeMarkHealth(mark({ captureKind: "region" }))).toMatchObject({
+    expect(
+      computeElementPinHealth(elementPin({ captureKind: "region" }))
+    ).toMatchObject({
       health: "screenshot-only",
       attached: false,
       label: "Screenshot"
     })
-  })
-
-  it("preserves health behavior through the PinModel rendering boundary", () => {
-    document.body.innerHTML = ""
-    const source = mark()
-    const pin = createPinModel(source)
-    if (!isElementPinModel(pin)) throw new Error("Expected element pin")
-
-    expect(computeElementPinHealth(pin)).toEqual(computeMarkHealth(source))
   })
 })
