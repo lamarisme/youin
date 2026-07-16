@@ -1,3 +1,4 @@
+import { t } from "@youin/i18n/t"
 import tailwindCss from "data-text:~/globals.css"
 import type { PlasmoCSConfig, PlasmoGetStyle } from "plasmo"
 import {
@@ -11,11 +12,22 @@ import {
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_REVIEW_OPEN_MARK,
+  EVENT_REVIEW_OPEN_PAGE_MARKS,
   EVENT_REVIEW_PAUSE
 } from "../lib/events"
 import { dispatchInternalEvent, isInternalEvent } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
-import { computeMarkHealth, type MarkHealth } from "../lib/mark-health"
+import { computeElementPinHealth, type MarkHealth } from "../lib/mark-health"
+import {
+  createPagePinCollection,
+  type PagePinCollection
+} from "../lib/page-pin-collection"
+import {
+  createPinModel,
+  isElementPinModel,
+  type ElementPinModel,
+  type PinModel
+} from "../lib/pin-model"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -25,8 +37,7 @@ import {
   KEY_DATA_SCOPE,
   KEY_MARKS,
   KEY_PROJECTS,
-  KEY_WIDGET_SETTINGS,
-  type Mark
+  KEY_WIDGET_SETTINGS
 } from "../lib/storage"
 
 export const config: PlasmoCSConfig = {
@@ -44,16 +55,29 @@ export const getStyle: PlasmoGetStyle = () => {
 const Z_BADGES = EXTENSION_LAYER.badges
 /** WCAG 2.5.5 target size — matches `--yi-ext-hit-target` in `globals.css` */
 const HIT = 44
+/** Matches `--yi-space-md`; keeps the page pin clear of viewport chrome. */
+const PAGE_PIN_INSET = 16
 
-type BadgeItem = {
-  mark: Mark
+type PinLayout = {
+  renderKey: string
   stackOrder: number
   left: number
   top: number
-  attached: boolean
+}
+
+type ElementBadgeItem = PinLayout & {
+  kind: "element"
+  pin: ElementPinModel
   health: MarkHealth
   healthLabel: string
 }
+
+type PageBadgeItem = PinLayout & {
+  kind: "page"
+  collection: PagePinCollection
+}
+
+type BadgeItem = ElementBadgeItem | PageBadgeItem
 
 type PageSize = {
   width: number
@@ -81,42 +105,43 @@ function pageSize(): PageSize {
   }
 }
 
-function sortMarksForDisplay(marks: Mark[]): Mark[] {
-  return marks.slice().sort((a, b) => a.createdAt - b.createdAt)
+function sortPinsForDisplay(pins: PinModel[]): PinModel[] {
+  return pins.slice().sort((a, b) => a.createdAt - b.createdAt)
 }
 
-function markStackOrderMap(marks: Mark[]): Map<string, number> {
-  const sorted = sortMarksForDisplay(marks)
+function pinStackOrderMap(pins: PinModel[]): Map<string, number> {
+  const sorted = sortPinsForDisplay(pins)
   const m = new Map<string, number>()
-  sorted.forEach((p, i) => m.set(p.id, i + 1))
+  sorted.forEach((pin, i) => m.set(pin.markId, i + 1))
   return m
 }
 
-function annotationLabel(mark: Mark, healthLabel: string): string {
-  const t = mark.title.trim() || "Annotation"
+function annotationLabel(pin: ElementPinModel, healthLabel: string): string {
+  const t = pin.title.trim() || "Annotation"
   const short = t.length > 72 ? `${t.slice(0, 69)}...` : t
   return `Open feedback: ${short}. ${healthLabel}.`
 }
 
-function computeLayout(
-  marks: Mark[],
+function computeElementLayout(
+  pins: ElementPinModel[],
   stackOrders: Map<string, number>
-): BadgeItem[] {
-  const out: BadgeItem[] = []
-  for (const mark of marks) {
+): ElementBadgeItem[] {
+  const out: ElementBadgeItem[] = []
+  for (const pin of pins) {
     try {
-      const health = computeMarkHealth(mark)
+      const health = computeElementPinHealth(pin)
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue
-      const stackOrder = stackOrders.get(mark.id) ?? 0
+      const stackOrder = stackOrders.get(pin.markId) ?? 0
       if (!stackOrder) continue
       out.push({
-        mark,
+        kind: "element",
+        pin,
+        renderKey: pin.markId,
         stackOrder,
         left: Math.round(Math.max(0, r.right + window.scrollX - HIT)),
         top: Math.round(Math.max(4, r.top + window.scrollY - 8)),
-        attached: health.attached,
         health: health.health,
         healthLabel: health.label
       })
@@ -127,20 +152,58 @@ function computeLayout(
   return out
 }
 
-function markerTone(health: MarkHealth): {
+function computePageLayout(
+  collection: PagePinCollection,
+  stackOrders: Map<string, number>
+): PageBadgeItem | undefined {
+  try {
+    const rect = document.body?.getBoundingClientRect()
+    if (!rect || (rect.width < 1 && rect.height < 1)) return undefined
+    const stackOrder = collection.openMembers.reduce(
+      (highest, pin) => Math.max(highest, stackOrders.get(pin.markId) ?? 0),
+      0
+    )
+    if (!stackOrder) return undefined
+
+    const visiblePageRight = Math.min(rect.right, window.innerWidth)
+    const visiblePageTop = Math.max(rect.top, 0)
+
+    return {
+      kind: "page",
+      collection,
+      renderKey: "page",
+      stackOrder,
+      left: Math.round(
+        Math.max(
+          window.scrollX,
+          visiblePageRight + window.scrollX - HIT - PAGE_PIN_INSET
+        )
+      ),
+      top: Math.round(visiblePageTop + window.scrollY + PAGE_PIN_INSET)
+    }
+  } catch {
+    return undefined
+  }
+}
+
+type MarkerTone = {
   borderClass: string
   dotClass: string
   haloClass: string
-} {
+}
+
+const DEFAULT_MARKER_TONE: MarkerTone = {
+  borderClass:
+    "border-[color:color-mix(in_oklch,var(--yi-mark)_48%,var(--yi-paper))]",
+  dotClass: "bg-[color:var(--yi-mark)]",
+  haloClass:
+    "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
+}
+
+function markerTone(health: MarkHealth): MarkerTone {
   switch (health) {
     case "attached":
-      return {
-        borderClass:
-          "border-[color:color-mix(in_oklch,var(--yi-mark)_48%,var(--yi-paper))]",
-        dotClass: "bg-[color:var(--yi-mark)]",
-        haloClass:
-          "shadow-[0_5px_14px_-12px_oklch(18%_0.012_264_/_0.42),0_0_0_2px_color-mix(in_oklch,var(--yi-mark)_14%,transparent)]"
-      }
+      return DEFAULT_MARKER_TONE
     case "approximate":
       return {
         borderClass:
@@ -168,6 +231,112 @@ function markerTone(health: MarkHealth): {
   }
 }
 
+type SharedPinRendererProps = Omit<PinLayout, "renderKey"> & {
+  label: string
+  markerShapeClassName: string
+  onActivate: () => void
+  tone: MarkerTone
+}
+
+function SharedPinRenderer({
+  stackOrder,
+  left,
+  top,
+  label,
+  markerShapeClassName,
+  onActivate,
+  tone
+}: SharedPinRendererProps) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
+      style={{
+        left,
+        top,
+        width: HIT,
+        height: HIT,
+        zIndex: stackOrder
+      }}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onActivate()
+      }}>
+      <span
+        className={`relative flex h-4 w-4 select-none items-center justify-center ${markerShapeClassName} border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
+        aria-hidden>
+        <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
+      </span>
+    </button>
+  )
+}
+
+function ElementPinRenderer({
+  pin,
+  healthLabel,
+  stackOrder,
+  left,
+  top,
+  health
+}: ElementBadgeItem) {
+  return (
+    <SharedPinRenderer
+      stackOrder={stackOrder}
+      left={left}
+      top={top}
+      tone={markerTone(health)}
+      label={annotationLabel(pin, healthLabel)}
+      markerShapeClassName="rounded-full"
+      onActivate={() => {
+        dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+        dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
+          markId: pin.markId
+        })
+      }}
+    />
+  )
+}
+
+function PagePinRenderer({
+  collection,
+  stackOrder,
+  left,
+  top
+}: PageBadgeItem) {
+  const count = collection.openMembers.length
+  const label = t("extension.widget.openFeedbackAria", {
+    count,
+    plural: count === 1 ? "" : "s"
+  })
+
+  return (
+    <SharedPinRenderer
+      stackOrder={stackOrder}
+      left={left}
+      top={top}
+      tone={DEFAULT_MARKER_TONE}
+      label={label}
+      markerShapeClassName="rounded-[var(--yi-radius-xs)]"
+      onActivate={() => {
+        dispatchInternalEvent(EVENT_REVIEW_PAUSE)
+        dispatchInternalEvent(EVENT_REVIEW_OPEN_PAGE_MARKS)
+      }}
+    />
+  )
+}
+
+function PinRenderer(props: BadgeItem) {
+  switch (props.kind) {
+    case "element":
+      return <ElementPinRenderer {...props} />
+    case "page":
+      return <PagePinRenderer {...props} />
+  }
+}
+
 const PinBadges = () => {
   const [items, setItems] = useState<BadgeItem[]>([])
   const [size, setSize] = useState<PageSize>({ width: 0, height: 0 })
@@ -185,9 +354,17 @@ const PinBadges = () => {
     }
     const projectId = await getActiveProjectId()
     const marks = await getMarksForPage(projectId, location.href)
-    const openMarks = marks.filter((p) => p.status !== "closed")
-    const stackOrders = markStackOrderMap(openMarks)
-    setItems(computeLayout(openMarks, stackOrders))
+    const pins = marks.map(createPinModel)
+    const openPins = pins.filter((pin) => pin.status !== "closed")
+    const stackOrders = pinStackOrderMap(openPins)
+    const elementPins = openPins.filter(isElementPinModel)
+    const items: BadgeItem[] = computeElementLayout(elementPins, stackOrders)
+    const pageCollection = createPagePinCollection(pins)
+    if (pageCollection) {
+      const pageItem = computePageLayout(pageCollection, stackOrders)
+      if (pageItem) items.push(pageItem)
+    }
+    setItems(items)
   }, [])
 
   const scheduleViewportRefresh = useCallback(() => {
@@ -261,43 +438,9 @@ const PinBadges = () => {
       data-youin-extension-ui=""
       className="pointer-events-none absolute left-0 top-0"
       style={{ zIndex: Z_BADGES, width: size.width, height: size.height }}>
-      {items.map(
-        ({ mark, stackOrder, left, top, attached, health, healthLabel }) => {
-          const tone = markerTone(health)
-
-          return (
-            <button
-              key={mark.id}
-              type="button"
-              aria-label={annotationLabel(mark, healthLabel)}
-              title={annotationLabel(mark, healthLabel)}
-              className="pointer-events-auto absolute flex cursor-pointer items-start justify-end border-0 bg-transparent p-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] motion-reduce:transition-none"
-              style={{
-                left,
-                top,
-                width: HIT,
-                height: HIT,
-                zIndex: stackOrder
-              }}
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                dispatchInternalEvent(EVENT_REVIEW_PAUSE)
-                dispatchInternalEvent(EVENT_REVIEW_OPEN_MARK, {
-                  markId: mark.id,
-                  pinId: mark.id,
-                  attached
-                })
-              }}>
-              <span
-                className={`relative flex h-4 w-4 select-none items-center justify-center rounded-full border bg-[color:var(--yi-paper)] motion-safe:transition-transform motion-safe:hover:scale-110 motion-reduce:transition-none ${tone.borderClass} ${tone.haloClass}`}
-                aria-hidden>
-                <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
-              </span>
-            </button>
-          )
-        }
-      )}
+      {items.map((item) => (
+        <PinRenderer key={item.renderKey} {...item} />
+      ))}
     </div>
   )
 }

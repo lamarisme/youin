@@ -14,7 +14,7 @@ import {
 import type { ElementDomSnapshot } from "../lib/dom-snapshot"
 import {
   EVENT_REVIEW_OPEN_MARK,
-  EVENT_REVIEW_OPEN_PIN_LEGACY,
+  EVENT_REVIEW_OPEN_PAGE_MARKS,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
   EVENT_REVIEW_START,
@@ -33,6 +33,7 @@ import {
   isInternalEvent
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
+import { classifyMarkAnchor } from "../lib/mark-anchor"
 import { computeMarkHealth, scrollMarkIntoView } from "../lib/mark-health"
 import { normalizePageUrlForMatch } from "../lib/page-url"
 import {
@@ -89,10 +90,6 @@ export const getStyle: PlasmoGetStyle = () => {
 
 const Z_PANEL = EXTENSION_LAYER.panel
 const Z_MODAL = EXTENSION_LAYER.modal
-const OPEN_MARK_EVENTS = [
-  EVENT_REVIEW_OPEN_MARK,
-  EVENT_REVIEW_OPEN_PIN_LEGACY
-] as const
 
 ensureCapturePanelBridgeListeners()
 
@@ -516,6 +513,33 @@ function XIcon() {
   )
 }
 
+function DashboardPageIcon() {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className="size-3"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.4"
+      aria-hidden="true">
+      <rect x="2.25" y="2.75" width="11.5" height="10.5" rx="1.5" />
+      <path d="M2.75 6h10.5M6 6v6.75" />
+    </svg>
+  )
+}
+
+function DashboardPageIndicator() {
+  return (
+    <span
+      className={`${threadBadge} gap-1 bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-ext-text-muted)]`}>
+      <DashboardPageIcon />
+      {t("extension.drawer.dashboardPageLevel")}
+    </span>
+  )
+}
+
 function PageFeedbackRow({
   mark,
   disabled,
@@ -535,7 +559,8 @@ function PageFeedbackRow({
   onConfirmDelete: (mark: Mark) => void
   onCancelDelete: () => void
 }) {
-  const health = computeMarkHealth(mark)
+  const isDashboardPageFeedback = classifyMarkAnchor(mark) === "page"
+  const health = isDashboardPageFeedback ? null : computeMarkHealth(mark)
   const image = mark.screenshotUrl ?? mark.screenshotDataUrl
   const closed = mark.status === "closed"
   const syncFailed = mark.syncState === "failed"
@@ -565,10 +590,14 @@ function PageFeedbackRow({
                 ? t("extension.panel.resolved")
                 : t("extension.panel.open")}
             </span>
-            <span
-              className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-              {markHealthLabel(health.label)}
-            </span>
+            {isDashboardPageFeedback ? (
+              <DashboardPageIndicator />
+            ) : health ? (
+              <span
+                className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
+                {markHealthLabel(health.label)}
+              </span>
+            ) : null}
             <span
               className={`${threadBadge} ${
                 syncFailed
@@ -1141,6 +1170,9 @@ const CapturePanel = () => {
   const [capture, setCapture] = useState<ReviewCaptureDetail | null>(null)
   const [viewingMark, setViewingMark] = useState<Mark | null>(null)
   const [pageMarks, setPageMarks] = useState<Mark[]>([])
+  const [feedbackListAnchorKind, setFeedbackListAnchorKind] = useState<
+    "page" | null
+  >(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState<string>("")
   const [body, setBody] = useState("")
@@ -1181,6 +1213,8 @@ const CapturePanel = () => {
   const refreshMarksDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   )
+  // Prevent a late async open from undoing an immediate drawer close.
+  const feedbackListRequestRef = useRef(0)
 
   useEffect(() => {
     void getSyncStatus().then(setSyncStatusState)
@@ -1266,6 +1300,7 @@ const CapturePanel = () => {
   }, [])
 
   const resume = useCallback(() => {
+    feedbackListRequestRef.current += 1
     if (refreshMarksDebounceRef.current != null) {
       clearTimeout(refreshMarksDebounceRef.current)
       refreshMarksDebounceRef.current = null
@@ -1290,37 +1325,45 @@ const CapturePanel = () => {
     setPendingListDeleteMarkId(null)
     setFullImage(null)
     setPageMarks([])
+    setFeedbackListAnchorKind(null)
     previousFocusRef.current?.focus?.()
     dispatchInternalEvent(EVENT_REVIEW_RESUME)
   }, [])
 
-  const openFeedbackList = useCallback(async () => {
-    if (open && mode === "list") {
+  const openFeedbackList = useCallback(
+    async (anchorKind?: "page", toggle = true) => {
+      const requestId = ++feedbackListRequestRef.current
+      if (open && mode === "list") {
+        setPendingListDeleteMarkId(null)
+        if (toggle) resume()
+        else setFeedbackListAnchorKind(anchorKind ?? null)
+        return
+      }
+
+      const canOpen = await refreshFeedbackList()
+      if (!canOpen || requestId !== feedbackListRequestRef.current) return
+
+      await loadProjects()
+      if (requestId !== feedbackListRequestRef.current) return
+      setMode("list")
+      setCapture(null)
+      setViewingMark(null)
+      setBody("")
+      setReplyDraft("")
+      setEditing(false)
+      setSaveError(null)
+      setSaveWarning(null)
+      setConfirmDelete(false)
+      setReturnToList(false)
+      setReattachMarkId(null)
+      reattachMarkIdRef.current = null
       setPendingListDeleteMarkId(null)
-      resume()
-      return
-    }
-
-    const canOpen = await refreshFeedbackList()
-    if (!canOpen) return
-
-    await loadProjects()
-    setMode("list")
-    setCapture(null)
-    setViewingMark(null)
-    setBody("")
-    setReplyDraft("")
-    setEditing(false)
-    setSaveError(null)
-    setSaveWarning(null)
-    setConfirmDelete(false)
-    setReturnToList(false)
-    setReattachMarkId(null)
-    reattachMarkIdRef.current = null
-    setPendingListDeleteMarkId(null)
-    previousFocusRef.current = document.activeElement as HTMLElement
-    setOpen(true)
-  }, [loadProjects, mode, open, refreshFeedbackList, resume])
+      setFeedbackListAnchorKind(anchorKind ?? null)
+      previousFocusRef.current = document.activeElement as HTMLElement
+      setOpen(true)
+    },
+    [loadProjects, mode, open, refreshFeedbackList, resume]
+  )
 
   useEffect(() => {
     const onCap = (detail: ReviewCaptureDetail) => {
@@ -1411,21 +1454,27 @@ const CapturePanel = () => {
     const onToggleFeedbackList = (e: Event) => {
       if (isInternalEvent(e)) void openFeedbackList()
     }
+    const onOpenPageMarks = (e: Event) => {
+      if (isInternalEvent(e)) void openFeedbackList("page", false)
+    }
     window.addEventListener(
       EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
       onToggleFeedbackList
     )
-    return () =>
+    window.addEventListener(EVENT_REVIEW_OPEN_PAGE_MARKS, onOpenPageMarks)
+    return () => {
       window.removeEventListener(
         EVENT_REVIEW_TOGGLE_FEEDBACK_LIST,
         onToggleFeedbackList
       )
+      window.removeEventListener(EVENT_REVIEW_OPEN_PAGE_MARKS, onOpenPageMarks)
+    }
   }, [openFeedbackList])
 
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = getInternalEventDetail<Partial<OpenMarkDetail>>(e)
-      const markId = detail?.markId ?? detail?.pinId
+      const markId = detail?.markId
       if (!markId) return
       void (async () => {
         await loadProjects()
@@ -1448,14 +1497,8 @@ const CapturePanel = () => {
         void reloadPageMarks(mark.url, mark.projectId)
       })()
     }
-    for (const eventName of OPEN_MARK_EVENTS) {
-      window.addEventListener(eventName, onOpen)
-    }
-    return () => {
-      for (const eventName of OPEN_MARK_EVENTS) {
-        window.removeEventListener(eventName, onOpen)
-      }
-    }
+    window.addEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
+    return () => window.removeEventListener(EVENT_REVIEW_OPEN_MARK, onOpen)
   }, [loadProjects, reloadPageMarks])
 
   useEffect(() => {
@@ -1951,8 +1994,14 @@ const CapturePanel = () => {
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "list") {
-    const openMarks = pageMarks.filter((mark) => mark.status !== "closed")
-    const resolvedMarks = pageMarks.filter((mark) => mark.status === "closed")
+    const visibleMarks =
+      feedbackListAnchorKind === "page"
+        ? pageMarks.filter((mark) => classifyMarkAnchor(mark) === "page")
+        : pageMarks
+    const openMarks = visibleMarks.filter((mark) => mark.status !== "closed")
+    const resolvedMarks = visibleMarks.filter(
+      (mark) => mark.status === "closed"
+    )
 
     return (
       <div
@@ -1989,7 +2038,7 @@ const CapturePanel = () => {
         <SyncStatusNotice status={syncStatus} />
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
-          {pageMarks.length === 0 ? (
+          {visibleMarks.length === 0 ? (
             <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-8 text-center ring-1 ring-[color:var(--yi-ext-border-hairline)]">
               <p className="text-[12px] font-semibold text-[color:var(--yi-ext-text-soft)]">
                 {t("extension.drawer.empty")}
@@ -2374,7 +2423,10 @@ const CapturePanel = () => {
   }
 
   if (mode === "thread" && viewingMark) {
-    const health = computeMarkHealth(viewingMark)
+    const isDashboardPageFeedback = classifyMarkAnchor(viewingMark) === "page"
+    const health = isDashboardPageFeedback
+      ? null
+      : computeMarkHealth(viewingMark)
     const threads = viewingMark.thread
       .slice()
       .sort((a, b) => a.createdAt - b.createdAt)
@@ -2433,13 +2485,19 @@ const CapturePanel = () => {
                     {t("extension.panel.syncFailed")}
                   </span>
                 ) : null}
-                <span
-                  className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
-                  {markHealthLabel(health.label)}
-                </span>
+                {isDashboardPageFeedback ? (
+                  <DashboardPageIndicator />
+                ) : health ? (
+                  <span
+                    className={`${threadBadge} ${threadHealthBadgeClass(health.label)}`}>
+                    {markHealthLabel(health.label)}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
-                {health.description}
+                {isDashboardPageFeedback
+                  ? t("extension.drawer.dashboardPageDescription")
+                  : health?.description}
               </p>
             </div>
             <button

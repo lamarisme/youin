@@ -4,9 +4,9 @@
   "include": [".plasmo/index.d.ts", "./**/*.ts", "./**/*.tsx"],
   "compilerOptions": {
     "allowImportingTsExtensions": true,
+    "moduleResolution": "bundler",
     "paths": {
       "~*": ["./*"],
     },
-    "baseUrl": ".",
   },
 }
