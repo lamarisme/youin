@@ -398,7 +398,7 @@ function ViewChip({
       {typeof count === "number" ? (
         <span
           className={cn(
-            "min-w-3 text-right font-mono text-ui-2xs tabular-nums",
+            "inline-flex min-w-3 items-center justify-center text-center font-mono text-ui-2xs leading-none tabular-nums",
             active ? "text-mark" : "text-ink-3",
           )}
           aria-hidden
