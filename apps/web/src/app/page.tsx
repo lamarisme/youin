@@ -1,14 +1,25 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import {
+  BadgeCheck,
   Briefcase,
+  Camera,
   CircleDot,
+  CreditCard,
   Crosshair,
+  FolderKanban,
+  Globe2,
   Layers,
   ListTodo,
+  MessageSquare,
+  MousePointer2,
   Pin,
+  Puzzle,
+  ScanLine,
   Sparkles,
   Terminal,
+  TicketCheck,
+  Timer,
 } from "lucide-react";
 
 import { BrandLockup } from "@/components/brand-lockup";
@@ -21,26 +32,33 @@ import {
   LandingHeaderAuth,
   LandingMobileSignIn,
 } from "@/components/landing-header-auth";
+import { LandingProductPreview } from "@/components/landing-product-preview";
 
 type LandingNavItem = { href: string; label: string };
 type LoopStep = { title: string; body: string };
+type LandingHero = { proof: string[] };
 type ContextItem = { label: string; value: string; body: string };
 type AudienceItem = { label: string; body: string };
 
 const loopIcons = [Pin, Layers, ListTodo] as const;
+const proofIcons = [BadgeCheck, Puzzle, CreditCard, Globe2] as const;
+const contextIcons = [MousePointer2, Camera, MessageSquare, FolderKanban] as const;
 const audienceIcons = [Briefcase, Sparkles, Terminal] as const;
+const installIcons = [Timer, FolderKanban, ScanLine] as const;
 
 export default async function Home() {
   const t = await getTranslations("landing");
   const messages = (await import("@youin/i18n/messages/en.json")).default;
   const landing = messages.landing as {
     nav: LandingNavItem[];
+    hero: LandingHero;
     loop: { steps: LoopStep[] };
     context: { items: ContextItem[] };
     audience: { items: AudienceItem[] };
   };
 
   const navItems = landing.nav;
+  const heroProof = landing.hero.proof;
   const loopSteps = landing.loop.steps;
   const contextItems = landing.context.items;
   const audienceItems = landing.audience.items;
@@ -77,7 +95,7 @@ export default async function Home() {
                 </a>
               ))}
             </nav>
-            <div className="hidden min-w-0 shrink-0 items-center justify-end sm:flex">
+            <div className="hidden min-w-0 shrink-0 items-center justify-end md:flex">
               <LandingHeaderAuth />
             </div>
           </div>
@@ -102,26 +120,46 @@ export default async function Home() {
 
         <main id="main" className="section-stack pb-[var(--page-y-loose)]">
           <section className="section-reveal">
-            <div className="shell min-w-0 py-[clamp(3.5rem,7vw,7.5rem)]">
-              <div className="w-full text-left relative z-10 grid min-w-0 gap-[var(--space-xl)] px-4">
-                <div className="flex flex-col items-start gap-[var(--space-lg)]">
+            <div className="shell min-w-0 py-[clamp(3.5rem,7vw,6.5rem)]">
+              <div className="relative z-10 grid min-w-0 gap-[clamp(2rem,4vw,3.5rem)] lg:grid-cols-[minmax(0,1.08fr)_minmax(20rem,0.72fr)] lg:items-end">
+                <div className="flex min-w-0 flex-col items-start gap-[var(--space-lg)]">
                   <p className="text-eyebrow">{t("hero.eyebrow")}</p>
-                  <h1 className="text-editorial-hero text-ink text-left max-w-none">
+                  <h1 className="max-w-[11ch] font-display text-[clamp(3.25rem,7.2vw,6.5rem)] font-semibold leading-[0.9] text-balance text-ink">
                     {t("hero.title")}
                   </h1>
-                  <p className="w-full min-w-0 max-w-[75ch] text-pretty text-ui-lg leading-relaxed text-ink-2 text-left">
-                    {t("hero.subtitle")}
-                  </p>
                 </div>
 
-                <div className="flex flex-col items-start justify-start gap-4 sm:flex-row">
-                  <LandingPrimaryButton href="/signup">
-                    {t("hero.chromeCta")}
-                  </LandingPrimaryButton>
-                  <SecondaryCtaButton href="#loop">
-                    {t("hero.secondaryCta")}
-                  </SecondaryCtaButton>
+                <div className="min-w-0 border-t border-rule pt-5 lg:mb-1">
+                  <p className="max-w-[56ch] text-pretty text-ui-lg leading-relaxed text-ink-2">
+                    {t("hero.subtitle")}
+                  </p>
+                  <div className="mt-6 flex flex-col items-start gap-3 sm:flex-row">
+                    <LandingPrimaryButton href="/signup">
+                      {t("hero.chromeCta")}
+                    </LandingPrimaryButton>
+                    <SecondaryCtaButton href="#loop">
+                      {t("hero.secondaryCta")}
+                    </SecondaryCtaButton>
+                  </div>
+                  <ul
+                    className="mt-6 grid gap-x-4 gap-y-2 text-ui-xs text-ink-3 sm:grid-cols-2"
+                    aria-label={t("hero.proofLabel")}
+                  >
+                    {heroProof.map((item, index) => {
+                      const Icon = proofIcons[index] ?? BadgeCheck;
+                      return (
+                        <li key={item} className="flex min-w-0 items-center gap-2">
+                          <Icon className="size-3.5 shrink-0 text-mark" aria-hidden />
+                          <span>{item}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
+              </div>
+
+              <div className="mt-[clamp(2.75rem,6vw,5rem)]">
+                <LandingProductPreview />
               </div>
             </div>
           </section>
@@ -168,14 +206,63 @@ export default async function Home() {
           </section>
 
           <section id="problem" className="shell scroll-mt-32 md:scroll-mt-20">
-            <div className="landing-section-head mb-0 max-w-4xl">
-              <p className="text-eyebrow">{t("problem.eyebrow")}</p>
-              <h2 className="text-editorial-md text-balance text-ink">
-                {t("problem.title")}
-              </h2>
-              <p className="mt-4 max-w-[64ch] text-pretty text-ui-lg leading-relaxed text-ink-2">
-                {t("problem.p1")}
-              </p>
+            <div className="grid gap-[var(--space-2xl)] lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-end">
+              <div className="landing-section-head mb-0 max-w-4xl">
+                <p className="text-eyebrow">{t("problem.eyebrow")}</p>
+                <h2 className="text-editorial-md text-balance text-ink">
+                  {t("problem.title")}
+                </h2>
+                <p className="mt-4 max-w-[64ch] text-pretty text-ui-lg leading-relaxed text-ink-2">
+                  {t("problem.p1")}
+                </p>
+              </div>
+
+              <div className="grid overflow-hidden rounded-lg border border-rule bg-paper-elevated sm:grid-cols-2">
+                <div className="border-b border-rule p-4 sm:border-b-0 sm:border-r sm:p-5">
+                  <p className="font-mono text-ui-2xs uppercase tracking-[0.1em] text-ink-3">
+                    The old handoff
+                  </p>
+                  <div className="mt-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2">
+                    {[Camera, MessageSquare, TicketCheck].map((Icon, index) => (
+                      <div key={index} className="contents">
+                        <div className="grid min-w-0 place-items-center gap-2 text-center">
+                          <Icon className="size-4 text-ink-3" aria-hidden />
+                          <span className="text-ui-2xs text-ink-2">
+                            {index === 0
+                              ? "Screenshot"
+                              : index === 1
+                                ? "Chat thread"
+                                : "Flat ticket"}
+                          </span>
+                        </div>
+                        {index < 2 ? (
+                          <span className="font-mono text-ui-xs text-ink-3">
+                            →
+                          </span>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="relative p-4 sm:p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-mark-soft text-mark">
+                      <Pin className="size-4" aria-hidden />
+                    </span>
+                    <div>
+                      <p className="font-mono text-ui-2xs uppercase tracking-[0.1em] text-mark">
+                        The YouIn handoff
+                      </p>
+                      <p className="mt-2 font-display text-title-sm text-ink">
+                        One mark keeps the whole scene attached.
+                      </p>
+                      <p className="mt-2 text-ui-xs leading-relaxed text-ink-2">
+                        Element, evidence, discussion, and status travel together.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -196,24 +283,30 @@ export default async function Home() {
 
               <div className="rounded-lg border border-rule bg-paper-elevated">
                 <dl className="divide-y divide-rule">
-                  {contextItems.map((item) => (
-                    <div
-                      key={item.label}
-                      className="grid gap-2 px-4 py-4 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-5 sm:px-5"
-                    >
-                      <dt className="font-mono text-ui-xs uppercase text-ink-3">
-                        {item.label}
-                      </dt>
-                      <dd className="min-w-0">
-                        <p className="font-display text-title-sm text-ink">
-                          {item.value}
-                        </p>
-                        <p className="mt-1 text-pretty text-ui-sm leading-relaxed text-ink-2">
-                          {item.body}
-                        </p>
-                      </dd>
-                    </div>
-                  ))}
+                  {contextItems.map((item, index) => {
+                    const Icon = contextIcons[index] ?? Crosshair;
+                    return (
+                      <div
+                        key={item.label}
+                        className="grid gap-3 px-4 py-4 sm:grid-cols-[2rem_7.5rem_minmax(0,1fr)] sm:items-start sm:gap-4 sm:px-5"
+                      >
+                        <span className="inline-flex size-8 items-center justify-center rounded-md border border-rule bg-paper-2 text-mark">
+                          <Icon className="size-3.5" aria-hidden />
+                        </span>
+                        <dt className="font-mono text-ui-xs uppercase text-ink-3 sm:pt-2">
+                          {item.label}
+                        </dt>
+                        <dd className="min-w-0 sm:pt-1">
+                          <p className="font-display text-title-sm text-ink">
+                            {item.value}
+                          </p>
+                          <p className="mt-1 text-pretty text-ui-sm leading-relaxed text-ink-2">
+                            {item.body}
+                          </p>
+                        </dd>
+                      </div>
+                    );
+                  })}
                 </dl>
               </div>
             </div>
@@ -227,18 +320,20 @@ export default async function Home() {
                   {t("audience.title")}
                 </h2>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid overflow-hidden rounded-lg border border-rule bg-paper-elevated sm:grid-cols-3 sm:divide-x sm:divide-rule">
                 {audienceItems.map((item, index) => {
                   const Icon = audienceIcons[index] ?? Crosshair;
                   return (
                     <article
                       key={item.label}
-                      className="rounded-lg border border-rule bg-paper-elevated p-4"
+                      className="border-b border-rule p-5 last:border-b-0 sm:border-b-0"
                     >
-                      <Icon className="mb-5 size-4 text-mark" aria-hidden />
-                      <h3 className="font-display text-title-sm text-ink">
-                        {item.label}
-                      </h3>
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="size-4 text-mark" aria-hidden />
+                        <h3 className="font-display text-title-sm text-ink">
+                          {item.label}
+                        </h3>
+                      </div>
                       <p className="mt-3 text-pretty text-ui-sm leading-relaxed text-ink-2">
                         {item.body}
                       </p>
@@ -276,22 +371,25 @@ export default async function Home() {
                 </div>
 
                 <dl className="divide-y divide-rule border-y border-rule text-ui-sm">
-                  <div className="grid gap-1 py-3">
-                    <dt className="text-ink-3">{t("install.onboardingLabel")}</dt>
-                    <dd className="font-medium text-ink">
-                      {t("install.onboardingValue")}
-                    </dd>
-                  </div>
-                  <div className="grid gap-1 py-3">
-                    <dt className="text-ink-3">{t("install.tabsLabel")}</dt>
-                    <dd className="font-medium text-ink">{t("install.tabsValue")}</dd>
-                  </div>
-                  <div className="grid gap-1 py-3">
-                    <dt className="text-ink-3">{t("install.connectorsLabel")}</dt>
-                    <dd className="font-medium text-ink">
-                      {t("install.connectorsValue")}
-                    </dd>
-                  </div>
+                  {[
+                    [t("install.onboardingLabel"), t("install.onboardingValue")],
+                    [t("install.tabsLabel"), t("install.tabsValue")],
+                    [t("install.connectorsLabel"), t("install.connectorsValue")],
+                  ].map(([label, value], index) => {
+                    const Icon = installIcons[index] ?? CircleDot;
+                    return (
+                      <div
+                        key={label}
+                        className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 py-3.5"
+                      >
+                        <Icon className="mt-0.5 size-4 text-mark" aria-hidden />
+                        <div className="grid gap-1">
+                          <dt className="text-ink-3">{label}</dt>
+                          <dd className="font-medium text-ink">{value}</dd>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </dl>
               </div>
             </div>
