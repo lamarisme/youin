@@ -168,4 +168,13 @@ describe("sync merge", () => {
 
     expect(merged.screenshotUrl).toBe("https://storage.example/fresh")
   })
+
+  it("preserves page-level capture kind during remote sync", () => {
+    const merged = mergeRemoteMark(
+      localMark({ captureKind: "element" }),
+      remoteMark({ captureKind: "page" })
+    )
+
+    expect(merged.captureKind).toBe("page")
+  })
 })

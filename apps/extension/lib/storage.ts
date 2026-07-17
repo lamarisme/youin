@@ -134,8 +134,8 @@ export type MarkSyncOperation =
 export interface Mark {
   id: string
   projectId: string
-  /** Distinguishes attached DOM marks from freeform screenshot rectangles. */
-  captureKind?: "element" | "region"
+  /** Distinguishes element anchors, freeform areas, and page-level notes. */
+  captureKind?: "element" | "region" | "page"
   /** Set after a successful insert into `marks`; avoids duplicate uploads. */
   remoteMarkId?: string
   /** Canonical normalized page URL for matching. */
@@ -574,7 +574,10 @@ function migrateRawMark(raw: unknown): Mark {
         ? p.id
         : legacyMarkStableId(p, createdAt),
     projectId,
-    captureKind: p.captureKind === "region" ? "region" : "element",
+    captureKind:
+      p.captureKind === "region" || p.captureKind === "page"
+        ? p.captureKind
+        : "element",
     url,
     pageTitle:
       typeof p.pageTitle === "string" && p.pageTitle
@@ -1031,7 +1034,10 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
       0,
       Number.MAX_SAFE_INTEGER
     ),
-    captureKind: mark.captureKind === "region" ? "region" : "element"
+    captureKind:
+      mark.captureKind === "region" || mark.captureKind === "page"
+        ? mark.captureKind
+        : "element"
   }
 }
 

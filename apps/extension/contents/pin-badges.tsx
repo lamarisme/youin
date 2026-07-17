@@ -150,6 +150,9 @@ function computeElementLayout(
   for (const runtime of sortedRuntimes) {
     try {
       const { health, pin } = runtime
+      // Detached marks stay available in the page-marks panel for reattachment,
+      // but must not float over an element they are no longer anchored to.
+      if (!health.attached) continue
       const r = health.rect
       if (!r) continue
       if (r.width < 1 && r.height < 1) continue

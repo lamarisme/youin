@@ -202,6 +202,7 @@ function markHealthLabel(label: string): string {
   if (label === "Approximate") return t("extension.panel.approximate")
   if (label === "Stale") return t("extension.panel.stale")
   if (label === "Screenshot") return t("extension.panel.screenshotOnly")
+  if (label === "Page") return t("extension.panel.pageOnly")
   return label
 }
 
@@ -1618,7 +1619,11 @@ const CapturePanel = () => {
       ) {
         void loadProjects()
       }
-      if (changes[KEY_DATA_SCOPE] || changes[KEY_MARKS]) {
+      if (
+        changes[KEY_DATA_SCOPE] ||
+        changes[KEY_MARKS] ||
+        changes[KEY_ACTIVE_PROJECT]
+      ) {
         scheduleReloadPageMarks(capture.url)
       }
     }
@@ -2135,6 +2140,28 @@ const CapturePanel = () => {
         </header>
         <SyncStatusNotice status={syncStatus} />
 
+        <div className="shrink-0 border-y border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-stat)] px-4 py-3">
+          <label htmlFor="feedback-list-project" className={fieldLabel}>
+            {t("extension.panel.reviewProject")}
+          </label>
+          <select
+            id="feedback-list-project"
+            className={selectCls}
+            value={projectId}
+            disabled={!projects.length}
+            onChange={(e) => selectProject(e.target.value)}>
+            {projects.length ? (
+              projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))
+            ) : (
+              <option value="">{t("extension.popup.noProjectLabel")}</option>
+            )}
+          </select>
+        </div>
+
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
           {visibleMarks.length === 0 ? (
             <div className="rounded-[var(--yi-radius-lg)] bg-[color:var(--yi-ext-surface-stat)] px-3 py-8 text-center ring-1 ring-[color:var(--yi-ext-border-hairline)]">
@@ -2247,6 +2274,12 @@ const CapturePanel = () => {
 
   if (mode === "create" && capture) {
     const isRegionCapture = capture.captureKind === "region"
+    const isPageCapture = capture.captureKind === "page"
+    const captureScreenshotAlt = isRegionCapture
+      ? t("extension.panel.regionScreenshotAlt")
+      : isPageCapture
+        ? t("extension.panel.pageScreenshotAlt")
+        : t("extension.panel.elementScreenshotAlt")
     const screenshotPending = Boolean(capture.screenshotPending)
     return (
       <>
@@ -2277,7 +2310,9 @@ const CapturePanel = () => {
                 className="mt-1 text-[12px] leading-snug text-[color:var(--yi-ext-text-muted)]">
                 {isRegionCapture
                   ? t("extension.panel.regionAttached")
-                  : t("extension.panel.elementAttached")}
+                  : isPageCapture
+                    ? t("extension.panel.pageAttached")
+                    : t("extension.panel.elementAttached")}
               </p>
             </div>
             <button
@@ -2304,6 +2339,30 @@ const CapturePanel = () => {
                 onSubmit={() => void handleSave()}
               />
 
+              <div>
+                <label htmlFor="capture-project" className={fieldLabel}>
+                  {t("extension.panel.project")}
+                </label>
+                <select
+                  id="capture-project"
+                  className={selectCls}
+                  value={projectId}
+                  disabled={!projects.length}
+                  onChange={(e) => selectProject(e.target.value)}>
+                  {projects.length ? (
+                    projects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">
+                      {t("extension.popup.noProjectLabel")}
+                    </option>
+                  )}
+                </select>
+              </div>
+
               {screenshotPending ? (
                 <div
                   role="status"
@@ -2320,18 +2379,12 @@ const CapturePanel = () => {
                     onClick={() =>
                       setFullImage({
                         src: capture.elementScreenshotDataUrl!,
-                        alt: isRegionCapture
-                          ? t("extension.panel.regionScreenshotAlt")
-                          : t("extension.panel.elementScreenshotAlt")
+                        alt: captureScreenshotAlt
                       })
                     }>
                     <img
                       src={capture.elementScreenshotDataUrl}
-                      alt={
-                        isRegionCapture
-                          ? t("extension.panel.regionScreenshotAlt")
-                          : t("extension.panel.elementScreenshotAlt")
-                      }
+                      alt={captureScreenshotAlt}
                       className="max-h-44 w-full object-contain object-top"
                     />
                   </button>
@@ -2344,9 +2397,7 @@ const CapturePanel = () => {
                       onClick={() =>
                         setFullImage({
                           src: capture.elementScreenshotDataUrl!,
-                          alt: isRegionCapture
-                            ? t("extension.panel.regionScreenshotAlt")
-                            : t("extension.panel.elementScreenshotAlt")
+                          alt: captureScreenshotAlt
                         })
                       }>
                       <MaximizeIcon />
@@ -2362,7 +2413,7 @@ const CapturePanel = () => {
                 </p>
               ) : null}
 
-              {!isRegionCapture ? (
+              {capture.captureKind === "element" ? (
                 <DomContextPreview
                   snapshot={capture.domSnapshot}
                   selector={capture.selector}
@@ -2418,26 +2469,9 @@ const CapturePanel = () => {
                 </summary>
                 <div className="flex flex-col gap-4 px-3 pb-3 pt-2">
                   <div>
-                    <span className={fieldLabel}>
-                      {t("extension.panel.project")}
-                    </span>
-                    <select
-                      id="capture-project"
-                      className={selectCls}
-                      value={projectId}
-                      onChange={(e) => selectProject(e.target.value)}>
-                      {projects.map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <span className={fieldLabel}>
+                    <label htmlFor="capture-priority" className={fieldLabel}>
                       {t("extension.panel.priority")}
-                    </span>
+                    </label>
                     <select
                       id="capture-priority"
                       className={selectCls}
@@ -2505,7 +2539,9 @@ const CapturePanel = () => {
                 </button>
               </div>
               <p className="text-center text-[10px] text-[color:var(--yi-ext-text-placeholder)]">
-                {t("extension.panel.afterPostResume")}
+                {isPageCapture
+                  ? t("extension.panel.afterPostPage")
+                  : t("extension.panel.afterPostResume")}
                 <span className="mt-0.5 block">
                   {isSignedIn
                     ? t("extension.panel.willSync")
@@ -2531,6 +2567,12 @@ const CapturePanel = () => {
     const opener = threads[0]
     const screenshotSrc =
       viewingMark.screenshotUrl ?? viewingMark.screenshotDataUrl
+    const savedScreenshotAlt =
+      viewingMark.captureKind === "page"
+        ? t("extension.panel.pageScreenshotAlt")
+        : viewingMark.captureKind === "region"
+          ? t("extension.panel.regionScreenshotAlt")
+          : t("extension.panel.savedElementScreenshotAlt")
 
     return (
       <>
@@ -2747,12 +2789,12 @@ const CapturePanel = () => {
                     onClick={() =>
                       setFullImage({
                         src: screenshotSrc,
-                        alt: t("extension.panel.savedElementScreenshotAlt")
+                        alt: savedScreenshotAlt
                       })
                     }>
                     <img
                       src={screenshotSrc}
-                      alt={t("extension.panel.savedElementScreenshotAlt")}
+                      alt={savedScreenshotAlt}
                       className="max-h-48 w-full object-contain object-top"
                     />
                   </button>
@@ -2765,7 +2807,7 @@ const CapturePanel = () => {
                       onClick={() =>
                         setFullImage({
                           src: screenshotSrc,
-                          alt: t("extension.panel.savedElementScreenshotAlt")
+                          alt: savedScreenshotAlt
                         })
                       }>
                       <MaximizeIcon />
@@ -2774,7 +2816,7 @@ const CapturePanel = () => {
                 </div>
               ) : null}
 
-              {viewingMark.captureKind !== "region" ? (
+              {viewingMark.captureKind === "element" ? (
                 <div className="mt-4">
                   <DomContextPreview
                     snapshot={viewingMark.domSnapshot}

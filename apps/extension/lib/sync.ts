@@ -149,7 +149,7 @@ export interface RemoteMark {
   priority: MarkPriority
   selector: string
   viewport: string
-  captureKind?: "element" | "region" | null
+  captureKind?: "element" | "region" | "page" | null
   bbox?: Mark["bbox"] | null
   pageTitle?: string | null
   elementFingerprint?: Mark["elementFingerprint"] | null
@@ -609,7 +609,10 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
     id: `remote_${mark.id}`,
     remoteMarkId: mark.id,
     projectId: mark.projectId || "",
-    captureKind: mark.captureKind === "region" ? "region" : "element",
+    captureKind:
+      mark.captureKind === "region" || mark.captureKind === "page"
+        ? mark.captureKind
+        : "element",
     url: raw,
     pageTitle: mark.pageTitle || undefined,
     elementFingerprint: mark.elementFingerprint || undefined,
@@ -665,7 +668,12 @@ export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
     ...local,
     title: hasPendingEdit ? local.title : mark.title || local.title,
     projectId: mark.projectId || local.projectId,
-    captureKind: mark.captureKind === "region" ? "region" : local.captureKind,
+    captureKind:
+      mark.captureKind === "element" ||
+      mark.captureKind === "region" ||
+      mark.captureKind === "page"
+        ? mark.captureKind
+        : local.captureKind,
     pageTitle: mark.pageTitle || local.pageTitle,
     elementFingerprint: mark.elementFingerprint || local.elementFingerprint,
     bbox: mark.bbox ?? local.bbox,

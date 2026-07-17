@@ -227,7 +227,8 @@ function isReviewCaptureDetail(value: unknown): value is ReviewCaptureDetail {
     value.captureId.length > 0 &&
     (captureKind === undefined ||
       captureKind === "element" ||
-      captureKind === "region") &&
+      captureKind === "region" ||
+      captureKind === "page") &&
     isStringWithMax(value.selector, MAX_SELECTOR_LENGTH) &&
     typeof value.strategy === "string" &&
     REVIEW_CAPTURE_STRATEGIES.has(value.strategy) &&

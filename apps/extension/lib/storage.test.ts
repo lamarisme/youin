@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   accountDataScope,
   appendThreadComment,
+  getActiveProjectId,
   getMarks,
+  getProjects,
   getSyncStatus,
   getWidgetSettings,
   KEY_MARKS,
@@ -15,7 +17,9 @@ import {
   markSyncAttemptSucceeded,
   patchMark,
   removeMark,
+  setActiveProjectId,
   setDataScope,
+  setProjects,
   STORAGE_LIMITS
 } from "./storage"
 
@@ -90,6 +94,33 @@ describe("storage normalization", () => {
     ).toHaveLength(512)
   })
 
+  it("preserves page-level marks without inventing an element attachment", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        {
+          id: "page-mark",
+          captureKind: "page",
+          title: "Review the page flow",
+          thread: [],
+          createdAt: 100,
+          updatedAt: 100,
+          projectId: "project-1",
+          url: "https://example.com/page",
+          selector: "",
+          strategy: "path",
+          bbox: { x: 0, y: 0, width: 1440, height: 900 },
+          viewport: { width: 1440, height: 900, dpr: 2 },
+          outerHTMLPreview: ""
+        }
+      ]
+    })
+
+    const [mark] = await getMarks()
+
+    expect(mark.captureKind).toBe("page")
+    expect(mark.selector).toBe("")
+  })
+
   it("keeps anonymous drafts isolated from account workspace caches", async () => {
     await chrome.storage.local.set({
       [KEY_MARKS]: [
@@ -114,6 +145,31 @@ describe("storage normalization", () => {
     expect((await getMarks()).map((mark) => mark.title)).toEqual([
       "Anonymous draft"
     ])
+  })
+
+  it("persists the selected project independently for each workspace", async () => {
+    const workspaceOne = accountDataScope("user-1", "workspace-1")
+    const workspaceTwo = accountDataScope("user-1", "workspace-2")
+
+    await setDataScope(workspaceOne)
+    await setProjects([
+      { id: "project-1", name: "Website", description: "", createdAt: 1 },
+      { id: "project-2", name: "Mobile", description: "", createdAt: 2 }
+    ])
+    await setActiveProjectId("project-2")
+
+    await setDataScope(workspaceTwo)
+    await setProjects([
+      { id: "project-3", name: "Marketing", description: "", createdAt: 3 }
+    ])
+
+    expect((await getProjects()).map((project) => project.id)).toEqual([
+      "project-3"
+    ])
+    expect(await getActiveProjectId()).toBe("project-3")
+
+    await setDataScope(workspaceOne)
+    expect(await getActiveProjectId()).toBe("project-2")
   })
 
   it("normalizes widget settings and hidden marks", async () => {

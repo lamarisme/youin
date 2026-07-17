@@ -72,7 +72,8 @@ export function createPinModel(mark: Mark): PinModel {
     ...base,
     anchor: {
       kind: "element",
-      captureKind: mark.captureKind,
+      captureKind:
+        mark.captureKind === "page" ? undefined : mark.captureKind,
       selector: mark.selector,
       strategy: mark.strategy,
       savedBounds: { ...mark.bbox },

@@ -58,6 +58,7 @@ type AuthView = "signedOut" | "signedIn"
 type ReviewCommandType =
   | "youin:start-inspect"
   | "youin:start-screenshot"
+  | "youin:create-page-mark"
   | typeof MESSAGE_TOGGLE_FEEDBACK_LIST
 type ReviewCommandMessage = { type: ReviewCommandType }
 
@@ -72,6 +73,9 @@ const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
       required: [REVIEW_MODE_SCRIPT]
     },
     "youin:start-screenshot": {
+      required: [REVIEW_MODE_SCRIPT]
+    },
+    "youin:create-page-mark": {
       required: [REVIEW_MODE_SCRIPT]
     },
     [MESSAGE_TOGGLE_FEEDBACK_LIST]: {
@@ -172,6 +176,17 @@ async function startReviewOnActiveTab(mode: "inspect" | "screenshot"): Promise<{
       type:
         mode === "screenshot" ? "youin:start-screenshot" : "youin:start-inspect"
     },
+    t("extension.popup.openWebsite"),
+    t("extension.popup.startReviewFailed")
+  )
+}
+
+async function createPageMarkOnActiveTab(): Promise<{
+  ok: boolean
+  error?: string
+}> {
+  return sendReviewCommandToActiveTab(
+    { type: "youin:create-page-mark" },
     t("extension.popup.openWebsite"),
     t("extension.popup.startReviewFailed")
   )
@@ -436,6 +451,16 @@ function IndexPopup() {
     setActionError(null)
     void (async () => {
       const r = await startReviewOnActiveTab(mode)
+      if (!r.ok)
+        setActionError(r.error ?? t("extension.popup.startReviewFailed"))
+      else window.close()
+    })()
+  }
+
+  const createPageNote = () => {
+    setActionError(null)
+    void (async () => {
+      const r = await createPageMarkOnActiveTab()
       if (!r.ok)
         setActionError(r.error ?? t("extension.popup.startReviewFailed"))
       else window.close()
@@ -736,6 +761,32 @@ function IndexPopup() {
             </span>
             <span className="block truncate text-[12px] font-semibold">
               {t("extension.popup.screenshot")}
+            </span>
+          </button>
+          <button
+            type="button"
+            disabled={!canReviewPage || domainDisabled || !projectId}
+            aria-label={`${t("extension.popup.pageNote")}: ${t(
+              "extension.popup.pageNoteStartHint"
+            )}`}
+            title={t("extension.popup.pageNoteStartHint")}
+            className={cx(
+              ACTION_TILE,
+              "col-span-2 min-h-[54px]",
+              FOCUS_OUTLINE,
+              PRESS_FEEDBACK
+            )}
+            onClick={createPageNote}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-mark)]">
+              <PageNoteIcon />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[12px] font-semibold">
+                {t("extension.popup.pageNote")}
+              </span>
+              <span className="mt-0.5 block truncate text-[10px] text-[color:var(--yi-ext-text-muted)]">
+                {t("extension.popup.pageNoteStartHint")}
+              </span>
             </span>
           </button>
         </div>
@@ -1414,6 +1465,23 @@ function ScreenshotIcon() {
       aria-hidden="true">
       <path d="M6.5 3.5h7v7M3.5 6.5v7h7" />
       <rect x="9.5" y="9.5" width="7" height="7" rx="1" />
+    </svg>
+  )
+}
+
+function PageNoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5.5 3.5h6l3 3v10h-9z" />
+      <path d="M11.5 3.5v3h3M8 10h4M8 12.8h3" />
     </svg>
   )
 }

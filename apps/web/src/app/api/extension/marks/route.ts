@@ -590,7 +590,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         priority: String(mark.priority ?? "medium"),
         selector: String(mark.selector ?? ""),
         viewport: String(mark.viewport ?? ""),
-        captureKind: mark.capture_kind === "region" ? "region" : "element",
+        captureKind:
+          mark.capture_kind === "region" || mark.capture_kind === "page"
+            ? mark.capture_kind
+            : "element",
         bbox: mark.capture_bbox ?? null,
         pageTitle: String(mark.page_title ?? "") || null,
         elementFingerprint: mark.element_fingerprint ?? null,
@@ -658,7 +661,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     asString(input.description),
   );
   const domSnapshot = normalizeDomSnapshotForStorage(input.domSnapshot);
-  const captureKind = input.captureKind === "region" ? "region" : "element";
+  const captureKind =
+    input.captureKind === "region" || input.captureKind === "page"
+      ? input.captureKind
+      : "element";
   const captureBbox = normalizeCaptureBbox(input.bbox);
   const pageTitle = asString(input.pageTitle).trim().slice(0, 280) || null;
   const elementFingerprint = normalizeElementFingerprintForStorage(

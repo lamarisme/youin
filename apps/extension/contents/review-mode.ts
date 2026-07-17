@@ -10,6 +10,7 @@ import { captureElementDomSnapshot } from "../lib/dom-snapshot"
 import { captureElementFingerprint } from "../lib/element-fingerprint"
 import {
   EVENT_LOCATION_CHANGE,
+  EVENT_REVIEW_CREATE_PAGE_MARK,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
@@ -838,6 +839,53 @@ async function captureRegionAndDispatch(rect: {
   })()
 }
 
+async function capturePageAndDispatch() {
+  const settings = await getWidgetSettings()
+  if (isHostDisabled(location.href, settings)) return
+
+  const captureId = makeCaptureId()
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpr: window.devicePixelRatio
+  }
+  const detail: ReviewCaptureDetail = {
+    captureId,
+    captureKind: "page",
+    selector: "",
+    strategy: "path",
+    bbox: {
+      x: Math.round(window.scrollX),
+      y: Math.round(window.scrollY),
+      width: Math.round(window.innerWidth),
+      height: Math.round(window.innerHeight)
+    },
+    viewport,
+    url: normalizePageUrlForMatch(location.href),
+    pageTitle: document.title,
+    outerHTML: "",
+    screenshotPending: settings.captureScreenshots
+  }
+
+  await dispatchReviewCapture(detail)
+  if (!settings.captureScreenshots) return
+
+  void (async () => {
+    const captureResult = await captureRegionViaTab({
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight
+    })
+    dispatchCaptureUpdateToPanel({
+      captureId,
+      elementScreenshotDataUrl: captureResult.dataUrl,
+      screenshotPending: false,
+      screenshotCaptureError: captureResult.error
+    })
+  })()
+}
+
 function onClick(e: MouseEvent) {
   const target = actualEventElement(e)
   if (!target || isYouInExtensionEvent(e)) return
@@ -1091,6 +1139,9 @@ window.addEventListener(EVENT_REVIEW_START, (e) => {
   if (reviewMode === "screenshot") activateRegion()
   else activate()
 })
+window.addEventListener(EVENT_REVIEW_CREATE_PAGE_MARK, (e) => {
+  if (isInternalEvent(e)) void capturePageAndDispatch()
+})
 window.addEventListener(EVENT_REVIEW_EXIT, (e) => {
   if (isInternalEvent(e)) deactivate()
 })
@@ -1127,6 +1178,11 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
   }
   if (t === "youin:start-screenshot") {
     activateRegion()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:create-page-mark") {
+    void capturePageAndDispatch()
     sendResponse({ ok: true })
     return true
   }

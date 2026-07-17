@@ -3,6 +3,7 @@ export const EVENT_REVIEW_EXIT = "youin:review:exit"
 export const EVENT_REVIEW_STATE = "youin:review:state"
 export const EVENT_REVIEW_CAPTURE = "youin:review:capture"
 export const EVENT_REVIEW_CAPTURE_UPDATE = "youin:review:capture-update"
+export const EVENT_REVIEW_CREATE_PAGE_MARK = "youin:review:create-page-mark"
 export const EVENT_REVIEW_RESUME = "youin:review:resume"
 export const EVENT_REVIEW_PAUSE = "youin:review:pause"
 export const EVENT_REVIEW_OPEN_MARK = "youin:review:open-mark"
@@ -41,7 +42,7 @@ export interface OpenMarkDetail {
 export interface ReviewCaptureDetail {
   /** Correlates async screenshot work with the capture that requested it. */
   captureId: string
-  captureKind?: "element" | "region"
+  captureKind?: "element" | "region" | "page"
   selector: string
   strategy: "test-id" | "id" | "aria" | "path"
   bbox: { x: number; y: number; width: number; height: number }

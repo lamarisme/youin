@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_PAGE_LOCATION_CHANGE,
+  EVENT_REVIEW_CREATE_PAGE_MARK,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
@@ -152,6 +153,23 @@ function ScreenshotIcon() {
   )
 }
 
+function PageNoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5.5 3.5h6l3 3v10h-9z" />
+      <path d="M11.5 3.5v3h3M8 10h4M8 12.8h3" />
+    </svg>
+  )
+}
+
 function XIcon() {
   return (
     <svg
@@ -269,6 +287,12 @@ function Widget() {
     dispatchInternalEvent(EVENT_REVIEW_START, { mode })
   }
 
+  const createPageMark = async () => {
+    setPinnedOpen(false)
+    if (!(await ensureReviewSurface(REVIEW_MODE_SCRIPT.fileMarker))) return
+    dispatchInternalEvent(EVENT_REVIEW_CREATE_PAGE_MARK)
+  }
+
   const toggleDrawer = async () => {
     if (!(await ensureReviewSurface(CAPTURE_PANEL_SCRIPT.fileMarker, true)))
       return
@@ -304,6 +328,14 @@ function Widget() {
         className={modeButtonClass()}
         onClick={() => void startReview("screenshot")}>
         <ScreenshotIcon />
+      </button>
+      <button
+        type="button"
+        title={t("extension.popup.pageNote")}
+        aria-label={t("extension.widget.startPageNoteAria")}
+        className={modeButtonClass()}
+        onClick={() => void createPageMark()}>
+        <PageNoteIcon />
       </button>
     </div>
   )
