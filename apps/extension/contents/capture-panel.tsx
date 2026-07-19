@@ -46,12 +46,14 @@ import {
   addMarkWithFallback,
   appendThreadComment,
   enqueueMarkSyncOp,
+  filterMarksForWorkspaceView,
   getActiveProjectId,
   getMarks,
   getMarksForPage,
   getProjects,
   getSyncStatus,
   getWidgetSettings,
+  getWorkspaceViews,
   isHostDisabled,
   KEY_ACTIVE_PROJECT,
   KEY_DATA_SCOPE,
@@ -59,6 +61,7 @@ import {
   KEY_PROJECTS,
   KEY_SYNC_STATUS,
   KEY_WIDGET_SETTINGS,
+  KEY_WORKSPACE_VIEWS,
   makeMarkId,
   markSyncFailure,
   patchMark,
@@ -71,7 +74,8 @@ import {
   type MarkPriority,
   type MarkStatus,
   type Project,
-  type SyncStatus
+  type SyncStatus,
+  type WorkspaceView
 } from "../lib/storage"
 import { WEB_APP_URL } from "../lib/supabase"
 import {
@@ -1178,6 +1182,8 @@ const CapturePanel = () => {
     "page" | null
   >(null)
   const [projects, setProjects] = useState<Project[]>([])
+  const [workspaceViews, setWorkspaceViews] = useState<WorkspaceView[]>([])
+  const [selectedViewId, setSelectedViewId] = useState("all")
   const [projectId, setProjectId] = useState<string>("")
   const [body, setBody] = useState("")
   const [priority, setPriority] = useState<MarkPriority>("medium")
@@ -1286,8 +1292,9 @@ const CapturePanel = () => {
   )
 
   const loadProjects = useCallback(async () => {
-    const [projectRows, activeProject] = await Promise.all([
+    const [projectRows, viewRows, activeProject] = await Promise.all([
       getProjects(),
+      getWorkspaceViews(),
       getActiveProjectId()
     ])
     const nextProjectId = projectRows.some(
@@ -1297,6 +1304,12 @@ const CapturePanel = () => {
       : projectRows[0]?.id || ""
 
     setProjects(projectRows)
+    setWorkspaceViews(viewRows)
+    setSelectedViewId((current) =>
+      current === "all" || viewRows.some((view) => view.id === current)
+        ? current
+        : "all"
+    )
     setProjectId(nextProjectId)
     if (nextProjectId && nextProjectId !== activeProject) {
       void setActiveProjectId(nextProjectId)
@@ -1330,6 +1343,7 @@ const CapturePanel = () => {
     setFullImage(null)
     setPageMarks([])
     setFeedbackListAnchorKind(null)
+    setSelectedViewId("all")
     previousFocusRef.current?.focus?.()
     dispatchInternalEvent(EVENT_REVIEW_RESUME)
   }, [])
@@ -1536,7 +1550,8 @@ const CapturePanel = () => {
       if (
         changes[KEY_DATA_SCOPE] ||
         changes[KEY_PROJECTS] ||
-        changes[KEY_ACTIVE_PROJECT]
+        changes[KEY_ACTIVE_PROJECT] ||
+        changes[KEY_WORKSPACE_VIEWS]
       ) {
         void loadProjects()
       }
@@ -1999,12 +2014,18 @@ const CapturePanel = () => {
     "youin-capture-panel pointer-events-auto fixed inset-y-0 end-0 flex h-full w-[min(380px,calc(100vw-16px))] min-w-0 flex-col border-s border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-ext-surface-panel)] font-sans text-[color:var(--yi-ext-text)] shadow-[var(--yi-ext-shadow-dock)] tabular-nums antialiased motion-reduce:animate-none [font-feature-settings:'ss01','cv11'] animate-[youin-capture-dock-in_220ms_var(--yi-ease-out-expo)_both]"
 
   if (mode === "list") {
-    const visibleMarks =
+    const scopedMarks =
       feedbackListAnchorKind === "page"
         ? pageMarks.filter((mark) =>
             isPageAnchoredPinModel(createPinModel(mark))
           )
         : pageMarks
+    const selectedView = workspaceViews.find(
+      (view) => view.id === selectedViewId
+    )
+    const visibleMarks = selectedView
+      ? filterMarksForWorkspaceView(scopedMarks, selectedView.filters)
+      : scopedMarks
     const openMarks = visibleMarks.filter((mark) => mark.status !== "closed")
     const resolvedMarks = visibleMarks.filter(
       (mark) => mark.status === "closed"
@@ -2043,6 +2064,21 @@ const CapturePanel = () => {
           </button>
         </header>
         <SyncStatusNotice status={syncStatus} />
+
+        <label className="shrink-0 px-3 pb-1">
+          <span className={fieldLabel}>{t("extension.drawer.view")}</span>
+          <select
+            className={selectCls}
+            value={selectedViewId}
+            onChange={(event) => setSelectedViewId(event.target.value)}>
+            <option value="all">{t("extension.drawer.allViews")}</option>
+            {workspaceViews.map((view) => (
+              <option key={view.id} value={view.id}>
+                {view.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-3 [scrollbar-gutter:stable]">
           {visibleMarks.length === 0 ? (

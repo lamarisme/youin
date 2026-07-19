@@ -1,4 +1,4 @@
-// Pull workspace projects from Supabase into chrome.storage + push local captures as marks.
+// Pull workspace context from Supabase into chrome.storage + push local captures as marks.
 
 import { normalizeMarkPriority, normalizeMarkStatus } from "@youin/domain"
 
@@ -17,6 +17,7 @@ import {
   setActiveProjectId,
   setDataScope,
   setProjects,
+  setWorkspaceViews,
   type Mark,
   type MarkPriority,
   type Project
@@ -74,7 +75,7 @@ export interface SyncWorkspaceResult {
 }
 
 /**
- * Fetch projects for the dashboard-active workspace and replace chrome.storage mirrors.
+ * Fetch context for the dashboard-active workspace and replace chrome.storage mirrors.
  */
 export async function syncWorkspaceFromRemote(
   userId: string
@@ -93,6 +94,7 @@ export async function syncWorkspaceFromRemote(
   await setDataScope(accountDataScope(userId, context.workspaceId))
   const nextProjects = context.projects
   await setProjects(nextProjects)
+  await setWorkspaceViews(context.views)
 
   if (!nextProjects.length) {
     await setActiveProjectId("")

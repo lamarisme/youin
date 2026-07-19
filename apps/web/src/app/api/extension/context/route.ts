@@ -92,6 +92,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .order("created_at", { ascending: true });
   if (projectsError) return jsonError(projectsError.message, 400);
 
+  const { data: views, error: viewsError } = await supabase
+    .from("workspace_views")
+    .select("id,name,filters")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: true });
+  if (viewsError) return jsonError(viewsError.message, 400);
+
   return NextResponse.json(
     {
       workspace: {
@@ -103,6 +110,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         name: String(project.name ?? "General"),
         description: String(project.description ?? ""),
         createdAt: (project.created_at as string | null) ?? null,
+      })),
+      views: (views ?? []).map((view) => ({
+        id: view.id as string,
+        name: String(view.name ?? "View"),
+        filters: view.filters ?? {},
       })),
     },
     { headers: CORS_HEADERS },

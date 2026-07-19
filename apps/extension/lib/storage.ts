@@ -16,6 +16,7 @@ import { normalizePageUrlForMatch } from "./page-url"
 import { withStorageMutationLock } from "./storage-lock"
 
 export const KEY_PROJECTS = "youin:projects"
+export const KEY_WORKSPACE_VIEWS = "youin:workspace-views"
 export const KEY_ACTIVE_PROJECT = "youin:active-project-id"
 // Backward compatibility: existing extension installs persist marks under the old pins key.
 export const KEY_MARKS = "youin:pins"
@@ -87,6 +88,24 @@ export interface LocalThreadMessage {
 
 export type MarkStatus = DomainMarkStatus
 export type MarkPriority = DomainMarkPriority
+export type WorkspaceViewStatusFilter = "all" | MarkStatus
+export type WorkspaceViewPriorityFilter = "all" | MarkPriority
+export type WorkspaceViewSortMode = "recent" | "oldest" | "priority" | "status"
+
+export interface WorkspaceViewFilters {
+  projectId: string
+  status: WorkspaceViewStatusFilter
+  priority: WorkspaceViewPriorityFilter
+  q: string
+  sort: WorkspaceViewSortMode
+}
+
+export interface WorkspaceView {
+  id: string
+  name: string
+  filters: WorkspaceViewFilters
+}
+
 export type MarkSyncState = "synced" | "pending" | "failed"
 export type SyncStatusState = "idle" | "syncing" | "synced" | "failed"
 
@@ -244,6 +263,100 @@ function normalizeStoredProject(value: unknown): Project | undefined {
     description:
       boundedString(value.description, STORAGE_LIMITS.projectDescription) ?? "",
     createdAt: finiteNumber(value.createdAt, 0, 0, Number.MAX_SAFE_INTEGER)
+  }
+}
+
+const WORKSPACE_VIEW_SORT_MODES: WorkspaceViewSortMode[] = [
+  "recent",
+  "oldest",
+  "priority",
+  "status"
+]
+
+export function normalizeWorkspaceView(
+  value: unknown
+): WorkspaceView | undefined {
+  if (!isRecord(value)) return undefined
+  const id = boundedString(value.id, 180)?.trim()
+  if (!id) return undefined
+  const name = boundedString(value.name, 120)?.trim()
+  const filters = isRecord(value.filters) ? value.filters : {}
+  const statusRaw = filters.status
+  const priorityRaw = filters.priority
+  const sortRaw = filters.sort
+  return {
+    id,
+    name: name || "View",
+    filters: {
+      projectId: boundedString(filters.projectId, 180)?.trim() || "all",
+      status:
+        statusRaw === "open" ||
+        statusRaw === "closed" ||
+        statusRaw === "resolved"
+          ? normalizeMarkStatus(statusRaw)
+          : "all",
+      priority:
+        priorityRaw === "all"
+          ? "all"
+          : isMarkPriority(priorityRaw)
+            ? priorityRaw
+            : "all",
+      q: boundedString(filters.q, 160) ?? "",
+      sort:
+        typeof sortRaw === "string" &&
+        WORKSPACE_VIEW_SORT_MODES.includes(sortRaw as WorkspaceViewSortMode)
+          ? (sortRaw as WorkspaceViewSortMode)
+          : "recent"
+    }
+  }
+}
+
+const WORKSPACE_VIEW_PRIORITY_RANK: Record<MarkPriority, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3
+}
+
+export function filterMarksForWorkspaceView(
+  marks: readonly Mark[],
+  filters: WorkspaceViewFilters
+): Mark[] {
+  const query = filters.q.trim().toLowerCase()
+  const filtered = marks.filter((mark) => {
+    if (filters.projectId !== "all" && mark.projectId !== filters.projectId) {
+      return false
+    }
+    if (filters.status !== "all" && mark.status !== filters.status) return false
+    if (filters.priority !== "all" && mark.priority !== filters.priority) {
+      return false
+    }
+    if (query) {
+      const haystack =
+        `${mark.title} ${mark.url} ${mark.pageTitle ?? ""} ${mark.id} ${mark.remoteMarkId ?? ""}`.toLowerCase()
+      if (!haystack.includes(query)) return false
+    }
+    return true
+  })
+
+  switch (filters.sort) {
+    case "oldest":
+      return filtered.sort((a, b) => a.createdAt - b.createdAt)
+    case "priority":
+      return filtered.sort((a, b) => {
+        const rank =
+          WORKSPACE_VIEW_PRIORITY_RANK[a.priority] -
+          WORKSPACE_VIEW_PRIORITY_RANK[b.priority]
+        return rank || b.createdAt - a.createdAt
+      })
+    case "status":
+      return filtered.sort((a, b) => {
+        if (a.status === b.status) return b.createdAt - a.createdAt
+        return a.status === "open" ? -1 : 1
+      })
+    case "recent":
+    default:
+      return filtered.sort((a, b) => b.createdAt - a.createdAt)
   }
 }
 
@@ -719,6 +832,40 @@ export async function setProjectsForScope(
 
 export async function setProjects(projects: Project[]): Promise<boolean> {
   return setProjectsForScope(await getDataScope(), projects)
+}
+
+export async function getWorkspaceViewsForScope(
+  scope: string
+): Promise<WorkspaceView[]> {
+  const stored = await readScopedArray(KEY_WORKSPACE_VIEWS, scope)
+  return stored
+    .map(normalizeWorkspaceView)
+    .filter((view): view is WorkspaceView => Boolean(view))
+}
+
+export async function getWorkspaceViews(): Promise<WorkspaceView[]> {
+  return getWorkspaceViewsForScope(await getDataScope())
+}
+
+export async function setWorkspaceViewsForScope(
+  scope: string,
+  views: WorkspaceView[]
+): Promise<boolean> {
+  return withStorageMutationLock(() =>
+    writeScoped(
+      KEY_WORKSPACE_VIEWS,
+      views
+        .map(normalizeWorkspaceView)
+        .filter((view): view is WorkspaceView => Boolean(view)),
+      scope
+    )
+  )
+}
+
+export async function setWorkspaceViews(
+  views: WorkspaceView[]
+): Promise<boolean> {
+  return setWorkspaceViewsForScope(await getDataScope(), views)
 }
 
 export async function addProject(project: Project): Promise<boolean> {

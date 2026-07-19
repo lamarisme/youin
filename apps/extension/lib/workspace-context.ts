@@ -1,11 +1,16 @@
 import { getSession } from "./auth"
+import {
+  normalizeWorkspaceView,
+  type Project,
+  type WorkspaceView
+} from "./storage"
 import { WEB_APP_URL } from "./supabase"
-import type { Project } from "./storage"
 
 export interface ActiveWorkspaceContext {
   workspaceId: string
   workspaceName: string
   projects: Project[]
+  views: WorkspaceView[]
 }
 
 interface ExtensionContextResponse {
@@ -14,6 +19,7 @@ interface ExtensionContextResponse {
     name?: unknown
   } | null
   projects?: unknown
+  views?: unknown
 }
 
 function asString(value: unknown): string {
@@ -69,6 +75,11 @@ export async function fetchActiveWorkspaceContext(): Promise<ActiveWorkspaceCont
       ? payload.projects
           .map(normalizeProject)
           .filter((project): project is Project => Boolean(project))
+      : [],
+    views: Array.isArray(payload.views)
+      ? payload.views
+          .map(normalizeWorkspaceView)
+          .filter((view): view is WorkspaceView => Boolean(view))
       : []
   }
 }

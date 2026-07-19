@@ -464,6 +464,8 @@
       "pageFeedback": "Page feedback",
       "openResolved": "{open} open · {resolved} closed",
       "close": "Close page feedback",
+      "view": "View",
+      "allViews": "All Views",
       "dashboardPageLevel": "Dashboard · Page-level",
       "dashboardPageDescription": "Created as page-level feedback in the dashboard.",
       "empty": "No feedback on this page yet.",

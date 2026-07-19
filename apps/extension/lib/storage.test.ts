@@ -3,20 +3,48 @@ import { describe, expect, it } from "vitest"
 import {
   accountDataScope,
   appendThreadComment,
+  filterMarksForWorkspaceView,
   getMarks,
   getSyncStatus,
   getWidgetSettings,
+  getWorkspaceViews,
   KEY_MARKS,
   KEY_SYNC_STATUS,
   KEY_WIDGET_SETTINGS,
+  LOCAL_DATA_SCOPE,
   markSyncAttemptFailed,
   markSyncAttemptStarted,
   markSyncAttemptSucceeded,
-  LOCAL_DATA_SCOPE,
   patchMark,
   setDataScope,
-  STORAGE_LIMITS
+  setWorkspaceViews,
+  STORAGE_LIMITS,
+  type Mark,
+  type WorkspaceView
 } from "./storage"
+
+function workspaceViewMark(overrides: Partial<Mark>): Mark {
+  return {
+    id: "mark-1",
+    projectId: "project-1",
+    captureKind: "element",
+    url: "https://example.com/path",
+    origin: "https://example.com",
+    pathname: "/path",
+    selector: "#target",
+    strategy: "id",
+    bbox: { x: 0, y: 0, width: 10, height: 10 },
+    viewport: { width: 1440, height: 900, dpr: 1 },
+    title: "Feedback",
+    thread: [],
+    status: "open",
+    priority: "medium",
+    createdAt: 100,
+    updatedAt: 100,
+    outerHTMLPreview: "",
+    ...overrides
+  }
+}
 
 describe("storage normalization", () => {
   it("migrates legacy pins and bounds large fields", async () => {
@@ -73,6 +101,63 @@ describe("storage normalization", () => {
     expect((await getMarks()).map((mark) => mark.title)).toEqual([
       "Anonymous draft"
     ])
+  })
+
+  it("keeps workspace views isolated by account workspace scope", async () => {
+    const views: WorkspaceView[] = [
+      {
+        id: "view-1",
+        name: "Launch blockers",
+        filters: {
+          projectId: "project-1",
+          status: "open",
+          priority: "high",
+          q: "launch",
+          sort: "priority"
+        }
+      }
+    ]
+
+    await setDataScope(accountDataScope("user-1", "workspace-1"))
+    await setWorkspaceViews(views)
+    expect(await getWorkspaceViews()).toEqual(views)
+
+    await setDataScope(accountDataScope("user-1", "workspace-2"))
+    expect(await getWorkspaceViews()).toEqual([])
+  })
+
+  it("filters workspace views using only existing mark fields", () => {
+    const marks = [
+      workspaceViewMark({
+        id: "matching",
+        title: "Launch button is blocked",
+        priority: "high",
+        createdAt: 200
+      }),
+      workspaceViewMark({
+        id: "wrong-priority",
+        title: "Launch button spacing",
+        priority: "low",
+        createdAt: 100
+      }),
+      workspaceViewMark({
+        id: "wrong-status",
+        title: "Launch button resolved",
+        priority: "high",
+        status: "closed",
+        createdAt: 50
+      })
+    ]
+
+    expect(
+      filterMarksForWorkspaceView(marks, {
+        projectId: "project-1",
+        status: "open",
+        priority: "high",
+        q: "launch",
+        sort: "oldest"
+      }).map((mark) => mark.id)
+    ).toEqual(["matching"])
   })
 
   it("normalizes widget settings and hidden marks", async () => {
