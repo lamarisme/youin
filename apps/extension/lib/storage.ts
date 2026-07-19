@@ -153,8 +153,8 @@ export type MarkSyncOperation =
 export interface Mark {
   id: string
   projectId: string
-  /** Distinguishes attached DOM marks from freeform screenshot rectangles. */
-  captureKind?: "element" | "region"
+  /** Distinguishes element anchors, freeform areas, and page-level notes. */
+  captureKind?: "element" | "region" | "page"
   /** Set after a successful insert into `marks`; avoids duplicate uploads. */
   remoteMarkId?: string
   /** Canonical normalized page URL for matching. */
@@ -543,12 +543,39 @@ function normalizeDomSnapshot(value: unknown): ElementDomSnapshot | undefined {
 function normalizeElementFingerprint(
   value: unknown
 ): ElementFingerprint | undefined {
-  if (!isRecord(value) || value.version !== 1) return undefined
+  if (!isRecord(value) || (value.version !== 1 && value.version !== 2)) {
+    return undefined
+  }
   const tagName = boundedString(value.tagName, 80)?.trim().toLowerCase()
   if (!tagName || !/^[a-z][a-z0-9-]*$/.test(tagName)) return undefined
   const role = boundedString(value.role, 80)?.trim().toLowerCase()
   const ariaLabelHash = boundedString(value.ariaLabelHash, 24)?.trim()
   const textHash = boundedString(value.textHash, 24)?.trim()
+  if (value.version === 2) {
+    const ancestorHash = boundedString(value.ancestorHash, 24)?.trim()
+    const rawCandidates = Array.isArray(value.selectorCandidates)
+      ? value.selectorCandidates
+      : []
+    const selectorCandidates = rawCandidates.slice(0, 5).flatMap((item) => {
+      if (!isRecord(item) || !isStrategy(item.strategy)) return []
+      const selector = boundedString(item.selector, 512)?.trim()
+      return selector ? [{ selector, strategy: item.strategy }] : []
+    })
+    const rawPoint = isRecord(value.anchorPoint) ? value.anchorPoint : {}
+    return {
+      version: 2,
+      tagName,
+      role: role || undefined,
+      ariaLabelHash: ariaLabelHash || undefined,
+      textHash: textHash || undefined,
+      ancestorHash: ancestorHash || undefined,
+      selectorCandidates,
+      anchorPoint: {
+        x: finiteNumber(rawPoint.x, 1, 0, 1),
+        y: finiteNumber(rawPoint.y, 0, 0, 1)
+      }
+    }
+  }
   return {
     version: 1,
     tagName,
@@ -660,7 +687,10 @@ function migrateRawMark(raw: unknown): Mark {
         ? p.id
         : legacyMarkStableId(p, createdAt),
     projectId,
-    captureKind: p.captureKind === "region" ? "region" : "element",
+    captureKind:
+      p.captureKind === "region" || p.captureKind === "page"
+        ? p.captureKind
+        : "element",
     url,
     pageTitle:
       typeof p.pageTitle === "string" && p.pageTitle
@@ -722,7 +752,9 @@ async function write(key: string, value: unknown): Promise<boolean> {
   }
 }
 
-function isScopedEnvelope<T>(value: unknown): value is ScopedStorageEnvelope<T> {
+function isScopedEnvelope<T>(
+  value: unknown
+): value is ScopedStorageEnvelope<T> {
   if (!value || typeof value !== "object") return false
   const row = value as Record<string, unknown>
   return (
@@ -878,11 +910,16 @@ export async function addProject(project: Project): Promise<boolean> {
   })
 }
 
-export async function getActiveProjectIdForScope(scope: string): Promise<string> {
+export async function getActiveProjectIdForScope(
+  scope: string
+): Promise<string> {
   const id = await readScoped<string | null>(KEY_ACTIVE_PROJECT, null, scope)
   const projects = await getProjectsForScope(scope)
   if (id && projects.some((project) => project.id === id)) return id
-  return projects[0]?.id ?? (scope === LOCAL_DATA_SCOPE ? DEFAULT_PROJECTS[0].id : "")
+  return (
+    projects[0]?.id ??
+    (scope === LOCAL_DATA_SCOPE ? DEFAULT_PROJECTS[0].id : "")
+  )
 }
 
 export async function getActiveProjectId(): Promise<string> {
@@ -1144,7 +1181,10 @@ function sanitizeMarkForStorage(mark: Mark): Mark {
       0,
       Number.MAX_SAFE_INTEGER
     ),
-    captureKind: mark.captureKind === "region" ? "region" : "element"
+    captureKind:
+      mark.captureKind === "region" || mark.captureKind === "page"
+        ? mark.captureKind
+        : "element"
   }
 }
 
@@ -1232,9 +1272,7 @@ export async function saveMarksForScope(
   scope: string,
   marks: Mark[]
 ): Promise<boolean> {
-  return withStorageMutationLock(() =>
-    saveMarksForScopeUnlocked(scope, marks)
-  )
+  return withStorageMutationLock(() => saveMarksForScopeUnlocked(scope, marks))
 }
 
 export async function saveMarks(marks: Mark[]): Promise<boolean> {
@@ -1267,12 +1305,26 @@ export async function removeMark(markId: string): Promise<Mark | undefined> {
     if (ix < 0) return undefined
     const mark = marks[ix]
     if (mark.remoteMarkId) {
-      marks[ix] = { ...mark, localHiddenAt: Date.now(), updatedAt: Date.now() }
+      const now = Date.now()
+      const deleteOperation: MarkSyncOperation = {
+        id: makeSyncOpId(),
+        type: "delete",
+        createdAt: now,
+        attempts: 0
+      }
+      marks[ix] = {
+        ...mark,
+        localHiddenAt: now,
+        pendingSyncOps: [deleteOperation],
+        syncState: "pending",
+        syncError: undefined,
+        updatedAt: now
+      }
     } else {
       marks.splice(ix, 1)
     }
     const ok = await saveMarksForScopeUnlocked(scope, marks)
-    return ok ? mark : undefined
+    return ok ? marks[ix] ?? mark : undefined
   })
 }
 

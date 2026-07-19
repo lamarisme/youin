@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { generateSelector, resolveSelector } from "./selector"
+import {
+  generateSelector,
+  generateSelectorCandidates,
+  resolveSelector,
+  resolveSelectorAll
+} from "./selector"
 
 describe("generateSelector", () => {
   it("prefers stable test ids", () => {
@@ -11,6 +16,18 @@ describe("generateSelector", () => {
       selector: '[data-testid="save"]',
       strategy: "test-id"
     })
+  })
+
+  it("prefers explicit YouIn anchors and retains independent fallbacks", () => {
+    document.body.innerHTML = `<button data-youin-anchor="save-action" data-testid="save" aria-label="Save">Save</button>`
+    const button = document.querySelector("button")!
+
+    expect(generateSelectorCandidates(button)).toEqual([
+      { selector: '[data-youin-anchor="save-action"]', strategy: "test-id" },
+      { selector: '[data-testid="save"]', strategy: "test-id" },
+      { selector: 'button[aria-label="Save"]', strategy: "aria" },
+      { selector: "body > button", strategy: "path" }
+    ])
   })
 
   it("uses stable ids before aria selectors", () => {
@@ -65,5 +82,11 @@ describe("generateSelector", () => {
 
     expect(result.selector).toBe('#host >>> [data-testid="save"]')
     expect(resolveSelector(result.selector)).toBe(button)
+  })
+
+  it("returns all final matches for confidence-based resolution", () => {
+    document.body.innerHTML = `<main><button>One</button><button>Two</button></main>`
+
+    expect(resolveSelectorAll("main > button")).toHaveLength(2)
   })
 })

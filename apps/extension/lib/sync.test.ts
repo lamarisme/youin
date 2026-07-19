@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest"
+import type { Session } from "@supabase/supabase-js"
+import { describe, expect, it, vi } from "vitest"
 
+import * as auth from "./auth"
 import type { Mark } from "./storage"
-import { mergeRemoteMark, type RemoteMark } from "./sync"
+import {
+  mergeRemoteMark,
+  pushMarkDeleteToWorkspace,
+  type RemoteMark
+} from "./sync"
 
 function localMark(patch: Partial<Mark> = {}): Mark {
   return {
@@ -80,6 +86,27 @@ function remoteMark(patch: Partial<RemoteMark> = {}): RemoteMark {
 }
 
 describe("sync merge", () => {
+  it("deletes a workspace mark through the extension API", async () => {
+    vi.spyOn(auth, "getSession").mockResolvedValue({
+      access_token: "access-token",
+      user: { id: "user-1" }
+    } as Session)
+    const request = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true })))
+
+    const result = await pushMarkDeleteToWorkspace(localMark())
+
+    expect(result).toEqual({ ok: true, skipped: false })
+    expect(request).toHaveBeenCalledWith(
+      "https://youin.click/api/extension/marks?markId=remote-1",
+      {
+        method: "DELETE",
+        headers: { authorization: "Bearer access-token" }
+      }
+    )
+  })
+
   it("keeps pending comments and failed retry detail during remote pull", () => {
     const merged = mergeRemoteMark(localMark(), remoteMark())
 
@@ -140,5 +167,14 @@ describe("sync merge", () => {
     )
 
     expect(merged.screenshotUrl).toBe("https://storage.example/fresh")
+  })
+
+  it("preserves page-level capture kind during remote sync", () => {
+    const merged = mergeRemoteMark(
+      localMark({ captureKind: "element" }),
+      remoteMark({ captureKind: "page" })
+    )
+
+    expect(merged.captureKind).toBe("page")
   })
 })

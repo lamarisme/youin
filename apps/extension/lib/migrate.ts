@@ -371,6 +371,7 @@ export async function migrateLocalDataToWorkspace(
         const { error: commentError } = await supabase
           .from("mark_comments")
           .insert({
+            workspace_id: workspaceId,
             mark_id: createdMark.id as string,
             author_user_id: userId,
             client_mutation_id: message.id,

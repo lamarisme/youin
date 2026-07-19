@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   EVENT_LOCATION_CHANGE,
   EVENT_PAGE_LOCATION_CHANGE,
+  EVENT_REVIEW_CREATE_PAGE_MARK,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_START,
   EVENT_REVIEW_STATE,
@@ -20,6 +21,12 @@ import {
   isInternalEvent
 } from "../lib/internal-events"
 import { EXTENSION_LAYER } from "../lib/layers"
+import {
+  CAPTURE_PANEL_SCRIPT,
+  MESSAGE_ENSURE_REVIEW_SCRIPTS,
+  PIN_BADGES_SCRIPT,
+  REVIEW_MODE_SCRIPT
+} from "../lib/review-scripts"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -52,6 +59,35 @@ const DEFAULT_SETTINGS: WidgetSettings = {
   captureScreenshots: true,
   captureDomSnapshots: true,
   disabledHosts: []
+}
+
+async function ensureReviewSurface(
+  fileMarker: string,
+  requireReady = false
+): Promise<boolean> {
+  try {
+    const response = (await chrome.runtime.sendMessage({
+      type: MESSAGE_ENSURE_REVIEW_SCRIPTS,
+      fileMarkers: [fileMarker],
+      requireReady
+    })) as { ok?: boolean } | undefined
+    return response?.ok === true
+  } catch {
+    return false
+  }
+}
+
+let pinBadgesLoadPromise: Promise<boolean> | null = null
+
+function ensurePinBadges(): Promise<boolean> {
+  if (pinBadgesLoadPromise) return pinBadgesLoadPromise
+  pinBadgesLoadPromise = ensureReviewSurface(PIN_BADGES_SCRIPT.fileMarker).then(
+    (loaded) => {
+      if (!loaded) pinBadgesLoadPromise = null
+      return loaded
+    }
+  )
+  return pinBadgesLoadPromise
 }
 
 function cornerClass(corner: WidgetCorner): string {
@@ -117,6 +153,23 @@ function ScreenshotIcon() {
   )
 }
 
+function PageNoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5.5 3.5h6l3 3v10h-9z" />
+      <path d="M11.5 3.5v3h3M8 10h4M8 12.8h3" />
+    </svg>
+  )
+}
+
 function XIcon() {
   return (
     <svg
@@ -148,7 +201,9 @@ function Widget() {
   const refreshCount = useCallback(async () => {
     const projectId = await getActiveProjectId()
     const marks = await getMarksForPage(projectId, location.href)
-    setOpenCount(marks.filter((p) => p.status !== "closed").length)
+    const count = marks.filter((p) => p.status !== "closed").length
+    setOpenCount(count)
+    if (count > 0) void ensurePinBadges()
   }, [])
 
   const refreshSettings = useCallback(async () => {
@@ -226,12 +281,21 @@ function Widget() {
     plural: openCount === 1 ? "" : "s"
   })
 
-  const startReview = (mode: ReviewMode) => {
+  const startReview = async (mode: ReviewMode) => {
     setPinnedOpen(false)
+    if (!(await ensureReviewSurface(REVIEW_MODE_SCRIPT.fileMarker))) return
     dispatchInternalEvent(EVENT_REVIEW_START, { mode })
   }
 
-  const toggleDrawer = () => {
+  const createPageMark = async () => {
+    setPinnedOpen(false)
+    if (!(await ensureReviewSurface(REVIEW_MODE_SCRIPT.fileMarker))) return
+    dispatchInternalEvent(EVENT_REVIEW_CREATE_PAGE_MARK)
+  }
+
+  const toggleDrawer = async () => {
+    if (!(await ensureReviewSurface(CAPTURE_PANEL_SCRIPT.fileMarker, true)))
+      return
     dispatchInternalEvent(EVENT_REVIEW_TOGGLE_FEEDBACK_LIST)
   }
 
@@ -254,7 +318,7 @@ function Widget() {
         title={t("extension.popup.inspect")}
         aria-label={t("extension.widget.startInspectAria")}
         className={modeButtonClass()}
-        onClick={() => startReview("inspect")}>
+        onClick={() => void startReview("inspect")}>
         <InspectIcon />
       </button>
       <button
@@ -262,8 +326,16 @@ function Widget() {
         title={t("extension.popup.screenshot")}
         aria-label={t("extension.widget.startScreenshotAria")}
         className={modeButtonClass()}
-        onClick={() => startReview("screenshot")}>
+        onClick={() => void startReview("screenshot")}>
         <ScreenshotIcon />
+      </button>
+      <button
+        type="button"
+        title={t("extension.popup.pageNote")}
+        aria-label={t("extension.widget.startPageNoteAria")}
+        className={modeButtonClass()}
+        onClick={() => void createPageMark()}>
+        <PageNoteIcon />
       </button>
     </div>
   )
@@ -307,7 +379,7 @@ function Widget() {
               aria-label={openFeedbackLabel}
               title={t("extension.widget.showPageFeedback")}
               className="inline-flex min-h-8 min-w-8 items-center justify-center rounded-full border border-[color:var(--yi-ext-border-hairline)] bg-[color:var(--yi-mark-soft)] px-2 font-mono text-[10px] font-semibold text-[color:var(--yi-mark)] shadow-[0_10px_24px_-20px_oklch(18%_0.012_264_/_0.32)] outline-none transition-[background-color,transform] duration-150 [transition-timing-function:var(--yi-ease-out-expo)] hover:-translate-y-0.5 hover:bg-[color:var(--yi-paper-elevated)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)] active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
-              onClick={toggleDrawer}>
+              onClick={() => void toggleDrawer()}>
               {openCount}
             </button>
           ) : null}

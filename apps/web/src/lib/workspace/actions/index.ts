@@ -95,6 +95,7 @@ export {
 export {
   createWorkflowStatusAction,
   updateWorkflowStatusAction,
+  reorderWorkflowStatusesAction,
   archiveWorkflowStatusAction,
   setMarkWorkflowStatusAction,
   type WorkflowStatusInput,

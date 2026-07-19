@@ -225,21 +225,64 @@ function normalizeElementFingerprintForStorage(
 ): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
-  if (row.version !== 1 || typeof row.tagName !== "string") return null;
+  if (
+    (row.version !== 1 && row.version !== 2) ||
+    typeof row.tagName !== "string"
+  ) {
+    return null;
+  }
   const tagName = row.tagName.trim().toLowerCase().slice(0, 80);
   if (!/^[a-z][a-z0-9-]*$/.test(tagName)) return null;
   const bounded = (item: unknown, max: number) =>
     typeof item === "string" && item.trim()
       ? item.trim().slice(0, max)
       : undefined;
-  return {
-    version: 1,
+  const base = {
+    version: row.version,
     tagName,
     ...(bounded(row.role, 80) ? { role: bounded(row.role, 80) } : {}),
     ...(bounded(row.ariaLabelHash, 24)
       ? { ariaLabelHash: bounded(row.ariaLabelHash, 24) }
       : {}),
-    ...(bounded(row.textHash, 24) ? { textHash: bounded(row.textHash, 24) } : {}),
+    ...(bounded(row.textHash, 24)
+      ? { textHash: bounded(row.textHash, 24) }
+      : {}),
+  };
+  if (row.version === 1) return base;
+
+  const validStrategies = new Set(["test-id", "id", "aria", "path"]);
+  const selectorCandidates = Array.isArray(row.selectorCandidates)
+    ? row.selectorCandidates.slice(0, 5).flatMap((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const candidate = item as Record<string, unknown>;
+        const selector = bounded(candidate.selector, 512);
+        if (!selector || !validStrategies.has(String(candidate.strategy))) {
+          return [];
+        }
+        return [{ selector, strategy: String(candidate.strategy) }];
+      })
+    : [];
+  const point =
+    row.anchorPoint &&
+    typeof row.anchorPoint === "object" &&
+    !Array.isArray(row.anchorPoint)
+      ? (row.anchorPoint as Record<string, unknown>)
+      : {};
+  const ratio = (item: unknown, fallback: number) =>
+    typeof item === "number" && Number.isFinite(item)
+      ? Math.min(1, Math.max(0, item))
+      : fallback;
+  return {
+    ...base,
+    version: 2,
+    ...(bounded(row.ancestorHash, 24)
+      ? { ancestorHash: bounded(row.ancestorHash, 24) }
+      : {}),
+    selectorCandidates,
+    anchorPoint: {
+      x: ratio(point.x, 1),
+      y: ratio(point.y, 0),
+    },
   };
 }
 
@@ -547,7 +590,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         priority: String(mark.priority ?? "medium"),
         selector: String(mark.selector ?? ""),
         viewport: String(mark.viewport ?? ""),
-        captureKind: mark.capture_kind === "region" ? "region" : "element",
+        captureKind:
+          mark.capture_kind === "region" || mark.capture_kind === "page"
+            ? mark.capture_kind
+            : "element",
         bbox: mark.capture_bbox ?? null,
         pageTitle: String(mark.page_title ?? "") || null,
         elementFingerprint: mark.element_fingerprint ?? null,
@@ -615,7 +661,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     asString(input.description),
   );
   const domSnapshot = normalizeDomSnapshotForStorage(input.domSnapshot);
-  const captureKind = input.captureKind === "region" ? "region" : "element";
+  const captureKind =
+    input.captureKind === "region" || input.captureKind === "page"
+      ? input.captureKind
+      : "element";
   const captureBbox = normalizeCaptureBbox(input.bbox);
   const pageTitle = asString(input.pageTitle).trim().slice(0, 280) || null;
   const elementFingerprint = normalizeElementFingerprintForStorage(

@@ -10,6 +10,7 @@ import { captureElementDomSnapshot } from "../lib/dom-snapshot"
 import { captureElementFingerprint } from "../lib/element-fingerprint"
 import {
   EVENT_LOCATION_CHANGE,
+  EVENT_REVIEW_CREATE_PAGE_MARK,
   EVENT_REVIEW_EXIT,
   EVENT_REVIEW_PAUSE,
   EVENT_REVIEW_RESUME,
@@ -36,7 +37,7 @@ import {
   MESSAGE_ENSURE_REVIEW_SCRIPTS
 } from "../lib/review-scripts"
 import { getElementScreenshotBackground } from "../lib/screenshot-background"
-import { generateSelector } from "../lib/selector"
+import { generateSelectorCandidates } from "../lib/selector"
 import {
   getActiveProjectId,
   getMarksForPage,
@@ -56,7 +57,9 @@ import {
 } from "../lib/tab-capture"
 
 export const config: PlasmoCSConfig = {
-  matches: ["http://*/*", "https://*/*"],
+  // Packaged as an injectable content script. The popup, widget, command, and
+  // background worker load it only when a review starts.
+  matches: ["https://youin.invalid/*"],
   run_at: "document_idle",
   all_frames: false
 }
@@ -343,13 +346,13 @@ function ensureHost() {
   toolbar.innerHTML = `
     <span class="status">
       <span class="dot" aria-hidden="true"></span>
-      <span class="mode" data-field="mode">Click an element to leave feedback</span>
+      <span class="mode" data-field="mode">Click an element to create a mark</span>
     </span>
     <span class="meta">
       <span class="muted" data-field="ns"></span>
       <span class="counts" data-field="counts"></span>
     </span>
-    <button type="button" class="drawer" aria-label="Show page feedback" title="Show page feedback">
+    <button type="button" class="drawer" aria-label="Show page marks" title="Show page marks">
       <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" aria-hidden="true">
         <path d="M5 5.5h10v6.8H9.4L5.7 15v-2.7H5z"></path>
         <path d="M7.8 8.2h4.4M7.8 10h2.8"></path>
@@ -706,9 +709,8 @@ function enrichCaptureAsync(
           SCREENSHOT_CAPTURE_TIMEOUT_MS
         )
         if (fallbackDataUrl) {
-          elementScreenshotDataUrl = await compressScreenshotDataUrl(
-            fallbackDataUrl
-          )
+          elementScreenshotDataUrl =
+            await compressScreenshotDataUrl(fallbackDataUrl)
           if (!elementScreenshotDataUrl) {
             screenshotCaptureError =
               "The screenshot was too large to save safely."
@@ -732,11 +734,19 @@ function enrichCaptureAsync(
   })()
 }
 
-async function captureAndDispatch(target: Element) {
+async function captureAndDispatch(
+  target: Element,
+  clickPoint: { x: number; y: number }
+) {
   const captureId = makeCaptureId()
   const settings = await getWidgetSettings()
   const rect = target.getBoundingClientRect()
-  const result = generateSelector(target)
+  const selectorCandidates = generateSelectorCandidates(target)
+  const result = selectorCandidates[0]
+  const anchorPoint = {
+    x: rect.width > 0 ? (clickPoint.x - rect.left) / rect.width : 0.5,
+    y: rect.height > 0 ? (clickPoint.y - rect.top) / rect.height : 0.5
+  }
   const viewport = {
     width: window.innerWidth,
     height: window.innerHeight,
@@ -771,7 +781,10 @@ async function captureAndDispatch(target: Element) {
     viewport,
     url: normalizePageUrlForMatch(location.href),
     pageTitle: document.title,
-    elementFingerprint: captureElementFingerprint(target),
+    elementFingerprint: captureElementFingerprint(target, {
+      selectorCandidates,
+      anchorPoint
+    }),
     outerHTML: domSnapshot?.selectedElement.outerHTML.slice(0, 400) ?? "",
     domSnapshot,
     screenshotPending: settings.captureScreenshots
@@ -826,13 +839,60 @@ async function captureRegionAndDispatch(rect: {
   })()
 }
 
+async function capturePageAndDispatch() {
+  const settings = await getWidgetSettings()
+  if (isHostDisabled(location.href, settings)) return
+
+  const captureId = makeCaptureId()
+  const viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight,
+    dpr: window.devicePixelRatio
+  }
+  const detail: ReviewCaptureDetail = {
+    captureId,
+    captureKind: "page",
+    selector: "",
+    strategy: "path",
+    bbox: {
+      x: Math.round(window.scrollX),
+      y: Math.round(window.scrollY),
+      width: Math.round(window.innerWidth),
+      height: Math.round(window.innerHeight)
+    },
+    viewport,
+    url: normalizePageUrlForMatch(location.href),
+    pageTitle: document.title,
+    outerHTML: "",
+    screenshotPending: settings.captureScreenshots
+  }
+
+  await dispatchReviewCapture(detail)
+  if (!settings.captureScreenshots) return
+
+  void (async () => {
+    const captureResult = await captureRegionViaTab({
+      left: 0,
+      top: 0,
+      width: window.innerWidth,
+      height: window.innerHeight
+    })
+    dispatchCaptureUpdateToPanel({
+      captureId,
+      elementScreenshotDataUrl: captureResult.dataUrl,
+      screenshotPending: false,
+      screenshotCaptureError: captureResult.error
+    })
+  })()
+}
+
 function onClick(e: MouseEvent) {
   const target = actualEventElement(e)
   if (!target || isYouInExtensionEvent(e)) return
 
   e.preventDefault()
   e.stopImmediatePropagation()
-  void captureAndDispatch(target)
+  void captureAndDispatch(target, { x: e.clientX, y: e.clientY })
 }
 
 function swallow(e: Event) {
@@ -986,7 +1046,7 @@ function activate() {
     pausedReviewMode = null
     ensureHost()
     if (toolbarModeEl)
-      toolbarModeEl.textContent = "Click an element to leave feedback"
+      toolbarModeEl.textContent = "Click an element to create a mark"
     if (regionDim) regionDim.style.display = "none"
     if (regionBox) regionBox.style.display = "none"
     toolbarCleanup?.()
@@ -1052,7 +1112,7 @@ function resume() {
     toolbarModeEl.textContent =
       nextMode === "screenshot"
         ? "Drag to capture an area"
-        : "Click an element to leave feedback"
+        : "Click an element to create a mark"
   }
   void refreshToolbarLabels()
   applyCursorOverride()
@@ -1078,6 +1138,9 @@ window.addEventListener(EVENT_REVIEW_START, (e) => {
     getInternalEventDetail<ReviewStartDetail>(e)?.mode ?? "inspect"
   if (reviewMode === "screenshot") activateRegion()
   else activate()
+})
+window.addEventListener(EVENT_REVIEW_CREATE_PAGE_MARK, (e) => {
+  if (isInternalEvent(e)) void capturePageAndDispatch()
 })
 window.addEventListener(EVENT_REVIEW_EXIT, (e) => {
   if (isInternalEvent(e)) deactivate()
@@ -1115,6 +1178,16 @@ chrome.runtime.onMessage.addListener((msg: unknown, _s, sendResponse) => {
   }
   if (t === "youin:start-screenshot") {
     activateRegion()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:create-page-mark") {
+    void capturePageAndDispatch()
+    sendResponse({ ok: true })
+    return true
+  }
+  if (t === "youin:toggle-review") {
+    mode === "inactive" ? activate() : deactivate()
     sendResponse({ ok: true })
     return true
   }

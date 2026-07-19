@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, CheckCircle2, CircleDashed, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { FilterSelect } from "@/components/filter-select";
@@ -19,14 +27,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
-import type { MarkStatus, WorkspaceWorkflowStatus } from "@/lib/collab-types";
+import type {
+  MarkStatus,
+  WorkflowStatusColor,
+  WorkspaceWorkflowStatus,
+} from "@/lib/collab-types";
+import { isOptimisticId } from "@/lib/optimistic-id";
 import { useWorkspaceData } from "@/lib/queries/use-workspace";
 import {
   useArchiveWorkflowStatusMutation,
   useCreateWorkflowStatusMutation,
+  useReorderWorkflowStatusesMutation,
   useUpdateWorkflowStatusMutation,
 } from "@/lib/queries/use-workspace-mutations";
 import { workflowStatusUsageFromMarks } from "@/lib/workspace/read-model-mappers";
+import {
+  WORKFLOW_STATUS_COLOR_OPTIONS,
+  workflowStatusDotClass,
+} from "@/lib/workspace/workflow-statuses";
 
 const LIFECYCLE_OPTIONS: ReadonlyArray<{ value: MarkStatus; label: string }> = [
   { value: "open", label: "Open" },
@@ -47,11 +65,15 @@ export function StatusesTab() {
     useUpdateWorkflowStatusMutation();
   const { mutateAsync: archiveWorkflowStatus, isPending: isArchiving } =
     useArchiveWorkflowStatusMutation();
+  const { mutateAsync: reorderStatuses, isPending: isReordering } =
+    useReorderWorkflowStatusesMutation();
 
   const [name, setName] = useState("");
   const [lifecycleStatus, setLifecycleStatus] = useState<MarkStatus>("open");
+  const [color, setColor] = useState<WorkflowStatusColor>("gray");
   const [editing, setEditing] = useState<WorkspaceWorkflowStatus | null>(null);
   const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState<WorkflowStatusColor>("gray");
   const [archiveTarget, setArchiveTarget] =
     useState<WorkspaceWorkflowStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,14 +82,18 @@ export function StatusesTab() {
     () => workflowStatusUsageFromMarks(marks),
     [marks],
   );
+  const hasOptimisticStatus = workflowStatuses.some((status) =>
+    isOptimisticId(status.id),
+  );
 
   async function handleCreate() {
     if (!isOwner || isCreating) return;
     setError(null);
     try {
-      await createStatus({ name, lifecycleStatus });
+      await createStatus({ name, lifecycleStatus, color });
       setName("");
       setLifecycleStatus("open");
+      setColor("gray");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create this workflow status.");
     }
@@ -76,6 +102,7 @@ export function StatusesTab() {
   function startEditing(status: WorkspaceWorkflowStatus) {
     setEditing(status);
     setEditName(status.name);
+    setEditColor(status.color);
     setError(null);
   }
 
@@ -83,11 +110,48 @@ export function StatusesTab() {
     if (!editing || !isOwner || isUpdating) return;
     setError(null);
     try {
-      await updateStatus({ statusId: editing.id, name: editName });
+      await updateStatus({
+        statusId: editing.id,
+        name: editName,
+        color: editColor,
+      });
       setEditing(null);
       setEditName("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't save this workflow status.");
+    }
+  }
+
+  async function moveStatus(statusId: string, direction: -1 | 1) {
+    if (
+      !isOwner ||
+      isCreating ||
+      isReordering ||
+      hasOptimisticStatus
+    ) {
+      return;
+    }
+    const currentIndex = workflowStatuses.findIndex(
+      (status) => status.id === statusId,
+    );
+    const targetIndex = currentIndex + direction;
+    if (
+      currentIndex < 0 ||
+      targetIndex < 0 ||
+      targetIndex >= workflowStatuses.length
+    ) {
+      return;
+    }
+
+    const next = [...workflowStatuses];
+    const [moved] = next.splice(currentIndex, 1);
+    if (!moved) return;
+    next.splice(targetIndex, 0, moved);
+    setError(null);
+    try {
+      await reorderStatuses(next.map((status) => status.id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't reorder workflow statuses.");
     }
   }
 
@@ -132,7 +196,7 @@ export function StatusesTab() {
     <div className="space-y-6">
       <ProductSectionHeader
         title="Workflow statuses"
-        description="Custom stages decide what teams see while each stage still maps to open or closed."
+        description="Define the stages and order used by status boards. Each stage still maps to the open or closed lifecycle."
       />
 
       {!isOwner ? (
@@ -165,6 +229,17 @@ export function StatusesTab() {
             disabled={!isOwner || isCreating}
           />
         </label>
+        <label>
+          <span className="text-eyebrow mb-1 block">Color</span>
+          <FilterSelect<WorkflowStatusColor>
+            value={color}
+            onValueChange={setColor}
+            options={WORKFLOW_STATUS_COLOR_OPTIONS}
+            ariaLabel="Workflow status color"
+            triggerClassName="h-10 w-[124px] bg-paper-elevated sm:h-8"
+            disabled={!isOwner || isCreating}
+          />
+        </label>
         <SubmitButton
           type="button"
           onClick={handleCreate}
@@ -180,7 +255,7 @@ export function StatusesTab() {
       </div>
 
       <ProductList>
-        {workflowStatuses.map((status) => {
+        {workflowStatuses.map((status, index) => {
           const count = usageById.get(status.id) ?? 0;
           const isDefault = status.isDefaultOpen || status.isDefaultClosed;
           const isEditing = editing?.id === status.id;
@@ -192,7 +267,7 @@ export function StatusesTab() {
             >
               <div className="min-w-[12rem] flex-1">
                 {isEditing ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <Input
                       value={editName}
                       onChange={(event) => setEditName(event.target.value)}
@@ -201,6 +276,14 @@ export function StatusesTab() {
                       aria-label={`Workflow status name for ${status.name}`}
                       className="h-10 bg-paper-2 sm:h-8"
                     />
+                    <FilterSelect<WorkflowStatusColor>
+                      value={editColor}
+                      onValueChange={setEditColor}
+                      options={WORKFLOW_STATUS_COLOR_OPTIONS}
+                      ariaLabel={`Color for ${status.name}`}
+                      triggerClassName="h-10 w-[124px] bg-paper-2 sm:h-8"
+                      disabled={isUpdating}
+                    />
                     <Button
                       type="button"
                       size="icon"
@@ -208,6 +291,7 @@ export function StatusesTab() {
                       onClick={() => {
                         setEditing(null);
                         setEditName("");
+                        setEditColor("gray");
                       }}
                       className="size-10 sm:size-8"
                       aria-label="Cancel edit"
@@ -228,11 +312,10 @@ export function StatusesTab() {
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    {status.lifecycleStatus === "open" ? (
-                      <CircleDashed className="size-3.5 text-mark" aria-hidden />
-                    ) : (
-                      <CheckCircle2 className="size-3.5 text-ok" aria-hidden />
-                    )}
+                    <span
+                      className={`size-2.5 shrink-0 rounded-full ${workflowStatusDotClass(status.color)}`}
+                      aria-hidden
+                    />
                     <span className="text-ui-sm font-medium text-ink">{status.name}</span>
                     <Badge
                       variant={status.lifecycleStatus === "open" ? "mark" : "ok"}
@@ -253,7 +336,41 @@ export function StatusesTab() {
               </div>
 
               {!isEditing ? (
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => void moveStatus(status.id, -1)}
+                    disabled={
+                      !isOwner ||
+                      isCreating ||
+                      isReordering ||
+                      index === 0 ||
+                      hasOptimisticStatus
+                    }
+                    className="size-10 text-ink-3 hover:text-ink sm:size-8"
+                    aria-label={`Move ${status.name} earlier`}
+                  >
+                    <ArrowUp className="size-3.5" aria-hidden />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => void moveStatus(status.id, 1)}
+                    disabled={
+                      !isOwner ||
+                      isCreating ||
+                      isReordering ||
+                      index === workflowStatuses.length - 1 ||
+                      hasOptimisticStatus
+                    }
+                    className="size-10 text-ink-3 hover:text-ink sm:size-8"
+                    aria-label={`Move ${status.name} later`}
+                  >
+                    <ArrowDown className="size-3.5" aria-hidden />
+                  </Button>
                   {!isDefault ? (
                     <Button
                       type="button"

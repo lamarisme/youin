@@ -1,6 +1,9 @@
-import { elementMatchesFingerprint } from "./element-fingerprint"
+import {
+  anchorPointForFingerprint,
+  resolveElementAnchor
+} from "./element-anchor"
+import type { ElementAnchorPoint } from "./element-fingerprint"
 import type { ElementPinAnchor, ElementPinModel, PinBounds } from "./pin-model"
-import { resolveSelector } from "./selector"
 
 export type ElementPinHealth =
   | "attached"
@@ -14,6 +17,9 @@ export interface ElementPinHealthResult {
   description: string
   attached: boolean
   rect?: DOMRectReadOnly
+  anchorPoint?: ElementAnchorPoint
+  element?: Element
+  confidence?: number
 }
 
 function savedRect(bounds: PinBounds): DOMRectReadOnly | undefined {
@@ -26,6 +32,18 @@ function savedRect(bounds: PinBounds): DOMRectReadOnly | undefined {
   )
 }
 
+function anchorStrategy(anchor: ElementPinAnchor) {
+  if (anchor.strategy) return anchor.strategy
+  if (anchor.fingerprint?.version === 2) {
+    return (
+      anchor.fingerprint.selectorCandidates.find(
+        (candidate) => candidate.selector === anchor.selector
+      )?.strategy ?? "path"
+    )
+  }
+  return "path" as const
+}
+
 function computeElementAnchorHealth(
   anchor: ElementPinAnchor
 ): ElementPinHealthResult {
@@ -35,21 +53,29 @@ function computeElementAnchorHealth(
       label: "Screenshot",
       description: "This feedback is tied to a captured area.",
       attached: false,
-      rect: savedRect(anchor.savedBounds)
+      rect: savedRect(anchor.savedBounds),
+      anchorPoint: { x: 0.5, y: 0.5 }
     }
   }
 
   try {
-    const el = anchor.selector ? resolveSelector(anchor.selector) : null
-    if (el && elementMatchesFingerprint(el, anchor.fingerprint)) {
-      const rect = el.getBoundingClientRect()
+    const resolved = resolveElementAnchor(
+      anchor.selector,
+      anchorStrategy(anchor),
+      anchor.fingerprint
+    )
+    if (resolved) {
+      const rect = resolved.element.getBoundingClientRect()
       if (rect.width >= 1 || rect.height >= 1) {
         return {
           health: "attached",
           label: "Attached",
           description: "The original element is still attached.",
           attached: true,
-          rect
+          rect,
+          anchorPoint: resolved.anchorPoint,
+          element: resolved.element,
+          confidence: resolved.confidence
         }
       }
     }
@@ -64,7 +90,8 @@ function computeElementAnchorHealth(
       label: "Approximate",
       description: "The original element moved; using the saved page position.",
       attached: false,
-      rect
+      rect,
+      anchorPoint: anchorPointForFingerprint(anchor.fingerprint)
     }
   }
 
@@ -85,9 +112,9 @@ export function computeElementPinHealth(
 
 export function scrollElementPinIntoView(pin: ElementPinModel): void {
   const result = computeElementPinHealth(pin)
-  if (result.attached && pin.anchor.selector) {
+  if (result.attached && result.element) {
     try {
-      resolveSelector(pin.anchor.selector)?.scrollIntoView({
+      result.element.scrollIntoView({
         block: "center",
         inline: "center",
         behavior: "smooth"

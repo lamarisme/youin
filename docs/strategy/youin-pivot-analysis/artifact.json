@@ -1,0 +1,260 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Youin’s best pivot",
+    "description": "A decision memo on the narrowest credible market for Youin and a two-week validation plan.",
+    "generatedAt": "2026-07-17T10:00:00Z",
+    "charts": [
+      {
+        "id": "workflow_signals",
+        "title": "Recorded workflow signals",
+        "subtitle": "Aggregate counts since the first recorded mark; signals can overlap and do not represent unique users.",
+        "type": "bar",
+        "dataset": "workflow_signals",
+        "sourceId": "youin_usage",
+        "encodings": {
+          "x": {
+            "field": "signal",
+            "type": "nominal",
+            "label": "Workflow signal"
+          },
+          "y": {
+            "field": "count",
+            "type": "quantitative",
+            "label": "Recorded count",
+            "format": "number"
+          }
+        },
+        "yAxisTitle": "Recorded count",
+        "valueFormat": "number",
+        "layout": "full"
+      }
+    ],
+    "sources": [
+      {
+        "id": "youin_usage",
+        "label": "Youin aggregate usage snapshot",
+        "path": "evidence/usage-aggregates.sql"
+      },
+      {
+        "id": "strategy_synthesis",
+        "label": "Youin pivot evidence and assessment",
+        "path": "evidence/pivot-evidence.md"
+      },
+      {
+        "id": "bugherd_market",
+        "label": "BugHerd website feedback category evidence",
+        "path": "https://bugherd.com/use-case/website-feedback-tool"
+      },
+      {
+        "id": "atarim_market",
+        "label": "Atarim agency feedback category evidence",
+        "path": "https://atarim.io/atarim-click-comment-collaborate-done/"
+      },
+      {
+        "id": "marker_pricing",
+        "label": "Marker.io pricing",
+        "path": "https://marker.io/pricing"
+      },
+      {
+        "id": "jam_market",
+        "label": "Jam pricing and adoption",
+        "path": "https://jam.dev/pricing"
+      },
+      {
+        "id": "stackoverflow_ai",
+        "label": "Stack Overflow 2025 Developer Survey AI findings",
+        "path": "https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/"
+      },
+      {
+        "id": "duda_agency_ai",
+        "label": "Duda agency AI workflow evidence",
+        "path": "https://blog.duda.co/how-to-choose-an-ai-website-builder-for-your-agency"
+      },
+      {
+        "id": "lovable_growth",
+        "label": "Lovable first-year growth update",
+        "path": "https://lovable.dev/blog/one-year-of-lovable"
+      },
+      {
+        "id": "bugherd_mcp",
+        "label": "BugHerd MCP beta release",
+        "path": "https://updates.bugherd.com/release/OpBuF-your-ai-agent-just-became-a-bug-fixing-machine"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Youin’s best pivot"
+      },
+      {
+        "id": "executive_summary",
+        "type": "markdown",
+        "body": "## Executive Summary\n\n- **Do not abandon the product yet; abandon the broad positioning.** Contextual website feedback is a paid category, but “spatial backlog for web teams” does not name one buyer or one urgent moment.\n- **Focus on 1–10 person AI-native web studios and freelancers.** The promise should be: *clients click what must change; Youin turns each comment into an agent-ready change request; the studio ships and gets approval.*\n- **Treat this as a 14-day demand test, not a new roadmap.** Keep the existing capture, context, comments, status, and prompt-copy loop. Validate guest review, repeated use, and willingness to pay before building integrations or more backlog features."
+      },
+      {
+        "id": "category_evidence",
+        "type": "markdown",
+        "body": "## The category is real; the current pitch is too broad\n\nWebsite-feedback products demonstrate recurring demand and budget: [BugHerd](https://bugherd.com/use-case/website-feedback-tool) reports 10,000+ companies and starts at $42 per month; [Atarim](https://atarim.io/atarim-click-comment-collaborate-done/) reports 51,000+ teams and starts at $35 per month; [Marker.io](https://marker.io/pricing) starts at $39 per month and sells a small-agency plan for $99 per month on annual billing. Those are stronger demand signals than a speculative top-down TAM.\n\nThe problem is competition. A generic “click on a page and create a task” product enters a mature field. [Jam](https://jam.dev/pricing) also validates paid QA demand, but its 200,000+ users, replay, console, network, and integration depth make product-team bug reporting a poor head-on entry point.\n\n**Implication:** Youin needs a sharply defined workflow and buyer, not a larger feature list."
+      },
+      {
+        "id": "ai_wedge",
+        "type": "markdown",
+        "body": "## The strongest wedge is client feedback that becomes agent-ready work\n\nAI-assisted building is large and growing: [Lovable](https://lovable.dev/blog/one-year-of-lovable) reported $200M ARR after its first year, and [Stack Overflow’s 2025 survey](https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/) found 80% of developers using AI tools while only 29% trusted their accuracy. Agencies are a particularly useful bridge between AI production and human approval: [Duda](https://blog.duda.co/how-to-choose-an-ai-website-builder-for-your-agency) describes client communication, feedback, and permissions as one of the most time-consuming parts of agency work.\n\nThis direction is validated but not empty. [BugHerd now connects captured issues to coding agents](https://updates.bugherd.com/release/OpBuF-your-ai-agent-just-became-a-bug-fixing-machine), so “we have AI” is not differentiation. The narrow claim must be that Youin is the fastest approval-to-agent loop for small studios: no client account, no client extension, minimal setup, one precise change request, and a visible path from requested to shipped to approved.\n\n**Implication:** sell faster client revisions and approval, not task management and not AI for its own sake."
+      },
+      {
+        "id": "product_signal",
+        "type": "markdown",
+        "sourceId": "youin_usage",
+        "body": "## The product already contains the core loop, but demand is not validated\n\nThe configured database contains **57 marks**, **61 comments**, and **55 marks created in the last 30 days**. It also records **38 prompt-copy events**, **48 status changes**, and **44 closed marks**. That makes visual observation → prompt → status → completion the clearest exercised workflow.\n\nThe caution is concentration: one workspace contains **48 of 57 marks (84%)**. Only one workspace shows cross-author comments, and none of the seven review links had been used. This activity is useful product evidence, but it cannot establish retention, external demand, or willingness to pay.\n\n**Implication:** the next product question is whether real clients can submit usable feedback and whether studios repeatedly turn it into shipped changes."
+      },
+      {
+        "id": "workflow_signals_chart",
+        "type": "chart",
+        "chartId": "workflow_signals",
+        "layout": "full"
+      },
+      {
+        "id": "comparison_intro",
+        "type": "markdown",
+        "body": "## Other niches are either more crowded or require a larger rebuild\n\nThe assessment uses qualitative labels rather than a fake market-size score. “Competition” is a headwind: high means a harder entry.\n\n| Rank | Niche | Pain | Budget | Reach | Current fit | Competition | Verdict |\n|---:|---|---|---|---|---|---|---|\n| 1 | AI-native web studios and freelancers | High | Medium–high | High | High | High | Best wedge: narrow buyer and approval-to-agent promise |\n| 2 | Lean SaaS teams using coding agents | High | High | Medium | Medium–high | Very high | Real demand, but mature QA tools have deeper telemetry |\n| 3 | Accessibility audit and remediation firms | High | High | Medium | Medium–low | Medium | Interesting later; requires WCAG expertise, evidence, and trust |\n| 4 | Localization QA teams | Medium | Medium–high | Low–medium | Medium | Medium | Possible niche, but locale and version workflows are missing |\n| 5 | Generic indie builders | Low–medium | Low | High | High | Very high | Good users, weak primary buyer |"
+      },
+      {
+        "id": "offer",
+        "type": "markdown",
+        "body": "## What to sell first\n\n**Buyer:** the owner or lead developer of a 1–10 person studio shipping websites or small web apps with Lovable, Cursor, Claude Code, Codex, Webflow, Framer, or WordPress. They manage at least three active client projects and still collect revisions through email, Slack, WhatsApp, Loom, or spreadsheets.\n\n**Job to be done:** “When a client reviews a staging or live site, give me precise, implementable change requests so my coding agent can make the edits without another clarification round.”\n\n**Positioning:** *Client feedback your coding agent can actually use.*\n\n**Initial offer:** €29 per month for three active client sites, unlimited reviewers, and agent-ready change requests. Test €59 per month for 15 active sites after the first successful pilots. This sits below established agency plans while preserving a real business price.\n\n**Do not build yet:** another dashboard view, complex analytics, enterprise permissions, a generalized AI assistant, or broad Jira/Linear integrations. First make one client review link work without explanation and one captured request produce a useful agent prompt."
+      },
+      {
+        "id": "validation_sprint",
+        "type": "markdown",
+        "body": "## Run a 14-day validation sprint before writing more product code\n\n1. **Recruit 15 qualified studios.** Find small agencies and freelancers publicly selling AI-assisted, Webflow, Framer, WordPress, or rapid web-app delivery. Avoid generic startup audiences.\n2. **Interview the last real project.** Ask where feedback arrived, how many revision rounds occurred, what required clarification, who translated feedback into tasks or prompts, and how approval was recorded. Do not pitch until the workflow is concrete.\n3. **Offer a concierge pilot on one active site.** You install the review link, observe the client’s first use, and manually improve agent prompts when needed. The goal is behavior, not automation purity.\n4. **Ask for money early.** After the first successful review round, ask for €29 to keep the workspace for the next project. A compliment is not validation.\n5. **Use explicit gates.** Continue only if at least 5 of 15 interviews report the problem weekly, 3 studios run two review sessions, 2 agree to pay, at least 30% of submitted marks are used in an agent workflow, and one client completes review without live guidance.\n\nIf those gates fail after 15 qualified interviews and three serious pilots, stop this niche. That result would be useful: it would tell you to pivot away without another month of speculative building."
+      },
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "body": "## Further questions\n\n- Do clients prefer an embedded widget, a share link, or a browser extension they never have to install?\n- Which builder or agent produces the strongest repeated workflow: Cursor, Claude Code, Codex, Lovable, Webflow, or WordPress?\n- Is the decisive value clearer feedback, faster implementation, faster approval, or a client-facing record of what shipped?\n- Will studios pay per seat, per active client site, or per review project?\n- What percentage of AI-generated changes still require a human clarification or visual verification pass?"
+      },
+      {
+        "id": "caveats",
+        "type": "markdown",
+        "body": "## Caveats and assumptions\n\n- The recommendation is **directional and ready for customer discovery, not a roadmap commitment**.\n- Internal usage is recent, small, and highly concentrated. Workspace identities were not inspected, so external-customer versus founder/test activity is unknown.\n- Competitor adoption and outcome claims are self-reported and use different definitions; they validate category activity and pricing, not independent market share.\n- The recommended niche is intentionally narrower than the total market. That improves reach and message clarity but must still be validated with paid behavior.\n- No verified revenue, churn, acquisition, or retention data was available for Youin."
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-07-17T10:00:00Z",
+    "status": "ready",
+    "datasets": {
+      "workflow_signals": [
+        {
+          "signal": "Status changes",
+          "count": 48,
+          "kind": "event",
+          "scope": "Since first recorded mark"
+        },
+        {
+          "signal": "Closed marks",
+          "count": 44,
+          "kind": "mark state",
+          "scope": "Current aggregate"
+        },
+        {
+          "signal": "Prompt copies",
+          "count": 38,
+          "kind": "event",
+          "scope": "Since first recorded mark"
+        },
+        {
+          "signal": "Assignment changes",
+          "count": 20,
+          "kind": "event",
+          "scope": "Since first recorded mark"
+        },
+        {
+          "signal": "Cross-author comments",
+          "count": 16,
+          "kind": "comment",
+          "scope": "Since first recorded mark"
+        }
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "youin_usage",
+      "label": "Youin aggregate usage snapshot",
+      "path": "evidence/usage-aggregates.sql",
+      "query": {
+        "engine": "postgres",
+        "sql": "select 'Status changes' as signal, count(*) filter (where type = 'status_changed')::int as count from mark_events union all select 'Closed marks', count(*) filter (where status = 'closed')::int from marks union all select 'Prompt copies', count(*) filter (where type = 'prompt_copied')::int from mark_events union all select 'Assignment changes', count(*) filter (where type = 'assignee_changed')::int from mark_events union all select 'Cross-author comments', count(*)::int from mark_comments c join marks m on m.id = c.mark_id and m.workspace_id = c.workspace_id where c.author_user_id <> m.created_by_user_id",
+        "description": "Aggregate-only counts for product activity, workflow completion, collaboration, review-link use, and AI prompt copying.",
+        "executed_at": "2026-07-17T10:00:00Z",
+        "tables_used": [
+          "public.profiles",
+          "public.workspaces",
+          "public.workspace_members",
+          "public.projects",
+          "public.marks",
+          "public.mark_comments",
+          "public.mark_events",
+          "public.workspace_review_links"
+        ],
+        "metric_definitions": {
+          "marks_last_30d": "Marks created during the rolling 30 days before query execution.",
+          "cross_author_comments": "Comments whose author differs from the creator of the related mark.",
+          "used_review_links": "Review links with a non-null last_used_at timestamp.",
+          "prompt_copies": "Mark events with type prompt_copied. This records the copy action, not confirmed execution by an AI agent."
+        }
+      }
+    },
+    {
+      "id": "strategy_synthesis",
+      "label": "Youin pivot evidence and assessment",
+      "path": "evidence/pivot-evidence.md"
+    },
+    {
+      "id": "bugherd_market",
+      "label": "BugHerd website feedback category evidence",
+      "path": "https://bugherd.com/use-case/website-feedback-tool"
+    },
+    {
+      "id": "atarim_market",
+      "label": "Atarim agency feedback category evidence",
+      "path": "https://atarim.io/atarim-click-comment-collaborate-done/"
+    },
+    {
+      "id": "marker_pricing",
+      "label": "Marker.io pricing",
+      "path": "https://marker.io/pricing"
+    },
+    {
+      "id": "jam_market",
+      "label": "Jam pricing and adoption",
+      "path": "https://jam.dev/pricing"
+    },
+    {
+      "id": "stackoverflow_ai",
+      "label": "Stack Overflow 2025 Developer Survey AI findings",
+      "path": "https://stackoverflow.blog/2025/12/29/developers-remain-willing-but-reluctant-to-use-ai-the-2025-developer-survey-results-are-here/"
+    },
+    {
+      "id": "duda_agency_ai",
+      "label": "Duda agency AI workflow evidence",
+      "path": "https://blog.duda.co/how-to-choose-an-ai-website-builder-for-your-agency"
+    },
+    {
+      "id": "lovable_growth",
+      "label": "Lovable first-year growth update",
+      "path": "https://lovable.dev/blog/one-year-of-lovable"
+    },
+    {
+      "id": "bugherd_mcp",
+      "label": "BugHerd MCP beta release",
+      "path": "https://updates.bugherd.com/release/OpBuF-your-ai-agent-just-became-a-bug-fixing-machine"
+    }
+  ]
+}

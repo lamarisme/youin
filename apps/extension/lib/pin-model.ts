@@ -13,6 +13,7 @@ export interface ElementPinAnchor {
   kind: "element"
   captureKind?: "element" | "region"
   selector: string
+  strategy?: Mark["strategy"]
   savedBounds: PinBounds
   fingerprint?: ElementFingerprint
 }
@@ -71,8 +72,10 @@ export function createPinModel(mark: Mark): PinModel {
     ...base,
     anchor: {
       kind: "element",
-      captureKind: mark.captureKind,
+      captureKind:
+        mark.captureKind === "page" ? undefined : mark.captureKind,
       selector: mark.selector,
+      strategy: mark.strategy,
       savedBounds: { ...mark.bbox },
       fingerprint: mark.elementFingerprint
     }

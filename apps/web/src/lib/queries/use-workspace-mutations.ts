@@ -1094,6 +1094,41 @@ export function useUpdateWorkflowStatusMutation() {
   });
 }
 
+export function useReorderWorkflowStatusesMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (statusIds: string[]) =>
+      ws.reorderWorkflowStatusesAction(statusIds),
+    onMutate: async (statusIds) => {
+      const context = await prepareOptimisticMutation(queryClient);
+      const positionById = new Map(
+        statusIds.map((statusId, position) => [statusId, position]),
+      );
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        workflowStatuses: [...workspace.workflowStatuses]
+          .map((status) => ({
+            ...status,
+            position: positionById.get(status.id) ?? status.position,
+          }))
+          .sort((a, b) => a.position - b.position),
+      }));
+      return context;
+    },
+    onSuccess: (statuses) => {
+      updateWorkspace(queryClient, (workspace) => ({
+        ...workspace,
+        workflowStatuses: statuses,
+      }));
+    },
+    ...workspaceMutationHandlers(
+      queryClient,
+      "Couldn't reorder workflow statuses.",
+      queryKeysForWorkspaceTable("mark_workflow_statuses"),
+    ),
+  });
+}
+
 export function useArchiveWorkflowStatusMutation() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -11,6 +11,7 @@ import {
 
 const supabaseState = vi.hoisted(() => ({
   markInserts: [] as unknown[],
+  commentInserts: [] as unknown[],
   createdMarkId: 0,
   projectId: "11111111-1111-4111-8111-111111111111",
   userId: "user-1",
@@ -43,6 +44,7 @@ vi.mock("./supabase", () => {
       },
       insert(rows: unknown) {
         if (table === "marks") supabaseState.markInserts.push(rows)
+        if (table === "mark_comments") supabaseState.commentInserts.push(rows)
         return query
       },
       async maybeSingle() {
@@ -193,6 +195,7 @@ function localOnlyMark(patch: Partial<Mark> = {}): Mark {
 describe("migrateLocalDataToWorkspace", () => {
   beforeEach(() => {
     supabaseState.markInserts = []
+    supabaseState.commentInserts = []
     supabaseState.createdMarkId = 0
   })
 
@@ -229,6 +232,36 @@ describe("migrateLocalDataToWorkspace", () => {
       expect.objectContaining({
         remoteMarkId: "33333333-3333-4333-8333-000000000001",
         title: "Legacy local mark"
+      })
+    ])
+  })
+
+  it("includes the workspace id when importing legacy comments", async () => {
+    await chrome.storage.local.set({
+      [KEY_MARKS]: [
+        localOnlyMark({
+          thread: [
+            {
+              id: "comment-1",
+              body: "Legacy comment",
+              createdAt: 1767225600000,
+              authorLabel: "You"
+            }
+          ]
+        })
+      ]
+    })
+
+    const result = await migrateLocalDataToWorkspace(supabaseState.userId)
+
+    expect(result.ok).toBe(true)
+    expect(result.commentsImported).toBe(1)
+    expect(supabaseState.commentInserts).toEqual([
+      expect.objectContaining({
+        workspace_id: supabaseState.workspaceId,
+        author_user_id: supabaseState.userId,
+        client_mutation_id: "comment-1",
+        body: "Legacy comment"
       })
     ])
   })

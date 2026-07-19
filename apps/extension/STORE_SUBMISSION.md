@@ -35,6 +35,7 @@ Core workflows:
 ## Permission justifications
 
 - `storage`: Stores local-first feedback, auth session state, selected workspace/project, sync queues, widget preferences, and per-domain privacy settings.
+- `alarms`: Schedules background retries for queued workspace changes after transient network failures.
 - `tabs`: Reads the active tab URL/title so Youin can scope feedback to the current page and open the dashboard or auth bridge when requested.
 - `activeTab`: Allows Youin to work with the page the user is actively reviewing after a direct user action.
 - `scripting`: Injects review UI scripts into the active tab when Chrome has not already loaded the content scripts.

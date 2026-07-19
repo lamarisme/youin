@@ -12,7 +12,7 @@ import {
   signInWithPassword,
   signOut
 } from "./lib/auth"
-import { MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
+import { MESSAGE_SYNC_NOW, MESSAGE_TOGGLE_FEEDBACK_LIST } from "./lib/events"
 import {
   isMigrationDoneForUser,
   migrateLocalDataToWorkspace,
@@ -38,9 +38,6 @@ import {
   KEY_MARKS,
   KEY_PROJECTS,
   KEY_SYNC_STATUS,
-  markSyncAttemptFailed,
-  markSyncAttemptStarted,
-  markSyncAttemptSucceeded,
   setActiveProjectId,
   setWidgetSettings,
   type Project,
@@ -57,12 +54,11 @@ import {
 } from "./lib/sync"
 import { fetchActiveWorkspaceContext } from "./lib/workspace-context"
 
-const SYNC_NOW = "youin:sync-now"
-
 type AuthView = "signedOut" | "signedIn"
 type ReviewCommandType =
   | "youin:start-inspect"
   | "youin:start-screenshot"
+  | "youin:create-page-mark"
   | typeof MESSAGE_TOGGLE_FEEDBACK_LIST
 type ReviewCommandMessage = { type: ReviewCommandType }
 
@@ -77,6 +73,9 @@ const REVIEW_COMMAND_SCRIPTS: Record<ReviewCommandType, ReviewCommandScripts> =
       required: [REVIEW_MODE_SCRIPT]
     },
     "youin:start-screenshot": {
+      required: [REVIEW_MODE_SCRIPT]
+    },
+    "youin:create-page-mark": {
       required: [REVIEW_MODE_SCRIPT]
     },
     [MESSAGE_TOGGLE_FEEDBACK_LIST]: {
@@ -182,6 +181,17 @@ async function startReviewOnActiveTab(mode: "inspect" | "screenshot"): Promise<{
   )
 }
 
+async function createPageMarkOnActiveTab(): Promise<{
+  ok: boolean
+  error?: string
+}> {
+  return sendReviewCommandToActiveTab(
+    { type: "youin:create-page-mark" },
+    t("extension.popup.openWebsite"),
+    t("extension.popup.startReviewFailed")
+  )
+}
+
 type SyncActivity = {
   syncing: boolean
   migrating: boolean
@@ -218,7 +228,6 @@ function IndexPopup() {
   const [pageLabel, setPageLabel] = useState<string>("Current page")
   const [canReviewPage, setCanReviewPage] = useState(false)
   const [openCount, setOpenCount] = useState(0)
-  const [resolvedCount, setResolvedCount] = useState(0)
   const [actionError, setActionError] = useState<string | null>(null)
   const [showAuth, setShowAuth] = useState(false)
   const [floatingControl, setFloatingControl] = useState(true)
@@ -254,7 +263,6 @@ function IndexPopup() {
       setCurrentHost("")
       setDomainDisabled(false)
       setOpenCount(0)
-      setResolvedCount(0)
       return
     }
     setCanReviewPage(true)
@@ -268,7 +276,6 @@ function IndexPopup() {
     const activeProjectId = await getActiveProjectId()
     const counts = await getMarkStatusCountsForPage(activeProjectId, url)
     setOpenCount(counts.open)
-    setResolvedCount(counts.closed)
   }, [])
 
   const refreshProjects = useCallback(async () => {
@@ -450,6 +457,16 @@ function IndexPopup() {
     })()
   }
 
+  const createPageNote = () => {
+    setActionError(null)
+    void (async () => {
+      const r = await createPageMarkOnActiveTab()
+      if (!r.ok)
+        setActionError(r.error ?? t("extension.popup.startReviewFailed"))
+      else window.close()
+    })()
+  }
+
   const enableFloatingControl = () => {
     setFloatingControl(true)
     void setWidgetSettings({ fabVisible: true })
@@ -488,7 +505,7 @@ function IndexPopup() {
     void (async () => {
       try {
         const response = (await chrome.runtime.sendMessage({
-          type: SYNC_NOW
+          type: MESSAGE_SYNC_NOW
         })) as { ok?: boolean; error?: string } | undefined
         if (response?.ok === false) {
           setSyncMsg(response.error ?? t("extension.popup.syncFailed"))
@@ -496,35 +513,7 @@ function IndexPopup() {
           setSyncMsg(t("extension.popup.syncComplete"))
         }
       } catch {
-        try {
-          const sessionNow = await getSession()
-          if (sessionNow?.user?.id) {
-            await markSyncAttemptStarted()
-            const workspace = await syncWorkspaceFromRemote(sessionNow.user.id)
-            const push = await syncPendingMarksToWorkspace()
-            const pull = await syncWorkspaceMarksFromRemote()
-            const error = workspace.error ?? push.error ?? pull.error
-            if (workspace.ok && push.ok && pull.ok) {
-              await markWorkspaceRemoteSyncComplete()
-              await markSyncAttemptSucceeded()
-              setSyncMsg(t("extension.popup.syncComplete"))
-            } else {
-              await markSyncAttemptFailed(
-                error ?? t("extension.popup.syncFailed")
-              )
-              setSyncMsg(error ?? t("extension.popup.syncFailed"))
-            }
-          } else {
-            setSyncMsg(t("extension.popup.syncLocalOnly"))
-          }
-        } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : t("extension.popup.syncFailed")
-          await markSyncAttemptFailed(message)
-          setSyncMsg(message)
-        }
+        setSyncMsg(t("extension.popup.syncFailed"))
       } finally {
         await refreshProjects()
         await refreshCounts()
@@ -774,9 +763,35 @@ function IndexPopup() {
               {t("extension.popup.screenshot")}
             </span>
           </button>
+          <button
+            type="button"
+            disabled={!canReviewPage || domainDisabled || !projectId}
+            aria-label={`${t("extension.popup.pageNote")}: ${t(
+              "extension.popup.pageNoteStartHint"
+            )}`}
+            title={t("extension.popup.pageNoteStartHint")}
+            className={cx(
+              ACTION_TILE,
+              "col-span-2 min-h-[54px]",
+              FOCUS_OUTLINE,
+              PRESS_FEEDBACK
+            )}
+            onClick={createPageNote}>
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-[color:var(--yi-ext-surface-stat)] text-[color:var(--yi-mark)]">
+              <PageNoteIcon />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[12px] font-semibold">
+                {t("extension.popup.pageNote")}
+              </span>
+              <span className="mt-0.5 block truncate text-[10px] text-[color:var(--yi-ext-text-muted)]">
+                {t("extension.popup.pageNoteStartHint")}
+              </span>
+            </span>
+          </button>
         </div>
 
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_5.75rem] gap-2">
+        <div className="mt-2">
           <button
             type="button"
             disabled={!canReviewPage || domainDisabled}
@@ -784,7 +799,7 @@ function IndexPopup() {
             title={t("extension.popup.openPageFeedback")}
             className={cx(
               ACTION_TILE,
-              "min-h-[54px]",
+              "min-h-[54px] w-full",
               FOCUS_OUTLINE,
               PRESS_FEEDBACK
             )}
@@ -801,14 +816,6 @@ function IndexPopup() {
               </span>
             </span>
           </button>
-          <div
-            className="flex min-h-[54px] items-center justify-center gap-2 rounded-md bg-[color:var(--yi-paper-elevated)] px-2 py-2 text-left ring-1 ring-[color:var(--yi-ext-border-hairline)]"
-            aria-label={`${t("extension.popup.resolved")}: ${resolvedCount}`}>
-            <CheckCircleIcon />
-            <span className="block font-mono text-[20px] leading-none text-[color:var(--yi-ext-text-muted)]">
-              {resolvedCount}
-            </span>
-          </div>
         </div>
       </section>
 
@@ -1387,7 +1394,11 @@ function MigrationBanner({
     )
   }
   const r = status as MigrationResult
-  if (r.marksImported === 0 && r.projectsCreated === 0 && r.projectsMatched === 0) {
+  if (
+    r.marksImported === 0 &&
+    r.projectsCreated === 0 &&
+    r.projectsMatched === 0
+  ) {
     return null
   }
   const projectsPart =
@@ -1458,6 +1469,23 @@ function ScreenshotIcon() {
   )
 }
 
+function PageNoteIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.7"
+      aria-hidden="true">
+      <path d="M5.5 3.5h6l3 3v10h-9z" />
+      <path d="M11.5 3.5v3h3M8 10h4M8 12.8h3" />
+    </svg>
+  )
+}
+
 function FeedbackIcon() {
   return (
     <svg
@@ -1471,23 +1499,6 @@ function FeedbackIcon() {
       aria-hidden="true">
       <path d="M5 5.5h10v6.8H9.4L5.7 15v-2.7H5z" />
       <path d="M7.8 8.2h4.4M7.8 10h2.8" />
-    </svg>
-  )
-}
-
-function CheckCircleIcon() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className="size-4 shrink-0 text-[color:var(--yi-ok)]"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.7"
-      aria-hidden="true">
-      <circle cx="10" cy="10" r="6.5" />
-      <path d="m7.2 10.2 1.8 1.8 3.8-4" />
     </svg>
   )
 }

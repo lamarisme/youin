@@ -4,6 +4,7 @@ export type MarkAnchorKind = "element" | "page"
 
 type AnchorClassifiableMark = Pick<
   Mark,
+  | "captureKind"
   | "bbox"
   | "domSnapshot"
   | "elementFingerprint"
@@ -30,6 +31,8 @@ function hasPositiveArea({
 export function classifyMarkAnchor(
   mark: AnchorClassifiableMark
 ): MarkAnchorKind {
+  if (mark.captureKind === "page") return "page"
+
   const selector = mark.selector.trim().toLowerCase()
   const hasElementSelector = Boolean(selector && selector !== "body")
   const hasCaptureEvidence =

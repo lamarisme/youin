@@ -71,7 +71,7 @@ Run `build` before opening a PR that changes extension runtime code. Run `packag
 | Path                         | Purpose                                                     |
 | ---------------------------- | ----------------------------------------------------------- |
 | `popup.tsx`                  | Popup UI, auth states, and entry points into review mode.   |
-| `background/index.ts`        | Background service worker, PKCE auth, sync, and capture.     |
+| `background/index.ts`        | Background service worker, PKCE auth, sync, and capture.    |
 | `contents/review-mode.ts`    | Content-script review mode orchestration.                   |
 | `contents/widget.tsx`        | Floating review widget.                                     |
 | `contents/capture-panel.tsx` | Docked capture, feedback list, and thread UI.               |
@@ -89,6 +89,7 @@ The extension runs on `http://*/*` and `https://*/*` because the core workflow i
 Required permissions:
 
 - `storage`: persists local-first feedback, workspace mirrors, auth session state, privacy settings, and retry queues.
+- `alarms`: retries queued workspace changes in the background after transient failures.
 - `identity`: completes Google OAuth at a redirect bound to this extension ID.
 - `tabs`: starts review mode from the popup on the active tab and reads the current page URL for page-scoped counts.
 - `scripting`: injects the review UI into an already-open tab when Chrome has not loaded the content scripts yet.

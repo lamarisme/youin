@@ -30,6 +30,10 @@ describe("classifyMarkAnchor", () => {
     expect(classifyMarkAnchor(mark())).toBe("element")
   })
 
+  it("classifies an explicit page capture as page anchored", () => {
+    expect(classifyMarkAnchor(mark({ captureKind: "page" }))).toBe("page")
+  })
+
   it("classifies the dashboard body fallback without capture evidence as page anchored", () => {
     expect(
       classifyMarkAnchor(

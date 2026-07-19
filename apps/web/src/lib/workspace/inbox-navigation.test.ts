@@ -293,6 +293,26 @@ test("comment-targeted routes expand acknowledgement attempts without mixing con
   ]);
 });
 
+test("single-activity routes keep their canonical context without speculative fallbacks", () => {
+  const attempts = inboxRouteContextAcknowledgementAttempts({
+    activityId: mentionActivityId,
+    activityIds: [mentionActivityId],
+    requiredContextType: "mention",
+    requiredContextId: mentionId,
+    targetId: `comment-${commentId}`,
+  });
+
+  assert.deepEqual(attempts, [
+    {
+      activityId: mentionActivityId,
+      activityIds: [mentionActivityId],
+      requiredContextType: "mention",
+      requiredContextId: mentionId,
+      targetId: `comment-${commentId}`,
+    },
+  ]);
+});
+
 test("mixed presentation groups do not leak non-Mark activity ids into Mark acknowledgement", () => {
   const markParams = inboxContextParamsForGroup(group({
     activityIds: [activityId, priorityActivityId],

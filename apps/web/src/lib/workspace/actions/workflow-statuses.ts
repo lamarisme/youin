@@ -195,6 +195,62 @@ export async function updateWorkflowStatusAction(
   return workflowStatusFromRow(updated);
 }
 
+export async function reorderWorkflowStatusesAction(
+  statusIds: string[],
+): Promise<WorkspaceWorkflowStatus[]> {
+  const ctx = await requireWorkspaceContext();
+  assertWorkspaceOwner(ctx);
+
+  if (!Array.isArray(statusIds) || statusIds.length > 100) {
+    throw new Error("Workflow status order is invalid.");
+  }
+  const orderedIds = Array.from(new Set(statusIds));
+  if (orderedIds.length !== statusIds.length) {
+    throw new Error("Workflow status order contains duplicates.");
+  }
+
+  const activeStatuses = await ctx.db
+    .select()
+    .from(markWorkflowStatuses)
+    .where(
+      and(
+        eq(markWorkflowStatuses.workspaceId, ctx.workspaceId),
+        isNull(markWorkflowStatuses.archivedAt),
+      ),
+    );
+  const activeIds = new Set(activeStatuses.map((status) => status.id));
+  if (
+    orderedIds.length !== activeStatuses.length ||
+    orderedIds.some((statusId) => !activeIds.has(statusId))
+  ) {
+    throw new Error("Workflow status order is out of date. Refresh and try again.");
+  }
+
+  await ctx.db.transaction(async (tx) => {
+    for (const [position, statusId] of orderedIds.entries()) {
+      await tx
+        .update(markWorkflowStatuses)
+        .set({ position, updatedAt: new Date() })
+        .where(
+          and(
+            eq(markWorkflowStatuses.id, statusId),
+            eq(markWorkflowStatuses.workspaceId, ctx.workspaceId),
+            isNull(markWorkflowStatuses.archivedAt),
+          ),
+        );
+    }
+  });
+
+  const byId = new Map(activeStatuses.map((status) => [status.id, status]));
+  const reordered = orderedIds.map((statusId, position) => {
+    const status = byId.get(statusId);
+    if (!status) throw new Error("Workflow status not found.");
+    return workflowStatusFromRow({ ...status, position });
+  });
+  revalidateWorkspaceViews();
+  return reordered;
+}
+
 export async function archiveWorkflowStatusAction(
   statusId: string,
 ): Promise<void> {

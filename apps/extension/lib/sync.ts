@@ -12,6 +12,7 @@ import {
   markSynced,
   markSyncFailure,
   patchMark,
+  purgeMark,
   removeMarkSyncOp,
   saveMarks,
   setActiveProjectId,
@@ -150,7 +151,7 @@ export interface RemoteMark {
   priority: MarkPriority
   selector: string
   viewport: string
-  captureKind?: "element" | "region" | null
+  captureKind?: "element" | "region" | "page" | null
   bbox?: Mark["bbox"] | null
   pageTitle?: string | null
   elementFingerprint?: Mark["elementFingerprint"] | null
@@ -259,6 +260,39 @@ async function patchRemoteMark(
 
   if (!res.ok) {
     const message = await responseErrorMessage(res, "Could not sync mark.")
+    return { ok: false, skipped: false, error: message }
+  }
+
+  return { ok: true, skipped: false }
+}
+
+export async function pushMarkDeleteToWorkspace(
+  mark: Mark
+): Promise<PushMarkResult> {
+  const session = await getSession()
+  if (!session?.user?.id || !mark.remoteMarkId) {
+    return { ok: true, skipped: true }
+  }
+
+  const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
+  url.searchParams.set("markId", mark.remoteMarkId)
+
+  let res: Response
+  try {
+    res = await fetch(url.toString(), {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${session.access_token}` }
+    })
+  } catch {
+    return {
+      ok: false,
+      skipped: false,
+      error: "Could not reach the YouIn web app."
+    }
+  }
+
+  if (!res.ok) {
+    const message = await responseErrorMessage(res, "Could not delete mark.")
     return { ok: false, skipped: false, error: message }
   }
 
@@ -444,23 +478,30 @@ async function syncQueuedOpsForMark(mark: Mark): Promise<{
   for (const op of mark.pendingSyncOps) {
     attempted++
     const result =
-      op.type === "status"
-        ? await patchRemoteMark(mark, {
-            status: op.status,
-            operationId: op.id
-          })
-        : op.type === "comment"
+      op.type === "delete"
+        ? await pushMarkDeleteToWorkspace(mark)
+        : op.type === "status"
           ? await patchRemoteMark(mark, {
-              commentBody: op.body,
+              status: op.status,
               operationId: op.id
             })
-          : await patchRemoteMark(mark, {
-              title: op.title,
-              openingBody: op.openingBody,
-              operationId: op.id
-            })
+          : op.type === "comment"
+            ? await patchRemoteMark(mark, {
+                commentBody: op.body,
+                operationId: op.id
+              })
+            : await patchRemoteMark(mark, {
+                title: op.title,
+                openingBody: op.openingBody,
+                operationId: op.id
+              })
 
     if (result.ok || result.skipped) {
+      if (op.type === "delete" && !result.skipped) {
+        await purgeMark(mark.id)
+        synced++
+        break
+      }
       await removeMarkSyncOp(mark.id, op.id)
       synced++
       continue
@@ -570,7 +611,10 @@ function markFromRemoteMark(mark: RemoteMark): Mark {
     id: `remote_${mark.id}`,
     remoteMarkId: mark.id,
     projectId: mark.projectId || "",
-    captureKind: mark.captureKind === "region" ? "region" : "element",
+    captureKind:
+      mark.captureKind === "region" || mark.captureKind === "page"
+        ? mark.captureKind
+        : "element",
     url: raw,
     pageTitle: mark.pageTitle || undefined,
     elementFingerprint: mark.elementFingerprint || undefined,
@@ -626,10 +670,14 @@ export function mergeRemoteMark(local: Mark, mark: RemoteMark): Mark {
     ...local,
     title: hasPendingEdit ? local.title : mark.title || local.title,
     projectId: mark.projectId || local.projectId,
-    captureKind: mark.captureKind === "region" ? "region" : local.captureKind,
+    captureKind:
+      mark.captureKind === "element" ||
+      mark.captureKind === "region" ||
+      mark.captureKind === "page"
+        ? mark.captureKind
+        : local.captureKind,
     pageTitle: mark.pageTitle || local.pageTitle,
-    elementFingerprint:
-      mark.elementFingerprint || local.elementFingerprint,
+    elementFingerprint: mark.elementFingerprint || local.elementFingerprint,
     bbox: mark.bbox ?? local.bbox,
     status: hasPendingStatus ? local.status : normalizeMarkStatus(mark.status),
     priority: normalizeMarkPriority(mark.priority),
@@ -668,9 +716,7 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
           "No workspace found for this user. Use the web app once to finish setup."
       }
     }
-    syncedProjectId = await ensureActiveProjectForProjects(
-      context.projects
-    )
+    syncedProjectId = await ensureActiveProjectForProjects(context.projects)
     let offset = 0
     for (let page = 0; page < MAX_REMOTE_MARK_PAGES; page++) {
       const url = new URL(`${WEB_APP_URL}/api/extension/marks`)
@@ -684,7 +730,10 @@ export async function syncWorkspaceMarksFromRemote(): Promise<SyncPendingMarksRe
         }
       })
       if (!res.ok) {
-        const message = await responseErrorMessage(res, "Could not fetch marks.")
+        const message = await responseErrorMessage(
+          res,
+          "Could not fetch marks."
+        )
         return { ok: false, attempted: 1, synced: 0, failed: 1, error: message }
       }
       const body = (await res.json()) as {
@@ -772,13 +821,17 @@ export async function syncPendingMarksToWorkspace(): Promise<SyncPendingMarksRes
   }
 
   const marks = await getMarks()
-  const pending = marks.filter(
-    (mark) =>
-      !mark.localHiddenAt &&
+  const pending = marks.filter((mark) => {
+    const hasPendingDelete = mark.pendingSyncOps?.some(
+      (operation) => operation.type === "delete"
+    )
+    return (
+      (!mark.localHiddenAt || hasPendingDelete) &&
       ((!mark.remoteMarkId && isUuidLike(mark.projectId)) ||
         Boolean(mark.remoteMarkId && mark.screenshotDataUrl) ||
         Boolean(mark.remoteMarkId && mark.pendingSyncOps?.length))
-  )
+    )
+  })
   let synced = 0
   let failed = 0
   let firstError: string | undefined
