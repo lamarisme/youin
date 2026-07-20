@@ -2962,7 +2962,11 @@ const CapturePanel = () => {
                       : t("extension.panel.copyAiPrompt")}
                 </button>
                 <a
-                  href={`${WEB_APP_URL}/dashboard`}
+                  href={`${WEB_APP_URL}/dashboard${
+                    viewingMark.remoteMarkId
+                      ? `/${encodeURIComponent(viewingMark.remoteMarkId)}`
+                      : ""
+                  }`}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-9 items-center justify-center gap-1 rounded-md border border-[color:var(--yi-ext-border)] bg-[color:var(--yi-ext-surface-input)] px-3 text-[12.5px] font-semibold text-[color:var(--yi-ext-link)] no-underline outline-none transition-colors hover:border-[color:var(--yi-ext-border-strong)] hover:bg-[color:var(--yi-ext-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--yi-ext-accent-ring)]">
